@@ -26,6 +26,6 @@ int32_t notification_manager_remove(uint32_t id);
 int32_t notification_manager_get(uint32_t id, not_mngr_notification_t *notifcation);
 int32_t notification_manager_get_all(not_mngr_notification_t *notifcations, int *num_notifications);
 int32_t notification_manager_get_num(void);
-not_mngr_notification_t* notification_manager_get_newest(void);
+not_mngr_notification_t *notification_manager_get_newest(void);
 
 #endif

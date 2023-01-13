@@ -244,7 +244,7 @@ static void parse_time(char *start_time)
         cb.data.notify.id = strtol(start_time, &end_time, 10);
         if (start_time != end_time && errno == 0) {
             cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
-            data_parsed_cb(&cb);
+            send_ble_data_event(&cb);
         } else {
             LOG_WRN("Failed parsing time");
         }
@@ -364,6 +364,8 @@ static int parse_notify_delete(char *data, int len)
 static int parse_weather(char *data, int len)
 {
     //{t:"weather",temp:268,hum:97,code:802,txt:"slightly cloudy",wind:2.0,wdir:14,loc:"MALMO"
+    int temp_len;
+    char *temp_value;
     float temperature;
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
@@ -374,19 +376,14 @@ static int parse_weather(char *data, int len)
     cb.data.weather.weather_code = extract_value_uint32("code:", data);
     cb.data.weather.wind = extract_value_uint32("wind:", data);
     cb.data.weather.wind_direction = extract_value_uint32("wdir:", data);
-    cb.data.weather.report_text = extract_value_str("txt:", data, &cb.data.weather.report_text_len);
+    temp_value = extract_value_str("txt:", data, &temp_len);
 
-    // Little hack since we know it's JSON, we can terminate all values in the data
-    // which saves us some hassle and we can just pass all values null terminated
-    // to the callback. Make sure to do it after finish parsing!
-    if (cb.data.weather.report_text_len > 0) {
-        cb.data.weather.report_text[cb.data.weather.report_text_len] = '\0';
-    }
+    strncpy(cb.data.weather.report_text, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
 
     // App sends temperature in Kelvin
     temperature = temperature_k - 273.15f;
     cb.data.weather.temperature_c = (int8_t)roundf(temperature);
-    data_parsed_cb(&cb);
+    send_ble_data_event(&cb);
     return 0;
 }
 

@@ -3,7 +3,8 @@
 
 #include <zephyr/kernel.h>
 
-#define MAX_MUSIC_FIELD_LENGTH  25
+#define MAX_MUSIC_FIELD_LENGTH          25
+#define MAX_WEATHER_REPORT_TEXT_LENGTH  25
 
 typedef enum ble_comm_data_type {
     BLE_COMM_DATA_TYPE_NOTIFY,
@@ -40,8 +41,7 @@ typedef struct ble_comm_weather {
     uint16_t wind;
     uint16_t wind_direction;
     uint16_t weather_code;
-    char *report_text;
-    int report_text_len;
+    char report_text[MAX_WEATHER_REPORT_TEXT_LENGTH];
 } ble_comm_weather_t;
 
 typedef struct ble_comm_music_info {

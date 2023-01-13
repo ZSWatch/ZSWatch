@@ -101,7 +101,7 @@ int32_t notification_manager_get_num(void)
     return num_notifications;
 }
 
-not_mngr_notification_t* notification_manager_get_newest(void)
+not_mngr_notification_t *notification_manager_get_newest(void)
 {
     int idx = find_newest_notification_idx();
     if (idx != NOTIFICATION_INVALID_ID) {

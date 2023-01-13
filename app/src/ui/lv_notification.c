@@ -1,18 +1,21 @@
 #include <lv_notifcation.h>
 
 static void on_notifcation_closed(lv_event_t *e);
+void close_not_timer(lv_timer_t *timer);
 
 
 static lv_obj_t *mbox;
 static lv_obj_t *img_icon;
 static on_close_not_cb_t on_close_cb;
 static uint32_t active_not_id;
+static lv_timer_t *auto_close_timer;
 
 LV_IMG_DECLARE(messenger);
 LV_IMG_DECLARE(gmail);
 LV_IMG_DECLARE(notification);
 
-void lv_notification_show(char *title, char *body, notification_src_t icon, uint32_t id, on_close_not_cb_t close_cb)
+void lv_notification_show(char *title, char *body, notification_src_t icon, uint32_t id, on_close_not_cb_t close_cb,
+                          uint32_t close_after_seconds)
 {
     active_not_id = id;
     on_close_cb = close_cb;
@@ -61,6 +64,9 @@ void lv_notification_show(char *title, char *body, notification_src_t icon, uint
     }
 
     lv_obj_align_to(img_icon, mbox, LV_ALIGN_TOP_RIGHT, 5, -35);
+
+    auto_close_timer = lv_timer_create(close_not_timer, close_after_seconds * 1000,  NULL);
+    lv_timer_set_repeat_count(auto_close_timer, 1);
 }
 
 void lv_notification_remove(void)
@@ -71,14 +77,22 @@ void lv_notification_remove(void)
     if (img_icon) {
         lv_obj_del(img_icon);
     }
+    img_icon = NULL;
 }
 
 static void on_notifcation_closed(lv_event_t *e)
 {
+    lv_timer_del(auto_close_timer);
     mbox = NULL;
     if (img_icon) {
         lv_obj_del(img_icon);
     }
     img_icon = NULL;
-    on_close_cb(e, active_not_id);
+    on_close_cb(active_not_id);
+}
+
+void close_not_timer(lv_timer_t *timer)
+{
+    lv_notification_remove();
+    on_close_cb(active_not_id);
 }
