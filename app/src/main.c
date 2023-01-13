@@ -222,6 +222,7 @@ static void play_not_vibration(void)
 static void on_popup_notifcation_closed(uint32_t id)
 {
     // Notification was dismissed, hence consider it read.
+    // TODO send to phone that the notification was read.
     notification_manager_remove(id);
     lv_async_call(async_turn_off_buttons_allocation, NULL);
 }
@@ -235,6 +236,7 @@ static void on_notification_page_close(void)
 
 static void on_notification_page_notification_close(uint32_t not_id)
 {
+    // TODO send to phone that the notification was read.
     notification_manager_remove(not_id);
 }
 

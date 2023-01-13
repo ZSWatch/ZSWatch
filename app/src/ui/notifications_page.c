@@ -108,12 +108,8 @@ static void build_notification_entry(lv_obj_t *parent, not_mngr_notification_t *
 
 static void not_button_pressed(lv_event_t *e)
 {
-    printk("not_button_pressed\n");
-    lv_obj_del(main_page);
-    closed_callback();
-    // TODO something with focus not working after delete of item so for now close instead.
-    //lv_obj_del(lv_event_get_target(e));
-    //not_removed_callback((uint32_t)lv_event_get_user_data(e));
+    lv_obj_del(lv_event_get_target(e));
+    not_removed_callback((uint32_t)lv_event_get_user_data(e));
 }
 
 static void close_button_pressed(lv_event_t *e)

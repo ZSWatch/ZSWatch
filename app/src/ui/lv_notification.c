@@ -94,5 +94,5 @@ static void on_notifcation_closed(lv_event_t *e)
 void close_not_timer(lv_timer_t *timer)
 {
     lv_notification_remove();
-    on_close_cb(active_not_id);
+    on_close_cb(0);
 }
