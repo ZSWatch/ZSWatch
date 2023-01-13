@@ -16,6 +16,7 @@
 #include <vibration_motor.h>
 #include <ram_retention_storage.h>
 #include <events/ble_data_event.h>
+#include <events/accel_event.h>
 #include <notification_manager.h>
 
 LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
@@ -32,12 +33,7 @@ LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 typedef enum work_type {
     UPDATE_CLOCK,
     OPEN_WATCHFACE,
-    OPEN_NOTIFICATIONS,
     BATTERY,
-    RENDER,
-    OPEN_NOTIFICATION,
-    CLOSE_NOTIFICATION,
-    DEBUG_NOTIFICATION,
     SEND_STATUS_UPDATE,
     UPDATE_DATE
 } work_type_t;
@@ -159,14 +155,6 @@ void general_work(struct k_work *item)
                      "Failed schedule status work");
             break;
         }
-        case CLOSE_NOTIFICATION: {
-            //lv_notification_remove();
-            //buttons_allocated = false;
-            break;
-        }
-        case DEBUG_NOTIFICATION: {
-            break;
-        }
     }
 }
 
@@ -244,6 +232,11 @@ static bool app_event_handler(const struct app_event_header *aeh)
             k_work_reschedule(&date_work.work, K_SECONDS(1));
         }
         return false;
+    } if (running && is_accel_event(aeh)) {
+        struct accel_event *event = cast_accel_event(aeh);
+        if (event->data.type == ACCELEROMETER_EVT_TYPE_STEP) {
+            watchface_set_step(event->data.data.step.count);
+        }
     }
     return false;
 }
@@ -251,3 +244,4 @@ static bool app_event_handler(const struct app_event_header *aeh)
 SYS_INIT(watchface_app_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 APP_EVENT_LISTENER(watchface_app, app_event_handler);
 APP_EVENT_SUBSCRIBE(watchface_app, ble_data_event);
+APP_EVENT_SUBSCRIBE(watchface_app, accel_event);

@@ -31,6 +31,7 @@
 #include <display_control.h>
 #include <applications/application_manager.h>
 #include <events/ble_data_event.h>
+#include <events/accel_event.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
 
@@ -53,8 +54,7 @@ static void open_notifications_page(void *unused);
 static bool load_retention_ram(void);
 static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 static void encoder_vibration(struct _lv_indev_drv_t *drv, uint8_t e);
-static void accel_evt(accelerometer_evt_t *evt);
-static void play_not_vibration(void); // TODO move to separate file
+static void play_not_vibration(void);
 static void ble_data_cb(ble_comm_cb_data_t *cb);
 static void open_notification_popup(void *data);
 static void async_turn_off_buttons_allocation(void *unused);
@@ -82,16 +82,13 @@ K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
 void run_init_work(struct k_work *item)
 {
-    int res;
-
     load_retention_ram();
     filesystem_init();
     heart_rate_sensor_init();
     notifications_page_init(on_notification_page_close, on_notification_page_notification_close);
     notification_manager_init();
     enable_bluetoth();
-    res = accelerometer_init(accel_evt);
-    __ASSERT(res == 0, "Failed init accelerometer");
+    __ASSERT(accelerometer_init(NULL) == 0, "Failed init accelerometer");
     clock_init(retained.current_time_seconds);
     buttonsInit(&onButtonPressCb);
     vibration_motor_init();
@@ -346,40 +343,6 @@ void encoder_vibration(struct _lv_indev_drv_t *drv, uint8_t e)
     }
 }
 
-static void accel_evt(accelerometer_evt_t *evt)
-{
-    switch (evt->type) {
-        case ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP: {
-            if (vibrator_on || (watch_state != WATCHFACE_STATE)) {
-                // Vibrator causes false double tap detections.
-                // Need more work to not detect when vibration is running, hence for now only allow on watchface page
-                break;
-            }
-            display_on = !display_on;
-            if (display_on) {
-                display_control_set_brightness(100);
-            } else {
-                display_control_set_brightness(1);
-            }
-            break;
-        }
-        case ACCELEROMETER_EVT_TYPE_STEP: {
-            // TODO
-            //watchface_set_step(evt->data.step.count);
-            break;
-        }
-        case ACCELEROMETER_EVT_TYPE_XYZ: {
-            LOG_ERR("x: %d y: %d z: %d", evt->data.xyz.x, evt->data.xyz.y, evt->data.xyz.z);
-            break;
-        }
-        case ACCELEROMETER_EVT_TYPE_TILT: {
-            // Tilt detect not working as we want yet, so don't do for now.
-            //display_control_set_brightness(100);
-            break;
-        }
-    }
-}
-
 static void ble_data_cb(ble_comm_cb_data_t *cb)
 {
     not_mngr_notification_t *parsed_not;
@@ -431,9 +394,39 @@ static bool app_event_handler(const struct app_event_header *aeh)
                 break;
         }
         return false;
+    } else if (is_accel_event(aeh)) {
+        struct accel_event *event = cast_accel_event(aeh);
+        switch (event->data.type) {
+        case ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP: {
+            if (vibrator_on || (watch_state != WATCHFACE_STATE)) {
+                // Vibrator causes false double tap detections.
+                // Need more work to not detect when vibration is running, hence for now only allow on watchface page
+                break;
+            }
+            display_on = !display_on;
+            if (display_on) {
+                display_control_set_brightness(100);
+            } else {
+                display_control_set_brightness(1);
+            }
+            break;
+        }
+        case ACCELEROMETER_EVT_TYPE_XYZ: {
+            LOG_ERR("x: %d y: %d z: %d", event->data.data.xyz.x, event->data.data.xyz.y, event->data.data.xyz.z);
+            break;
+        }
+        case ACCELEROMETER_EVT_TYPE_TILT: {
+            // Tilt detect not working as we want yet, so don't do for now.
+            //display_control_set_brightness(100);
+            break;
+        }
+        default:
+            break;
+        }
     }
     return false;
 }
 
 APP_EVENT_LISTENER(main, app_event_handler);
 APP_EVENT_SUBSCRIBE(main, ble_data_event);
+APP_EVENT_SUBSCRIBE(main, accel_event);

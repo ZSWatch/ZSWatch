@@ -1,6 +1,7 @@
 #include <accelerometer.h>
 #include <zephyr/logging/log.h>
 #include "lis2ds12_reg.h"
+#include <events/accel_event.h>
 
 LOG_MODULE_REGISTER(accel, LOG_LEVEL_DBG);
 
@@ -10,6 +11,7 @@ static int configure_double_tap_detection(void);
 static int configure_pedometer(void);
 static int configure_tilt_detection(void);
 static int configure_int2_to_int1(void);
+static void send_accel_event(accelerometer_evt_t *data);
 
 static const struct device *sensor;
 static accel_event_cb accel_evt_cb;
@@ -142,26 +144,29 @@ static void data_ready_xyz(const struct device *dev, const struct sensor_trigger
     err = lis2ds12_all_sources_get(ctx, &isr_srcs);
     if (isr_srcs.tap_src.double_tap) {
         LOG_DBG("Double TAP ISR");
+        evt.type = ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP;
         if (accel_evt_cb) {
-            evt.type = ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP;
             accel_evt_cb(&evt);
         }
+        send_accel_event(&evt);
     } else if (isr_srcs.tap_src.single_tap) {
         LOG_DBG("Single TAP ISR");
     } else if (isr_srcs.func_ck_gate.step_detect) {
         accelerometer_fetch_num_steps(&steps);
         LOG_DBG("Step Detect: %d", steps);
+        evt.type = ACCELEROMETER_EVT_TYPE_STEP;
+        evt.data.step.count = steps;
         if (accel_evt_cb) {
-            evt.type = ACCELEROMETER_EVT_TYPE_STEP;
-            evt.data.step.count = steps;
             accel_evt_cb(&evt);
         }
+        send_accel_event(&evt);
     } else if (isr_srcs.func_ck_gate.tilt_int) {
         LOG_DBG("Tilt Detected");
+        evt.type = ACCELEROMETER_EVT_TYPE_TILT;
         if (accel_evt_cb) {
-            evt.type = ACCELEROMETER_EVT_TYPE_TILT;
             accel_evt_cb(&evt);
         }
+        send_accel_event(&evt);
     } else if (isr_srcs.status_dup.drdy) {
         LOG_DBG("DRDY ISR");
         err = sensor_sample_fetch_chan(dev, SENSOR_CHAN_ACCEL_XYZ);
@@ -173,13 +178,14 @@ static void data_ready_xyz(const struct device *dev, const struct sensor_trigger
                 x = (int16_t)(sensor_value_to_double(&acc_val[0]) * (32768 / 16));
                 y = (int16_t)(sensor_value_to_double(&acc_val[1]) * (32768 / 16));
                 z = (int16_t)(sensor_value_to_double(&acc_val[2]) * (32768 / 16));
+                evt.type = ACCELEROMETER_EVT_TYPE_XYZ;
+                evt.data.xyz.x = x;
+                evt.data.xyz.y = y;
+                evt.data.xyz.z = z;
                 if (accel_evt_cb) {
-                    evt.type = ACCELEROMETER_EVT_TYPE_XYZ;
-                    evt.data.xyz.x = x;
-                    evt.data.xyz.y = y;
-                    evt.data.xyz.z = z;
                     accel_evt_cb(&evt);
                 }
+                send_accel_event(&evt);
             }
         }
     } else {
@@ -318,4 +324,12 @@ static int configure_int2_to_int1(void)
     }
 
     return 0;
+}
+
+static void send_accel_event(accelerometer_evt_t *data)
+{
+    struct accel_event *event = new_accel_event();
+
+    memcpy(&event->data, data, sizeof(accelerometer_evt_t));
+    APP_EVENT_SUBMIT(event);
 }
