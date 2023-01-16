@@ -70,7 +70,7 @@ Basic pogo-pin dock that connects the power and SWD pins to the bottom of the wa
 - Refactoring of `main.c`, should have way less logic, utlize Zephyr architecture more.
 
 ## Android phone communication
-Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
+Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in GadgetBridge, following the same API as it does. In future there may be a point adding native support, we'll see.
 
 ## PCB
 A 4 layer board which measures 36mm in diameter designed in KiCad.
@@ -99,7 +99,7 @@ Each application needs to have a way to close itself, for example a button, and 
 When user clicks an app in the app picker:
 - `application_manager.c` deletes it's UI elements and calls the `application_start_fn`.
 - `<app_name>_app.c` will do necessary init and then call the `<app_name>_ui.c` to draw the app UI.
-- User can now navigate arund and the application and do whatever.
+- User can now navigate around the application and do whatever.
 
 When user for example presses a close button in the application:
 - Typically a callback from the UI code in `<app_name>_ui.c` will call `<app_name>_app.c` to tell that user requested to close the app. `<app_name>_app.c` will notify `application_manager.c` that it want to close itself. `application_manager.c` will then call `<app_name>_app.c` `application_stop_fn` and `<app_name>_app.c` will tell UI to close then do necessary de-init and return.
