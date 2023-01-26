@@ -4366,7 +4366,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 5099bee0-7f8d-4964-9f92-fded0885ae98)
   )
-  (text "CHG NOT CONNECTED..." (at -55.5092 197.3675 0)
+  (text "CHG NOT CONNECTED..." (at 110.7074 352.7166 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 615c97f2-924c-4adc-b659-62128bf53e2a)
   )
