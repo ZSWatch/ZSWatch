@@ -35,8 +35,6 @@
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
 
-#define RENDER_INTERVAL_LVGL    K_MSEC(100)
-
 typedef enum ui_state {
     INIT_STATE,
     SETTINGS_STATE,
@@ -112,8 +110,8 @@ void run_init_work(struct k_work *item)
 
 static void lvgl_render(struct k_work *item)
 {
-    lv_task_handler();
-    k_work_schedule(&lvgl_work, RENDER_INTERVAL_LVGL);
+    const int64_t next_update_in_ms = lv_task_handler();
+    k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
 }
 
 void main(void)
