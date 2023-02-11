@@ -34,8 +34,8 @@
         "other_text_upright": false,
         "pads": {
           "drill": 0.0,
-          "height": 0.47,
-          "width": 0.23
+          "height": 3.0,
+          "width": 3.0
         },
         "silk_line_width": 0.154,
         "silk_text_italic": false,
@@ -87,6 +87,7 @@
         "clearance|105300000|114450000|39d412fe-77d5-4df2-b059-32a816e78cf0|9ffa0399-b992-4203-90a6-8b686c016af8",
         "clearance|105300000|114950000|aca4f824-fac8-4021-b463-cc2a5613806b|39d412fe-77d5-4df2-b059-32a816e78cf0",
         "clearance|105300000|115450000|e5f311ac-6a33-45b1-adc6-aa4368314017|aca4f824-fac8-4021-b463-cc2a5613806b",
+        "silk_overlap|102488769|91450000|d5280716-8273-44d8-a3f7-f41933a428fb|63395c90-8470-4e03-95cc-0bf7f9b27d46",
         "silk_overlap|102488769|91572458|63395c90-8470-4e03-95cc-0bf7f9b27d46|d5280716-8273-44d8-a3f7-f41933a428fb",
         "silk_overlap|103300000|91450000|50322f54-90f5-4985-9860-1097c7a4c512|63395c90-8470-4e03-95cc-0bf7f9b27d46"
       ],
