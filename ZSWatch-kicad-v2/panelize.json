@@ -7,14 +7,14 @@
     },
     "tabs": {
         "type": "fixed",
-        "vwidth": "4mm",
-        "hwidth": "4mm"
+        "vwidth": "5mm",
+        "hwidth": "5mm"
     },
     "cuts": {
         "type": "mousebites",
         "drill": "0.3mm",
         "spacing": "0.6mm",
-        "offset": "-0.2mm"
+        "offset": "-0.1mm"
     },
     "framing": {
         "type": "frame"
