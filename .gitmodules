@@ -1,0 +1,3 @@
+[submodule "KiCAD_plugins/kiBoM"]
+	path = KiCAD_plugins/kiBoM
+	url = git@github.com:SchrodingersGat/KiBoM.git
