@@ -1,3 +1,0 @@
-(sym_lib_table
-  (lib (name "nrf-watch-kicad-altium-import")(type "KiCad")(uri "${KIPRJMOD}/nrf-watch-kicad-altium-import.kicad_sym")(options "")(descr ""))
-)

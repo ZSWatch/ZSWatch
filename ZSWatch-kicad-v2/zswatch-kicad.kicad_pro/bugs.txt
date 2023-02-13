@@ -1,3 +1,0 @@
-U8 wrong footprint - skip mount
-U2 may be wrong, lot's of shorts of bat 
-U6 missing decouple cap. on v_bat

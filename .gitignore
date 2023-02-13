@@ -2,3 +2,4 @@ build
 .vscode
 build*
 *.code-workspace
+*__pycache__*
