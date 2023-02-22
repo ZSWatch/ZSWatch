@@ -108,14 +108,15 @@ static int ram_range_retain(const void *ptr,
         }
 
         uint32_t section_mask =
-            (POWER_RAM_POWERSET_S0RETENTION_On
-             << (section + POWER_RAM_POWERSET_S0RETENTION_Pos));
+            (VMC_RAM_POWERSET_S0RETENTION_On
+             << (section + VMC_RAM_POWERSET_S0RETENTION_Pos));
 
-        if (enable) {
-            nrf_power_rampower_mask_on(NRF_POWER, block, section_mask);
-        } else {
-            nrf_power_rampower_mask_off(NRF_POWER, block, section_mask);
-        }
+        // TODO, RAM retention works differently on nRF5340
+        //if (enable) {
+        //    nrf_vmc_ram_block_power_set(NRF_VMC, block, section_mask);
+        //} else {
+        //    nrf_vmc_ram_block_power_set(NRF_VMC, block, section_mask);
+        //}
 
         /* Move to the first address in the next section. */
         addr += section_size - (addr % section_size);

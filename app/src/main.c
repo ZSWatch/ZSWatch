@@ -13,7 +13,6 @@
 #include <zephyr/settings/settings.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/logging/log.h>
-#include <filesystem.h>
 #include <clock.h>
 #include <lvgl.h>
 #include "watchface_app.h"
@@ -83,12 +82,11 @@ K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 void run_init_work(struct k_work *item)
 {
     load_retention_ram();
-    filesystem_init();
     heart_rate_sensor_init();
     notifications_page_init(on_notification_page_close, on_notification_page_notification_close);
     notification_manager_init();
     enable_bluetoth();
-    __ASSERT(accelerometer_init(NULL) == 0, "Failed init accelerometer");
+    accelerometer_init(NULL);
     clock_init(retained.current_time_seconds);
     buttonsInit(&onButtonPressCb);
     vibration_motor_init();
@@ -112,8 +110,8 @@ void run_init_work(struct k_work *item)
 
 static void lvgl_render(struct k_work *item)
 {
-    lv_task_handler();
-    k_work_schedule(&lvgl_work, RENDER_INTERVAL_LVGL);
+    const int64_t next_update_in_ms = lv_task_handler();
+    k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
 }
 
 void main(void)
@@ -138,7 +136,7 @@ static void enable_bluetoth(void)
     settings_load();
 #endif
 
-    __ASSERT_NO_MSG(bleAoaInit());
+    //__ASSERT_NO_MSG(bleAoaInit());
     __ASSERT_NO_MSG(ble_comm_init(ble_data_cb) == 0);
 }
 
@@ -304,16 +302,17 @@ static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *da
     if (!buttons_allocated) {
         return;
     }
-    if (button_read(BUTTON_1)) {
+    /*if (button_read(BUTTON_1)) {
         data->key = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PR;
         last_pressed = BUTTON_1;
-    } else if (button_read(BUTTON_2)) {
+    } else */
+    if (button_read(BUTTON_2)) {
         data->key = LV_KEY_ENTER;
         data->state = LV_INDEV_STATE_PR;
         last_pressed = BUTTON_2;
     } else if (button_read(BUTTON_3)) {
-        data->key = LV_KEY_LEFT;
+        data->key = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PR;
         last_pressed = BUTTON_3;
     } else {

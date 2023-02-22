@@ -4,7 +4,7 @@
 
 #define SMALL_WATCHFACE_CENTER_OFFSET 38
 
-//#define USE_SECOND_HAND
+#define USE_SECOND_HAND
 
 const lv_img_dsc_t *get_icon_from_weather_code(int code);
 

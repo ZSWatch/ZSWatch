@@ -17,7 +17,7 @@ https://github.com/MikroElektronika/HEXIWEAR/blob/master/SW/FTF/HEXIWEAR_OLED_se
 */
 
 
-static const struct device *const hr_dev = NULL;//DEVICE_DT_GET_ANY(maxim_max30101);
+static const struct device *const hr_dev = DEVICE_DT_GET_ANY(maxim_max30101);
 
 int heart_rate_sensor_init(void)
 {

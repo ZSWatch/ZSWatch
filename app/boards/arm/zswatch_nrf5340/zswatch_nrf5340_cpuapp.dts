@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2023 Jakob Krantz
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf5340_cpuapp_qkaa.dtsi>
+#include "zswatch_nrf5340_common.dts"
+
+/ {
+	model = "Nordic ZSWatch NRF5340 Application";
+	compatible = "nordic,zswatch-nrf5340-cpuapp";
+
+	chosen {
+		zephyr,sram = &sram0_image;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,sram-secure-partition = &sram0_s;
+		zephyr,sram-non-secure-partition = &sram0_ns;
+	};
+
+	aliases {
+		watchdog0 = &wdt0;
+	};
+};
