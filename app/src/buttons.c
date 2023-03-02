@@ -13,7 +13,7 @@ LOG_MODULE_REGISTER(buttons, LOG_LEVEL_DBG);
 #define PRIORITY                7
 
 #define BTN_LONG_PRESS_LIMIT  1000
-#define NUM_BUTTONS           2
+#define NUM_BUTTONS           3
 
 static void buttonPressedIsr(const struct device *dev, struct gpio_callback *cb, uint32_t pins);
 static void handleButtonThread(void);
@@ -26,8 +26,9 @@ typedef struct buttons_t {
 static buttons_t buttons[NUM_BUTTONS] = {
     { .btn = GPIO_DT_SPEC_GET_OR(DT_ALIAS(sw0), gpios, {0}) },
     { .btn = GPIO_DT_SPEC_GET_OR(DT_ALIAS(sw1), gpios, {0}) },
-    //{ .btn = GPIO_DT_SPEC_GET_OR(DT_ALIAS(sw2), gpios, {0}) }
+    { .btn = GPIO_DT_SPEC_GET_OR(DT_ALIAS(sw2), gpios, {0}) }
 };
+
 
 static buttonHandlerCallback_t callback;
 static struct k_sem btnSem;

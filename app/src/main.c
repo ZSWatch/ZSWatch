@@ -91,7 +91,8 @@ void run_init_work(struct k_work *item)
     buttonsInit(&onButtonPressCb);
     vibration_motor_init();
     vibration_motor_set_on(false);
-    display_control_set_brightness(100);
+
+    //gpio_debug_init();
 
     lv_indev_drv_init(&enc_drv);
     enc_drv.type = LV_INDEV_TYPE_ENCODER;
@@ -302,12 +303,11 @@ static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *da
     if (!buttons_allocated) {
         return;
     }
-    /*if (button_read(BUTTON_1)) {
+    if (button_read(BUTTON_1)) {
         data->key = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PR;
         last_pressed = BUTTON_1;
-    } else */
-    if (button_read(BUTTON_2)) {
+    } else if (button_read(BUTTON_2)) {
         data->key = LV_KEY_ENTER;
         data->state = LV_INDEV_STATE_PR;
         last_pressed = BUTTON_2;

@@ -59,7 +59,7 @@ struct divider_data {
 };
 
 static struct divider_data divider_data = {
-    .adc = DEVICE_DT_GET(DT_IO_CHANNELS_CTLR(VBATT)),
+    .adc = DEVICE_DT_GET_OR_NULL(DT_IO_CHANNELS_CTLR(VBATT)),
 };
 
 static int divider_setup(void)

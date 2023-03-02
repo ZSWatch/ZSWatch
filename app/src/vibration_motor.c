@@ -7,6 +7,8 @@
 static const struct pwm_dt_spec pwm_led1 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led1));
 
 static const struct gpio_dt_spec enable_gpio = GPIO_DT_SPEC_GET(DT_NODELABEL(vib_pwr), enable_gpios);
+//static const struct device *const reg2 = DEVICE_DT_GET(DT_NODELABEL(reg2));
+//regulator_disable(reg2)
 
 void vibration_motor_init(void)
 {

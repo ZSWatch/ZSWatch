@@ -10,7 +10,7 @@ void display_control_init(void)
 {
     const struct device *display_dev;
 
-    display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
+    display_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_display));
     if (!device_is_ready(display_dev)) {
         LOG_ERR("Device not ready, aborting test");
         return;

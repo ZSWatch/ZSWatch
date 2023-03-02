@@ -8,6 +8,8 @@
  */
 typedef enum gpioWatchId_t {
     DISPLAY_EN,
+    TOUCH_RST,
+    DISPLAY_RST,
     BTN_1,
     DISPLAY_DC,
     QSPI_1_SO,
