@@ -47,8 +47,8 @@
 
 	i2c2_default: i2c2_default {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 1, 3)>,
-				<NRF_PSEL(TWIM_SCL, 1, 2)>;
+			psels = <NRF_PSEL(TWIM_SDA, 1, 2)>,
+				<NRF_PSEL(TWIM_SCL, 1, 3)>;
 		};
 	};
 
@@ -65,7 +65,7 @@
 			psels = <NRF_PSEL(SPIM_SCK, 0, 8)>,
 				<NRF_PSEL(SPIM_MOSI, 0, 9)>,
 				<NRF_PSEL(SPIM_MISO, 0, 10)>;
-		};
+			};
 	};
 
 	spi4_sleep: spi4_sleep {
@@ -76,6 +76,24 @@
 			low-power-enable;
 		};
 	};
+
+/*
+TODO Compile option. None touch screen
+	spi4_default: spi4_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 3)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 0)>;
+			};
+		};
+
+	spi4_sleep: spi4_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 1, 3)>,
+				<NRF_PSEL(SPIM_MOSI, 1, 0)>;
+			low-power-enable;
+		};
+	};
+*/
 
 	uart0_default: uart0_default {
 		group1 {

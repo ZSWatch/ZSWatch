@@ -7,8 +7,11 @@
  * @brief Button id
  */
 typedef enum gpioWatchId_t {
-    DISPLAY_EN,
     TOUCH_RST,
+    TOUCH_SDA,
+    TOUCH_SCL,
+    TOUCH_INT,
+    DISPLAY_EN,
     DISPLAY_RST,
     BTN_1,
     DISPLAY_DC,

@@ -7,10 +7,12 @@
 #include <gpio_debug.h>
 
 LOG_MODULE_REGISTER(gpio_debug, LOG_LEVEL_WRN);
-
 static struct gpio_dt_spec watch_gpios[] = {
+    [TOUCH_RST] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)), .pin = 20 },
+    [TOUCH_SDA] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1)), .pin = 2 },
+    [TOUCH_SCL] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1)), .pin = 3 },
+    [TOUCH_INT] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1)), .pin = 0 },
     //[DISPLAY_EN] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio1)), .pin = 1 },
-    //[TOUCH_RST] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)), .pin = 20 },
     //[DISPLAY_RST] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)), .pin = 23 },
     //[BTN_1] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)), .pin = 2 },
     //[DISPLAY_DC] = { .port = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(gpio0)), .pin = 16 },
@@ -47,7 +49,6 @@ static uint8_t pinDefaultState[ARRAY_SIZE(watch_gpios)];
 void gpio_debug_init(void)
 {
     int ret;
-
     for (int i = 0; i < ARRAY_SIZE(watch_gpios); i++) {
         __ASSERT(device_is_ready(watch_gpios[i].port), "Error: button device %s is not ready\n",  watch_gpios[i].port->name);
         ret = gpio_pin_configure_dt(&watch_gpios[i], GPIO_OUTPUT);
@@ -131,6 +132,7 @@ void gpio_debug_test(gpioWatchId_t gpioId, int val)
     LOG_INF("Testing %d (%s.%d)", gpioId, watch_gpios[gpioId].port->name, watch_gpios[gpioId].pin);
     int ret = gpio_pin_configure_dt(&watch_gpios[gpioId], GPIO_OUTPUT);
     __ASSERT_NO_MSG(ret == 0);
-    gpio_pin_set_dt(&watch_gpios[gpioId], val);
+    
+    ret = gpio_pin_set_dt(&watch_gpios[gpioId], val);
     __ASSERT_NO_MSG(ret == 0);
 }

@@ -92,7 +92,7 @@ void run_init_work(struct k_work *item)
     vibration_motor_init();
     vibration_motor_set_on(false);
 
-    //gpio_debug_init();
+    display_control_set_brightness(50);
 
     lv_indev_drv_init(&enc_drv);
     enc_drv.type = LV_INDEV_TYPE_ENCODER;
