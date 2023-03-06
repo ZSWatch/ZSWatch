@@ -137,7 +137,7 @@ static void enable_bluetoth(void)
     settings_load();
 #endif
 
-    //__ASSERT_NO_MSG(bleAoaInit());
+    __ASSERT_NO_MSG(bleAoaInit());
     __ASSERT_NO_MSG(ble_comm_init(ble_data_cb) == 0);
 }
 
@@ -331,6 +331,8 @@ static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *da
                 break;
             case BUTTON_BOTTOM_LEFT:
                 data->key = LV_KEY_LEFT;
+                break;
+            default:
                 break;
         }
         last_pressed = 0xFF;
