@@ -1,0 +1,27 @@
+
+&i2c2 {
+    status = "disabled";
+};
+
+&spi4  {
+    status = "okay";
+    compatible = "nordic,nrf-spim";
+    pinctrl-0 = <&spi4_default_no_touch>;
+    pinctrl-1 = <&spi4_sleep_no_touch>;
+    pinctrl-names = "default", "sleep";
+    cs-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+
+    gc9a01: gc9a01@0 {
+        compatible = "buydisplay,gc9a01";
+        status = "okay";
+        spi-max-frequency = <8000000>;
+        reg = <0>;
+        width = <240>;
+        label = "buydisplay_gc9a01";
+        height = <240>;
+        bl-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+        dc-gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;
+    };
+
+};
