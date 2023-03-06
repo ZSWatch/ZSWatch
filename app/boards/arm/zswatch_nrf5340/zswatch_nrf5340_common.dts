@@ -85,6 +85,10 @@
         sw1 = &button1;
         sw2 = &button2;
         sw3 = &button3;
+        sw-top-right = &button1;
+        sw-top-left = &button2;
+        sw-bottom-right = &button3;
+        sw-bottom-left = &button0;
         magn = &lis2mdl;
         watchdog0 = &wdt0;
         accel = &bmi270;
@@ -147,7 +151,7 @@
     lis2mdl: lis2mdl@1e {
         compatible = "st,lis2mdl";
         reg = <0x1e>;
-        //irq-gpios = <&gpio0 24 0>;
+        irq-gpios = <&gpio0 24 0>;
     };
 
     max30101@57 {
@@ -162,7 +166,7 @@
     bmp581: bmp581@47 {
         compatible = "bosch,bmp581";
         reg = <0x47>;
-        //int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+        int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };
 };
 
@@ -205,31 +209,6 @@
     };
 
 };
-/*
-None touch screen
-&spi4  {
-    status = "okay";
-    compatible = "nordic,nrf-spim";
-    pinctrl-0 = <&spi4_default>;
-    pinctrl-1 = <&spi4_sleep>;
-    pinctrl-names = "default", "sleep";
-    cs-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
-
-    gc9a01: gc9a01@0 {
-        compatible = "buydisplay,gc9a01";
-        status = "okay";
-        spi-max-frequency = <8000000>;
-        reg = <0>;
-        width = <240>;
-        label = "buydisplay_gc9a01";
-        height = <240>;
-        bl-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
-        reset-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-        dc-gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;
-    };
-
-};
-*/
 
 /* UART0 GPIOs can be configured for other use-cases */
 &uart0 {

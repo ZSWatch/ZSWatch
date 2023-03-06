@@ -77,23 +77,21 @@
 		};
 	};
 
-/*
-TODO Compile option. None touch screen
-	spi4_default: spi4_default {
+	spi4_default_no_touch: spi4_default_no_touch {
 		group1 {
 			psels = <NRF_PSEL(SPIM_SCK, 1, 3)>,
 				<NRF_PSEL(SPIM_MOSI, 1, 0)>;
 			};
 		};
 
-	spi4_sleep: spi4_sleep {
+	spi4_sleep_no_touch: spi4_sleep_no_touch {
 		group1 {
 			psels = <NRF_PSEL(SPIM_SCK, 1, 3)>,
 				<NRF_PSEL(SPIM_MOSI, 1, 0)>;
 			low-power-enable;
 		};
 	};
-*/
+
 
 	uart0_default: uart0_default {
 		group1 {

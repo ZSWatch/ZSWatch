@@ -92,7 +92,7 @@ void run_init_work(struct k_work *item)
     vibration_motor_init();
     vibration_motor_set_on(false);
 
-    display_control_set_brightness(50);
+    display_control_set_brightness(75);
 
     lv_indev_drv_init(&enc_drv);
     enc_drv.type = LV_INDEV_TYPE_ENCODER;
@@ -257,18 +257,18 @@ static void onButtonPressCb(buttonPressType_t type, buttonId_t id)
     LOG_WRN("Pressed %d, type: %d", id, type);
 
     // Always allow force restart
-    if (type == BUTTONS_LONG_PRESS && id == BUTTON_3) {
+    if (type == BUTTONS_LONG_PRESS && id == BUTTON_TOP_LEFT) {
         retained.off_count += 1;
         retained_update();
         sys_reboot(SYS_REBOOT_COLD);
     }
 
-    if (type == BUTTONS_LONG_PRESS && id == BUTTON_2 && watch_state == APPLICATION_MANAGER_STATE) {
+    if (id == BUTTON_BOTTOM_RIGHT && watch_state == APPLICATION_MANAGER_STATE) {
         // TODO doesn't work, as this press is read later with lvgl and causes extra press in settings.
         // To fix each application must have exit button, maybe we can register long press on the whole view to exit
         // apps without input device
-        //application_manager_exit_app();
-        //return;
+        application_manager_exit_app();
+        return;
     }
 
     if (buttons_allocated) {
@@ -278,17 +278,17 @@ static void onButtonPressCb(buttonPressType_t type, buttonId_t id)
 
     if (type == BUTTONS_SHORT_PRESS && watch_state == WATCHFACE_STATE) {
         play_press_vibration();
-        if (id == BUTTON_3) {
+        if (id == BUTTON_TOP_LEFT) {
             LOG_DBG("Close Watchface, open App Manager");
             lv_async_call(open_application_manager_page, NULL);
-        } else if (id == BUTTON_2) {
+        } else if (id == BUTTON_BOTTOM_RIGHT) {
             LOG_DBG("CloseWatchface, open Notifications page");
             lv_async_call(open_notifications_page, NULL);
         } else {
             LOG_WRN("Unhandled button %d, type: %d, watch_state: %d", id, type, watch_state);
         }
     } else {
-        if (id == BUTTON_3) {
+        if (id == BUTTON_TOP_LEFT) {
             retained.off_count += 1;
             retained_update();
             sys_reboot(SYS_REBOOT_COLD);
@@ -303,31 +303,33 @@ static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *da
     if (!buttons_allocated) {
         return;
     }
-    if (button_read(BUTTON_1)) {
-        data->key = LV_KEY_RIGHT;
+    if (button_read(BUTTON_TOP_LEFT)) {
+        data->key = LV_KEY_LEFT;
         data->state = LV_INDEV_STATE_PR;
-        last_pressed = BUTTON_1;
-    } else if (button_read(BUTTON_2)) {
+        last_pressed = BUTTON_TOP_LEFT;
+    } else if (button_read(BUTTON_TOP_RIGHT)) {
         data->key = LV_KEY_ENTER;
         data->state = LV_INDEV_STATE_PR;
-        last_pressed = BUTTON_2;
-    } else if (button_read(BUTTON_3)) {
+        last_pressed = BUTTON_TOP_RIGHT;
+    } else if (button_read(BUTTON_BOTTOM_LEFT)) {
         data->key = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PR;
-        last_pressed = BUTTON_3;
+        last_pressed = BUTTON_BOTTOM_LEFT;
+    } else if (button_read(BUTTON_BOTTOM_RIGHT)) {
+        // Not used for now. TODO exit/back button.
     } else {
         if (last_pressed == 0xFF) {
             return;
         }
         data->state = LV_INDEV_STATE_REL;
         switch (last_pressed) {
-            case BUTTON_1:
+            case BUTTON_TOP_LEFT:
                 data->key = LV_KEY_RIGHT;
                 break;
-            case BUTTON_2:
+            case BUTTON_TOP_RIGHT:
                 data->key = LV_KEY_ENTER;
                 break;
-            case BUTTON_3:
+            case BUTTON_BOTTOM_LEFT:
                 data->key = LV_KEY_LEFT;
                 break;
         }
