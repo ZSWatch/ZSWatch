@@ -31,6 +31,7 @@
 #include <applications/application_manager.h>
 #include <events/ble_data_event.h>
 #include <events/accel_event.h>
+#include <magnetometer.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
 
@@ -87,6 +88,7 @@ void run_init_work(struct k_work *item)
     notification_manager_init();
     enable_bluetoth();
     accelerometer_init(NULL);
+    magnetometer_init();
     clock_init(retained.current_time_seconds);
     buttonsInit(&onButtonPressCb);
     vibration_motor_init();
