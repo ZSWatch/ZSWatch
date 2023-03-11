@@ -1,7 +1,10 @@
 #include "accel_event.h"
+#include <zephyr/zbus/zbus.h>
 
-
-APP_EVENT_TYPE_DEFINE(accel_event,
-                      NULL,
-                      NULL,
-                      APP_EVENT_FLAGS_CREATE());
+ZBUS_CHAN_DEFINE(accel_data_chan,
+    struct accel_event,
+    NULL,
+    NULL,
+    ZBUS_OBSERVERS(main_accel_lis, watchface_accel_lis),
+    ZBUS_MSG_INIT()
+);

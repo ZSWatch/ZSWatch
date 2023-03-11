@@ -8,7 +8,7 @@
 #define RETAINED_H_
 
 #include <inttypes.h>
-#include <bluetooth/services/cts_client.h>
+#include <time.h>
 
 struct retained_data {
     time_t current_time_seconds;

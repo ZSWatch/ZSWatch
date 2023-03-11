@@ -3,8 +3,11 @@
 #include <bmi270.h>
 #include <zephyr/logging/log.h>
 #include <events/accel_event.h>
+#include <zephyr/zbus/zbus.h>
 
 LOG_MODULE_REGISTER(accel, LOG_LEVEL_DBG);
+
+ZBUS_CHAN_DECLARE(accel_data_chan);
 
 static void data_ready_xyz(const struct device *dev,
                            const struct sensor_trigger *trig);
@@ -46,8 +49,6 @@ int accelerometer_init(accel_event_cb cb)
     uint16_t int_status = 0;
 
     uint8_t indx = 1;
-
-    float x = 0, y = 0, z = 0;
 
     /* Interface reference is given as a parameter
      * For I2C : BMI2_I2C_INTF
@@ -200,10 +201,9 @@ static int configure_tilt_detection(void)
 
 static void send_accel_event(accelerometer_evt_t *data)
 {
-    struct accel_event *event = new_accel_event();
-
-    memcpy(&event->data, data, sizeof(accelerometer_evt_t));
-    APP_EVENT_SUBMIT(event);
+    struct accel_event evt;
+    memcpy(&evt.data, data, sizeof(accelerometer_evt_t));
+    zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
 }
 
 

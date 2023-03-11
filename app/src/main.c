@@ -32,6 +32,7 @@
 #include <events/ble_data_event.h>
 #include <events/accel_event.h>
 #include <magnetometer.h>
+#include <zephyr/zbus/zbus.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
 
@@ -61,6 +62,9 @@ static void async_turn_off_buttons_allocation(void *unused);
 static void on_popup_notifcation_closed(uint32_t id);
 static void on_notification_page_close(void);
 static void on_notification_page_notification_close(uint32_t not_id);
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
+static void zbus_accel_data_callback(const struct zbus_channel *chan);
+
 
 static void onButtonPressCb(buttonPressType_t type, buttonId_t id);
 
@@ -80,8 +84,16 @@ static ui_state_t watch_state = INIT_STATE;
 K_WORK_DEFINE(init_work, run_init_work);
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+ZBUS_LISTENER_DEFINE(main_ble_comm_lis, zbus_ble_comm_data_callback);
+
+ZBUS_CHAN_DECLARE(accel_data_chan);
+ZBUS_LISTENER_DEFINE(main_accel_lis, zbus_accel_data_callback);
+
+
 void run_init_work(struct k_work *item)
 {
+    //zbus_chan_add_obs(&data_chan, &ble_comm_data_listener, K_MSEC(200));
     load_retention_ram();
     heart_rate_sensor_init();
     notifications_page_init(on_notification_page_close, on_notification_page_notification_close);
@@ -373,67 +385,61 @@ static void ble_data_cb(ble_comm_cb_data_t *cb)
     }
 }
 
-static bool app_event_handler(const struct app_event_header *aeh)
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 {
-    if (is_ble_data_event(aeh)) {
-        struct ble_data_event *event = cast_ble_data_event(aeh);
-
-        switch (event->data.type) {
-            case BLE_COMM_DATA_TYPE_NOTIFY:
-                // TODO, this one not supported yet through events
-                // Handled in ble_comm callback for now
-                break;
-            case BLE_COMM_DATA_TYPE_NOTIFY_REMOVE:
-                if (notification_manager_remove(event->data.data.notify_remove.id) != 0) {
-                    LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
-                }
-                break;
-            case BLE_COMM_DATA_TYPE_SET_TIME: {
-                struct timespec tspec;
-                tspec.tv_sec = event->data.data.time.seconds;
-                tspec.tv_nsec = 0;
-                clock_settime(CLOCK_REALTIME, &tspec);
-                break;
-            }
-            case BLE_COMM_DATA_TYPE_WEATHER:
-                break;
-            default:
-                break;
-        }
-        return false;
-    } else if (is_accel_event(aeh)) {
-        struct accel_event *event = cast_accel_event(aeh);
-        switch (event->data.type) {
-        case ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP: {
-            if (vibrator_on || (watch_state != WATCHFACE_STATE)) {
-                // Vibrator causes false double tap detections.
-                // Need more work to not detect when vibration is running, hence for now only allow on watchface page
-                break;
-            }
-            display_on = !display_on;
-            if (display_on) {
-                display_control_set_brightness(100);
-            } else {
-                display_control_set_brightness(1);
+	const struct ble_data_event *event = zbus_chan_const_msg(chan);
+	switch (event->data.type) {
+        case BLE_COMM_DATA_TYPE_NOTIFY:
+            // TODO, this one not supported yet through events
+            // Handled in ble_comm callback for now
+            break;
+        case BLE_COMM_DATA_TYPE_NOTIFY_REMOVE:
+            if (notification_manager_remove(event->data.data.notify_remove.id) != 0) {
+                LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
             }
             break;
-        }
-        case ACCELEROMETER_EVT_TYPE_XYZ: {
-            LOG_ERR("x: %d y: %d z: %d", event->data.data.xyz.x, event->data.data.xyz.y, event->data.data.xyz.z);
+        case BLE_COMM_DATA_TYPE_SET_TIME: {
+            struct timespec tspec;
+            tspec.tv_sec = event->data.data.time.seconds;
+            tspec.tv_nsec = 0;
+            clock_settime(CLOCK_REALTIME, &tspec);
             break;
         }
-        case ACCELEROMETER_EVT_TYPE_TILT: {
-            // Tilt detect not working as we want yet, so don't do for now.
-            //display_control_set_brightness(100);
+        case BLE_COMM_DATA_TYPE_WEATHER:
             break;
-        }
         default:
             break;
-        }
     }
-    return false;
 }
 
-APP_EVENT_LISTENER(main, app_event_handler);
-APP_EVENT_SUBSCRIBE(main, ble_data_event);
-APP_EVENT_SUBSCRIBE(main, accel_event);
+static void zbus_accel_data_callback(const struct zbus_channel *chan)
+{
+	const struct accel_event *event = zbus_chan_const_msg(chan);
+    switch (event->data.type) {
+    case ACCELEROMETER_EVT_TYPE_DOOUBLE_TAP: {
+        if (vibrator_on || (watch_state != WATCHFACE_STATE)) {
+            // Vibrator causes false double tap detections.
+            // Need more work to not detect when vibration is running, hence for now only allow on watchface page
+            break;
+        }
+        display_on = !display_on;
+        if (display_on) {
+            display_control_set_brightness(100);
+        } else {
+            display_control_set_brightness(1);
+        }
+        break;
+    }
+    case ACCELEROMETER_EVT_TYPE_XYZ: {
+        LOG_ERR("x: %d y: %d z: %d", event->data.data.xyz.x, event->data.data.xyz.y, event->data.data.xyz.z);
+        break;
+    }
+    case ACCELEROMETER_EVT_TYPE_TILT: {
+        // Tilt detect not working as we want yet, so don't do for now.
+        //display_control_set_brightness(100);
+        break;
+    }
+    default:
+        break;
+    }
+}

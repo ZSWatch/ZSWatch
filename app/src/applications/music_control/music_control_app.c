@@ -5,14 +5,24 @@
 #include <events/ble_data_event.h>
 #include <clock.h>
 #include <ble_comm.h>
+#include <zephyr/zbus/zbus.h>
+
 
 // Functions needed for all applications
 static void music_control_app_start(lv_obj_t *root, lv_group_t *group);
 static void music_control_app_stop(void);
-static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type);
 
-// Functions related to app functionality
+
 static void timer_callback(lv_timer_t *timer);
+static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type);
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
+static void handle_update_ui(struct k_work *item);
+
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+ZBUS_LISTENER_DEFINE(music_app_ble_comm_lis, zbus_ble_comm_data_callback);
+
+static K_WORK_DEFINE(update_ui_work, handle_update_ui);
+static ble_comm_cb_data_t last_music_update;
 
 LV_IMG_DECLARE(music);
 
@@ -72,33 +82,36 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
     }
 }
 
-static bool app_event_handler(const struct app_event_header *aeh)
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
+{
+    // Need to context switch to not get stack overflow.
+    // We are here in host bluetooth thread.
+    struct ble_data_event *event = zbus_chan_msg(chan);
+    memcpy(&last_music_update, &event->data, sizeof(ble_comm_cb_data_t));
+    k_work_submit(&update_ui_work);
+}
+
+static void handle_update_ui(struct k_work *item)
 {
     char buf[5 * MAX_MUSIC_FIELD_LENGTH];
-
-    if (running && is_ble_data_event(aeh)) {
-        struct ble_data_event *event = cast_ble_data_event(aeh);
-        if (event->data.type == BLE_COMM_DATA_TYPE_MUSTIC_INFO) {
+    if (running) {
+        if (last_music_update.type == BLE_COMM_DATA_TYPE_MUSTIC_INFO) {
             snprintf(buf, sizeof(buf), "Track: %s",
-                     event->data.data.music_info.track_name);
+                     last_music_update.data.music_info.track_name);
             progress_seconds = 0;
-            track_duration = event->data.data.music_info.duration;
-            music_control_ui_music_info(event->data.data.music_info.track_name, event->data.data.music_info.artist);
+            track_duration = last_music_update.data.music_info.duration;
+            music_control_ui_music_info(last_music_update.data.music_info.track_name, last_music_update.data.music_info.artist);
             music_control_ui_set_track_progress(0);
             playing = true;
         }
 
-        if (event->data.type == BLE_COMM_DATA_TYPE_MUSTIC_STATE) {
-            music_control_ui_set_music_state(event->data.data.music_state.playing,
-                                             (((float)event->data.data.music_state.position / (float)track_duration)) * 100, event->data.data.music_state.shuffle);
-            progress_seconds = event->data.data.music_state.position;
-            playing = event->data.data.music_state.playing;
+        if (last_music_update.type == BLE_COMM_DATA_TYPE_MUSTIC_STATE) {
+            music_control_ui_set_music_state(last_music_update.data.music_state.playing,
+                                             (((float)last_music_update.data.music_state.position / (float)track_duration)) * 100, last_music_update.data.music_state.shuffle);
+            progress_seconds = last_music_update.data.music_state.position;
+            playing = last_music_update.data.music_state.playing;
         }
-
-        return false;
     }
-
-    return false;
 }
 
 static void timer_callback(lv_timer_t *timer)
@@ -120,5 +133,3 @@ static int music_control_app_add(const struct device *arg)
 }
 
 SYS_INIT(music_control_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-APP_EVENT_LISTENER(music_control_app, app_event_handler);
-APP_EVENT_SUBSCRIBE(music_control_app, ble_data_event);

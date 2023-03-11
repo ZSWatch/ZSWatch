@@ -12,7 +12,8 @@ typedef enum ble_comm_data_type {
     BLE_COMM_DATA_TYPE_SET_TIME,
     BLE_COMM_DATA_TYPE_WEATHER,
     BLE_COMM_DATA_TYPE_MUSTIC_INFO,
-    BLE_COMM_DATA_TYPE_MUSTIC_STATE
+    BLE_COMM_DATA_TYPE_MUSTIC_STATE,
+    BLE_COMM_DATA_TYPE_EMPTY
 } ble_comm_data_type_t;
 
 typedef struct ble_comm_notify {

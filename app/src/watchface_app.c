@@ -7,6 +7,7 @@
 #include <zephyr/init.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
 #include <clock.h>
@@ -18,8 +19,18 @@
 #include <events/ble_data_event.h>
 #include <events/accel_event.h>
 #include <notification_manager.h>
+#include <zephyr/zbus/zbus.h>
 
 LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
+
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
+static void zbus_accel_data_callback(const struct zbus_channel *chan);
+
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+ZBUS_LISTENER_DEFINE(watchface_ble_comm_lis, zbus_ble_comm_data_callback);
+
+ZBUS_CHAN_DECLARE(accel_data_chan);
+ZBUS_LISTENER_DEFINE(watchface_accel_lis, zbus_accel_data_callback);
 
 #define WORK_STACK_SIZE 3000
 #define WORK_PRIORITY   5
@@ -47,6 +58,7 @@ void general_work(struct k_work *item);
 
 static void check_notifications(void);
 static int read_battery(int *batt_mV, int *percent);
+static void update_ui_from_event(struct k_work *item);
 
 static void connected(struct bt_conn *conn, uint8_t err);
 static void disconnected(struct bt_conn *conn, uint8_t reason);
@@ -63,6 +75,9 @@ static delayed_work_item_t date_work =      { .type = UPDATE_DATE };
 
 static delayed_work_item_t general_work_item;
 static struct k_work_sync canel_work_sync;
+
+static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
+static ble_comm_cb_data_t last_data_update;
 
 static bool running;
 
@@ -218,30 +233,41 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     watchface_set_ble_connected(false);
 }
 
-static bool app_event_handler(const struct app_event_header *aeh)
+static void update_ui_from_event(struct k_work *item)
 {
-    if (running && is_ble_data_event(aeh)) {
-        struct ble_data_event *event = cast_ble_data_event(aeh);
-        if (event->data.type == BLE_COMM_DATA_TYPE_WEATHER) {
-            LOG_DBG("Weather: %s t: %d hum: %d code: %d wind: %d dir: %d", event->data.data.weather.report_text,
-                    event->data.data.weather.temperature_c, event->data.data.weather.humidity, event->data.data.weather.weather_code,
-                    event->data.data.weather.wind,
-                    event->data.data.weather.wind_direction);
-            watchface_set_weather(event->data.data.weather.temperature_c, event->data.data.weather.weather_code);
-        } else if (event->data.type == BLE_COMM_DATA_TYPE_SET_TIME) {
+    if (running) {
+        if (last_data_update.type == BLE_COMM_DATA_TYPE_WEATHER) {
+            LOG_DBG("Weather: %s t: %d hum: %d code: %d wind: %d dir: %d", last_data_update.data.weather.report_text,
+                    last_data_update.data.weather.temperature_c, last_data_update.data.weather.humidity, last_data_update.data.weather.weather_code,
+                    last_data_update.data.weather.wind,
+                    last_data_update.data.weather.wind_direction);
+            watchface_set_weather(last_data_update.data.weather.temperature_c, last_data_update.data.weather.weather_code);
+        } else if (last_data_update.type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_SECONDS(1));
         }
-        return false;
-    } if (running && is_accel_event(aeh)) {
-        struct accel_event *event = cast_accel_event(aeh);
+        return;
+    }
+}
+
+static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
+{
+	if (running) {
+        struct ble_data_event *event = zbus_chan_msg(chan);
+        // TODO getting this callback again before workqueue has ran will
+        // cause previous to be lost.
+        memcpy(&last_data_update, &event->data, sizeof(ble_comm_cb_data_t));
+        k_work_submit(&update_ui_work);
+    }
+}
+
+static void zbus_accel_data_callback(const struct zbus_channel *chan)
+{
+	if (running) {
+        struct accel_event *event = zbus_chan_msg(chan);
         if (event->data.type == ACCELEROMETER_EVT_TYPE_STEP) {
             watchface_set_step(event->data.data.step.count);
         }
     }
-    return false;
 }
 
 SYS_INIT(watchface_app_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
-APP_EVENT_LISTENER(watchface_app, app_event_handler);
-APP_EVENT_SUBSCRIBE(watchface_app, ble_data_event);
-APP_EVENT_SUBSCRIBE(watchface_app, accel_event);

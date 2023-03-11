@@ -1,7 +1,7 @@
 #include <ble_comm.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
-#include <bluetooth/services/nus.h>
+#include <zephyr/bluetooth/services/nus.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
 #include <ctype.h>
@@ -9,15 +9,17 @@
 #include <errno.h>
 #include <math.h>
 #include <events/ble_data_event.h>
+#include <zephyr/zbus/zbus.h>
 
 LOG_MODULE_REGISTER(ble_comm, LOG_LEVEL_DBG);
+
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 typedef enum parse_state {
     WAIT_GB,
     WAIT_END,
     PARSE_STATE_DONE,
 } parse_state_t;
-
 
 static char *extract_value_str(char *key, char *data, int *value_len);
 static int parse_data(char *data, int len);
@@ -471,8 +473,8 @@ static int parse_data(char *data, int len)
 
 static void send_ble_data_event(ble_comm_cb_data_t *data)
 {
-    struct ble_data_event *event = new_ble_data_event();
+    struct ble_data_event evt;
+    memcpy(&evt.data, data, sizeof(ble_comm_cb_data_t));
 
-    memcpy(&event->data, data, sizeof(ble_comm_cb_data_t));
-    APP_EVENT_SUBMIT(event);
+    zbus_chan_pub(&ble_comm_data_chan, &evt, K_MSEC(250));
 }
