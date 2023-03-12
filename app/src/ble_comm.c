@@ -186,7 +186,7 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint1
                 num_parsed_brackets = 0;
                 parsed_data_index = 0;
                 memset(receive_buf, 0, sizeof(receive_buf));
-                uint8_t index = (void *)gb_start - (void *)data;
+                uint32_t index = gb_start - (char*)data;
                 for (int i = index; i < len; i++) {
                     receive_buf[parsed_data_index] = data[i];
                     parsed_data_index++;
