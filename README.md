@@ -142,3 +142,6 @@ Very basic, will be re-worked for next watch revision v2.
 <p float="left">
 <img src=".github/dock.jpg" width="420"/>
 </p>
+
+## Licence GPL-3.0
+Main difference from MIT is now that if anyone want to build something more with this, then they need to also open source their changes back to the project, which I thinks is fair. This is so everyone can benefit from those improvements. If you think this is wrong for some reason feel free to contact me, I'm open to change the LICENCE.
