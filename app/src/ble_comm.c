@@ -1,13 +1,13 @@
 #include <ble_comm.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
-#include <zephyr/bluetooth/services/nus.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
+#include <ble_transport.h>
 #include <events/ble_data_event.h>
 #include <zephyr/zbus/zbus.h>
 
@@ -55,13 +55,13 @@ static parse_state_t parse_state = WAIT_GB;
 
 static on_data_cb_t data_parsed_cb;
 
-static struct bt_nus_cb nus_cb = {
-    .received = bt_receive_cb,
+static struct ble_transport_cb ble_transport_callbacks = {
+    .data_receive = bt_receive_cb,
 };
 
 int ble_comm_init(on_data_cb_t data_cb)
 {
-    int err = bt_nus_init(&nus_cb);
+    int err = ble_transport_init(&ble_transport_callbacks);
     if (err) {
         LOG_ERR("Failed to initialize UART service (err: %d)", err);
         return err;
@@ -84,7 +84,7 @@ int ble_comm_send(uint8_t *data, uint16_t len)
         LOG_ERR("MTU len is less than data length. Discarding...");
         return -EMSGSIZE;
     }
-    return bt_nus_send(current_conn, data, len);
+    return ble_transport_send(current_conn, data, len);
 }
 
 static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_exchange_params *params)
