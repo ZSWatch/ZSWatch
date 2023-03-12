@@ -19,9 +19,10 @@ void display_control_init(void)
 
 void display_control_set_brightness(uint8_t percent)
 {
+    __ASSERT(percent >= 0 && percent <= 100, "Invalid range for brightness, valid range 0-100, was %d", percent);
     int ret;
     uint32_t step = pwm_led0.period / 100;
-    uint32_t pulse_width = step * percent;
+    uint32_t pulse_width = step * (100 - percent);
 
     if (!device_is_ready(pwm_led0.dev)) {
         printk("Error: PWM device %s is not ready\n",
