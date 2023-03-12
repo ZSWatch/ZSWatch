@@ -1,3 +1,6 @@
 [submodule "KiCAD_plugins/kiBoM"]
 	path = KiCAD_plugins/kiBoM
-	url = git@github.com:SchrodingersGat/KiBoM.git
+	url = https://github.com/SchrodingersGat/KiBoM.git
+[submodule "app/src/ext_drivers/bmi270/BMI270-Sensor_API"]
+	path = app/src/ext_drivers/bmi270/BMI270-Sensor_API
+	url = https://github.com/boschsensortec/BMI270-Sensor-API.git

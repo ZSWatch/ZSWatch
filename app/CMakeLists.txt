@@ -6,6 +6,7 @@ project(lvgl)
 
 add_subdirectory(drivers)
 add_subdirectory(src/applications)
+add_subdirectory(src/ext_drivers/bmi270)
 
 include_directories(src/)
 include_directories(src/ui)
