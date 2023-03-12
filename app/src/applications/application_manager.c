@@ -143,9 +143,8 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const lv_img_dsc_
     lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_NONE, 0);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
 
-    lv_obj_set_size(cont, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_clear_flag(cont,
-                      LV_OBJ_FLAG_SCROLLABLE); // Needed, otherwise indev will first focus on this cont before it's contents.
+    lv_obj_set_size(cont, LV_SIZE_CONTENT, icon->header.h);
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE); // Needed, otherwise indev will first focus on this cont before it's contents.
 
     lv_obj_add_event_cb(cont, row_focused, LV_EVENT_FOCUSED, (void *)app_id);
     lv_obj_add_event_cb(cont, row_unfocused, LV_EVENT_DEFOCUSED, (void *)app_id);
