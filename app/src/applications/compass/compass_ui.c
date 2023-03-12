@@ -9,7 +9,7 @@ static lv_obj_t *compass_label;
 
 static void create_ui(lv_obj_t *parent)
 {
-    LV_IMG_DECLARE(compass)
+    LV_IMG_DECLARE(cardinal_point)
     compass_panel = lv_obj_create(parent);
     lv_obj_set_width(compass_panel, 240);
     lv_obj_set_height(compass_panel, 240);
@@ -20,19 +20,20 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_style_border_width(compass_panel, 0, LV_PART_MAIN| LV_STATE_DEFAULT);
 
     compass_img = lv_img_create(compass_panel);
-    lv_img_set_src(compass_img, &compass);
+    lv_img_set_src(compass_img, &cardinal_point);
     lv_obj_set_width(compass_img, LV_SIZE_CONTENT);
     lv_obj_set_height(compass_img, LV_SIZE_CONTENT);
-    lv_obj_set_align(compass_img, LV_ALIGN_CENTER);
+    lv_obj_set_align(compass_img, LV_ALIGN_TOP_MID);
     lv_obj_add_flag(compass_img, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(compass_img, LV_OBJ_FLAG_SCROLLABLE);
+    lv_img_set_pivot(compass_img, cardinal_point.header.w / 2, cardinal_point.header.h - 10);
 
     compass_label = lv_label_create(compass_panel);
     lv_obj_set_width(compass_label, LV_SIZE_CONTENT);
     lv_obj_set_height(compass_label, LV_SIZE_CONTENT);
-    lv_obj_set_align(compass_label, LV_ALIGN_CENTER);
+    lv_obj_set_align(compass_label, LV_ALIGN_TOP_MID);
     lv_label_set_text(compass_label, "360");
-    lv_obj_set_style_text_color(compass_label, lv_color_hex(0x00FFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(compass_label, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(compass_label, 255, LV_PART_MAIN| LV_STATE_DEFAULT);
 }
 
