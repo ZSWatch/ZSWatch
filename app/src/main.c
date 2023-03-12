@@ -99,7 +99,7 @@ void run_init_work(struct k_work *item)
     notifications_page_init(on_notification_page_close, on_notification_page_notification_close);
     notification_manager_init();
     enable_bluetoth();
-    accelerometer_init(NULL);
+    accelerometer_init();
     magnetometer_init();
     clock_init(retained.current_time_seconds);
     buttonsInit(&onButtonPressCb);

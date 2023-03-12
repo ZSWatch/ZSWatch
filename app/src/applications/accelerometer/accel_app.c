@@ -40,8 +40,9 @@ static void fetch_accel_data(struct k_work *item)
     int16_t y;
     int16_t z;
     int res = accelerometer_fetch_xyz(&x, &y, &z);
-    __ASSERT_NO_MSG(res == 0);
-    accel_ui_set_values(x, y, z);
+    if (res == 0) {
+        accel_ui_set_values(x, y, z);
+    }
     res = k_work_reschedule(&work, K_MSEC(100));
     __ASSERT_NO_MSG(0 <= res);
 }

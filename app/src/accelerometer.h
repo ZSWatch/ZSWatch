@@ -28,9 +28,7 @@ typedef struct accelerometer_evt_t {
     } data;
 } accelerometer_evt_t;
 
-typedef void(*accel_event_cb)(accelerometer_evt_t *evt);
-
-int accelerometer_init(accel_event_cb accel_cb);
+int accelerometer_init(void);
 
 int accelerometer_fetch_xyz(int16_t *x, int16_t *y, int16_t *z);
 

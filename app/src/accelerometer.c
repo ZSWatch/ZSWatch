@@ -9,17 +9,11 @@ LOG_MODULE_REGISTER(accel, LOG_LEVEL_DBG);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
 
-static void data_ready_xyz(const struct device *dev,
-                           const struct sensor_trigger *trig);
-static int configure_double_tap_detection(void);
-static int configure_pedometer(void);
-static int configure_tilt_detection(void);
 static int8_t set_accel_gyro_config(struct bmi2_dev *bmi2_dev);
 
 static void send_accel_event(accelerometer_evt_t *data);
 
-static const struct device *sensor;
-static accel_event_cb accel_evt_cb;
+static struct bmi2_dev bmi2_dev;
 
 /*! Earth's gravity in m/s^2 */
 #define GRAVITY_EARTH  (9.80665f)
@@ -28,32 +22,13 @@ static accel_event_cb accel_evt_cb;
 #define ACCEL          UINT8_C(0x00)
 #define GYRO           UINT8_C(0x01)
 
-int accelerometer_init(accel_event_cb cb)
+int accelerometer_init(void)
 {
-    /* Status of api are returned to this variable. */
     int8_t rslt;
-
-    /* Variable to define limit to print accel data. */
-    uint8_t limit = 10;
-
+    
     /* Assign accel and gyro sensor to variable. */
     uint8_t sensor_list[2] = { BMI2_ACCEL, BMI2_GYRO };
 
-    /* Sensor initialization configuration. */
-    struct bmi2_dev bmi2_dev;
-
-    /* Create an instance of sensor data structure. */
-    struct bmi2_sens_data sensor_data = { { 0 } };
-
-    /* Initialize the interrupt status of accel and gyro. */
-    uint16_t int_status = 0;
-
-    uint8_t indx = 1;
-
-    /* Interface reference is given as a parameter
-     * For I2C : BMI2_I2C_INTF
-     * For SPI : BMI2_SPI_INTF
-     */
     rslt = bmi2_interface_init(&bmi2_dev, BMI2_I2C_INTF);
     bmi2_error_codes_print_result(rslt);
 
@@ -61,14 +36,12 @@ int accelerometer_init(accel_event_cb cb)
     rslt = bmi270_init(&bmi2_dev);
     bmi2_error_codes_print_result(rslt);
 
-    if (rslt == BMI2_OK)
-    {
+    if (rslt == BMI2_OK) {
         /* Accel and gyro configuration settings. */
         rslt = set_accel_gyro_config(&bmi2_dev);
         bmi2_error_codes_print_result(rslt);
 
-        if (rslt == BMI2_OK)
-        {
+        if (rslt == BMI2_OK) {
             /* NOTE:
              * Accel and Gyro enable must be done after setting configurations
              */
@@ -82,24 +55,20 @@ int accelerometer_init(accel_event_cb cb)
 
 int accelerometer_fetch_xyz(int16_t *x, int16_t *y, int16_t *z)
 {
-    __ASSERT(device_is_ready(sensor), "Accelerometer not initialized correctly");
-    int err = sensor_sample_fetch(sensor);
-    if (err) {
-        LOG_ERR("Could not fetch sample from %s", sensor->name);
-    }
-    struct sensor_value acc_val[3];
-    if (!err) {
-        err = sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, acc_val);
-        if (err < 0) {
-            LOG_ERR("\nERROR: Unable to read accel XYZ:%d\n", err);
-        } else {
-            *x = (int16_t)(sensor_value_to_double(&acc_val[0]) * (32768 / 16));
-            *y = (int16_t)(sensor_value_to_double(&acc_val[1]) * (32768 / 16));
-            *z = (int16_t)(sensor_value_to_double(&acc_val[2]) * (32768 / 16));
-        }
+    int8_t rslt;
+    struct bmi2_sens_data sensor_data = { { 0 } };
+
+    /* Get accel and gyro data for x, y and z axis. */
+    rslt = bmi2_get_sensor_data(&sensor_data, &bmi2_dev);
+    bmi2_error_codes_print_result(rslt);
+
+    if (rslt == BMI2_OK) {
+        *x = sensor_data.acc.x;
+        *y = sensor_data.acc.y;
+        *z = sensor_data.acc.z;
     }
 
-    return err;
+    return rslt == BMI2_OK ? 0 : -EIO;
 }
 
 int accelerometer_fetch_num_steps(int16_t *num_steps)
@@ -117,9 +86,9 @@ int accelerometer_reset_step_count(void)
     return -ENOENT;
 }
 
+/*
 static void data_ready_xyz(const struct device *dev, const struct sensor_trigger *trig)
 {
-    /*
     int err;
     int16_t x;
     int16_t y;
@@ -181,23 +150,8 @@ static void data_ready_xyz(const struct device *dev, const struct sensor_trigger
         LOG_WRN("Unknown ISR");
     }
 
-    */
 }
-
-static int configure_double_tap_detection(void)
-{
-    return 0;
-}
-
-static int configure_pedometer(void)
-{
-    return 0;
-}
-
-static int configure_tilt_detection(void)
-{
-    return 0;
-}
+*/
 
 static void send_accel_event(accelerometer_evt_t *data)
 {
@@ -205,7 +159,6 @@ static void send_accel_event(accelerometer_evt_t *data)
     memcpy(&evt.data, data, sizeof(accelerometer_evt_t));
     zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
 }
-
 
 /*!
  * @brief This internal API is used to set configurations for accel and gyro.
