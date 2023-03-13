@@ -121,6 +121,27 @@ A 4 layer board which measures 36mm in diameter designed in KiCad.
 |*Notifications from phone (Gmail here)*|*Settings*|
 |  <img src=".github/notifications.gif" object-fit="cover" />    |  <img src=".github/settings.gif" object-fit="cover"/> |
 
+## Environment, Compling and runninf the code
+### Setting up the environment
+Two options, either set up toolchain and everything by following [Zephyr Getting Started Guide](https://docs.zephyrproject.org/3.2.0/develop/getting_started/index.html) or you can use the in my opinion easier approch by using the [Nordic Toolchain manager](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/assistant.html). 
+Everything works with both Zephyr and with nRF Connect (Nordic Semi. Zephyr fork). If you are new to Zephyr I suggest installing using Nordic Toolchain manager together with the nRF Connect VSCode plugin as I think that is a bit easier.
+
+*Tested with both*
+- Zephyr 3.3.0
+- nRF Connect SDK 2.2.0
+
+After setting up the environment using one of the two above options you can compile the application from either command line or within VSCode.
+
+Building [with command line](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/programming.html#building-on-the-command-line):
+
+`west build --board zswatch_nrf5340_cpuapp`
+
+Compiling [from VSCode nRF Connect plugin](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html):
+- Press "Add folder as Application". 
+- Choose `zswatch_nrf5340_cpuapp` as the board and nRF Connect SDK 2.2.0.
+- Press Create Application
+
+
 ## Writing apps for the Application Manager
 Check out [the sample application](app/src/applications/template/) for the general app design. The main idea is each app have an `<app_name>_app.c` file which registers the app, chooses icon and drives the logic for the app. Then there should be one or more files named for example `<app_name>_ui.c` containing pure LVGL code with no dependencies to Zephyr or the watch software. The idea is that this UI code should be runnable in a LVGL simulator to speed up development of UI, however right now that's not set up yet. The `<app_name>_app.c` will do all logic and call functions in `<app_name>_ui.c` to update the UI accordingly. 
 
