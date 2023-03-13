@@ -40,7 +40,7 @@ Found [here](ZSWatch-kicad/zswatch-bom.csv)
 - Possible current leakage on some pins.
 - Max display brightness is 60% (however definitely bright enough).
 
-## Upcoming Hardware features in ZSWatch v2
+## Hardware features in ZSWatch v2
 - nRF5340 BLE chip (u-blox NORA-B10 module).
   - 2x CPU frequenzy.
   - 4x RAM (Will allow double buffered of data to the screen and larger framebuffers to decrease lag/tearing).
@@ -53,7 +53,7 @@ Found [here](ZSWatch-kicad/zswatch-bom.csv)
 - [Magnetic 6 pin connector](https://www.aliexpress.com/item/1005002776015559.html?) for charging and programming which connects to a new dock/adapter.
 - Option to make the watch cheaper by using the v1 display without touch.
 - Option to not mount some sensors to save BOM cost.
-- 8MB external flash will is removed due to larger size of u-blox NORA-B10 vs. ANNA-B402, however plenty of flash in new MCU.
+- 8MB external flash is removed due to larger size of u-blox NORA-B10 vs. ANNA-B402, however plenty of flash in new MCU.
 
 ## Progress on v2
 [Schematic for v2](schematic/ZSWatch-v2-kicad.pdf) is uploaded and should be pretty much final.
@@ -71,7 +71,7 @@ You can follow the progress here [https://github.com/users/jakkra/projects/1/vie
 </p>
 
 ## Charger/Dock
-Basic pogo-pin dock that connects the power and SWD pins to the bottom of the watch. Will be replaced for v2 with a much better solution.
+Basic pogo-pin dock that connects the power and SWD pins to the bottom of the watch. Will be replaced for v2 with a much better solution. For the v2. dock variant I have not yet figured out how to best connect it to the watch, all connectors I found online are to thick, for example [Magnetic 6 pin connector](https://www.aliexpress.com/item/1005002776015559.html?).
 
 ## Enclosure/Casing
 3D printed casing with 3D printed buttons. Does it's job, but for revision v2 of the watch I'll probably do something CNC'd for nicer looks.
@@ -97,7 +97,7 @@ Basic pogo-pin dock that connects the power and SWD pins to the bottom of the wa
 - Heart rate, right now only samples the raw data, but no heart rate is calculated from it.
 - Proper BLE pairing, currently removed due to flash constraints (fixed by nRF5340 upgrade).
 - Watchface should also be an application.
-- Refactoring of `main.c`, should have way less logic, utlize Zephyr architecture more.
+- Use the new sensors in ZSWatch v2 for some really cool new features.
 
 ## Android phone communication
 Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
