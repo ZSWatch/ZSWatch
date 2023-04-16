@@ -32,7 +32,7 @@ I have received quite some requests regarding building or getting the ZSWatch, I
 - [Android phone communication](#android-phone-communication)
 - [PCB](#pcb)
 - [ZSWatch in action](#zswatch-in-action)
-- [Environment, Compiling and running the code](#environment--compiling-and-running-the-code)
+- [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
   * [Setting up the environment](#setting-up-the-environment)
   * [Compiling](#compiling)
   * [Running and developing the ZSWatch SW without the actual ZSWatch HW](#running-and-developing-the-zswatch-sw-without-the-actual-zswatch-hw)
