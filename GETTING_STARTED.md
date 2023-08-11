@@ -2,8 +2,9 @@
 - [Setting up the environment](#setting-up-the-environment)
 - [Compiling](#compiling)
 - [Running and developing the ZSWatch SW without the actual ZSWatch HW](#running-and-developing-the-zswatch-sw-without-the-actual-zswatch-hw)
-  * [Native Posix](#native-posix)
-  * [nRF5340 dev kit](#nrf5340-dev-kit)
+  * [Native Posix](#1-native-posix)
+  * [Native Posix + dev kit dongle](#2-native-posix--dev-kit-dongle)
+  * [nRF5340 dev kit](#3-nrf5340-dev-kit)
 - [Getting Gadgetbridge setup](#getting-gadgetbridge-setup)
   * [Pairing](#pairing)
   * [Weather](#weather)
@@ -36,23 +37,42 @@ Everything works with both Zephyr and with nRF Connect (Nordic Semi. Zephyr fork
 - Zephyr 3.4.0
 - nRF Connect SDK 2.4.0
 
-## Compiling
+## Cloning source code
+Make sure you have enough space and clone the source code:
+```
+git clone git@github.com:jakkra/ZSWatch.git
+git submodule update --init --recursive
+```
 
-After setting up the environment using one of the two above options you can compile the application from either command line or within VSCode.
+## Building and Flashing
 
-Building [with command line](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/programming.html#building-on-the-command-line):
+There to approach to deal with Zephyr based projects:
+- [Using the nRF Connect extension for VSCode](#using-the-nrf-connect-extension-for-vscode)
+- [Using the command line](#using-the-command-line)
 
-`west build --board zswatch_nrf5340_cpuapp@1 -- -DOVERLAY_CONFIG="{debug/release}.conf`
-
-Compiling [from VSCode nRF Connect plugin](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html):
-- Press "Add folder as Application". 
+### Using the nRF Connect extension for VSCode
+To be able to build, flash and debug via VSCode please install [nRF Connect for VS Code Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack).   
+[Here](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html) you can also find a manual on how to deal with the nRF Connect extension.
+Follow the steps below to open and build the ZSWatch application:
+- Press "Open an existing application" under the "WELCOME" field of nRF Connect extension. 
+- Create new build configuration by clicking on "No build configuration" field in "APPLICATIONS" window. 
 - Choose `zswatch_nrf5340_cpuapp` as the board and nRF Connect SDK 2.4.0.
 - Set revision to 1 or 2 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1. Revision 2 adds external flash.
-- Press "Add fragment", here choose either debug (for develping) or release (for daily use).
-- Press Create Application
+- Press "Add fragment" under the "Kconfig fragments" field, here choose either debug (for developing) or release (for daily use).
+- Press "Build configuration" button.
+
+
+### Using the command line
+The second option is to use a command line to build and flash Zephyr applications. [Here](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html) you can find some more information.   
+Example of building for ZSWatch board:
+```
+west build --board zswatch_nrf5340_cpuapp@1 -- -DOVERLAY_CONFIG="boards/{debug/release}.conf"
+west flash
+```
 
 __NOTE (Zephyr only)__
 <br>
+Since the nrf5340 is a dual core microcontroller where the second core is designed to serve the BLE stack, the second image needs to be flashed for BLE operation.    
 If you are building with Zephyr you need in addition manually compile and flash the `zephyr/samples/bluetooth/hci_rpmsg` sample and flash that to the NET core. With nRF Connect this is done automatically thanks to the `child_image/hci_rpmsg.conf`. For convenience I have also uploaded a pre-compiled [hex image for NET CPU](app/child_image/GENERATED_CP_NETWORK_merged_domains.hex) if you don't want to recompile it yourself. Flash it using following:
 <br>
 `nrfjprog -f NRF53 --coprocessor CP_NETWORK --program app/child_image/GENERATED_CP_NETWORK_merged_domains.hex --chiperase`
@@ -60,7 +80,7 @@ If you are building with Zephyr you need in addition manually compile and flash 
 To build the NET core image:
 Command line: 
 - Navigate to `zephyr/samples/bluetooth/hci_rpmsg`
-- Fill in "this_folder" in this command and run it `west build --board zswatch_nrf5340_cpunet@1 -- -DBOARD_ROOT=this_folder/app  -DOVERLAY_CONFIG=nrf5340_cpunet_df-bt_ll_sw_split.conf`
+- Build using `west build --board zswatch_nrf5340_cpunet@1 -- -DBOARD_ROOT=<ZSWatch absolute path>/app  -DOVERLAY_CONFIG=nrf5340_cpunet_df-bt_ll_sw_split.conf`
 - `west flash`
 - This only needs to be done once, unless you do a full erase or recover of the nRF5340, which you typically don't do.
 
@@ -68,38 +88,70 @@ VScode:
 - Add `zephyr/samples/bluetooth/hci_rpmsg` as an application.
 - Select `zswatch_nrf5340_cpunet` as board (VSCode should pick this one up automatically if you added the ZSWatch application earlier).
 - Set revision to 1 or 2 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1. Revision 2 adds external flash.
-- Press `Add Fragment` and select the `nrf5340_cpunet_df-bt_ll_sw_split.conf`
+- Press `Add Fragment` under the "Kconfig fragments" field and select the `nrf5340_cpunet_df-bt_ll_sw_split.conf`
 - Done, press `Build Configuration`.
 
 ## Running and developing the ZSWatch SW without the actual ZSWatch HW
-Two options, either using a nRF5340 dev kit or running on Linux using Zephyr native posix port.
-### Native Posix
-- Follow the steps here [https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-a-zephyr-based-ble-controller](https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-a-zephyr-based-ble-controller) to get the BLE Controller up and running. Verify it's working by following: [https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-zephyr-based-controllers-with-bluez](https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-zephyr-based-controllers-with-bluez), use this also to find the number assigned to your HCI dongle which is input later as the `--bt-dev=hciX`
-- Compile the zephyr/samples/bluetooth/hci_usb with following additions to prj.conf:
+Depending on preference and available hardware, three options can be chosen:
+1. [Native Posix](#1-native-posix)
+2. [Native Posix + dev kit dongle](#2-native-posix--dev-kit-dongle)
+3. [nRF5340 dev kit](#3-nrf5340-dev-kit)
+
+### 1. Native Posix
+This option applicable if you host computer hardware have build-in bluetooth module and your host machine is Linux. This option does not require any hardware at all sine Zephyr support BlueZ([details](https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html)) and also can emulate display peripheral.
+
+#### Preparation
+The "Display driver" emulator need to be installed ([Learn more](https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html#peripherals) about nativ_posix peripherals):
+```
+sudo apt-get install pkg-config libsdl2-dev:i386
+export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
+```
+To execute ZSWatch application on native posix fist make sure that you have [required](https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-bluez-with-zephyr) version of linux kernel and BlueZ.    
+Find a HCI index on your host using: `sudo hcitool dev` command and try to execute some zephyr samples located in *<Zephyr base>/zephyr/samples/bluetooth/...*. Example:
+```
+cd <Zephyr base>/zephyr/samples/bluetooth/peripheral_hr
+west build -b native_posix
+sudo btmgmt --index 0 power off
+sudo ./build/zephyr/zephyr.exe --bt-dev=hci0
+```
+If everything was successful you will see the message "Advertising successfully started" in the logs and you will be able to connect to the device from your phone using e.g. [nRF Connect](https://play.google.com/store/apps/details?id=no.nordicsemi.android.mcp&hl=nl&pli=1) application.
+
+
+#### Running ZSWatch app
+To build ZSWatch application for native posix simply run:
+```
+cd <ZSWatch path>/app
+west build -b native_posix
+sudo btmgmt --index <hci index> power off
+sudo ./build/zephyr/zephyr.exe --bt-dev=hci<hci index>
+```
+
+__Tips:__
+1. If you want to be able to debug: `sudo gdb -ex=r --args build/zephyr/zephyr.exe --bt-dev=hci<hci index>`
+2. If you want to scale up the SDL window (4x) apply the patch in `app/zephyr_patches/sdl_upscale.patch`
+
+https://github.com/jakkra/ZSWatch/assets/4318648/3b3e4831-a217-45a9-8b90-7b48cea7647e
+
+
+### 2. Native Posix + dev-kit dongle
+In case there is no built-in Bluetooth module on the host computer, an external nRF dev kit can be used as a BLE module. In fact, any external BLE module that supports the HCI interface can be used. In doing so, the application will run on the host machine and communicate with BLE controller over hci_usb/hci_uart depending on the hardware you have.
+
+#### Preparation
+Compile and flash the *zephyr/samples/bluetooth/hci_usb* application with following additions to prj.conf:
 ```
 CONFIG_BT_EXT_ADV=y
 CONFIG_BT_PER_ADV=y
 CONFIG_BT_PER_ADV_SYNC=y
 CONFIG_BT_PER_ADV_SYNC_MAX=2
 ```
-- Follow the steps [https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html#peripherals](https://docs.zephyrproject.org/latest/boards/posix/native_posix/doc/index.html#peripherals) for Display Driver.
+**NOTE:** If hci_uart is used, a new HCI port must be attached, follow this [guide](https://docs.zephyrproject.org/latest/samples/bluetooth/hci_uart/README.html#using-the-controller-with-qemu-and-native-posix). Alternatively in case of using hci_usb you don't need to attach new HCI port, just physically connect USB to nRF USB port.
 
-- Finally to build and run do following from the `app` folder:
-```
-west build -b native_posix
-sudo btmgmt --index <index_x_from_above> power off
-sudo ./build/zephyr/zephyr.exe --bt-dev=hciX
-```
-Or if you want to be able to debug:
-```
-sudo gdb -ex=r --args build/zephyr/zephyr.exe --bt-dev=hciX
-```
+Make sure that new hci device appear using: `sudo hcitool dev`
 
-If you want to scale up the SDL window (4x) apply the patch in `app/zephyr_patches/sdl_upscale.patch`
+Next follow the [Preparation](#preparation) to install the "Display driver" emulator and the [Running ZSWatch app](#running-zswatch-app) instruction to execute the application.
 
-https://github.com/jakkra/ZSWatch/assets/4318648/3b3e4831-a217-45a9-8b90-7b48cea7647e
 
-### nRF5340 dev kit
+### 3. nRF5340 dev kit
 This is possible, what you need is a [nRF5340-DK](https://www.digikey.se/en/products/detail/nordic-semiconductor-asa/NRF5340-DK/13544603) (or EVK-NORA-B1) and a breakout of the screen I use [https://www.waveshare.com/1.28inch-touch-lcd.htm](https://www.waveshare.com/1.28inch-touch-lcd.htm).
 <br>
 You may also add _any_ of the sensors on the ZSWatch, Sparkfun for example have them all:<br>
@@ -114,6 +166,7 @@ When using the nRF5340-DK all you need to do is to replace `zswatch_nrf5340_cpua
 ## Getting Gadgetbridge setup
 Install the Android app [GadgetBridge](https://codeberg.org/Freeyourgadget) or [from Play Store here](https://play.google.com/store/apps/details?id=com.espruino.gadgetbridge.banglejs&hl=en_US)
 - In Gadgetbridge press plus button to add ZSWatch
+- Enable "Discover unsupported devices" option and set "Scanning intensity" to maximum in "Discover and pair options"
 - It will scan and you should see a device called ZSWatch, long press it.
 - Select in the dropdown Bangle.js as the device.
 
