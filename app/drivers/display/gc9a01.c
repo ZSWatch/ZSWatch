@@ -374,10 +374,13 @@ static int gc9a01_pm_action(const struct device *dev,
 
     switch (action) {
         case PM_DEVICE_ACTION_RESUME:
+            err = gc9a01_write_cmd(dev, GC9A01A_SLPOUT, NULL, 0);
+            k_msleep(5); // According to datasheet wait 5ms after SLPOUT before next command.
             err = gc9a01_write_cmd(dev, GC9A01A_DISPON, NULL, 0);
             break;
         case PM_DEVICE_ACTION_SUSPEND:
             err = gc9a01_write_cmd(dev, GC9A01A_DISPOFF, NULL, 0);
+            err = gc9a01_write_cmd(dev, GC9A01A_SLPIN, NULL, 0);
             break;
         case PM_DEVICE_ACTION_TURN_ON:
             err = gc9a01_init(dev);
