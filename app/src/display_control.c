@@ -29,6 +29,7 @@ K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
 static struct k_work_sync canel_work_sync;
 static display_state_t state;
+static bool first_render_since_poweron;
 static uint8_t last_brightness = 30;
 
 void display_control_init(void)
@@ -79,8 +80,12 @@ void display_control_sleep_ctrl(bool on)
                 // Resume the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_RESUME);
                 pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
-                // Turn backlight on.
-                display_control_set_brightness(last_brightness);
+                // Turn backlight on, unless the display was off,
+                // then wait to show content until rendering completes.
+                // This avoids user seeing random pixel data for ~500ms
+                if (!first_render_since_poweron) {
+                    display_control_set_brightness(last_brightness);
+                }
                 display_blanking_off(display_dev);
                 k_work_schedule(&lvgl_work, K_MSEC(250));
             } else {
@@ -124,6 +129,7 @@ void display_control_pwr_ctrl(bool on)
                     state = SLEEPING;
                     regulator_enable(reg_dev);
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_ON);
+                    first_render_since_poweron = true;
                 }
             } else {
                 LOG_DBG("Display is OFF, power already off.");
@@ -169,6 +175,10 @@ static void lvgl_render(struct k_work *item)
     // and the SPI transmit time.
     zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
     const int64_t next_update_in_ms = lv_task_handler();
+    if (first_render_since_poweron) {
+        display_control_set_brightness(last_brightness);
+        first_render_since_poweron = false;
+    }
     zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, false);
     k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
 }
