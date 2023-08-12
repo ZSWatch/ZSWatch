@@ -450,7 +450,7 @@ static void configure_no_motion(struct bmi2_sens_config *config)
 {
     // 1LSB equals 20ms. Default is 100ms, setting to 80ms.
     // Max value is 163 seconds, hence below calc. We want max.
-    config->cfg.no_motion.duration = (120 * 1000) / 20;
+    config->cfg.no_motion.duration = (60 * 1000) / 20;
 }
 
 static bool is_sensor_feature(uint8_t sensor_id)

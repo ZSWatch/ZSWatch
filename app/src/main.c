@@ -111,7 +111,7 @@ static void run_init_work(struct k_work *item)
     // Not to self, PWM consumes like 250uA...
     // Need to disable also when screen is off.
     display_control_init();
-    display_control_power_on(true);
+    display_control_sleep_ctrl(true);
 
     lv_indev_drv_init(&enc_drv);
     enc_drv.type = LV_INDEV_TYPE_ENCODER;

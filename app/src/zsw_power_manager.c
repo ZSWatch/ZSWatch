@@ -26,7 +26,7 @@
 #include <events/activity_event.h>
 #include <ram_retention_storage.h>
 
-LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 
 #ifdef CONFIG_BOARD_NATIVE_POSIX
 #define IDLE_TIMEOUT_SECONDS    UINT32_MAX
@@ -83,7 +83,7 @@ static void enter_inactive(void)
     is_active = false;
     retained.wakeup_time += k_uptime_get_32() - last_wakeup_time;
     retained_update();
-    display_control_power_on(false);
+    display_control_sleep_ctrl(false);
 
     struct activity_state_event evt = {
         .state = ZSW_ACTIVITY_STATE_INACTIVE,
@@ -97,7 +97,8 @@ static void enter_active(void)
     is_active = true;
     last_wakeup_time = k_uptime_get_32();
 
-    display_control_power_on(true);
+    display_control_pwr_ctrl(true);
+    display_control_sleep_ctrl(true);
 
     struct activity_state_event evt = {
         .state = ZSW_ACTIVITY_STATE_ACTIVE,
@@ -120,31 +121,32 @@ static void handle_idle_timeout(struct k_work *item)
 
 static void zbus_accel_data_callback(const struct zbus_channel *chan)
 {
-    bool should_wakeup = false;
     const struct accel_event *event = zbus_chan_const_msg(chan);
 
     switch (event->data.type) {
         case ZSW_IMU_EVT_TYPE_WRIST_WAKEUP: {
-            should_wakeup = true;
+            if (!is_active) {
+                LOG_DBG("Wakeup gesture detected");
+                enter_active();
+            }
             break;
         }
         case ZSW_IMU_EVT_TYPE_NO_MOTION: {
-            LOG_ERR("Should power down more");
+            LOG_INF("Watch left stationary");
+            if (!is_active) {
+                display_control_pwr_ctrl(false);
+            }
             zsw_imu_any_motion_int_set_enabled(true);
             break;
         }
         case ZSW_IMU_EVT_TYPE_ANY_MOTION: {
-            LOG_ERR("Should power UP AGAIN");
+            LOG_INF("Watch moved, prepare display");
+            display_control_pwr_ctrl(true);
             zsw_imu_any_motion_int_set_enabled(false);
             break;
         }
         default:
             break;
-    }
-
-    if (should_wakeup && !is_active) {
-        LOG_DBG("Wakeup gesture detected");
-        enter_active();
     }
 }
 
