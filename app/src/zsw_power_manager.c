@@ -48,6 +48,7 @@ ZBUS_LISTENER_DEFINE(power_manager_accel_lis, zbus_accel_data_callback);
 
 static bool is_active = true;
 static uint32_t last_wakeup_time;
+static uint32_t last_pwr_off_time;
 
 bool zsw_power_manager_reset_idle_timout(void)
 {
@@ -98,11 +99,17 @@ static void enter_inactive(void)
 static void enter_active(void)
 {
     LOG_INF("Enter active");
+    int ret;
     is_active = true;
     last_wakeup_time = k_uptime_get_32();
 
-    display_control_pwr_ctrl(true);
+    ret = display_control_pwr_ctrl(true);
     display_control_sleep_ctrl(true);
+
+    if (ret == 0) {
+        retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
+        retained_update();
+    }
 
     // Only used when display is not active.
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
@@ -129,6 +136,7 @@ static void handle_idle_timeout(struct k_work *item)
 
 static void zbus_accel_data_callback(const struct zbus_channel *chan)
 {
+    int ret;
     const struct accel_event *event = zbus_chan_const_msg(chan);
 
     switch (event->data.type) {
@@ -142,6 +150,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         case ZSW_IMU_EVT_TYPE_NO_MOTION: {
             LOG_INF("Watch enterted stationary state");
             if (!is_active) {
+                last_pwr_off_time = k_uptime_get();
                 display_control_pwr_ctrl(false);
                 zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true);
                 zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
@@ -150,7 +159,11 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         }
         case ZSW_IMU_EVT_TYPE_ANY_MOTION: {
             LOG_INF("Watch moved, init display");
-            display_control_pwr_ctrl(true);
+            ret = display_control_pwr_ctrl(true);
+            if (ret == 0) {
+                retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
+                retained_update();
+            }
             zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
             zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
             break;
@@ -163,6 +176,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
 static int zsw_power_manager_init(void)
 {
     last_wakeup_time = k_uptime_get_32();
+    last_pwr_off_time = k_uptime_get_32();
     k_work_schedule(&idle_work, K_SECONDS(IDLE_TIMEOUT_SECONDS));
     return 0;
 }
