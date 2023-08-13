@@ -15,9 +15,9 @@ LOG_MODULE_REGISTER(display_control, LOG_LEVEL_WRN);
 static void lvgl_render(struct k_work *item);
 
 typedef enum display_state {
-    AWAKE,
-    SLEEPING,
-    POWERED_OFF,
+    DISPLAY_STATE_AWAKE,
+    DISPLAY_STATE_SLEEPING,
+    DISPLAY_STATE_POWERED_OFF,
 } display_state_t;
 
 static const struct pwm_dt_spec display_blk = PWM_DT_SPEC_GET_OR(DT_ALIAS(display_blk), {});
@@ -28,7 +28,7 @@ static const struct device *touch_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_k
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
 static struct k_work_sync canel_work_sync;
-static display_state_t state;
+static display_state_t display_state;
 static bool first_render_since_poweron;
 static uint8_t last_brightness = 30;
 
@@ -47,17 +47,17 @@ void display_control_init(void)
         LOG_WRN("Device touch not ready.");
     }
 
-    state = SLEEPING;
+    display_state = DISPLAY_STATE_SLEEPING;
 }
 
 void display_control_sleep_ctrl(bool on)
 {
-    switch (state) {
-        case AWAKE:
+    switch (display_state) {
+        case DISPLAY_STATE_AWAKE:
             if (on) {
                 LOG_DBG("Display already awake");
             } else {
-                state = SLEEPING;
+                display_state = DISPLAY_STATE_SLEEPING;
                 display_blanking_on(display_dev);
                 // Suspend the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
@@ -74,9 +74,9 @@ void display_control_sleep_ctrl(bool on)
                 lv_obj_invalidate(lv_scr_act());
             }
             break;
-        case SLEEPING:
+        case DISPLAY_STATE_SLEEPING:
             if (on) {
-                state = AWAKE;
+                display_state = DISPLAY_STATE_AWAKE;
                 // Resume the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_RESUME);
                 pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
@@ -89,10 +89,10 @@ void display_control_sleep_ctrl(bool on)
                 display_blanking_off(display_dev);
                 k_work_schedule(&lvgl_work, K_MSEC(250));
             } else {
-                LOG_DBG("Display already sleeping");
+                LOG_DBG("Display already DISPLAY_STATE_sleeping");
             }
             break;
-        case POWERED_OFF:
+        case DISPLAY_STATE_POWERED_OFF:
             if (on) {
                 LOG_DBG("Display is OFF, power on before exiting sleep");
             } else {
@@ -104,29 +104,29 @@ void display_control_sleep_ctrl(bool on)
 
 void display_control_pwr_ctrl(bool on)
 {
-    switch (state) {
-        case AWAKE:
+    switch (display_state) {
+        case DISPLAY_STATE_AWAKE:
             if (on) {
-                LOG_DBG("Display awake, power already on");
+                LOG_DBG("Display DISPLAY_STATE_awake, power already on");
             } else {
-                LOG_DBG("Display awake, sleep before power off");
+                LOG_DBG("Display DISPLAY_STATE_awake, sleep before power off");
             }
             break;
-        case SLEEPING:
+        case DISPLAY_STATE_SLEEPING:
             if (on) {
-                LOG_DBG("Display sleeping, power already on");
+                LOG_DBG("Display DISPLAY_STATE_sleeping, power already on");
             } else {
                 if (device_is_ready(reg_dev)) {
-                    state = POWERED_OFF;
+                    display_state = DISPLAY_STATE_POWERED_OFF;
                     regulator_disable(reg_dev);
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_OFF);
                 }
             }
             break;
-        case POWERED_OFF:
+        case DISPLAY_STATE_POWERED_OFF:
             if (on) {
                 if (device_is_ready(reg_dev)) {
-                    state = SLEEPING;
+                    display_state = DISPLAY_STATE_SLEEPING;
                     regulator_enable(reg_dev);
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_ON);
                     first_render_since_poweron = true;
@@ -156,7 +156,7 @@ void display_control_set_brightness(uint8_t percent)
     // and we need to take that into consideration when choosing pwm period and pulse width.
     uint32_t pulse_width = percent * (display_blk.period / 100);
 
-    if (state != AWAKE && percent != 0) {
+    if (display_state != DISPLAY_STATE_AWAKE && percent != 0) {
         LOG_WRN("Setting brightness when display is off may cause issues with active/inactive state, make sure you know what you are doing.");
     }
 
