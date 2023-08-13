@@ -9,6 +9,7 @@ static lv_obj_t *uptime_label;
 static lv_obj_t *resets_label;
 static lv_obj_t *runtime_label;
 static lv_obj_t *wake_time_label;
+static lv_obj_t *disp_pwr_off_label;
 static lv_obj_t *mac_addr_label;
 static lv_obj_t *inactive_time_label;
 
@@ -52,18 +53,25 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_y(wake_time_label, 15);
     lv_obj_set_align(wake_time_label, LV_ALIGN_LEFT_MID);
 
+    disp_pwr_off_label = lv_label_create(parent);
+    lv_obj_set_width(disp_pwr_off_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(disp_pwr_off_label, LV_SIZE_CONTENT);
+    lv_obj_set_x(disp_pwr_off_label, 10);
+    lv_obj_set_y(disp_pwr_off_label, 35);
+    lv_obj_set_align(disp_pwr_off_label, LV_ALIGN_LEFT_MID);
+
     mac_addr_label = lv_label_create(parent);
     lv_obj_set_width(mac_addr_label, LV_SIZE_CONTENT);
     lv_obj_set_height(mac_addr_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(mac_addr_label, 10);
-    lv_obj_set_y(mac_addr_label, 35);
+    lv_obj_set_x(mac_addr_label, 20);
+    lv_obj_set_y(mac_addr_label, 50);
     lv_obj_set_align(mac_addr_label, LV_ALIGN_LEFT_MID);
 
     inactive_time_label = lv_label_create(parent);
     lv_obj_set_width(inactive_time_label, LV_SIZE_CONTENT);
     lv_obj_set_height(inactive_time_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(inactive_time_label, 20);
-    lv_obj_set_y(inactive_time_label, 50);
+    lv_obj_set_x(inactive_time_label, 30);
+    lv_obj_set_y(inactive_time_label, 65);
     lv_obj_set_align(inactive_time_label, LV_ALIGN_LEFT_MID);
 }
 
@@ -131,6 +139,18 @@ void info_ui_set_wakeup_time_sec(uint64_t total_wake_time, uint32_t percent_used
     seconds_to_time_chunks(total_wake_time, &days, &hours, &minutes, &seconds);
     snprintf(buf, sizeof(buf), "Screen on: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds, percent_used);
     lv_label_set_text(wake_time_label, buf);
+}
+
+void info_ui_set_ref_off_time_sec(uint64_t total_off_time, uint32_t percent_off)
+{
+    int days;
+    int hours;
+    int minutes;
+    int seconds;
+
+    seconds_to_time_chunks(total_off_time, &days, &hours, &minutes, &seconds);
+    lv_label_set_text_fmt(disp_pwr_off_label, "3V3 off: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds,
+                          percent_off);
 }
 
 void info_ui_set_time_to_inactive_sec(uint32_t time_left_seconds)
