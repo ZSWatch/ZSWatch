@@ -137,7 +137,9 @@ int display_control_pwr_ctrl(bool on)
             } else {
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_POWERED_OFF;
+#ifndef CONFIG_BOARD_NATIVE_POSIX
                     regulator_disable(reg_dev);
+#endif
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_OFF);
                     res = 0;
                 }
@@ -147,7 +149,9 @@ int display_control_pwr_ctrl(bool on)
             if (on) {
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_SLEEPING;
+#ifndef CONFIG_BOARD_NATIVE_POSIX
                     regulator_enable(reg_dev);
+#endif
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_ON);
                     first_render_since_poweron = true;
                     res = 0;
