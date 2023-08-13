@@ -27,6 +27,8 @@ static const struct device *touch_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_k
 
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
+K_MUTEX_DEFINE(display_mutex);
+
 static struct k_work_sync canel_work_sync;
 static display_state_t display_state;
 static bool first_render_since_poweron;
@@ -50,12 +52,17 @@ void display_control_init(void)
     display_state = DISPLAY_STATE_SLEEPING;
 }
 
-void display_control_sleep_ctrl(bool on)
+int  display_control_sleep_ctrl(bool on)
 {
+    int res = -EALREADY;
+
+    k_mutex_lock(&display_mutex, K_FOREVER);
+
     switch (display_state) {
         case DISPLAY_STATE_AWAKE:
             if (on) {
                 LOG_DBG("Display already awake");
+                res = -EALREADY;
             } else {
                 display_state = DISPLAY_STATE_SLEEPING;
                 display_blanking_on(display_dev);
@@ -72,6 +79,7 @@ void display_control_sleep_ctrl(bool on)
                 // Since the display will have been powered off, we need to tell LVGL
                 // to rerender the complete display.
                 lv_obj_invalidate(lv_scr_act());
+                res = 0;
             }
             break;
         case DISPLAY_STATE_SLEEPING:
@@ -88,8 +96,10 @@ void display_control_sleep_ctrl(bool on)
                 }
                 display_blanking_off(display_dev);
                 k_work_schedule(&lvgl_work, K_MSEC(250));
+                res = 0;
             } else {
-                LOG_DBG("Display already DISPLAY_STATE_sleeping");
+                LOG_DBG("Display already sleeping");
+                res = -EALREADY;
             }
             break;
         case DISPLAY_STATE_POWERED_OFF:
@@ -98,28 +108,38 @@ void display_control_sleep_ctrl(bool on)
             } else {
                 LOG_DBG("Display is OFF, cannot enter sleep");
             }
+            res = -EIO;
             break;
     }
+
+    k_mutex_unlock(&display_mutex);
+
+    return res;
 }
 
-void display_control_pwr_ctrl(bool on)
+int display_control_pwr_ctrl(bool on)
 {
+    int res = -EALREADY;
+
+    k_mutex_lock(&display_mutex, K_FOREVER);
+
     switch (display_state) {
         case DISPLAY_STATE_AWAKE:
             if (on) {
-                LOG_DBG("Display DISPLAY_STATE_awake, power already on");
+                LOG_DBG("Display awake, power already on");
             } else {
-                LOG_DBG("Display DISPLAY_STATE_awake, sleep before power off");
+                LOG_DBG("Display awake, sleep before power off");
             }
             break;
         case DISPLAY_STATE_SLEEPING:
             if (on) {
-                LOG_DBG("Display DISPLAY_STATE_sleeping, power already on");
+                LOG_DBG("Display sleeping, power already on");
             } else {
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_POWERED_OFF;
                     regulator_disable(reg_dev);
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_OFF);
+                    res = 0;
                 }
             }
             break;
@@ -130,12 +150,17 @@ void display_control_pwr_ctrl(bool on)
                     regulator_enable(reg_dev);
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_ON);
                     first_render_since_poweron = true;
+                    res = 0;
                 }
             } else {
                 LOG_DBG("Display is OFF, power already off.");
             }
             break;
     }
+
+    k_mutex_unlock(&display_mutex);
+
+    return res;
 }
 
 
@@ -152,6 +177,8 @@ void display_control_set_brightness(uint8_t percent)
     __ASSERT(percent >= 0 && percent <= 100, "Invalid range for brightness, valid range 0-100, was %d", percent);
     int ret;
 
+    k_mutex_lock(&display_mutex, K_FOREVER);
+
     // TODO this is not correct, the FAN5622SX LED driver have 32 different brightness levels
     // and we need to take that into consideration when choosing pwm period and pulse width.
     uint32_t pulse_width = percent * (display_blk.period / 100);
@@ -165,6 +192,8 @@ void display_control_set_brightness(uint8_t percent)
     }
     ret = pwm_set_pulse_dt(&display_blk, pulse_width);
     __ASSERT(ret == 0, "pwm error: %d for pulse: %d", ret, pulse_width);
+
+    k_mutex_unlock(&display_mutex);
 }
 
 static void lvgl_render(struct k_work *item)
