@@ -79,11 +79,15 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void)
 
 static void enter_inactive(void)
 {
-    LOG_DBG("Enter inactive");
+    LOG_INF("Enter inactive");
     is_active = false;
     retained.wakeup_time += k_uptime_get_32() - last_wakeup_time;
     retained_update();
     display_control_sleep_ctrl(false);
+
+    // Screen inactive -> wait for NO_MOTION interrupt in order to power off display regulator.
+    zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
+    zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
     struct activity_state_event evt = {
         .state = ZSW_ACTIVITY_STATE_INACTIVE,
@@ -93,12 +97,16 @@ static void enter_inactive(void)
 
 static void enter_active(void)
 {
-    LOG_DBG("Enter active");
+    LOG_INF("Enter active");
     is_active = true;
     last_wakeup_time = k_uptime_get_32();
 
     display_control_pwr_ctrl(true);
     display_control_sleep_ctrl(true);
+
+    // Only used when display is not active.
+    zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
+    zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
     struct activity_state_event evt = {
         .state = ZSW_ACTIVITY_STATE_ACTIVE,
@@ -132,17 +140,19 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
             break;
         }
         case ZSW_IMU_EVT_TYPE_NO_MOTION: {
-            LOG_INF("Watch left stationary");
+            LOG_INF("Watch enterted stationary state");
             if (!is_active) {
                 display_control_pwr_ctrl(false);
+                zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true);
+                zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
             }
-            zsw_imu_any_motion_int_set_enabled(true);
             break;
         }
         case ZSW_IMU_EVT_TYPE_ANY_MOTION: {
-            LOG_INF("Watch moved, prepare display");
+            LOG_INF("Watch moved, init display");
             display_control_pwr_ctrl(true);
-            zsw_imu_any_motion_int_set_enabled(false);
+            zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
+            zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
             break;
         }
         default:

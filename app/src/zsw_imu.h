@@ -2,6 +2,19 @@
 #define ZSW_IMU_H_
 
 #include <zephyr/drivers/sensor.h>
+#include <bmi270.h>
+
+typedef enum zsw_imu_feature_t {
+    ZSW_IMU_FEATURE_ACCEL = BMI2_ACCEL,
+    ZSW_IMU_FEATURE_GYRO = BMI2_GYRO,
+    ZSW_IMU_FEATURE_STEP_COUNTER = BMI2_STEP_COUNTER,
+    ZSW_IMU_FEATURE_SIG_MOTION = BMI2_SIG_MOTION,
+    ZSW_IMU_FEATURE_ANY_MOTION = BMI2_ANY_MOTION,
+    ZSW_IMU_FEATURE_STEP_ACTIVITY = BMI2_STEP_ACTIVITY,
+    ZSW_IMU_FEATURE_WRIST_GESTURE = BMI2_WRIST_GESTURE,
+    ZSW_IMU_FEATURE_WRIST_WEAR_WAKE_UP = BMI2_WRIST_WEAR_WAKE_UP,
+    ZSW_IMU_FEATURE_NO_MOTION = BMI2_NO_MOTION,
+} zsw_imu_feature_t;
 
 typedef enum zsw_imu_evt_type_t {
     ZSW_IMU_EVT_TYPE_XYZ,
@@ -64,6 +77,8 @@ int zsw_imu_fetch_num_steps(uint32_t *num_steps);
 
 int zsw_imu_reset_step_count(void);
 
-int zsw_imu_any_motion_int_set_enabled(bool enabled);
+int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
+
+int zsw_imu_feature_disable(zsw_imu_feature_t feature);
 
 #endif

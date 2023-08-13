@@ -21,6 +21,7 @@ typedef struct bmi270_feature_config_set_t {
     uint8_t                 sensor_id;
     feature_config_func     cfg_func;
     bool                    isr_disable;
+    bool                    skip_enable;
 } bmi270_feature_config_set_t;
 
 static void send_accel_event(zsw_imu_evt_t *data);
@@ -55,8 +56,8 @@ static bmi270_feature_config_set_t bmi270_enabled_features[] = {
 #if USE_ANYMOTION
     { .sensor_id = BMI2_ANY_MOTION, .cfg_func = configure_anymotion, .isr_disable = true},
 #endif
-    { .sensor_id = BMI2_STEP_ACTIVITY, .cfg_func = NULL, .isr_disable = true},
-    { .sensor_id = BMI2_WRIST_GESTURE, .cfg_func = configure_gesture_detect, .isr_disable = false},
+    { .sensor_id = BMI2_STEP_ACTIVITY, .cfg_func = NULL, .skip_enable = true},
+    { .sensor_id = BMI2_WRIST_GESTURE, .cfg_func = configure_gesture_detect},
     { .sensor_id = BMI2_WRIST_WEAR_WAKE_UP, .cfg_func = configure_wrist_wakeup},
     { .sensor_id = BMI2_NO_MOTION, .cfg_func = configure_no_motion},
 };
@@ -180,17 +181,44 @@ int zsw_imu_reset_step_count(void)
     return -ENOENT;
 }
 
-int zsw_imu_any_motion_int_set_enabled(bool enabled)
+int zsw_imu_feature_disable(zsw_imu_feature_t feature)
 {
     int8_t rslt;
+    uint16_t int_status;
+    uint8_t feature_disable;
+
+    feature_disable = feature;
+    rslt = bmi270_sensor_disable(&feature_disable, 1, &bmi2_dev);
+    bmi2_error_codes_print_result(rslt);
+
+    // Clear int_status register
+    rslt = bmi2_get_int_status(&int_status, &bmi2_dev);
+    bmi2_error_codes_print_result(rslt);
+
+    return rslt == BMI2_OK;
+}
+
+int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en)
+{
+    int8_t rslt;
+    uint16_t int_status;
+    uint8_t feature_disable;
     struct bmi2_sens_int_config cfg;
 
-    if (enabled) {
+    feature_disable = feature;
+    rslt = bmi270_sensor_enable(&feature_disable, 1, &bmi2_dev);
+    bmi2_error_codes_print_result(rslt);
+
+    // Clear int_status register
+    rslt = bmi2_get_int_status(&int_status, &bmi2_dev);
+    bmi2_error_codes_print_result(rslt);
+
+    if (int_en) {
         cfg.hw_int_pin = BMI2_INT2;
     } else {
         cfg.hw_int_pin = BMI2_INT_NONE;
     }
-    cfg.type = BMI2_ANY_MOTION;
+    cfg.type = feature;
 
     rslt = bmi270_map_feat_int(&cfg, 1, &bmi2_dev);
     bmi2_error_codes_print_result(rslt);
@@ -492,7 +520,9 @@ static int8_t configure_enable_all_bmi270(struct bmi2_dev *bmi2_dev)
 
     for (int i = 0; i < ARRAY_SIZE(bmi270_enabled_features); i++) {
         config[i].type = bmi270_enabled_features[i].sensor_id;
-        all_sensors[i] = bmi270_enabled_features[i].sensor_id;
+        if (!bmi270_enabled_features[i].skip_enable) {
+            all_sensors[i] = bmi270_enabled_features[i].sensor_id;
+        }
         if (is_sensor_feature(bmi270_enabled_features[i].sensor_id)) {
             all_features[num_features].type = bmi270_enabled_features[i].sensor_id;
             if (bmi270_enabled_features[i].isr_disable) {
