@@ -13,7 +13,7 @@ endif()
 
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(lvgl)
+project(ZSWatchFw)
 
 add_subdirectory(drivers)
 add_subdirectory(src/applications)
