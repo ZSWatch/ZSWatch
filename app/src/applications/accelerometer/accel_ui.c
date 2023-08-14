@@ -86,9 +86,6 @@ void accel_ui_remove(void)
 
 void accel_ui_set_values(int32_t x, int32_t y, int32_t z)
 {
-    char buf[10];
-    memset(buf, 0, sizeof(buf));
-
     if (!root_page) {
         return;
     }
@@ -96,12 +93,9 @@ void accel_ui_set_values(int32_t x, int32_t y, int32_t z)
     lv_bar_set_value(bar_acc_y, y, LV_ANIM_ON);
     lv_bar_set_value(bar_acc_z, z, LV_ANIM_ON);
 
-    snprintf(buf, sizeof(buf), "X: %d", x);
-    lv_label_set_text(acc_x_label, buf);
-    snprintf(buf, sizeof(buf), "Y: %d", y);
-    lv_label_set_text(acc_y_label, buf);
-    snprintf(buf, sizeof(buf), "Z: %d", z);
-    lv_label_set_text(acc_z_label, buf);
+    lv_label_set_text_fmt(acc_x_label, "X: %d", x);
+    lv_label_set_text_fmt(acc_y_label, "Y: %d", y);
+    lv_label_set_text_fmt(acc_z_label, "Z: %d", z);
 }
 
 static void close_button_pressed(lv_event_t *e)

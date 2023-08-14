@@ -106,35 +106,25 @@ void sensors_summary_ui_remove(void)
 
 void sensors_summary_ui_set_pressure(double pressure)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Pressure:\t%.0f Pa", pressure);
-    lv_label_set_text(pressure_label, buf);
+    lv_label_set_text_fmt(pressure_label, "Pressure:\t%.0f Pa", pressure);
 }
 
 void sensors_summary_ui_set_humidity(double humidity)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Humidity:\t%.2f %%", humidity);
-    lv_label_set_text(humidity_label, buf);
+    lv_label_set_text_fmt(humidity_label, "Humidity:\t%.2f %%", humidity);
 }
 
 void sensors_summary_ui_set_temp(double temp)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Temp:\t%.2f C", temp);
-    lv_label_set_text(temp_label, buf);
+    lv_label_set_text_fmt(temp_label, "Temp:\t%.2f C", temp);
 }
 
 void sensors_summary_ui_set_rel_height(double rel_height)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Rel. height:\t%.2f m", rel_height);
-    lv_label_set_text(rel_height_label, buf);
+    lv_label_set_text_fmt(rel_height_label, "Rel. height:\t%.2f m", rel_height);
 }
 
 void sensors_summary_ui_set_gas(double gas)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Gas:\t%.2f", gas);
-    lv_label_set_text(gas_label, buf);
+    lv_label_set_text_fmt(gas_label, "Gas:\t%.2f", gas);
 }

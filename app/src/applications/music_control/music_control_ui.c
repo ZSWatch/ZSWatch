@@ -173,9 +173,7 @@ void music_control_ui_set_track_progress(int percent_played)
 
 void music_control_ui_set_time(int hour, int min, int second)
 {
-    char buf[30];
-    snprintf(buf, sizeof(buf), "%02d:%02d", hour, min);
-    lv_label_set_text(time_label, buf);
+    lv_label_set_text_fmt(time_label, "%02d:%02d", hour, min);
 }
 
 void music_control_ui_set_music_state(bool playing, int percent_played, bool shuffle)

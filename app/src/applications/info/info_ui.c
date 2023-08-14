@@ -86,6 +86,8 @@ void info_ui_show(lv_obj_t *root)
     // Make root container fill the screen
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
 
+    lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+
     create_ui(root_page);
 }
 
@@ -97,48 +99,41 @@ void info_ui_remove(void)
 
 void info_ui_set_uptime_sec(uint32_t uptime_seconds)
 {
-    char buf[100] = {};
     int days;
     int hours;
     int minutes;
     int seconds;
 
     seconds_to_time_chunks(uptime_seconds, &days, &hours, &minutes, &seconds);
-    snprintf(buf, sizeof(buf), "Uptime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
-    lv_label_set_text(uptime_label, buf);
+    lv_label_set_text_fmt(uptime_label, "Uptime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
 }
 
 void info_ui_set_resets(uint32_t resets)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "Resets:\t%d", resets);
-    lv_label_set_text(resets_label, buf);
+    lv_label_set_text_fmt(resets_label, "Resets:\t%d", resets);
 }
 
 void info_ui_set_total_uptime_sec(uint32_t uptime_seconds)
 {
-    char buf[100] = {};
     int days;
     int hours;
     int minutes;
     int seconds;
 
     seconds_to_time_chunks(uptime_seconds, &days, &hours, &minutes, &seconds);
-    snprintf(buf, sizeof(buf), "Total uptime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
-    lv_label_set_text(runtime_label, buf);
+    lv_label_set_text_fmt(runtime_label, "Total uptime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds);
 }
 
 void info_ui_set_wakeup_time_sec(uint64_t total_wake_time, uint32_t percent_used)
 {
-    char buf[100] = {};
     int days;
     int hours;
     int minutes;
     int seconds;
 
     seconds_to_time_chunks(total_wake_time, &days, &hours, &minutes, &seconds);
-    snprintf(buf, sizeof(buf), "Screen on: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds, percent_used);
-    lv_label_set_text(wake_time_label, buf);
+    lv_label_set_text_fmt(wake_time_label, "Screen on: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds,
+                          percent_used);
 }
 
 void info_ui_set_ref_off_time_sec(uint64_t total_off_time, uint32_t percent_off)
@@ -149,16 +144,13 @@ void info_ui_set_ref_off_time_sec(uint64_t total_off_time, uint32_t percent_off)
     int seconds;
 
     seconds_to_time_chunks(total_off_time, &days, &hours, &minutes, &seconds);
-    lv_label_set_text_fmt(disp_pwr_off_label, "3V3 off: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds,
+    lv_label_set_text_fmt(disp_pwr_off_label, "Stationary: %02d:%02d:%02d:%02d (%d%%)", days, hours, minutes, seconds,
                           percent_off);
 }
 
 void info_ui_set_time_to_inactive_sec(uint32_t time_left_seconds)
 {
-    char buf[100] = {};
-
-    snprintf(buf, sizeof(buf), "Time to inactive: %ds", time_left_seconds);
-    lv_label_set_text(inactive_time_label, buf);
+    lv_label_set_text_fmt(inactive_time_label, "Time to inactive: %ds", time_left_seconds);
 }
 
 void info_ui_set_mac_addr(char *mac_str)

@@ -59,8 +59,6 @@ void compass_ui_remove(void)
 
 void compass_ui_set_heading(double heading)
 {
-    char buf[100] = {};
-    snprintf(buf, sizeof(buf), "%.0f°", heading);
-    lv_label_set_text(compass_label, buf);
+    lv_label_set_text_fmt(compass_label, "%.0f°", heading);
     lv_img_set_angle(compass_img, heading * 10);
 }
