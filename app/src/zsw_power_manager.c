@@ -47,6 +47,7 @@ ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_LISTENER_DEFINE(power_manager_accel_lis, zbus_accel_data_callback);
 
 static bool is_active = true;
+static bool is_stationary;
 static uint32_t last_wakeup_time;
 static uint32_t last_pwr_off_time;
 
@@ -100,7 +101,9 @@ static void enter_active(void)
 {
     LOG_INF("Enter active");
     int ret;
+
     is_active = true;
+    is_stationary = false;
     last_wakeup_time = k_uptime_get_32();
 
     ret = display_control_pwr_ctrl(true);
@@ -150,6 +153,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         case ZSW_IMU_EVT_TYPE_NO_MOTION: {
             LOG_INF("Watch enterted stationary state");
             if (!is_active) {
+                is_stationary = true;
                 last_pwr_off_time = k_uptime_get();
                 display_control_pwr_ctrl(false);
                 zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true);
@@ -159,13 +163,14 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         }
         case ZSW_IMU_EVT_TYPE_ANY_MOTION: {
             LOG_INF("Watch moved, init display");
-            ret = display_control_pwr_ctrl(true);
-            if (ret == 0) {
+            if (!is_active) {
+                is_stationary = false;
+                display_control_pwr_ctrl(true);
                 retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
                 retained_update();
+                zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
+                zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
             }
-            zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
-            zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
             break;
         }
         default:
