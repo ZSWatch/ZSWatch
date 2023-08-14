@@ -15,10 +15,8 @@
 
 LOG_MODULE_REGISTER(ble_comm, LOG_LEVEL_DBG);
 
-#define BLE_COMM_SHORT_INT_MIN  40
-#define BLE_COMM_SHORT_INT_MAX  50
-#define BLE_COMM_LONG_INT_MIN   400
-#define BLE_COMM_LONG_INT_MAX   500
+#define BLE_COMM_LONG_INT_MIN_MS   (400 / 1.25)
+#define BLE_COMM_LONG_INT_MAX_MS   (500 / 1.25)
 
 #define BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS    5000
 
@@ -196,10 +194,10 @@ int ble_comm_short_connection_interval(void)
 {
     int err;
     struct bt_le_conn_param param = {
-        .interval_min = BLE_COMM_SHORT_INT_MIN,
-        .interval_max = BLE_COMM_SHORT_INT_MAX,
-        .latency = 0,
-        .timeout = 500,
+        .interval_min = CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
+        .interval_max = CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
+        .latency = CONFIG_BT_PERIPHERAL_PREF_LATENCY,
+        .timeout = CONFIG_BT_PERIPHERAL_PREF_TIMEOUT,
     };
 
     // If someone explicitly requested short connection interval,
@@ -220,10 +218,10 @@ int ble_comm_long_connection_interval(void)
 {
     int err;
     struct bt_le_conn_param param = {
-        .interval_min = CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
-        .interval_max = CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
+        .interval_min = BLE_COMM_LONG_INT_MIN_MS,
+        .interval_max = BLE_COMM_LONG_INT_MAX_MS,
         .latency = CONFIG_BT_PERIPHERAL_PREF_LATENCY,
-        .timeout = CONFIG_BT_PERIPHERAL_PREF_TIMEOUT,
+        .timeout = 500,
     };
 
     LOG_DBG("Set long conection interval");
