@@ -414,7 +414,7 @@ void watchface_show(void)
 
     // Just use a default dummy image by default
     const lv_img_dsc_t *icon = zsw_ui_utils_icon_from_weather_code(802, &icon_color);
-    lv_img_set_src(ui_weather_icon, &icon);
+    lv_img_set_src(ui_weather_icon, icon);
     lv_obj_set_width(ui_weather_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_weather_icon, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_weather_icon, -12);
