@@ -4,6 +4,7 @@
 static void seconds_to_time_chunks(uint32_t time_seconds, int *days, int *hours, int *minutes, int *seconds);
 
 static lv_obj_t *root_page = NULL;
+static on_reset_ui_event_cb_t reset_callback;
 
 static lv_obj_t *uptime_label;
 static lv_obj_t *resets_label;
@@ -13,8 +14,16 @@ static lv_obj_t *disp_pwr_off_label;
 static lv_obj_t *mac_addr_label;
 static lv_obj_t *inactive_time_label;
 
+static void reset_btn_pressed(lv_event_t *e)
+{
+    if (reset_callback) {
+        reset_callback();
+    }
+}
+
 static void create_ui(lv_obj_t *parent)
 {
+    lv_obj_t *temp_obj;
     lv_obj_t *title_label = lv_label_create(parent);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
     lv_label_set_text(title_label, "System info");
@@ -73,12 +82,27 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_x(inactive_time_label, 30);
     lv_obj_set_y(inactive_time_label, 65);
     lv_obj_set_align(inactive_time_label, LV_ALIGN_LEFT_MID);
+
+    temp_obj = lv_btn_create(parent);
+    lv_obj_set_width(temp_obj, 100);
+    lv_obj_set_height(temp_obj, 30);
+    lv_obj_set_x(temp_obj, 0);
+    lv_obj_set_y(temp_obj, 0);
+    lv_obj_set_align(temp_obj, LV_ALIGN_BOTTOM_MID);
+    lv_obj_add_event_cb(temp_obj, reset_btn_pressed, LV_EVENT_CLICKED, NULL);
+
+    temp_obj = lv_label_create(temp_obj);
+    lv_obj_set_width(temp_obj, LV_SIZE_CONTENT);
+    lv_obj_set_height(temp_obj, LV_SIZE_CONTENT);
+    lv_obj_set_align(temp_obj, LV_ALIGN_CENTER);
+    lv_label_set_text(temp_obj, "Reset");
 }
 
-void info_ui_show(lv_obj_t *root)
+void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb)
 {
     assert(root_page == NULL);
 
+    reset_callback = reset_cb;
     // Create the root container
     root_page = lv_obj_create(root);
     // Remove the default border

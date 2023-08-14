@@ -55,4 +55,6 @@ bool retained_validate(void);
  */
 void retained_update(void);
 
+void retained_reset(void);
+
 #endif /* RETAINED_H_ */

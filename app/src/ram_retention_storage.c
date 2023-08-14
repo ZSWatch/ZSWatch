@@ -177,6 +177,12 @@ void retained_update(void)
     retained.crc = sys_cpu_to_le32(crc);
 }
 
+void retained_reset(void)
+{
+    memset(&retained, 0, sizeof(retained));
+    retained_update();
+}
+
 #else
 struct retained_data retained;
 bool retained_validate()
@@ -187,5 +193,9 @@ bool retained_validate()
 void retained_update(void)
 {
 
+}
+
+void retained_reset(void)
+{
 }
 #endif

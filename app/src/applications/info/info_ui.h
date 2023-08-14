@@ -3,7 +3,9 @@
 #include <inttypes.h>
 #include <lvgl.h>
 
-void info_ui_show(lv_obj_t *root);
+typedef void(*on_reset_ui_event_cb_t)(void);
+
+void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb);
 
 void info_ui_remove(void);
 
