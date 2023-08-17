@@ -419,7 +419,7 @@ static void screen_gesture_event(lv_event_t *e)
                     open_application_manager_page("Settings");
                     break;
                 case LV_DIR_RIGHT:
-                    open_application_manager_page("Music");
+                    watchface_change();
                     break;
                 case LV_DIR_LEFT:
                     open_application_manager_page("Notification");

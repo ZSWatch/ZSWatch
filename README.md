@@ -104,11 +104,13 @@ Built in debugger. Will be an option without debugger also  (requires licence).
 There are almost endless of posiblities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and my current ideas.
 
 ## Watchfaces
-Alternative watch faces can be chosen by selecting **one** of the appropriate Kconfig.
+Alternative watch faces can be chosen by selecting one or many of the appropriate Kconfig. <br>
+Swiping left to right will change the watchface.
+for something else, and can then be disabled.
 
-`CONFIG_WATCHFACE_ANALOG=y`<br>
+`CONFIG_WATCHFACE_ANALOG=n`<br>
 `CONFIG_WATCHFACE_DIGITAL=y`<br>
-`CONFIG_WATCHFACE_MINIMAL=n`<br>
+`CONFIG_WATCHFACE_MINIMAL=y`<br>
 
 
 To select watchface background see below config in prj.conf:

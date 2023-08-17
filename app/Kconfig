@@ -24,23 +24,23 @@ menu "ZSWatch"
     help
         "Enabling this option will add apps and features only aimed for demo purposes. This will increase the size of the firmware (flash usage)."
 
-    choice WATCHFACE_TYPE
-        prompt "Select which watchface to use"
-        bool
-        default WATCHFACE_ANALOG
-
     config WATCHFACE_ANALOG
-        prompt "Use analog watchface"
+        bool
+        prompt "Add analog watchface"
+        default n
 
     config WATCHFACE_DIGITAL
-        prompt "Use digital watchface"
+        bool
+        prompt "Add digital watchface"
+        default y
 
     config WATCHFACE_MINIMAL
-        prompt "Use minimal watchface"
-
-    endchoice
+        bool
+        prompt "Add minimal watchface"
+        default y
 
     choice WATCHFACE_BACKGROUND_IMG
+        bool
         prompt "Select which watchface background imgage to use. Not all watchfaces supports this."
         def_bool WATCHFACE_BACKGROUND_SPACE
 

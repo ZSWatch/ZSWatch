@@ -1,14 +1,18 @@
-#include "../watchface_ui.h"
+#include "../../watchface_app.h"
 #include <lvgl.h>
 #include "../zsw_ui_utils.h"
 
 #ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(watchface_ui, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(watchface_analog, LOG_LEVEL_WRN);
 #endif
 
 #define SMALL_WATCHFACE_CENTER_OFFSET 38
 #define USE_SECOND_HAND
+
+static void watchface_ui_invalidate_cached(void);
+static void watchface_set_ble_connected(bool connected);
+static void watchface_set_num_notifcations(int32_t value);
 
 static lv_obj_t *root_page = NULL;
 
@@ -256,12 +260,7 @@ static void add_date(lv_obj_t *parent)
     lv_obj_align_to(day_label, parent, LV_ALIGN_CENTER, SMALL_WATCHFACE_CENTER_OFFSET + 25, -7);
 }
 
-void watchface_init(void)
-{
-    lv_obj_clean(lv_scr_act());
-}
-
-void watchface_show(void)
+static void watchface_show(void)
 {
     //lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161B22), LV_PART_MAIN);
     lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
@@ -285,13 +284,13 @@ void watchface_show(void)
     add_clock(root_page);
 }
 
-void watchface_remove(void)
+static void watchface_remove(void)
 {
     lv_obj_del(root_page);
     root_page = NULL;
 }
 
-void watchface_set_battery_percent(int32_t percent, int32_t value)
+static void watchface_set_battery_percent(int32_t percent, int32_t value)
 {
     if (!root_page) {
         return;
@@ -304,7 +303,7 @@ void watchface_set_battery_percent(int32_t percent, int32_t value)
     lv_obj_align_to(battery_label, battery_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-void watchface_set_hrm(int32_t value)
+static void watchface_set_hrm(int32_t value)
 {
     if (!root_page) {
         return;
@@ -317,7 +316,7 @@ void watchface_set_hrm(int32_t value)
     lv_obj_align_to(hrm_label, hrm_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-void watchface_set_step(int32_t value)
+static void watchface_set_step(int32_t value)
 {
     if (!root_page) {
         return;
@@ -330,7 +329,7 @@ void watchface_set_step(int32_t value)
     lv_obj_align_to(step_label, step_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
+static void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
 {
     if (!root_page) {
         return;
@@ -360,7 +359,7 @@ void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
 #endif
 }
 
-void watchface_set_num_notifcations(int32_t value)
+static void watchface_set_num_notifcations(int32_t value)
 {
     char not_text_buf[2]; // 0-9 and \0
 
@@ -383,7 +382,7 @@ void watchface_set_num_notifcations(int32_t value)
     }
 }
 
-void watchface_set_ble_connected(bool connected)
+static void watchface_set_ble_connected(bool connected)
 {
     if (connected) {
         lv_obj_clear_flag(ble_symbol, LV_OBJ_FLAG_HIDDEN);
@@ -392,7 +391,7 @@ void watchface_set_ble_connected(bool connected)
     }
 }
 
-void watchface_set_weather(int8_t temperature, int weather_code)
+static void watchface_set_weather(int8_t temperature, int weather_code)
 {
     char buf[10];
     lv_color_t icon_color;
@@ -409,7 +408,7 @@ void watchface_set_weather(int8_t temperature, int weather_code)
     lv_obj_set_style_img_recolor(weather_icon, icon_color, 0);
 }
 
-void watchface_set_date(int day_of_week, int date)
+static void watchface_set_date(int day_of_week, int date)
 {
     char buf[10];
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
@@ -420,14 +419,14 @@ void watchface_set_date(int day_of_week, int date)
     lv_label_set_text(date_label, buf);
 }
 
-void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure)
+static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure)
 {
     if (!root_page) {
         return;
     }
 }
 
-void watchface_ui_invalidate_cached(void)
+static void watchface_ui_invalidate_cached(void)
 {
     last_hour = -1;
     last_minute = -1;
@@ -436,3 +435,27 @@ void watchface_ui_invalidate_cached(void)
     last_second = -1;
 #endif
 }
+
+static watchface_ui_api_t ui_api = {
+    .show = watchface_show,
+    .remove = watchface_remove,
+    .set_battery_percent = watchface_set_battery_percent,
+    .set_hrm = watchface_set_hrm,
+    .set_step = watchface_set_step,
+    .set_time = watchface_set_time,
+    .set_ble_connected = watchface_set_ble_connected,
+    .set_num_notifcations = watchface_set_num_notifcations,
+    .set_weather = watchface_set_weather,
+    .set_date = watchface_set_date,
+    .set_watch_env_sensors = watchface_set_watch_env_sensors,
+    .ui_invalidate_cached = watchface_ui_invalidate_cached,
+};
+
+static int watchface_init(void)
+{
+    watchface_app_register_ui(&ui_api);
+
+    return 0;
+}
+
+SYS_INIT(watchface_init, APPLICATION, WATCHFACE_UI_INIT_PRIO);
