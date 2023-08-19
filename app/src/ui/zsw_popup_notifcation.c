@@ -33,7 +33,9 @@ void zsw_notification_popup_show(char *title, char *body, notification_src_t ico
     lv_obj_set_align(notif_box.panel, LV_ALIGN_BOTTOM_MID);
     lv_obj_set_x(notif_box.panel, 0);
     lv_obj_set_y(notif_box.panel, -25);
+    lv_obj_set_style_pad_top(notif_box.panel, 3, 0);
     lv_obj_set_style_pad_bottom(notif_box.panel, 3, 0); // reduce padding
+    lv_obj_set_style_pad_left(notif_box.panel, 5, 0);
     lv_obj_clear_flag(notif_box.panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(notif_box.panel, 15, 0);
     lv_obj_set_style_bg_color(notif_box.panel, lv_color_hex(0x0C0C1A), 0);
@@ -43,8 +45,8 @@ void zsw_notification_popup_show(char *title, char *body, notification_src_t ico
 
     // create title text
     notif_box.title = lv_label_create(notif_box.panel);
-    lv_obj_set_x(notif_box.title, -5);
-    lv_obj_set_y(notif_box.title, -10);
+    lv_obj_align_to(notif_box.title, notif_box.panel, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_set_width(notif_box.title, 130);
     // TODO: replace bell with application symbol
     lv_label_set_text_fmt(notif_box.title, "%s %s", LV_SYMBOL_BELL, title);
     lv_label_set_long_mode(notif_box.title, LV_LABEL_LONG_CLIP);
@@ -57,8 +59,8 @@ void zsw_notification_popup_show(char *title, char *body, notification_src_t ico
         lv_obj_set_width(notif_box.body, 155);
         lv_obj_set_height(notif_box.body, LV_SIZE_CONTENT);
         lv_obj_set_style_max_height(notif_box.body, 60, 0);
-        lv_obj_set_x(notif_box.body, -8);
-        lv_obj_set_y(notif_box.body, 5);
+        lv_obj_set_x(notif_box.body, 0);
+        lv_obj_set_y(notif_box.body, 15);
         lv_label_set_long_mode(notif_box.body, LV_LABEL_LONG_DOT);
         lv_label_set_text(notif_box.body, body);
         lv_obj_set_style_text_font(notif_box.body, &lv_font_montserrat_16, 0);
@@ -70,6 +72,7 @@ void zsw_notification_popup_show(char *title, char *body, notification_src_t ico
     lv_obj_set_height(notif_box.close_btn, 30);
     lv_obj_align_to(notif_box.close_btn, notif_box.panel, LV_ALIGN_OUT_TOP_RIGHT, 15, 15);
     lv_obj_set_style_radius(notif_box.close_btn, 20, 0);
+    lv_obj_set_ext_click_area(notif_box.close_btn, 10);
     lv_obj_set_style_bg_color(notif_box.close_btn, lv_palette_main(LV_PALETTE_BLUE_GREY), 0);
 
     lv_obj_add_event_cb(notif_box.close_btn, on_notification_closed, LV_EVENT_PRESSED, NULL);
@@ -100,8 +103,16 @@ static void on_notification_closed(lv_event_t *e)
 
 static void on_notification_expand(lv_event_t *e)
 {
+    // expand title
+    lv_label_set_long_mode(notif_box.title, LV_LABEL_LONG_WRAP);
+    lv_obj_set_height(notif_box.title, LV_SIZE_CONTENT);
+    lv_obj_set_style_max_height(notif_box.title, 40, 0);
+
+    // expand body
+    lv_obj_align_to(notif_box.body, notif_box.title, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 0);
     lv_label_set_long_mode(notif_box.body, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_max_height(notif_box.body, LV_SIZE_CONTENT, 0);
+    lv_obj_set_style_height(notif_box.body, LV_SIZE_CONTENT, 0);
+    lv_obj_set_style_max_height(notif_box.body, 125, 0);
 
     // algin button after notification expand
     lv_obj_align_to(notif_box.close_btn, notif_box.panel, LV_ALIGN_OUT_TOP_RIGHT, 15, 15);
