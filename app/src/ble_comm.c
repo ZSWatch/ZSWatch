@@ -1,4 +1,5 @@
 #include <ble_comm.h>
+#include <zephyr/sys/base64.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
@@ -415,13 +416,21 @@ static void parse_time(char *start_time)
 
 static char *extract_value_str(char *key, char *data, int *value_len)
 {
+    bool base64 = false;
     char *start;
+    char *end;
     char *str = strstr(data, key);
     *value_len = 0;
     if (str == NULL) {
         return NULL;
     }
     str += strlen(key);
+
+    if (strncmp(str, "atob(", strlen("atob(")) == 0) {
+        str += strlen("atob(");
+        base64 = true;
+    }
+
     if (*str != '\"') {
         return NULL; // Seems to be an INT?
     }
@@ -429,12 +438,21 @@ static char *extract_value_str(char *key, char *data, int *value_len)
     if (*str == '\0') {
         return NULL; // Got end of data
     }
-    start = str;
-    str = strstr(str, "\"");
-    if (str == NULL) {
+    end = strstr(str, "\"");
+    if (end == NULL) {
         return NULL; // No end of value
     }
-    *value_len = str - start;
+
+    start = str;
+    if (base64) {
+        // Since the size of the decoded result is 33% smaller, the decoded result can be stored in the original text buffer
+        size_t msg_size = end - start;
+        size_t decoded_len;
+        base64_decode(str, msg_size, &decoded_len, str, msg_size);
+        *value_len = decoded_len;
+    } else {
+        *value_len = end - start;
+    }
 
     return start;
 }
