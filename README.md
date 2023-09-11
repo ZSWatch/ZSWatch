@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![discord](https://img.shields.io/badge/chat-discord-blue?logo=discord&logoColor=white)](https://discord.gg/8XfNBmDfbY)
 
-<img src=".github/in_use.jpg"/>
+<img src=".github/images/in_use.jpg"/>
 <sub>
   ZSWatch v2
 </sub>
@@ -16,16 +16,16 @@
 Smartwatch built from scratch, both hardware and software. Built on the [Zephyr™ Project](https://www.zephyrproject.org/) RTOS, hence the name **ZSWatch** - *Zephyr Smartwatch*.
 <br/>
 
-<kbd><img title="Overview" src=".github/many_in_row.jpg"/></kbd><br/>
+<kbd><img title="Overview" src=".github/images/many_in_row.jpg"/></kbd><br/>
 
-<kbd><img title="Overview" src=".github/v2_overview.jpg"/></kbd><br/>
+<kbd><img title="Overview" src=".github/images/v2_overview.jpg"/></kbd><br/>
 
 **Synced remote control over BLE**
 
 [https://user-images.githubusercontent.com/64562059/234390129-321d4f35-cb4b-45e8-89d9-20ae292f34fc.mp4](https://github.com/jakkra/ZSWatch/assets/4318648/8d0f40c2-d519-4db1-8634-b43caa502cbe)
 
 <p align="center" >
-  <a href="https://www.youtube.com/watch?v=MmCzV0jV9hs"><img width="55%" src=".github/presentation.png" ></a>
+  <a href="https://www.youtube.com/watch?v=MmCzV0jV9hs"><img width="55%" src=".github/images/presentation.png" ></a>
 </p>
 <p align="center">Watch my presentation at Zephyr Developer Summit 2023</p>
 
@@ -74,7 +74,7 @@ This will allow me If you want to get notified when I'm "releasing" it, then sim
 PCB done, casing to be designed. Idea is that watch will sit on top.
 Built in debugger. Will be an option without debugger also  (requires licence).
 <p float="left">
-<img src=".github/dock.jpg" width="65%"/>
+<img src=".github/images/dock.jpg" width="65%"/>
 </p>
 
 ## Enclosure/Casing
@@ -123,7 +123,7 @@ To select watchface background see below config in prj.conf:
 `CONFIG_WATCHFACE_BACKGROUND_NONE=n`<br>
 
 <p float="center">
-<img src=".github/watchfaces.png" width="99%"/>
+<img src=".github/images/watchfaces.png" width="99%"/>
 </p>
 
 ## Android phone communication
@@ -138,19 +138,19 @@ Fortunately there is a great Android app called [GadgetBridge](https://codeberg.
 A 4 layer board which measures 38mm in diameter designed in KiCad.
 
 <p float="left">
-<img src=".github/pcb_features.png" width="90%" object-fit="cover"/>
+<img src=".github/images/pcb_features.png" width="90%" object-fit="cover"/>
 </p>
 <p float="left">
-<img src=".github/v2_render_wip_back.png" width="49%" object-fit="cover"/>
-<img src=".github/layer1_and_4_v2.PNG" width="41%" object-fit="cover"/>
+<img src=".github/images/v2_render_wip_back.png" width="49%" object-fit="cover"/>
+<img src=".github/images/layer1_and_4_v2.PNG" width="41%" object-fit="cover"/>
 </p>
 
 ## ZSWatch v1 in action (Note old, not updated for latest HW and SW).
 |*Music control*|*Accelerometer for step count and tap detection*|
 |---|---|
-|  <img src=".github/music.gif" object-fit="cover" /> |  <img src=".github/accel.gif" object-fit="cover" /> |
+|  <img src=".github/images/music.gif" object-fit="cover" /> |  <img src=".github/images/accel.gif" object-fit="cover" /> |
 |*Notifications from phone (Gmail here)*|*Settings*|
-|  <img src=".github/notifications.gif" object-fit="cover" />    |  <img src=".github/settings.gif" object-fit="cover"/> |
+|  <img src=".github/images/notifications.gif" object-fit="cover" />    |  <img src=".github/images/settings.gif" object-fit="cover"/> |
 
 
 https://github.com/jakkra/ZSWatch/assets/4318648/8d8ec724-8145-4a30-b241-e69a8c2853bf
