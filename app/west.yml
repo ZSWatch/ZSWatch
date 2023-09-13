@@ -1,0 +1,46 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+manifest:
+  self:
+    west-commands: scripts/west-commands.yml
+
+  #remotes:
+  #  - name: ncs
+  #    url-base: https://github.com/nrfconnect
+
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  #projects:
+  #  - name: nrf
+  #    remote: ncs
+  #    repo-path: sdk-nrf
+  #    revision: v2.4.2
+  #    import: true
+  
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: 8aa6531aede19a0e4f3871f66ee518b0b5cc76b9
+      import:
+        name-blocklist:
+          - ci-tools
+          - hal_altera
+          - hal_cypress
+          - hal_infineon
+          - hal_microchip
+          - hal_nxp
+          - hal_openisa
+          - hal_silabs
+          - hal_xtensa
+          - hal_ti
+          - loramac-node
+          - net-tools
+          - openthread
+          - edtt
+          - trusted-firmware-m
+          - sof
+  self:
+    west-commands: scripts/west-commands.yml

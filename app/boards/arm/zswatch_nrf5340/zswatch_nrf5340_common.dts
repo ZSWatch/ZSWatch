@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "zswatch_nrf5340_common-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
 / {
     chosen {
@@ -15,26 +16,26 @@
         zephyr,bt-hci-rpmsg-ipc = &ipc0;
         zephyr,ieee802154 = &ieee802154;
         zephyr,display = &gc9a01;
-        zephyr,keyboard-scan = &cst816s;
+        //zephyr,keyboard-scan = &cst816s;
     };
 
-    buttons {
+    buttons: buttons {
         compatible = "gpio-keys";
         button0: button_0 {
             gpios = <&gpio0 27 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "Push button 1";
+            zephyr,code = <INPUT_KEY_ENTER>;
         };
         button1: button_1 {
             gpios = <&gpio0 31 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "Push button 2";
+            zephyr,code = <INPUT_KEY_ENTER>;
         };
         button2: button_2 {
             gpios = <&gpio1 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "Push button 3";
+            zephyr,code = <INPUT_KEY_ENTER>;
         };
         button3: button_3 {
             gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "Push button 4";
+            zephyr,code = <INPUT_KEY_ENTER>;
         };
     };
 
@@ -50,12 +51,12 @@
         compatible = "gpio-keys";
         charging_status: charging_status {
             gpios = <&gpio0 30 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;
+            zephyr,code = <INPUT_KEY_ENTER>;
         };
     };
 
     regulator_3v3: regulator-3v3-ctrl {
         compatible = "regulator-fixed";
-        label = "vsys-3v3-ctrl";
         regulator-name = "display";
         enable-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
         regulator-boot-on;
@@ -64,14 +65,12 @@
 
     regulator_5v: regulator-5v-ctrl {
         compatible = "regulator-fixed";
-        label = "vsys-5v-ctrl";
         regulator-name = "max30101";
         enable-gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>;
     };
 
     vib_pwr: vib-pwr-ctrl {
         compatible = "regulator-fixed";
-        label = "vib-pwr-ctrl";
         regulator-name = "vib-pwr-ctrl";
         enable-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
     };
@@ -85,6 +84,13 @@
             pwms = <&pwm1 0 PWM_MSEC(20) 0>;
         };
     };
+
+    lvgl_pointer {
+		compatible = "zephyr,lvgl-pointer-input";
+		input = <&cst816s>;
+        swap-xy;
+		invert-x;
+	};
 
     aliases {
         display-blk = &display_blk;
@@ -101,7 +107,6 @@
         watchdog0 = &wdt0;
         accel = &bmi270;
         mcuboot-button0 = &button1;
-        kscan0 = &cst816s;
     };
 };
 
@@ -211,7 +216,6 @@
         spi-max-frequency = <30000000>;
         reg = <0>;
         width = <240>;
-        label = "buydisplay_gc9a01";
         height = <240>;
         bl-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
         reset-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;

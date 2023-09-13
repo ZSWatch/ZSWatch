@@ -42,6 +42,8 @@ Make sure you have enough space and clone the source code:
 ```
 git clone https://github.com/jakkra/ZSWatch.git
 git submodule update --init --recursive
+west init -l app/
+west update
 ```
 
 ## Building and Flashing

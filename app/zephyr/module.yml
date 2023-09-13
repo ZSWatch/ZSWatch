@@ -1,0 +1,20 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+build:
+  # Path to the Kconfig file that will be sourced into Zephyr Kconfig tree under
+  # Zephyr > Modules > example-application. Path is relative from root of this
+  # repository.
+  # kconfig: Kconfig
+  # Path to the folder that contains the CMakeLists.txt file to be included by
+  # Zephyr build system. The `.` is the root of this repository.
+  cmake: .
+  settings:
+    # Additional roots for boards and DTS files. Zephyr will use the
+    # `<board_root>/boards` for additional boards. The `.` is the root of this
+    # repository.
+    board_root: .
+    # Zephyr will use the `<dts_root>/dts` for additional dts files and
+    # `<dts_root>/dts/bindings` for additional dts binding files. The `.` is
+    # the root of this repository.
+    dts_root: .

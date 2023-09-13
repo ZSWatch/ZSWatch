@@ -17,3 +17,11 @@ build*
 *.vsix
 
 *.bin
+
+# Zephyr workspace
+/.west
+/bootloader
+/modules
+/tools
+/zephyr
+__pycache__

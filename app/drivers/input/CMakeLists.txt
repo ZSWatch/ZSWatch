@@ -1,0 +1,1 @@
+zephyr_sources_ifdef(CONFIG_INPUT_MODIFIED_CST816S		input_cst816s.c)

@@ -2,7 +2,7 @@
 # Copyright (c) 2022 Jakob Krantz <mail@jakobkrantz.se>
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig KSCAN_MODIFIED_CST816S
+menuconfig INPUT_MODIFIED_CST816S
 	bool "Use modified out of tree CST816S capacitive touch panel driver"
 	default y
 	depends on DT_HAS_HYNITRON_CST816S_ENABLED
@@ -10,20 +10,20 @@ menuconfig KSCAN_MODIFIED_CST816S
 	help
 	  Enable modified out of tree driver for hynitron cst816s touch panel.
 
-if KSCAN_MODIFIED_CST816S
+if INPUT_MODIFIED_CST816S
 
-config KSCAN_CST816S_PERIOD
+config INPUT_CST816S_PERIOD
 	int "Sample period"
-	depends on !KSCAN_CST816S_INTERRUPT
+	depends on !INPUT_CST816S_INTERRUPT
 	default 20
 	help
 	  Sample period in milliseconds when in polling mode.
 
-config KSCAN_CST816S_INTERRUPT
+config INPUT_CST816S_INTERRUPT
 	bool "Interrupt support"
 	default y
 	depends on GPIO
 	help
 	  Enable interrupt support (requires GPIO).
 
-endif # KSCAN_CST816S
+endif # INPUT_CST816S

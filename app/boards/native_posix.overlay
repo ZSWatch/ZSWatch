@@ -1,6 +1,12 @@
+#include <zephyr/dt-bindings/input/input-event-codes.h>
 
-&sdl_dc {
-    compatible = "zephyr,sdl-dc";
-    height = <240>;
-    width = <240>;
+/{
+
+    sdl_dc {
+        compatible = "zephyr,sdl-dc";
+        height = <240>;
+        width = <240>;
+    };
+
 };
+ 

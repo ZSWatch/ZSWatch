@@ -67,7 +67,7 @@
         sw-bottom-left = &button2;
         magn = &lis2mdl;
         accel = &bmi270;
-        kscan0 = &cst816s;
+        input = &cst816s;
     };
 };
 

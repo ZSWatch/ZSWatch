@@ -161,7 +161,9 @@ static void refresh_ui(void)
 
 static void general_work(struct k_work *item)
 {
-    delayed_work_item_t *the_work = CONTAINER_OF(item, delayed_work_item_t, work);
+    struct k_work_delayable *delayable_work = CONTAINER_OF(item, struct k_work_delayable, work);
+    
+    delayed_work_item_t *the_work = CONTAINER_OF(delayable_work, delayed_work_item_t, work);
     uint32_t steps;
 
     switch (the_work->type) {

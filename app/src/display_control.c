@@ -8,7 +8,6 @@
 #include <zephyr/drivers/display.h>
 #include <zephyr/logging/log.h>
 #include "lvgl.h"
-#include <zsw_cpu_freq.h>
 
 LOG_MODULE_REGISTER(display_control, LOG_LEVEL_WRN);
 
@@ -23,7 +22,8 @@ typedef enum display_state {
 static const struct pwm_dt_spec display_blk = PWM_DT_SPEC_GET_OR(DT_ALIAS(display_blk), {});
 static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_PATH(regulator_3v3_ctrl));
 static const struct device *display_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_display));
-static const struct device *touch_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_keyboard_scan));
+static const struct device *touch_dev =  DEVICE_DT_GET_OR_NULL(DT_NODELABEL(cst816s));
+
 
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
@@ -68,8 +68,9 @@ int  display_control_sleep_ctrl(bool on)
                 display_blanking_on(display_dev);
                 // Suspend the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
-                pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
-
+                if (device_is_ready(touch_dev)) {
+                    pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
+                }
                 // Turn off PWM peripheral as it consumes like 200-250uA
                 display_control_set_brightness(0);
                 // Cancel pending call to lv_task_handler
@@ -87,7 +88,9 @@ int  display_control_sleep_ctrl(bool on)
                 display_state = DISPLAY_STATE_AWAKE;
                 // Resume the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_RESUME);
-                pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
+                if (device_is_ready(touch_dev)) {
+                    pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
+                }
                 // Turn backlight on, unless the display was off,
                 // then wait to show content until rendering completes.
                 // This avoids user seeing random pixel data for ~500ms
@@ -202,16 +205,10 @@ void display_control_set_brightness(uint8_t percent)
 
 static void lvgl_render(struct k_work *item)
 {
-    // Running at max CPU freq consumes more power, but rendering we
-    // want to do as fast as possible. Also to use 32MHz SPI, CPU has
-    // to be running at 128MHz. Meaning this improves both rendering times
-    // and the SPI transmit time.
-    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
     const int64_t next_update_in_ms = lv_task_handler();
     if (first_render_since_poweron) {
         display_control_set_brightness(last_brightness);
         first_render_since_poweron = false;
     }
-    zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, false);
     k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
 }

@@ -8,15 +8,15 @@
 #define DT_DRV_COMPAT hynitron_cst816s
 
 #include <zephyr/sys/byteorder.h>
-#include <zephyr/drivers/kscan.h>
+#include <zephyr/input/input.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
 
-LOG_MODULE_REGISTER(cst816s, CONFIG_KSCAN_LOG_LEVEL);
+LOG_MODULE_REGISTER(cst816s, CONFIG_INPUT_LOG_LEVEL);
 
-#define CST816S_CHIP_ID                 0xB4
+#define CST816S_CHIP_ID 0xB4
 
 #define CST816S_REG_DATA                0x00
 #define CST816S_REG_GESTURE_ID          0x01
@@ -53,39 +53,38 @@ LOG_MODULE_REGISTER(cst816s, CONFIG_KSCAN_LOG_LEVEL);
 #define CST816S_REG_IOCTL               0xFD
 #define CST816S_REG_DIS_AUTO_SLEEP      0xFE
 
-#define CST816S_MOTION_EN_CON_LR      BIT(2)
-#define CST816S_MOTION_EN_CON_UR      BIT(1)
-#define CST816S_MOTION_EN_DCLICK      BIT(0)
+#define CST816S_MOTION_EN_CON_LR BIT(2)
+#define CST816S_MOTION_EN_CON_UR BIT(1)
+#define CST816S_MOTION_EN_DCLICK BIT(0)
 
-#define CST816S_IRQ_EN_TEST           BIT(7)
-#define CST816S_IRQ_EN_TOUCH          BIT(6)
-#define CST816S_IRQ_EN_CHANGE         BIT(5)
-#define CST816S_IRQ_EN_MOTION         BIT(4)
-#define CST816S_IRQ_ONCE_WLP          BIT(0)
+#define CST816S_IRQ_EN_TEST   BIT(7)
+#define CST816S_IRQ_EN_TOUCH  BIT(6)
+#define CST816S_IRQ_EN_CHANGE BIT(5)
+#define CST816S_IRQ_EN_MOTION BIT(4)
+#define CST816S_IRQ_ONCE_WLP  BIT(0)
 
-#define CST816S_IOCTL_SOFT_RTS        BIT(2)
-#define CST816S_IOCTL_IIC_OD          BIT(1)
-#define CST816S_IOCTL_EN_1V8          BIT(0)
+#define CST816S_IOCTL_SOFT_RTS BIT(2)
+#define CST816S_IOCTL_IIC_OD   BIT(1)
+#define CST816S_IOCTL_EN_1V8   BIT(0)
 
-#define CST816S_POWER_MODE_SLEEP          (0x03)
-#define CST816S_POWER_MODE_EXPERIMENTAL   (0x05)
+#define CST816S_POWER_MODE_SLEEP        (0x03)
+#define CST816S_POWER_MODE_EXPERIMENTAL (0x05)
 
-#define CST816S_EVENT_BITS_POS        (0x06)
+#define CST816S_EVENT_BITS_POS (0x06)
 
-#define CST816S_RESET_DELAY           (5) /* in ms */
-#define CST816S_WAIT_DELAY            (50) /* in ms */
+#define CST816S_RESET_DELAY (5)  /* in ms */
+#define CST816S_WAIT_DELAY  (50) /* in ms */
 
-#define EVENT_PRESS_DOWN	0x00U
-#define EVENT_LIFT_UP		0x01U
-#define EVENT_CONTACT		0x02U
-#define EVENT_NONE		0x03U
-
+#define EVENT_PRESS_DOWN 0x00U
+#define EVENT_LIFT_UP    0x01U
+#define EVENT_CONTACT    0x02U
+#define EVENT_NONE       0x03U
 
 /** cst816s configuration (DT). */
 struct cst816s_config {
 	struct i2c_dt_spec i2c;
 	const struct gpio_dt_spec rst_gpio;
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
+#ifdef CONFIG_INPUT_CST816S_INTERRUPT
 	const struct gpio_dt_spec int_gpio;
 #endif
 };
@@ -94,12 +93,10 @@ struct cst816s_config {
 struct cst816s_data {
 	/** Device pointer. */
 	const struct device *dev;
-	/** KSCAN Callback. */
-	kscan_callback_t callback;
-	/** Work queue (for deferred read). */
+		/** Work queue (for deferred read). */
 	struct k_work work;
 
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
+#ifdef CONFIG_INPUT_CST816S_INTERRUPT
 	/** Interrupt GPIO callback. */
 	struct gpio_callback int_gpio_cb;
 #else
@@ -111,7 +108,6 @@ struct cst816s_data {
 static int cst816s_process(const struct device *dev)
 {
 	const struct cst816s_config *cfg = dev->config;
-	struct cst816s_data *data = dev->data;
 
 	int r;
 	uint8_t event;
@@ -137,11 +133,16 @@ static int cst816s_process(const struct device *dev)
 	event = (x & 0xff) >> CST816S_EVENT_BITS_POS;
 	pressed = (event == EVENT_CONTACT);
 
-	LOG_DBG("event: %d, row: %d, col: %d", event, row, col);
+	LOG_ERR("event: %d, row: %d, col: %d", event, row, col);
 
-	if (data->callback) {
-		data->callback(dev, row, col, pressed);
+	if (pressed) {
+		input_report_abs(dev, INPUT_ABS_X, col, false, K_FOREVER);
+		input_report_abs(dev, INPUT_ABS_Y, row, false, K_FOREVER);
+		input_report_key(dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+	} else {
+		input_report_key(dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
 	}
+
 	return r;
 }
 
@@ -152,9 +153,8 @@ static void cst816s_work_handler(struct k_work *work)
 	cst816s_process(data->dev);
 }
 
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
-static void cst816s_isr_handler(const struct device *dev,
-				struct gpio_callback *cb, uint32_t pins)
+#ifdef CONFIG_INPUT_CST816S_INTERRUPT
+static void cst816s_isr_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	struct cst816s_data *data = CONTAINER_OF(cb, struct cst816s_data, int_gpio_cb);
 
@@ -169,60 +169,13 @@ static void cst816s_timer_handler(struct k_timer *timer)
 }
 #endif
 
-static int cst816s_configure(const struct device *dev,
-			     kscan_callback_t callback)
-{
-	struct cst816s_data *data = dev->data;
-
-	if (!callback) {
-		LOG_ERR("Invalid callback (NULL)");
-		return -EINVAL;
-	}
-
-	data->callback = callback;
-
-	return 0;
-}
-
-static int cst816s_enable_callback(const struct device *dev)
-{
-	struct cst816s_data *data = dev->data;
-
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
-	const struct cst816s_config *config = dev->config;
-
-	gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
-#else
-	k_timer_start(&data->timer, K_MSEC(CONFIG_KSCAN_CST816S_PERIOD),
-		      K_MSEC(CONFIG_KSCAN_CST816S_PERIOD));
-#endif
-
-	return 0;
-}
-
-static int cst816s_disable_callback(const struct device *dev)
-{
-	struct cst816s_data *data = dev->data;
-
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
-	const struct cst816s_config *config = dev->config;
-
-	gpio_remove_callback(config->int_gpio.port, &data->int_gpio_cb);
-#else
-	k_timer_stop(&data->timer);
-#endif
-
-	return 0;
-}
-
 static void cst816s_chip_reset(const struct device *dev)
 {
 	const struct cst816s_config *config = dev->config;
 	int ret;
 
-	if (device_is_ready(config->rst_gpio.port)) {
-		ret = gpio_pin_configure_dt(&config->rst_gpio,
-					    GPIO_OUTPUT_INACTIVE);
+	if (gpio_is_ready_dt(&config->rst_gpio)) {
+		ret = gpio_pin_configure_dt(&config->rst_gpio, GPIO_OUTPUT_INACTIVE);
 		if (ret < 0) {
 			LOG_ERR("Could not configure reset GPIO pin");
 			return;
@@ -257,8 +210,7 @@ static int cst816s_chip_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	ret = i2c_reg_update_byte_dt(&cfg->i2c,
-				     CST816S_REG_IRQ_CTL,
+	ret = i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL,
 				     CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE,
 				     CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE);
 	if (ret < 0) {
@@ -275,11 +227,11 @@ static int cst816s_init(const struct device *dev)
 	data->dev = dev;
 	k_work_init(&data->work, cst816s_work_handler);
 
-#ifdef CONFIG_KSCAN_CST816S_INTERRUPT
+#ifdef CONFIG_INPUT_CST816S_INTERRUPT
 	const struct cst816s_config *config = dev->config;
 	int ret;
 
-	if (!device_is_ready(config->int_gpio.port)) {
+	if (!gpio_is_ready_dt(&config->int_gpio)) {
 		LOG_ERR("GPIO port %s not ready", config->int_gpio.port->name);
 		return -ENODEV;
 	}
@@ -290,26 +242,26 @@ static int cst816s_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = gpio_pin_interrupt_configure_dt(&config->int_gpio,
-			GPIO_INT_EDGE_TO_ACTIVE);
+	ret = gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 	if (ret < 0) {
 		LOG_ERR("Could not configure interrupt GPIO interrupt.");
 		return ret;
 	}
 
-	gpio_init_callback(&data->int_gpio_cb, cst816s_isr_handler,
-			   BIT(config->int_gpio.pin));
+	gpio_init_callback(&data->int_gpio_cb, cst816s_isr_handler, BIT(config->int_gpio.pin));
+
+	ret = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
+	if (ret < 0) {
+		LOG_ERR("Could not set gpio callback");
+		return ret;
+	}
 #else
 	k_timer_init(&data->timer, cst816s_timer_handler, NULL);
+	k_timer_start(&data->timer, K_MSEC(CONFIG_INPUT_CST816S_PERIOD),
+		      K_MSEC(CONFIG_INPUT_CST816S_PERIOD));
 #endif
 
 	return cst816s_chip_init(dev);
-}
-
-static const struct kscan_driver_api cst816s_driver_api = {
-	.config = cst816s_configure,
-	.enable_callback = cst816s_enable_callback,
-	.disable_callback = cst816s_disable_callback,
 };
 
 #ifdef CONFIG_PM_DEVICE
@@ -338,19 +290,17 @@ static int cst816s_pm_action(const struct device *dev,
 }
 #endif /* CONFIG_PM_DEVICE */
 
-#define CST816S_DEFINE(index)                                                     \
-	PM_DEVICE_DT_INST_DEFINE(index, cst816s_pm_action);                         \
-	static const struct cst816s_config cst816s_config_##index = {             \
-		.i2c = I2C_DT_SPEC_INST_GET(index),                               \
-		COND_CODE_1(CONFIG_KSCAN_CST816S_INTERRUPT,                       \
-			   (.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),),\
-			   ())                                                    \
-		.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(index, rst_gpios, {}),       \
-	};                                                                        \
-	static struct cst816s_data cst816s_data_##index;                          \
-	DEVICE_DT_INST_DEFINE(index, cst816s_init, PM_DEVICE_DT_INST_GET(index),	\
-			     &cst816s_data_##index, &cst816s_config_##index,      \
-			     POST_KERNEL, CONFIG_KSCAN_INIT_PRIORITY,             \
-			     &cst816s_driver_api);
 
+#define CST816S_DEFINE(index)                                                                      \
+	PM_DEVICE_DT_INST_DEFINE(index, cst816s_pm_action);                         \
+	static const struct cst816s_config cst816s_config_##index = {                              \
+		.i2c = I2C_DT_SPEC_INST_GET(index),                                                \
+		COND_CODE_1(CONFIG_INPUT_CST816S_INTERRUPT,                                        \
+			    (.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),), ())           \
+			.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(index, rst_gpios, {}),                \
+	};                                                                                         \
+	static struct cst816s_data cst816s_data_##index;                                           \
+	DEVICE_DT_INST_DEFINE(index, cst816s_init, NULL, &cst816s_data_##index,                    \
+			      &cst816s_config_##index, POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY,    \
+			      NULL);
 DT_INST_FOREACH_STATUS_OKAY(CST816S_DEFINE)

@@ -12,7 +12,7 @@ static void zds_app_stop(void);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_LISTENER_DEFINE(zds_app_accel_lis, zbus_accel_data_callback);
+ZBUS_LISTENER_DEFINE_WITH_ENABLE(zds_app_accel_lis, zbus_accel_data_callback, false);
 
 LV_IMG_DECLARE(zephyr_icon_round);
 
@@ -26,12 +26,12 @@ static application_t app = {
 static void zds_app_start(lv_obj_t *root, lv_group_t *group)
 {
     zds_ui_show(root);
-    zbus_chan_add_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
+    zbus_obs_set_enable(&zds_app_accel_lis, true);
 }
 
 static void zds_app_stop(void)
 {
-    zbus_chan_rm_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
+    zbus_obs_set_enable(&zds_app_accel_lis, false);
     zds_ui_remove();
 }
 

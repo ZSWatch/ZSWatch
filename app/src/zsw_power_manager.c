@@ -25,6 +25,7 @@
 #include <zephyr/logging/log.h>
 #include <events/activity_event.h>
 #include <ram_retention_storage.h>
+#include <zsw_cpu_freq.h>
 
 LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 
@@ -104,6 +105,8 @@ static void enter_inactive(void)
     retained_update();
     display_control_sleep_ctrl(false);
 
+    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
+
     // Screen inactive -> wait for NO_MOTION interrupt in order to power off display regulator.
     zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
@@ -119,6 +122,12 @@ static void enter_active(void)
     is_active = true;
     is_stationary = false;
     last_wakeup_time = k_uptime_get_32();
+
+    // Running at max CPU freq consumes more power, but rendering we
+    // want to do as fast as possible. Also to use 32MHz SPI, CPU has
+    // to be running at 128MHz. Meaning this improves both rendering times
+    // and the SPI transmit time.
+    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
 
     ret = display_control_pwr_ctrl(true);
     display_control_sleep_ctrl(true);

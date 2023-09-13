@@ -1,2 +1,2 @@
 add_subdirectory(display)
-add_subdirectory(kscan)
+add_subdirectory(input)
