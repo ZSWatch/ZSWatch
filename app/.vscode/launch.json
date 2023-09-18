@@ -1,0 +1,30 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "nrf-connect",
+			"request": "launch",
+			"name": "Launch build_rev1",
+			"config": "${workspaceFolder}/build_rev1",
+			"runToEntryPoint": "main",
+			"flash": false
+		},
+		{
+			"type": "nrf-connect",
+			"request": "launch",
+			"name": "Launch build_release",
+			"config": "${workspaceFolder}/build_release",
+			"runToEntryPoint": "main",
+			"flash": false
+		},
+		{
+            "name": "Debug Native Posix",
+            "type": "gdb",
+            "request": "launch",
+            "target": "build/zephyr/zephyr.exe",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+            "arguments": "--bt-dev=hci0"
+        }
+	]
+}

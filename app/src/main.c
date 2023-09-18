@@ -209,10 +209,10 @@ static bool load_retention_ram(void)
     retained.boots += 1;
     retained_update();
 
-    printk("Retained data: %s\n", retained_ok ? "valid" : "INVALID");
-    printk("Boot count: %u\n", retained.boots);
-    printk("uptime_latest: %" PRIu64 "\n", retained.uptime_latest);
-    printk("Active Ticks: %" PRIu64 "\n", retained.uptime_sum);
+    LOG_DBG("Retained data: %s\n", retained_ok ? "valid" : "INVALID");
+    LOG_DBG("Boot count: %u\n", retained.boots);
+    LOG_DBG("uptime_latest: %" PRIu64 "\n", retained.uptime_latest);
+    LOG_DBG("Active Ticks: %" PRIu64 "\n", retained.uptime_sum);
 
     return retained_ok;
 }
