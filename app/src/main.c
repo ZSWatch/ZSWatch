@@ -16,7 +16,6 @@
 #include <zsw_clock.h>
 #include <lvgl.h>
 #include "watchface_app.h"
-#include <heart_rate_sensor.h>
 #include <sys/time.h>
 #include <ram_retention_storage.h>
 #include <zsw_imu.h>
@@ -98,7 +97,6 @@ static void run_init_work(struct k_work *item)
     lv_indev_t *touch_indev;
 
     load_retention_ram();
-    heart_rate_sensor_init();
     notification_manager_init();
     enable_bluetoth();
     zsw_imu_init();

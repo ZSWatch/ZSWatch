@@ -9,7 +9,6 @@
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
 #include <zsw_clock.h>
-#include <heart_rate_sensor.h>
 #include <zsw_imu.h>
 #include <ram_retention_storage.h>
 #include <events/ble_data_event.h>
