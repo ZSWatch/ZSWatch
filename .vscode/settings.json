@@ -1,13 +1,10 @@
 {
     "nrf-connect.applications": [
+        "${workspaceFolder}/app",
         "${workspaceFolder}\\app"
     ],
     "nrf-connect.boardRoots": [
         "${workspaceFolder}/app",
-        "${workspaceFolder}\\app",
-        "/home/jkra/Documents/ZSWatch"
+        "${workspaceFolder}\\app"
     ],
-    "files.associations": {
-        "xiosbase": "c"
-    },
 }

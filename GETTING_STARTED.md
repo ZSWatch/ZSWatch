@@ -126,7 +126,23 @@ sudo ./build/zephyr/zephyr.exe --bt-dev=hci<hci index>
 ```
 
 __Tips:__
-1. If you want to be able to debug: `sudo gdb -ex=r --args build/zephyr/zephyr.exe --bt-dev=hci<hci index>`
+1. If you want to be able to debug: `sudo gdb -ex=r --args build/zephyr/zephyr.exe --bt-dev=hci<hci index>` or add below in your `.vscode/launch.json`
+```
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+            "name": "Debug Native Posix",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/build/zephyr/zephyr.exe",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+            "arguments": "--bt-dev=hci0" // Fill in hciX
+        }
+	]
+}
+```
 2. If you want to scale up the SDL window (4x) apply the patch in `app/zephyr_patches/sdl_upscale.patch`
 
 https://github.com/jakkra/ZSWatch/assets/4318648/3b3e4831-a217-45a9-8b90-7b48cea7647e
