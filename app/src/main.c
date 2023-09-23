@@ -145,7 +145,7 @@ void run_wdt_work(struct k_work *item)
 
 int main(void)
 {
-#ifdef CONFIG_TASK_WDT
+#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
     const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
     if (!device_is_ready(hw_wdt_dev)) {
         printk("Hardware watchdog %s is not ready; ignoring it.\n",

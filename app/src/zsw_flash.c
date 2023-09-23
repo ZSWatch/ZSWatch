@@ -77,10 +77,10 @@ static void single_sector_test(const struct device *flash_dev)
 
 static int zsw_flash_test(void)
 {
-	const struct device *flash_dev = DEVICE_DT_GET(DT_ALIAS(spi_flash0));
+	const struct device *flash_dev = DEVICE_DT_GET_OR_NULL(DT_ALIAS(spi_flash0));
 
-	if (!device_is_ready(flash_dev)) {
-		LOG_ERR("No external flash present: %s", flash_dev->name);
+	if (!flash_dev || !device_is_ready(flash_dev)) {
+		LOG_ERR("No external flash present: %s", flash_dev ? flash_dev->name: "spi_flash0");
 		return 0;
 	}
 

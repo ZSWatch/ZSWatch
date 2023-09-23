@@ -1,44 +1,33 @@
-name: Build firmware
-on: push
+name: Build
 
-env:
-  ZEPHYR_VERSION: 3.4.0
+on:
+  push:
+  pull_request:
 
 jobs:
-  NRF:
-    runs-on: ubuntu-20.04
+  build:
+    runs-on: ubuntu-22.04
+    container: ghcr.io/zephyrproject-rtos/ci:v0.26.2
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
     strategy:
       matrix:
-        ncs_version: [2.4]
-        board: [zswatch_nrf5340_cpuapp@1,zswatch_nrf5340_cpuapp@2]
+        built_type: [debug, release]
+        board: [zswatch_nrf5340_cpuapp@1, zswatch_nrf5340_cpuapp@3, native_posix]
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
-          path: project
+          path: ZSWatch
           submodules: recursive
-      - name: Build ZSWatch Binaries
-        working-directory: project
-        run: |
-          docker run -v $PWD:/workdir/project nordicplayground/nrfconnect-sdk:v${{ matrix.ncs_version }}-branch \
-            west build --board ${{ matrix.board }} /workdir/project/app
 
-  Posix:
-    name: Posix build
-    runs-on: ubuntu-20.04
-    container: 
-      image:  ghcr.io/bcdevices/zephyr:v3.4.0-0
-      options: --user root
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - name: Install deps
-      run: |
-        dpkg --add-architecture i386
-        apt-get -y update
-        apt-get install --no-install-recommends -y libsdl2-dev:i386
-    - name: build
-      run: |
-        cd /usr/src/zephyr-3.4.0
-        west build --board native_posix $GITHUB_WORKSPACE/app
+      - name: Initialize
+        working-directory: ZSWatch
+        run: |
+          west init -l app
+          west update -o=--depth=1 -n
+
+      - name: Build firmware
+        working-directory: ZSWatch
+        run: |
+          west build app -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
