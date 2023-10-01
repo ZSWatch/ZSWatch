@@ -30,6 +30,9 @@ Download and install the tools needed for flashing.
 - [SEGGER J-Link](https://www.segger.com/downloads/jlink/#J-LinkSoftwareAndDocumentationPack)
 - [nRF Commond line tools](https://www.nordicsemi.com/Products/Development-tools/nrf-command-line-tools/download)
 
+> Don´t forget to set the group policies to allow the execution of local scripts when using Windows and a virtual environment for Zephyr. Otherwise the Zephyr installation fails. 
+> Open a power shell as administrator and run `set-executionpolicy remotesigned` to change it. 
+
 Set up toolchain and everything by following [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
 At this point it's not possible to use nRF Connect SDK as features and fixes not yet released in NCS are needed to build ZSWatch SW.
 
@@ -37,7 +40,8 @@ At this point it's not possible to use nRF Connect SDK as features and fixes not
 ```
 git clone https://github.com/jakkra/ZSWatch.git
 git submodule update --init --recursive
-west init -l app/
+cd app
+west init -l .
 west update
 ```
 
