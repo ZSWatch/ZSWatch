@@ -12,7 +12,7 @@
 	url = https://github.com/100askTeam/lv_lib_100ask.git
 [submodule "hardware/ZSWatch-HW"]
 	path = hardware/ZSWatch-HW
-	url = git@github.com:jakkra/ZSWatch-HW.git
+	url = https://github.com/jakkra/ZSWatch-HW.git
 [submodule "hardware/ZSWatch-Dock"]
 	path = hardware/ZSWatch-Dock
-	url = git@github.com:jakkra/ZSWatch-Dock.git
+	url = https://github.com/jakkra/ZSWatch-Dock.git
