@@ -34,7 +34,6 @@ Set up toolchain and everything by following [Zephyr Getting Started Guide](http
 At this point it's not possible to use nRF Connect SDK as features and fixes not yet released in NCS are needed to build ZSWatch SW.
 
 ## Cloning source code
-Make sure you have enough space and clone the source code:
 ```
 git clone https://github.com/jakkra/ZSWatch.git
 git submodule update --init --recursive
@@ -44,39 +43,38 @@ west update
 
 ## Building and Flashing
 
-There to approach to deal with Zephyr based projects:
+There are two approaches to deal with Zephyr based projects:
 - [Using the nRF Connect extension for VSCode](#using-the-nrf-connect-extension-for-vscode)
 - [Using the command line](#using-the-command-line)
+
+### Compiling
+Due to a bug in nRF Connect VSCode plugin at the moment it's necessary to do the first build using the command line. Afterwards everything can be done withing VSCode in the nRF Connect Plugin.
+
+### Using the command line
+- Set revision zswatch_nrf5340_cpuapp@\<revision\> to 1 or 3 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1, otherwise revision 3.
+- Replace release.conf with debug.conf if the build is for development.
+
+Example of building for ZSWatch board:
+```
+west build --board zswatch_nrf5340_cpuapp@3 -- -DOVERLAY_CONFIG="boards/release.conf"
+west flash
+```
 
 ### Using the nRF Connect extension for VSCode
 To be able to build, flash and debug via VSCode please install [nRF Connect for VS Code Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack).   
 [Here](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html) you can also find a manual on how to deal with the nRF Connect extension.
 Follow the steps below to open and build the ZSWatch application:
-- Press "Open an existing application" under the "WELCOME" field of nRF Connect extension. 
-- Select the `app` folder in the ZSWatch project root folder.
-- Create new build configuration by clicking on "No build configuration" field in "APPLICATIONS" window.
-- Choose `zswatch_nrf5340_cpuapp` as the board.
-- Set revision to 1 or 3 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1, otherwise revision 3.
-- Press "Add fragment" under the "Kconfig fragments" field, here choose either debug (for developing) or release (for daily use).
-- Press "Build configuration" button.
-
-
-### Using the command line
-The second option is to use a command line to build and flash Zephyr applications. [Here](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html) you can find some more information.   
-Example of building for ZSWatch board:
-```
-west build --board zswatch_nrf5340_cpuapp@3 -- -DOVERLAY_CONFIG="boards/{debug/release}.conf"
-west flash
-```
+- Make sure you compiled once using command line steps above.
+- Open the `app` folder in VSCode (important it's the `app` folder) the the nRF Connect plugin will automatically see the app and you should see the build, debug etc. buttons. If not press "Add Folder as Application and pick the app` folder. 
 
 __NOTE__
 <br>
-Since the nRF5340 is a dual core microcontroller where the second core is designed to serve the BLE stack, the second image needs to be flashed for BLE operation.
+Since the nRF5340 is a dual core microcontroller where the second core is designed to serve the Bluetooth Controller, the second image needs to be flashed for BLE operation.
 If you are building with Zephyr you need in addition manually compile and flash the `zephyr/samples/bluetooth/hci_rpmsg` sample and flash that to the NET core. For convenience I have also uploaded a pre-compiled [hex image for NET CPU](app/child_image/GENERATED_CP_NETWORK_merged_domains.hex) if you don't want to recompile it yourself. Flash it using following:
 <br>
 `nrfjprog -f NRF53 --coprocessor CP_NETWORK --program app/child_image/GENERATED_CP_NETWORK_merged_domains.hex --chiperase`
 
-To build the NET core image:
+To build the NET core image yourself:
 Command line: 
 - Navigate to `zephyr/samples/bluetooth/hci_rpmsg`
 - Build using `west build --board zswatch_nrf5340_cpunet@3 -- -DBOARD_ROOT=<ZSWatch absolute path>/app  -DOVERLAY_CONFIG=nrf5340_cpunet_df-bt_ll_sw_split.conf`
