@@ -10,3 +10,9 @@
 [submodule "app/src/applications/2048/2048_lib"]
 	path = app/src/applications/2048/2048_lib
 	url = https://github.com/100askTeam/lv_lib_100ask.git
+[submodule "hardware/ZSWatch-HW"]
+	path = hardware/ZSWatch-HW
+	url = git@github.com:jakkra/ZSWatch-HW.git
+[submodule "hardware/ZSWatch-Dock"]
+	path = hardware/ZSWatch-Dock
+	url = git@github.com:jakkra/ZSWatch-Dock.git

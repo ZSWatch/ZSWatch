@@ -1,9 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP AT25SF128A-MHB-T
-D NOR Flash 128 Mbit, 3.0V (2.7V to 3.6V), -40C to 85C, DFN 5x6 (Tape Reel), Single, Dual, Quad SPI NOR flash
-K
-F https://www.mouser.co.uk/datasheet/2/713/DIAL_S_A0012812015_1-2586228.pdf
-$ENDCMP
-#
-#End Doc Library
