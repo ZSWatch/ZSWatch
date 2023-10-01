@@ -40,13 +40,13 @@ int zsw_periodic_chan_add_obs(const struct zbus_channel *chan, const struct zbus
 
 int zsw_periodic_chan_rm_obs(const struct zbus_channel *chan, const struct zbus_observer *obs)
 {
-    //struct k_work_delayable *work = NULL;
+    struct k_work_delayable *work = NULL;
     int ret = zbus_chan_rm_obs(chan, obs, K_MSEC(100));
-    //if (ret == 0 && sys_slist_is_empty(chan->runtime_observers)) {
-    //    work = (struct k_work_delayable *)zbus_chan_user_data(chan);
-    //    __ASSERT(k_work_delayable_is_pending(work), "Periodic slow work is not pending");
-    //    ret = k_work_cancel_delayable(work);
-    //}
+    if (ret == 0 && sys_slist_is_empty(&chan->data->observers)) {
+        work = (struct k_work_delayable *)zbus_chan_user_data(chan);
+        __ASSERT(k_work_delayable_is_pending(work), "Periodic slow work is not pending");
+        ret = k_work_cancel_delayable(work);
+    }
     return ret;
 }
 
