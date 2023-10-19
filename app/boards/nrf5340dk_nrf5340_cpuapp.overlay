@@ -60,14 +60,48 @@
         zephyr,display = &gc9a01;
         zephyr,keyboard-scan = &cst816s;
     };
+
     aliases {
         sw-top-right = &button2;
         sw-top-left = &button1;
-        sw-bottom-right = &button4;
+        sw-bottom-right = &button0;
         sw-bottom-left = &button3;
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
+    };
+
+    longpress: longpress {
+        input = <&buttons>;
+        compatible = "zephyr,input-longpress";
+        input-codes = <INPUT_KEY_KP0>;
+        short-codes = <INPUT_KEY_4>;
+        long-codes = <INPUT_KEY_Y>;
+        long-delay-ms = <1000>;
+    };
+
+    buttons: buttons {
+        compatible = "gpio-keys";
+        button0: button_0 {
+            label = "top-right";
+            gpios = <&gpio0 23 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_1>;
+        };
+        button1: button_1 {
+            label = "bottom-left";
+            gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_2>;
+        };
+        button2: button_2 {
+            label = "bottom-right";
+            gpios = <&gpio0 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_3>;
+        };
+        button3: button_3 {
+            label = "top-left";
+            gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_KP0>;
+        };
     };
 };
 
@@ -158,4 +192,77 @@
         reset-gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;
         dc-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
     };
+};
+
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+		lvgl_lfs: lvgl_lfs {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lvgl_lfs";
+			partition = <&lvgl_lfs_partition>;
+			automount;
+			read-size = <1024>;
+			prog-size = <512>;
+			cache-size = <4096>;
+			lookahead-size = <4096>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+&mx25r64 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		lvgl_lfs_partition: partition@0 {
+			label = "lvgl_lfs_partition";
+			reg = <0x00000000 0x00200000>;
+		};
+		lvgl_raw_partition: partition@200000 {
+			label = "lvgl_raw_partition";
+			reg = <0x00200000 0x00200000>;
+		};
+        settings_partition: partition@400000 {
+            label = "settings_partition";
+            reg = <0x400000 0x100000 >;
+        };
+	};
+};
+
+/ {
+    sram@2007FFFF {
+        compatible = "zephyr,memory-region", "mmio-sram";
+        reg = <0x2007FFFF 0x1>;
+        zephyr,memory-region = "RetainedMem";
+        status = "okay";
+
+        retainedmem {
+            compatible = "zephyr,retained-ram";
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            retention0: retention@0 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x0 0x1>;
+            };
+        };
+    };
+
+    chosen {
+            zephyr,boot-mode = &retention0;
+    };
+};
+
+/* Reduce SRAM0 usage by 4 byte to account for non-init area
+* Even though boot mode is only one byte, nrfjprog only allows
+* 4 byte writes, hence reserve 4.
+*/
+&sram0 {
+    reg = <0x20000000 0x7FFFC>;
 };
