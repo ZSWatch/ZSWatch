@@ -46,13 +46,13 @@ typedef struct {
 } lv_settings_button_t;
 
 typedef struct {
-    const char *name;
-    bool        inital_val;
+    const char  *name;
+    bool        *inital_val;
 } lv_settings_switch_t;
 
 typedef struct {
     const char *name;
-    int32_t     inital_val;
+    int32_t     *inital_val;
     int32_t     min_val;
     int32_t     max_val;
 } lv_settings_slider_t;

@@ -10,6 +10,7 @@
 #include "sensors/zsw_imu.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
+#include "zsw_settings.h"
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group);
 static void settings_app_stop(void);
@@ -17,12 +18,31 @@ static void settings_app_stop(void);
 static void on_close_settings(void);
 static void on_brightness_changed(lv_setting_value_t value, bool final);
 static void on_display_on_changed(lv_setting_value_t value, bool final);
+static void on_display_vib_press_changed(lv_setting_value_t value, bool final);
 static void on_aoa_enable_changed(lv_setting_value_t value, bool final);
+static void on_aoa_interval_changed(lv_setting_value_t value, bool final);
 static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 
 LV_IMG_DECLARE(settings);
+
+typedef struct setting_app {
+    zsw_settings_brightness_t           brightness;
+    zsw_settings_vib_on_press_t         vibration_on_click;
+    zsw_settings_display_always_on_t    display_always_on;
+    zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
+    zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
+} setting_app_t;
+
+// Default values.
+static setting_app_t settings_app = {
+    .brightness = 30,
+    .vibration_on_click = true,
+    .display_always_on = false,
+    .ble_aoa_enabled = false,
+    .ble_aoa_tx_interval = 100
+};
 
 static application_t app = {
     .name = "Settings",
@@ -39,19 +59,20 @@ static lv_settings_item_t general_page_items[] = {
         .item = {
             .slider = {
                 .name = "Brightness",
-                .inital_val = 3,
+                .inital_val = &settings_app.brightness,
                 .min_val = 1,
-                .max_val = 10,
+                .max_val = 100,
             }
         }
     },
     {
         .type = LV_SETTINGS_TYPE_SWITCH,
         .icon = LV_SYMBOL_AUDIO,
+        .change_callback = on_display_vib_press_changed,
         .item = {
             .sw = {
                 .name = "Vibrate on click",
-                .inital_val = true
+                .inital_val = &settings_app.vibration_on_click,
             }
         }
     },
@@ -62,7 +83,7 @@ static lv_settings_item_t general_page_items[] = {
         .item = {
             .sw = {
                 .name = "Display always on",
-                .inital_val = true
+                .inital_val = &settings_app.display_always_on
             }
         }
     },
@@ -81,13 +102,13 @@ static lv_settings_item_t general_page_items[] = {
 
 static lv_settings_item_t bluetooth_page_items[] = {
     {
-        .type = LV_SETTINGS_TYPE_SWITCH,
+        .type = LV_SETTINGS_TYPE_BTN,
         .icon = LV_SYMBOL_BLUETOOTH,
         .change_callback = on_pairing_enable_changed,
         .item = {
-            .sw = {
+            .btn = {
                 .name = "Pairable",
-                .inital_val = false
+                .text = "Enable"
             }
         }
     },
@@ -109,19 +130,20 @@ static lv_settings_item_t bluetooth_page_items[] = {
         .item = {
             .sw = {
                 .name = "AoA",
-                .inital_val = false
+                .inital_val = &settings_app.ble_aoa_enabled
             }
         }
     },
     {
         .type = LV_SETTINGS_TYPE_SLIDER,
         .icon = LV_SYMBOL_SHUFFLE,
+        .change_callback = on_aoa_interval_changed,
         .item = {
             .slider = {
                 .name = "CTE Tx interval",
-                .inital_val = 100,
-                .min_val = 1,
-                .max_val = 10 // Map to array index or something, having 8-5000ms will make slider very slow
+                .inital_val = &settings_app.ble_aoa_tx_interval,
+                .min_val = 10,
+                .max_val = 5000
             }
         }
     },
@@ -142,41 +164,55 @@ static lv_settings_page_t settings_menu[] = {
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    printk("settings_app_start\n");
     lv_settings_create(settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
 }
 
 static void settings_app_stop(void)
 {
-    printk("settings_app_stop\n");
     settings_ui_remove();
 }
 
 static void on_close_settings(void)
 {
-    printk("on_close_settings\n");
     zsw_app_manager_app_close_request(&app);
 }
 
 static void on_brightness_changed(lv_setting_value_t value, bool final)
 {
-    // Slider have values 0-10 hence multiply with 10 to get brightness in percent
-    zsw_display_control_set_brightness(value.item.slider * 10);
-    value.item.slider *= 10;
-    settings_save_one("settings/brightness", &value.item.slider, sizeof(value.item.slider));
+    settings_app.brightness = value.item.slider;
+    zsw_display_control_set_brightness(settings_app.brightness);
+    if (final) {
+        settings_save_one(ZSW_SETTINGS_BRIGHTNESS, &settings_app.brightness, sizeof(settings_app.brightness));
+    }
 }
 
 static void on_display_on_changed(lv_setting_value_t value, bool final)
 {
+    settings_app.display_always_on = value.item.sw;
+    settings_save_one(ZSW_SETTINGS_DISPLAY_ALWAYS_ON, &settings_app.display_always_on,
+                      sizeof(settings_app.display_always_on));
+}
 
+static void on_display_vib_press_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.vibration_on_click = value.item.sw;
+    settings_save_one(ZSW_SETTINGS_VIBRATE_ON_PRESS, &settings_app.vibration_on_click,
+                      sizeof(settings_app.vibration_on_click));
 }
 
 static void on_aoa_enable_changed(lv_setting_value_t value, bool final)
 {
-    if (value.item.sw) {
-        bleAoaAdvertise(100, 100, 1);
-    } else {
-        bleAoaAdvertise(100, 100, 0);
+    settings_app.ble_aoa_enabled = value.item.sw;
+    bleAoaAdvertise(settings_app.ble_aoa_tx_interval, settings_app.ble_aoa_tx_interval, settings_app.ble_aoa_enabled);
+    settings_save_one(ZSW_SETTINGS_BLE_AOA_EN, &settings_app.ble_aoa_enabled, sizeof(settings_app.ble_aoa_enabled));
+}
+
+static void on_aoa_interval_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.ble_aoa_tx_interval = value.item.slider;
+    if (final) {
+        settings_save_one(ZSW_SETTINGS_BLE_AOA_INT, &settings_app.ble_aoa_tx_interval,
+                          sizeof(settings_app.ble_aoa_tx_interval));
     }
 }
 
@@ -207,35 +243,73 @@ static void on_reset_steps_changed(lv_setting_value_t value, bool final)
     }
 }
 
-static int setting_on_commit(void)
-{
-    printk("Settings loaded\n");
-    return 0;
-}
-
 static int settings_load_cb(const char *name, size_t len,
                             settings_read_cb read_cb, void *cb_arg)
 {
     const char *next;
     int rc;
-    int32_t bri;
 
-    if (settings_name_steq(name, "brightness", &next) && !next) {
-        if (len != sizeof(bri)) {
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_BRIGHTNESS, &next) && !next) {
+
+        if (len != sizeof(settings_app.brightness)) {
             return -EINVAL;
         }
 
-        rc = read_cb(cb_arg, &bri, sizeof(bri));
-        printk("Read br: %d\n", bri);
-        general_page_items[0].item.slider.inital_val = bri / 10;
-        zsw_display_control_set_brightness(bri);
+        rc = read_cb(cb_arg, &settings_app.brightness, sizeof(settings_app.brightness));
+        zsw_display_control_set_brightness(settings_app.brightness);
         if (rc >= 0) {
             return 0;
         }
-
         return rc;
     }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_VIBRATION_ON_PRESS, &next) && !next) {
+        if (len != sizeof(settings_app.vibration_on_click)) {
+            return -EINVAL;
+        }
 
+        rc = read_cb(cb_arg, &settings_app.vibration_on_click, sizeof(settings_app.vibration_on_click));
+        settings_app.vibration_on_click = settings_app.vibration_on_click;
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_DISPLAY_ALWAYS_ON, &next) && !next) {
+        if (len != sizeof(settings_app.display_always_on)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.display_always_on, sizeof(settings_app.display_always_on));
+        settings_app.display_always_on = settings_app.display_always_on;
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_BLE_AOA_EN, &next) && !next) {
+        if (len != sizeof(settings_app.ble_aoa_enabled)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.ble_aoa_enabled, sizeof(settings_app.ble_aoa_enabled));
+        settings_app.ble_aoa_enabled = settings_app.ble_aoa_enabled;
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_BLE_AOA_INT, &next) && !next) {
+        if (len != sizeof(settings_app.ble_aoa_tx_interval)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.ble_aoa_tx_interval, sizeof(settings_app.ble_aoa_tx_interval));
+        settings_app.ble_aoa_tx_interval = settings_app.ble_aoa_tx_interval;
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
 
     return -ENOENT;
 }
@@ -243,11 +317,12 @@ static int settings_load_cb(const char *name, size_t len,
 static int settings_app_add(void)
 {
     zsw_app_manager_add_application(&app);
+    memset(&settings_app, 0, sizeof(settings_app));
 
     return 0;
 }
 
-SETTINGS_STATIC_HANDLER_DEFINE(my_name, "settings", NULL,
-                               settings_load_cb, setting_on_commit, NULL);
+SETTINGS_STATIC_HANDLER_DEFINE(settings_app_handler, ZSW_SETTINGS_PATH, NULL,
+                               settings_load_cb, NULL, NULL);
 
 SYS_INIT(settings_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

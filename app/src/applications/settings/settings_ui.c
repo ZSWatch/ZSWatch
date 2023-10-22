@@ -198,12 +198,12 @@ void lv_settings_create(lv_settings_page_t *pages, uint8_t num_pages, const char
                     create_text(cont, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
                     break;
                 case LV_SETTINGS_TYPE_SWITCH:
-                    obj = create_switch(cont, item->icon, item->item.sw.name, item->item.sw.inital_val);
+                    obj = create_switch(cont, item->icon, item->item.sw.name, *item->item.sw.inital_val);
                     lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item->change_callback);
                     break;
                 case LV_SETTINGS_TYPE_SLIDER:
                     obj = create_slider(cont, item->icon, item->item.slider.name, item->item.slider.min_val, item->item.slider.max_val,
-                                        item->item.slider.inital_val);
+                                        *item->item.slider.inital_val);
                     lv_obj_add_event_cb(obj, slider_event_cb, LV_EVENT_ALL, item->change_callback);
                     break;
                 case LV_SETTINGS_TYPE_BTN:
