@@ -25,6 +25,8 @@
 #include <events/activity_event.h>
 #include <ram_retention_storage.h>
 #include <zsw_cpu_freq.h>
+#include <zephyr/settings/settings.h>
+#include <zsw_settings.h>
 
 #include "managers/zsw_power_manager.h"
 
@@ -47,6 +49,7 @@ ZBUS_CHAN_DECLARE(activity_state_data_chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_LISTENER_DEFINE(power_manager_accel_lis, zbus_accel_data_callback);
 
+static uint32_t idle_timeout_seconds = IDLE_TIMEOUT_SECONDS;
 static bool is_active = true;
 static bool is_stationary;
 static uint32_t last_wakeup_time;
@@ -99,7 +102,7 @@ static void enter_active(void)
 
     update_and_publish_state(ZSW_ACTIVITY_STATE_ACTIVE);
 
-    k_work_schedule(&idle_work, K_SECONDS(IDLE_TIMEOUT_SECONDS));
+    k_work_schedule(&idle_work, K_SECONDS(idle_timeout_seconds));
 }
 
 bool zsw_power_manager_reset_idle_timout(void)
@@ -110,7 +113,7 @@ bool zsw_power_manager_reset_idle_timout(void)
         return true;
     } else {
         // We are active, then just reschdule the inactivity timeout.
-        k_work_reschedule(&idle_work, K_SECONDS(IDLE_TIMEOUT_SECONDS));
+        k_work_reschedule(&idle_work, K_SECONDS(idle_timeout_seconds));
         return false;
     }
 }
@@ -123,10 +126,10 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void)
     uint32_t time_since_lvgl_activity = lv_disp_get_inactive_time(NULL);
     uint32_t time_to_timeout = k_ticks_to_ms_ceil32(k_work_delayable_remaining_get(&idle_work));
 
-    if (time_since_lvgl_activity >= IDLE_TIMEOUT_SECONDS * 1000) {
+    if (time_since_lvgl_activity >= idle_timeout_seconds * 1000) {
         return time_to_timeout;
     } else {
-        return MAX(time_to_timeout, IDLE_TIMEOUT_SECONDS * 1000 - lv_disp_get_inactive_time(NULL));
+        return MAX(time_to_timeout, idle_timeout_seconds * 1000 - lv_disp_get_inactive_time(NULL));
     }
 }
 
@@ -149,10 +152,10 @@ static void handle_idle_timeout(struct k_work *item)
 {
     uint32_t last_lvgl_activity_ms = lv_disp_get_inactive_time(NULL);
 
-    if (last_lvgl_activity_ms > IDLE_TIMEOUT_SECONDS * 1000) {
+    if (last_lvgl_activity_ms > idle_timeout_seconds * 1000) {
         enter_inactive();
     } else {
-        k_work_schedule(&idle_work, K_MSEC(IDLE_TIMEOUT_SECONDS * 1000 - last_lvgl_activity_ms));
+        k_work_schedule(&idle_work, K_MSEC(idle_timeout_seconds * 1000 - last_lvgl_activity_ms));
     }
 }
 
@@ -200,11 +203,36 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
     }
 }
 
+static int settings_load_handler(const char *key, size_t len,
+                                 settings_read_cb read_cb, void *cb_arg, void *param)
+{
+    int rc;
+    zsw_settings_display_always_on_t *display_always_on = (zsw_settings_display_always_on_t *)param;
+    if (len != sizeof(zsw_settings_display_always_on_t)) {
+        return -EINVAL;
+    }
+
+    rc = read_cb(cb_arg, display_always_on, sizeof(zsw_settings_display_always_on_t));
+    if (rc >= 0) {
+        return 0;
+    }
+
+    return -ENODATA;
+}
+
 static int zsw_power_manager_init(void)
 {
+    int err;
+    zsw_settings_display_always_on_t display_always_on;
+
     last_wakeup_time = k_uptime_get_32();
     last_pwr_off_time = k_uptime_get_32();
-    k_work_schedule(&idle_work, K_SECONDS(IDLE_TIMEOUT_SECONDS));
+    settings_subsys_init();
+    err = settings_load_subtree_direct(ZSW_SETTINGS_DISPLAY_ALWAYS_ON, settings_load_handler, &display_always_on);
+    if (err == 0 && display_always_on) {
+        idle_timeout_seconds = UINT32_MAX;
+    }
+    k_work_schedule(&idle_work, K_SECONDS(idle_timeout_seconds));
     return 0;
 }
 
