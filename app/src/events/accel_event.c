@@ -6,7 +6,7 @@ ZBUS_CHAN_DEFINE(accel_data_chan,
                  NULL,
                  NULL,
 #ifdef CONFIG_APPLICATIONS_USE_ACCELEROMETER
-                 ZBUS_OBSERVERS(watchface_accel_lis, power_manager_accel_lis, zds_app_accel_lis),
+                 ZBUS_OBSERVERS(watchface_accel_lis, power_manager_accel_lis),
 #else
                  ZBUS_OBSERVERS(watchface_accel_lis, power_manager_accel_lis),
 #endif

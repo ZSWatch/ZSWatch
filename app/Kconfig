@@ -47,7 +47,7 @@ menu "ZSWatch"
         config APPLICATIONS_USE_ZDS
             bool
         prompt "Activate the application 'ZDS'"
-        default y
+        default n
         select APPLICATIONS_USE_ACCELEROMETER
 
         config APPLICATIONS_USE_IAQ

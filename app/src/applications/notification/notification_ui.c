@@ -80,16 +80,19 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_group_add_obj(input_group, cont);
     lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
+    LV_FONT_DECLARE(lv_font_montserrat_14_full)
     title = lv_label_create(cont);
     lv_label_set_text(title, not->title);
     lv_obj_set_size(title, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_center(title);
     lv_obj_add_flag(title, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14_full, 0);
 
     title = lv_label_create(cont);
     lv_label_set_text(title, not->body);
     lv_obj_set_size(title, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_add_flag(title, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14_full, 0);
 }
 
 static void not_button_pressed(lv_event_t *e)

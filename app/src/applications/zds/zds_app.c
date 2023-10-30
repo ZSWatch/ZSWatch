@@ -27,12 +27,12 @@ static application_t app = {
 static void zds_app_start(lv_obj_t *root, lv_group_t *group)
 {
     zds_ui_show(root);
-    zbus_obs_set_enable(&zds_app_accel_lis, true);
+    zbus_chan_add_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
 }
 
 static void zds_app_stop(void)
 {
-    zbus_obs_set_enable(&zds_app_accel_lis, false);
+    zbus_chan_rm_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
     zds_ui_remove();
 }
 

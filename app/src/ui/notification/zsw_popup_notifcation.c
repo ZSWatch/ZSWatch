@@ -36,6 +36,8 @@ static uint32_t active_notif_id;
 static lv_timer_t *auto_close_timer;
 static notif_box_t notif_box;
 
+LV_FONT_DECLARE(lv_font_montserrat_14_full)
+
 void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t icon, uint32_t id,
                                  on_close_notif_cb_t close_cb,
                                  uint32_t close_after_seconds)
@@ -68,7 +70,7 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_label_set_text_fmt(notif_box.title, "%s %s", LV_SYMBOL_BELL, title);
     lv_label_set_long_mode(notif_box.title, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(notif_box.title, lv_palette_main(LV_PALETTE_GREY), 0);
-    lv_obj_set_style_text_font(notif_box.title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(notif_box.title, &lv_font_montserrat_14_full, 0);
 
     // create body text
     if (strlen(body) > 0) {
@@ -80,7 +82,8 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
         lv_obj_set_y(notif_box.body, 15);
         lv_label_set_long_mode(notif_box.body, LV_LABEL_LONG_DOT);
         lv_label_set_text(notif_box.body, body);
-        lv_obj_set_style_text_font(notif_box.body, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_font(notif_box.body, &lv_font_montserrat_14_full, 0);
+
     }
 
     // create close button
