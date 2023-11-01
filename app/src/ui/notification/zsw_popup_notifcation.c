@@ -95,7 +95,7 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_obj_set_ext_click_area(notif_box.close_btn, 10);
     lv_obj_set_style_bg_color(notif_box.close_btn, lv_palette_main(LV_PALETTE_BLUE_GREY), 0);
 
-    lv_obj_add_event_cb(notif_box.close_btn, on_notification_closed, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(notif_box.close_btn, on_notification_closed, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *ui_x = lv_label_create(notif_box.close_btn);
     lv_obj_set_align(ui_x, LV_ALIGN_CENTER);
