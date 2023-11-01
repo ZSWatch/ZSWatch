@@ -605,9 +605,6 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     }
 }
 
-#if defined(CONFIG_WATCHDOG) && !defined(CONFIG_RESET_ON_FATAL_ERROR)
-extern void sys_arch_reboot(int type);
-
 void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
 {
     ARG_UNUSED(esf);
@@ -616,8 +613,7 @@ void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
     LOG_PANIC();
 
     LOG_ERR("Resetting system");
-    sys_arch_reboot(0);
+    sys_reboot(SYS_REBOOT_COLD);
 
     CODE_UNREACHABLE;
 }
-#endif
