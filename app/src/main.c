@@ -203,9 +203,6 @@ static void run_init_work(struct k_work *item)
     load_retention_ram();
     zsw_notification_manager_init();
     enable_bluetoth();
-    //uint32_t br = 1337;
-    //int rc = settings_save_one("settings/brightness", &br, sizeof(br));
-    //printk("RC: %d\n", rc);
     zsw_imu_init();
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
