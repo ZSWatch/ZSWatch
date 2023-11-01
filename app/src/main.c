@@ -104,7 +104,6 @@ static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 
 static bool pending_not_open;
-static bool is_woken_by_touch;
 static bool is_buttons_for_lvgl = false;
 
 static ui_state_t watch_state = INIT_STATE;
@@ -124,13 +123,6 @@ static void run_input_work(struct k_work *item)
 
     // Don't process the press if it caused wakeup.
     if (zsw_power_manager_reset_idle_timout()) {
-        // NOTE: As soon as the touch controller wakes up the MCU through an interrupt the event is also
-        // passed into LVGL (interrupt -> input subsystem -> LVGL). We don´t want any LVGL action after
-        // a touch event. Also make sure that a wake up through a button doesn´t block the first input of the touch screen.
-        if (container->event.code > INPUT_KEY_4) {
-            is_woken_by_touch = true;
-        }
-
         return;
     }
 
