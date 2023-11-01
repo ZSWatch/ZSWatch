@@ -160,12 +160,6 @@ static void run_input_work(struct k_work *item)
         }
     }
 
-    if (is_buttons_for_lvgl) {
-        // Handled by LVGL
-        last_input_event.code = container->event.code;
-        return;
-    }
-
     // Handle the input events. We have to take care about the screen orientation for the touch events.
     lv_dir_t gesture_code = LV_DIR_NONE;
     switch (container->event.code) {
@@ -189,6 +183,12 @@ static void run_input_work(struct k_work *item)
             gesture_code = LV_DIR_BOTTOM;
             break;
         }
+    }
+
+    if (is_buttons_for_lvgl && (gesture_code == LV_DIR_NONE)) {
+        // Handled by LVGL
+        last_input_event.code = container->event.code;
+        return;
     }
 
     if (gesture_code != LV_DIR_NONE) {
