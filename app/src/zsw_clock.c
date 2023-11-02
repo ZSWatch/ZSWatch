@@ -39,7 +39,7 @@ ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
 
 void zsw_clock_init(uint64_t start_time_seconds)
 {
-    setenv("TZ", "CET-1CEST", 1);
+    setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
 
     struct timespec tspec;
