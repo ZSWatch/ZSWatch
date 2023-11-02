@@ -150,7 +150,7 @@ static void run_input_work(struct k_work *item)
 
             break;
         }
-        case INPUT_KEY_4: {
+        case INPUT_KEY_1: {
             if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()) {
                 zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
                 lv_async_call(open_application_manager_page, NULL);
