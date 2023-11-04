@@ -40,4 +40,13 @@ jobs:
       - name: Build firmware
         working-directory: ZSWatch
         run: |
-          west build app -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
+          cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
+          mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
+      
+      - name : Upload Firmware
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.board }}_${{ matrix.built_type }}
+          path: ZSWatch/${{ matrix.board }}_${{ matrix.built_type }}/zephyr/${{ matrix.board }}_${{ matrix.built_type }}.hex
+          if-no-files-found: ignore
