@@ -218,7 +218,7 @@ static void on_aoa_interval_changed(lv_setting_value_t value, bool final)
 
 static void on_pairing_enable_changed(lv_setting_value_t value, bool final)
 {
-    if (value.item.sw) {
+    if (final) {
         ble_comm_set_pairable(true);
     } else {
         ble_comm_set_pairable(false);
