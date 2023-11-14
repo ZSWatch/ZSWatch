@@ -3,13 +3,14 @@ manifest:
     west-commands: scripts/west-commands.yml
 
   remotes:
-    - name: zephyrproject-rtos
-      url-base: https://github.com/zephyrproject-rtos
+    - name: sdk
+      url-base: https://github.com/nrfconnect
 
   projects:
-    - name: zephyr
-      remote: zephyrproject-rtos
-      revision: 2ea2d37d60ada33bdf051eb9d699f4db9123c3ff
+    - name: sdk-nrf
+      remote: sdk
+      revision: v2.5.0
+      path: nrf
       import:
         name-blocklist:
           - ci-tools
@@ -24,9 +25,10 @@ manifest:
           - hal_ti
           - loramac-node
           - net-tools
-          - openthread
           - edtt
           - trusted-firmware-m
           - sof
+      clone-depth: 1
+      
   self:
     west-commands: scripts/west-commands.yml

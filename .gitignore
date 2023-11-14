@@ -10,5 +10,8 @@ build*
 /tools
 /zephyr
 __pycache__
+/nrf
+/nrfxlib
+/test
 
 /.vscode
