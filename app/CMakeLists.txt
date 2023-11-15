@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+# Apply patches before build
+file(GLOB_RECURSE files RELATIVE ${CMAKE_SOURCE_DIR} "patches/*.patch")
+foreach(file ${files})
+    execute_process(COMMAND 
+                    patch -p1 -d ../zephyr/ -i ${CMAKE_CURRENT_SOURCE_DIR}/${file} -r - --no-backup-if-mismatch)
+endforeach()
+
 string(REGEX MATCH "zswatch_nrf5340_cpuapp(_ns)?@([0-9]+)$" ZSWATCH_BOARD "${BOARD}")
 if(ZSWATCH_BOARD)
     set(ZSWATCH_REV ${CMAKE_MATCH_2})
