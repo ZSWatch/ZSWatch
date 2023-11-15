@@ -59,6 +59,8 @@
     chosen {
         zephyr,display = &gc9a01;
         zephyr,keyboard-scan = &cst816s;
+        nordic,pm-ext-flash = &mx25r64;
+        zephyr,settings-partition = &settings_partition;
     };
 
     aliases {
@@ -69,6 +71,7 @@
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
+        spi-flash0 = &mx25r64;
     };
 
     longpress: longpress {

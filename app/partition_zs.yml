@@ -2,16 +2,14 @@
 #  External partition
 # ------------------
 lvgl_lfs_partition:
-   region: external_flash
-   address: 0x00000000
-   size: 0x00200000
-
+  address: 0x0
+  region: external_flash
+  size: 0x200000
 lvgl_raw_partition:
-   region: external_flash
-   address: 0x00200000
-   size: 0x00200000
-
-external_flash:
-   region: external_flash
-   address: 0x400000
-   size: 0x100000
+  address: 0x200000
+  region: external_flash
+  size: 0x200000
+settings_partition:
+  address: 0x400000
+  region: external_flash
+  size: 0x100000

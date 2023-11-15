@@ -16,7 +16,7 @@ if(ZSWATCH_BOARD)
 endif()
 
 if("nrf5340dk_nrf5340_cpuapp" STREQUAL "${BOARD}")
-    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/pm_static_nrf5340dk_nrf5340.yml)
+    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/partition_zs.yml)
 endif()
 
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
