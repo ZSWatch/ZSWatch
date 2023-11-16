@@ -70,7 +70,6 @@
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
-        spi-flash0 = &mx25r64;
     };
 
     longpress: longpress {
