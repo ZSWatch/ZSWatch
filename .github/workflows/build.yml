@@ -43,6 +43,13 @@ jobs:
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
           cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
           mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
+
+      - name: Build firmware for iOS
+        working-directory: ZSWatch
+        run: |
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_ios -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DCONFIG_BLE_USES_AMS="y"
+          cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
+          mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
       
       - name : Upload Firmware
         uses: actions/upload-artifact@v3

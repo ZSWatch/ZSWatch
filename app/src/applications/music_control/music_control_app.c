@@ -3,6 +3,10 @@
 #include <zsw_clock.h>
 #include <zephyr/zbus/zbus.h>
 
+#ifdef CONFIG_BLE_USES_AMS
+#include "ble/ble_ams.h"
+#endif
+
 #include "music_control_ui.h"
 #include "ble/ble_comm.h"
 #include "events/ble_data_event.h"
@@ -58,6 +62,8 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
     uint8_t buf[50];
     int msg_len = 0;
 
+#if defined(CONFIG_BLE_USES_GADGETBRIDGE)
+
     switch (evt_type) {
         case MUSIC_CONTROL_UI_CLOSE:
             zsw_app_manager_app_close_request(&app);
@@ -78,6 +84,28 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
     if (msg_len > 0) {
         ble_comm_send(buf, msg_len);
     }
+
+#elif defined(CONFIG_BLE_USES_AMS)
+
+    switch (evt_type) {
+        case MUSIC_CONTROL_UI_CLOSE:
+            zsw_app_manager_app_close_request(&app);
+            break;
+        case MUSIC_CONTROL_UI_PLAY:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_PAUSE:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_NEXT_TRACK:
+            ble_ams_next_track();
+            break;
+        case MUSIC_CONTROL_UI_PREV_TRACK:
+            ble_ams_previous_track();
+            break;
+    }
+
+#endif // CONFIG_BLE_USES_AMS
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)

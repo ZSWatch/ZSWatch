@@ -21,7 +21,6 @@
 / {
 	chosen {
 		nordic,pm-ext-flash = &at25sl128a;
-        zephyr,settings-partition = &settings_partition;
 	};
 
 	aliases {
@@ -164,6 +163,8 @@
 	};
 };
 
+/delete-node/ &storage_partition;
+
 &at25sl128a {
 	partitions {
 		compatible = "fixed-partitions";
@@ -178,8 +179,8 @@
 			label = "lvgl_raw_partition";
 			reg = <0x00200000 0x00200000>;
 		};
-        settings_partition: partition@400000 {
-            label = "settings_partition";
+        storage_partition: partition@400000 {
+            label = "storage_partition";
             reg = <0x400000 0x100000 >;
         };
 	};

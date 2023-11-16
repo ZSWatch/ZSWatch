@@ -10,4 +10,5 @@
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/app/build": "Launch build"
     },
+    "editor.defaultFormatter": "chiehyu.vscode-astyle"
 }
