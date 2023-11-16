@@ -137,20 +137,20 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
 
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_TRACK &&
             attr_val == BT_AMS_TRACK_ATTRIBUTE_ID_ARTIST) {
-            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSTIC_INFO;
+            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
             memcpy(&evt_music_inf.data.data.music_info.artist, msg_buff, notif->len);
         }
 
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_TRACK &&
             attr_val == BT_AMS_TRACK_ATTRIBUTE_ID_DURATION) {
-            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSTIC_INFO;
+            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
             // A string containing the floating point value of the total duration of the track in seconds.
             evt_music_inf.data.data.music_info.duration = (int)atof(msg_buff);
         }
 
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_TRACK &&
             attr_val == BT_AMS_TRACK_ATTRIBUTE_ID_TITLE) {
-            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSTIC_INFO;
+            evt_music_inf.data.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
             memcpy(&evt_music_inf.data.data.music_info.track_name, msg_buff, notif->len);
 
             // Only publish when all music information is received, otherwise values are overwritten
@@ -163,7 +163,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
             attr_val == BT_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO) {
             struct ble_data_event evt_music_state;
 
-            evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSTIC_STATE;
+            evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
 
             // A concatenation of three comma-separated values, i.e 0,0.0,0.000
             // where first value is status

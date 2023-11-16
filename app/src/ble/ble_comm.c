@@ -781,7 +781,7 @@ static int parse_musicinfo(char *data, int len)
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_MUSTIC_INFO;
+    cb.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
     cb.data.music_info.duration = extract_value_int32("\"dur\":", data);
     cb.data.music_info.track_count = extract_value_int32("\"c\":", data);
     cb.data.music_info.track_num = extract_value_int32("\"n\":", data);
@@ -805,7 +805,7 @@ static int parse_musicstate(char *data, int len)
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_MUSTIC_STATE;
+    cb.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
     cb.data.music_state.position = extract_value_int32("\"position\":", data);
     cb.data.music_state.shuffle = extract_value_int32("\"shuffle\":", data);
     cb.data.music_state.repeat = extract_value_int32("\"repeat\":", data);
