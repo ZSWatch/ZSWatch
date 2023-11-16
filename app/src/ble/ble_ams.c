@@ -161,6 +161,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
 
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_PLAYER &&
             attr_val == BT_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO) {
+
             struct ble_data_event evt_music_state;
 
             evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
@@ -169,10 +170,12 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
             // where first value is status
             evt_music_state.data.data.music_state.playing = ((msg_buff[0] - '0') == 1) ? true : false;
 
-            // the last is the elapsed time in seconds as double
-            char elapsed_time[sizeof("9999.999")] = { '\0' };
-            memcpy(elapsed_time, &msg_buff[6], notif->len - 6);
-            evt_music_state.data.data.music_state.position = (int)atof(elapsed_time);
+            // the last is the elapsed time in seconds as double, it sends empty when the phone player is closed
+            if (notif->len > sizeof("0,,")) {
+                char elapsed_time[sizeof("9999.999")] = {'\0'};
+                memcpy(elapsed_time, &msg_buff[6], notif->len - 6);
+                evt_music_state.data.data.music_state.position = (int)atof(elapsed_time);
+            }
 
             zbus_chan_pub(&ble_comm_data_chan, &evt_music_state, K_MSEC(250));
         }
