@@ -54,8 +54,9 @@
 #include "applications/watchface/watchface_app.h"
 #include <filesystem/zsw_rtt_flash_loader.h>
 
-#ifdef CONFIG_BLE_USES_AMS
+#ifdef CONFIG_BLE_USES_IOS
 #include "ble/ble_ams.h"
+#include "ble/ble_ancs.h"
 #endif
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
@@ -319,8 +320,9 @@ static void enable_bluetoth(void)
     __ASSERT_NO_MSG(ble_comm_init(on_ble_data_callback) == 0);
     bleAoaInit();
 
-#ifdef CONFIG_BLE_USES_AMS
+#ifdef CONFIG_BLE_USES_IOS
     ble_ams_init();
+    ble_ancs_init(on_ble_data_callback);
 #endif
 }
 

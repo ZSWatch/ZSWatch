@@ -34,6 +34,7 @@
 
 #ifdef CONFIG_BT_AMS_CLIENT
 #include <bluetooth/services/ams_client.h>
+#include <bluetooth/services/ancs_client.h>
 #endif
 
 LOG_MODULE_REGISTER(ble_comm, LOG_LEVEL_DBG);
@@ -79,7 +80,7 @@ static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_UUID16_ALL,
                   BT_UUID_16_ENCODE(BT_UUID_DIS_VAL)),
 #ifdef CONFIG_BT_AMS_CLIENT
-    BT_DATA_BYTES(BT_DATA_SOLICIT128, BT_UUID_AMS_VAL)
+    BT_DATA_BYTES(BT_DATA_SOLICIT128, BT_UUID_ANCS_VAL),
 #endif
 };
 

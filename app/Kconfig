@@ -170,10 +170,12 @@ menu "ZSWatch"
 
         config BLE_USES_GADGETBRIDGE
             prompt "Smartphone interaction and notifications uses Gadgetbridge"
-        config BLE_USES_AMS
-            prompt "Smartphone uses Apple Media Service Client"
+        config BLE_USES_IOS
+            prompt "Smartphone uses Apple Services Client"
+            select BT_GATTP
             select BT_GATT_DM
             select BT_AMS_CLIENT
+            select BT_ANCS_CLIENT
         endchoice
        
     endmenu

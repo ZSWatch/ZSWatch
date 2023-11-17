@@ -3,7 +3,7 @@
 #include <zsw_clock.h>
 #include <zephyr/zbus/zbus.h>
 
-#ifdef CONFIG_BLE_USES_AMS
+#ifdef CONFIG_BLE_USES_IOS
 #include "ble/ble_ams.h"
 #endif
 
@@ -85,7 +85,7 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
         ble_comm_send(buf, msg_len);
     }
 
-#elif defined(CONFIG_BLE_USES_AMS)
+#elif defined(CONFIG_BLE_USES_IOS)
 
     switch (evt_type) {
         case MUSIC_CONTROL_UI_CLOSE:
@@ -105,7 +105,7 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
             break;
     }
 
-#endif // CONFIG_BLE_USES_AMS
+#endif // CONFIG_BLE_USES_IOS
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
