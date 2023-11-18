@@ -53,9 +53,12 @@ static const enum bt_ams_track_attribute_id entity_update_track[] = {
 
 static struct bt_ams_client ams_c;
 static char msg_buff[MAX_MUSIC_FIELD_LENGTH + 1];
+static struct bt_conn *current_conn;
 
 static void ble_ams_delayed_write_handle(struct k_work *item);
+static void ams_discover_retry_handle(struct k_work *item);
 
+K_WORK_DELAYABLE_DEFINE(ams_gatt_discover_retry, ams_discover_retry_handle);
 K_WORK_DELAYABLE_DEFINE(ble_ams_delayed_write, ble_ams_delayed_write_handle);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
@@ -264,25 +267,38 @@ static const struct bt_gatt_dm_cb discover_cb = {
     .error_found = discover_error_found_cb,
 };
 
+static void discover_gattp(struct bt_conn *conn)
+{
+    int dm_err = bt_gatt_dm_start(conn, BT_UUID_AMS, &discover_cb, &ams_c);
+    if (dm_err) {
+
+        // Only one DM discovery can happen at a time, AMS may be running, so queue it
+        if (dm_err == -EALREADY) {
+            current_conn = conn;
+            k_work_schedule(&ams_gatt_discover_retry, K_MSEC(500));
+            return;
+        }
+
+        LOG_ERR("Failed to start discovery (err %d)", dm_err);
+    }
+}
+
+static void ams_discover_retry_handle(struct k_work *item)
+{
+    discover_gattp(current_conn);
+}
+
 static void security_changed(struct bt_conn *conn, bt_security_t level,
                              enum bt_security_err err)
 {
-    int dm_err;
-    char addr[BT_ADDR_LE_STR_LEN];
-
-    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
     if (!err) {
-        LOG_INF("Security changed: %s level %u", addr, level);
+        LOG_INF("Security changed: level %u", level);
 
         if (bt_conn_get_security(conn) >= BT_SECURITY_L2) {
-            dm_err = bt_gatt_dm_start(conn, BT_UUID_AMS, &discover_cb, &ams_c);
-            if (dm_err) {
-                LOG_ERR("Failed to start discovery (err %d)", dm_err);
-            }
+            discover_gattp(conn);
         }
     } else {
-        LOG_ERR("Security failed: %s level %u err %d", addr, level, err);
+        LOG_ERR("Security failed: level %u err %d", level, err);
     }
 }
 
