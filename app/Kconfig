@@ -176,6 +176,7 @@ menu "ZSWatch"
             select BT_GATT_DM
             select BT_AMS_CLIENT
             select BT_ANCS_CLIENT
+            select BT_CTS_CLIENT
         endchoice
        
     endmenu

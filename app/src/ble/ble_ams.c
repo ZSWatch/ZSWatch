@@ -1,5 +1,5 @@
 /**
- * @file ble.ams.c
+ * @file ble_ams.c
  * @author Leonardo Bispo
  *
  * @brief Implements Apple Media Service (AMS), the native iOS GATT server allows the client
