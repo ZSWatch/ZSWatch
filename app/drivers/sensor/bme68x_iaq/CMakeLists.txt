@@ -14,7 +14,7 @@ if(CONFIG_EXTERNAL_USE_BOSCH_BSEC)
     BSEC_SAMPLE_PERIOD_S=1
     )
 
-    zephyr_sources(bme68x_iaq.c)
+    zephyr_sources(bosch_bme68x_iaq.c)
 
     # Add the Bosch BSEC2 library to the project.
     zephyr_library_include_directories(${PROJECT_SOURCE_DIR}/src/ext_drivers/BSEC2/algo/normal_version/inc)

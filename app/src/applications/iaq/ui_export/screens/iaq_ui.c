@@ -61,7 +61,6 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_label_set_text(ui_LabelQuality, "-");
     lv_obj_set_style_text_color(ui_LabelQuality, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelQuality, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelQuality, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ImgSocket = lv_img_create(ui_root_page);
 
@@ -128,7 +127,7 @@ void iaq_app_ui_remove(void)
     ui_root_page = NULL;
 }
 
-void iaq_app_ui_home_set_iaq_cursor(uint16_t iaq)
+void iaq_app_ui_home_set_iaq_cursor(float iaq)
 {
     int16_t angle;
 
@@ -146,12 +145,12 @@ void iaq_app_ui_home_set_iaq_cursor(uint16_t iaq)
     lv_img_set_angle(ui_ImgCursor, angle);
 }
 
-void iaq_app_ui_home_set_iaq_label(int16_t iaq)
+void iaq_app_ui_home_set_iaq_label(float iaq)
 {
-    lv_label_set_text_fmt(ui_LabelAQI, "%u", iaq);
+    lv_label_set_text_fmt(ui_LabelAQI, "%g", iaq);
 }
 
-void iaq_app_ui_home_set_iaq_status(int16_t iaq)
+void iaq_app_ui_home_set_iaq_status(float iaq)
 {
     char* text;
     lv_color_t color;

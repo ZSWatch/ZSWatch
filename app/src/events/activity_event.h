@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdbool.h>
 
 #include "managers/zsw_power_manager.h"

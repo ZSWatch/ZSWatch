@@ -1,0 +1,53 @@
+# BMI270 IMU configuration options.
+
+# Copyright (c) 2023, Daniel Kampert
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig BMI270_PLUS
+    bool "BMI270 Plus Sensor"
+    depends on DT_HAS_BOSCH_BMI270_PLUS_ENABLED
+    default y
+    select I2C
+    help
+        Enable the advanced driver for the BMI270 IMU.
+
+if BMI270_PLUS
+    config BMI270_PLUS_THREAD_STACK_SIZE
+        int "Sensor delayed work thread stack size"
+        depends on BMI270_PLUS_TRIGGER_OWN_THREAD
+        default 1024
+
+    config BMI270_PLUS_THREAD_PRIORITY
+        int "BMI270-Plus thread priority"
+        depends on BMI270_PLUS_TRIGGER_OWN_THREAD
+        default 10
+
+    choice
+        prompt "BMI270 trigger mode"
+        default BMI270_PLUS_TRIGGER_NONE
+
+    config BMI270_PLUS_TRIGGER_NONE
+        bool "No trigger"
+        help
+            Disable the trigger interface.
+
+    config BMI270_PLUS_TRIGGER_GLOBAL_THREAD
+        depends on GPIO
+        select BMI270_PLUS_TRIGGER
+        bool "Use workqueue"
+        help
+            Use the global workqueue to process the interrupts from the BMI270.
+
+    config BMI270_PLUS_TRIGGER_OWN_THREAD
+        depends on GPIO
+        select BMI270_PLUS_TRIGGER
+        bool "Use driver thread"
+        help
+            Use a separate thread to process the interrupts from the BMI270.
+
+    endchoice
+
+    config BMI270_PLUS_TRIGGER
+        bool
+endif

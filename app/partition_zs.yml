@@ -9,7 +9,7 @@ lvgl_raw_partition:
   address: 0x200000
   region: external_flash
   size: 0x200000
-settings_partition:
+settings_storage:
   address: 0x400000
-  region: external_flash
   size: 0x100000
+  region: external_flash

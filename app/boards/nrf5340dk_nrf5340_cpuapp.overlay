@@ -133,10 +133,11 @@
     pinctrl-names = "default", "sleep";
 
     bmi270: bmi270@68 {
-        compatible = "bosch,bmi270-ext";
+        compatible = "bosch,bmi270-plus";
         reg = <0x68>;
-        int1-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
-        int2-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+        int-gpios = <&gpio0 21 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+        invert-x;
+        invert-y;
     };
 
     bme688: bme688@76 {
@@ -187,7 +188,6 @@
         spi-max-frequency = <8000000>;
         reg = <0>;
         width = <240>;
-        label = "buydisplay_gc9a01";
         height = <240>;
         bl-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
         reset-gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;

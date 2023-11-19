@@ -1,4 +1,6 @@
 if SENSOR
     rsource "apds9306/Kconfig"
 	rsource "bme68x_iaq/Kconfig"
+	rsource "bmp581/Kconfig"
+	rsource "bmi270/Kconfig"
 endif

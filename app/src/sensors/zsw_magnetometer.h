@@ -15,8 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_MAGNETOMETER_H_
-#define __ZSW_MAGNETOMETER_H_
+#pragma once
+
 #include <stdbool.h>
 
 int zsw_magnetometer_init(void);
@@ -25,4 +25,3 @@ double zsw_magnetometer_get_heading(void);
 int zsw_magnetometer_get_all(float *x, float *y, float *z);
 int zsw_magnetometer_start_calibration(void);
 int zsw_magnetometer_stop_calibration(void);
-#endif
