@@ -25,12 +25,15 @@
 #include "ble/ble_cts.h"
 #include "events/ble_data_event.h"
 
-LOG_MODULE_REGISTER(ble_cts, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(ble_cts, LOG_LEVEL_WRN);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 static struct bt_cts_client cts_c;
 
 static bool has_cts;
+
+/* Local copy of the current connection. */
+static struct bt_conn *current_conn;
 
 static const char *day_of_week[] = { "Unknown",   "Monday",   "Tuesday",
                                      "Wednesday", "Thursday", "Friday",
@@ -45,6 +48,9 @@ static const char *month_of_year[] = { "Unknown",   "January", "February",
                                      };
 
 static void read_current_time_cb(struct bt_cts_client *cts_c, struct bt_cts_current_time *current_time, int err);
+static void cts_discover_retry_handle(struct k_work *item);
+
+K_WORK_DELAYABLE_DEFINE(cts_discover_retry, cts_discover_retry_handle);
 
 static void current_time_print(struct bt_cts_current_time *current_time)
 {
@@ -198,6 +204,26 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
     }
 }
 
+static void discover_gattp(struct bt_conn *conn)
+{
+    int err = bt_gatt_dm_start(conn, BT_UUID_CTS, &discover_cb, NULL);
+    if (err) {
+
+        // Only one DM discovery can happen at a time, AMS may be running, so queue it
+        if (err == -EALREADY) {
+            k_work_schedule(&cts_discover_retry, K_MSEC(500));
+            return;
+        }
+
+        LOG_ERR("Failed to start discovery for GATT Service (err %d)", err);
+    }
+}
+
+static void cts_discover_retry_handle(struct k_work *item)
+{
+    discover_gattp(current_conn);
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
@@ -207,10 +233,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
     has_cts = false;
 
-    err = bt_gatt_dm_start(conn, BT_UUID_CTS, &discover_cb, NULL);
-    if (err) {
-        LOG_ERR("Failed to start discovery (err %d)", err);
-    }
+    discover_gattp(conn);
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
