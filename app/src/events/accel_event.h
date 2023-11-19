@@ -1,3 +1,5 @@
+#pragma once
+
 #include "sensors/zsw_imu.h"
 
 struct accel_event {

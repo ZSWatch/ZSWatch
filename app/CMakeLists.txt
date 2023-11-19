@@ -10,7 +10,6 @@ endforeach()
 string(REGEX MATCH "zswatch_nrf5340_cpuapp(_ns)?@([0-9]+)$" ZSWATCH_BOARD "${BOARD}")
 if(ZSWATCH_BOARD)
     set(ZSWATCH_REV ${CMAKE_MATCH_2})
-    add_definitions(-DZSWATCH_REV=${ZSWATCH_REV})
     # Rev 3 and later will handle this later in a different way.
     if(${ZSWATCH_REV} EQUAL 2)
         set(DFU_BUILD true)
@@ -32,8 +31,14 @@ project(ZSWatchFW)
 
 add_subdirectory(drivers)
 add_subdirectory(src/applications)
-add_subdirectory(src/ext_drivers/bmi270)
-add_subdirectory(src/ext_drivers/bmp581)
+add_subdirectory(src/sensors)
+add_subdirectory(src/events)
+add_subdirectory(src/managers)
+add_subdirectory(src/drivers)
+add_subdirectory(src/ble)
+add_subdirectory(src/battery)
+add_subdirectory(src/images)
+add_subdirectory(src/images/fonts)
 
 include_directories(src/)
 include_directories(src/ui)
@@ -44,30 +49,6 @@ target_sources(app PRIVATE src/ram_retention_storage.c)
 target_sources(app PRIVATE src/zsw_clock.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)
 
-target_sources(app PRIVATE src/drivers/zsw_display_control.c)
-target_sources(app PRIVATE src/drivers/zsw_vibration_motor.c)
-
-target_sources(app PRIVATE src/managers/zsw_app_manager.c)
-target_sources(app PRIVATE src/managers/zsw_notification_manager.c)
-target_sources(app PRIVATE src/managers/zsw_battery_manager.c)
-target_sources(app PRIVATE src/managers/zsw_power_manager.c)
-target_sources(app PRIVATE src/managers/zsw_phone_app_publisher.c)
-
-target_sources(app PRIVATE src/battery/battery.c)
-target_sources(app PRIVATE src/battery/zsw_charger.c)
-
-target_sources(app PRIVATE src/ble/ble_aoa.c)
-target_sources(app PRIVATE src/ble/ble_comm.c)
-target_sources(app PRIVATE src/ble/ble_transport.c)
-target_sources(app PRIVATE src/ble/zsw_gatt_sensor_server.c)
-target_sources_ifdef(CONFIG_BLE_USES_IOS app PRIVATE src/ble/ble_ams.c)
-target_sources_ifdef(CONFIG_BLE_USES_IOS app PRIVATE src/ble/ble_ancs.c)
-target_sources_ifdef(CONFIG_BLE_USES_IOS app PRIVATE src/ble/ble_cts.c)
-
-target_sources(app PRIVATE src/sensors/zsw_imu.c)
-target_sources(app PRIVATE src/sensors/zsw_pressure_sensor.c)
-target_sources(app PRIVATE src/sensors/zsw_magnetometer.c)
-
 target_sources(app PRIVATE src/ui/notification/zsw_popup_notifcation.c)
 target_sources(app PRIVATE src/ui/popup/zsw_popup_window.c)
 target_sources(app PRIVATE src/ui/utils/zsw_ui_utils.c)
@@ -76,15 +57,9 @@ target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_lvgl_spi_decoder.c)
 
-if (DFU_BUILD)
+if(DFU_BUILD)
     target_sources(app PRIVATE src/dfu.c)
 endif()
-
-FILE(GLOB img_sources src/images/*.c)
-target_sources(app PRIVATE ${img_sources})
-
-FILE(GLOB font_sources src/images/fonts/*.c)
-target_sources(app PRIVATE ${font_sources})
 
 zephyr_sources_ifdef(CONFIG_WATCHFACE_ANALOG src/ui/watchfaces/zsw_watchface_analog_ui.c)
 zephyr_sources_ifdef(CONFIG_WATCHFACE_DIGITAL src/ui/watchfaces/zsw_watchface_digital_ui.c)

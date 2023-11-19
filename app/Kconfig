@@ -3,6 +3,11 @@ menu "Zephyr Kernel"
 endmenu
 
 menu "ZSWatch"
+    config ZSWATCH_PCB_REV
+        int
+    prompt "ZSWatch PCB revision"
+    default 3
+
     menu "Applications"
         config APPLICATIONS_USE_2048
             bool
@@ -149,7 +154,7 @@ menu "ZSWatch"
             select BME68X_IAQ
 
         config EXTERNAL_USE_BOSCH_BME688
-            prompt "Use standard BME688 driver"
+            prompt "Use standard BME680 driver from Zephyr"
         endchoice
     endmenu
 
@@ -219,10 +224,12 @@ menu "ZSWatch"
     menu "Custom drivers"
         rsource "drivers/Kconfig"
     endmenu
+
+    menu "Logging"
+        module = APP
+        module-str = APP
+        source "subsys/logging/Kconfig.template.log_config"
+
+        rsource "src/sensors/Kconfig"
+    endmenu
 endmenu
-
-
-
-module = APP
-module-str = APP
-source "subsys/logging/Kconfig.template.log_config"

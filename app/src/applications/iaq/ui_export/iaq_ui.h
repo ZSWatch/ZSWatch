@@ -14,14 +14,14 @@ void iaq_app_ui_remove(void);
 /** @brief      Set the angle of the IAQ cursor.
  *  @param iaq  IAQ value
 */
-void iaq_app_ui_home_set_iaq_cursor(uint16_t iaq);
+void iaq_app_ui_home_set_iaq_cursor(float iaq);
 
 /** @brief      Set the value for the IAQ label.
  *  @param iaq  IAQ value
 */
-void iaq_app_ui_home_set_iaq_label(int16_t iaq);
+void iaq_app_ui_home_set_iaq_label(float iaq);
 
 /** @brief      Set the IAQ status message.
  *  @param iaq  IAQ value
 */
-void iaq_app_ui_home_set_iaq_status(int16_t iaq);
+void iaq_app_ui_home_set_iaq_status(float iaq);

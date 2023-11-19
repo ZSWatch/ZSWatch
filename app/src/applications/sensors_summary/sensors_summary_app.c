@@ -2,14 +2,13 @@
 #include <zephyr/init.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
-#include <zephyr/logging/log.h>
 #include <math.h>
 
 #include "sensors_summary_ui.h"
 #include "sensors/zsw_pressure_sensor.h"
+#include "sensors/zsw_light_sensor.h"
+#include "sensors/zsw_environment_sensor.h"
 #include "managers/zsw_app_manager.h"
-
-LOG_MODULE_REGISTER(sensors_summary_app, LOG_LEVEL_DBG);
 
 static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group);
 static void sensors_summary_app_stop(void);
@@ -29,14 +28,16 @@ static application_t app = {
 
 static lv_timer_t *refresh_timer;
 static float relative_pressure;
-static const struct device *const bme688 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bme688));
-static const struct device *const apds9306 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(apds9306));
 
 static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group)
 {
     sensors_summary_ui_show(root, on_close_sensors_summary, on_ref_set);
-    on_ref_set(); // Set inital relative pressure
-    zsw_pressure_sensor_set_odr(PRESSURE_SENSOR_ODR_160_HZ); // Increase ODR since we want high accuracy here
+
+    // Set inital relative pressure.
+    on_ref_set();
+
+    // Increase ODR since we want high accuracy here.
+    zsw_pressure_sensor_set_odr(PRESSURE_SENSOR_ODR_160_HZ);
     refresh_timer = lv_timer_create(timer_callback, CONFIG_DEFAULT_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS,
                                     NULL);
 }
@@ -61,43 +62,19 @@ static void timer_callback(lv_timer_t *timer)
     float temperature = 0.0;
     float pressure = 0.0;
     float humidity = 0.0;
-    float light = 0.0;
-    float iaq = 0.0;
-    struct sensor_value sensor_val;
+    float light = -1.0;
+    float iaq = -1.0;
 
-    if (device_is_ready(bme688)) {
-        if (sensor_sample_fetch(bme688) != 0) {
-            return;
-        }
-
-        sensor_channel_get(bme688, SENSOR_CHAN_AMBIENT_TEMP, &sensor_val);
-        temperature = sensor_value_to_float(&sensor_val);
-
-        sensor_channel_get(bme688, SENSOR_CHAN_HUMIDITY, &sensor_val);
-        humidity = sensor_value_to_float(&sensor_val);
-
-        sensor_channel_get(bme688, SENSOR_CHAN_PRESS, &sensor_val);
-        pressure = sensor_value_to_float(&sensor_val);
-
-        sensor_channel_get(bme688, (SENSOR_CHAN_PRIV_START + 1), &sensor_val);
-        iaq = sensor_value_to_float(&sensor_val);
-    }
-
-    zsw_pressure_sensor_fetch_pressure(&pressure);
-
-    if (device_is_ready(apds9306)) {
-        if (sensor_sample_fetch(apds9306) != 0) {
-            return;
-        }
-
-        sensor_channel_get(apds9306, SENSOR_CHAN_LIGHT, &sensor_val);
-        light = sensor_value_to_float(&sensor_val);
-    }
+    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
+    zsw_environment_sensor_get_iaq(&iaq);
+    zsw_pressure_sensor_get_pressure(&pressure);
+    zsw_light_sensor_get_light(&light);
 
     sensors_summary_ui_set_pressure(pressure);
     sensors_summary_ui_set_temp(temperature);
     sensors_summary_ui_set_humidity(humidity);
     sensors_summary_ui_set_iaq(iaq);
+    sensors_summary_ui_set_light(light);
     sensors_summary_ui_set_rel_height(get_relative_height_m(relative_pressure, pressure, temperature));
 }
 
@@ -108,7 +85,7 @@ static void on_close_sensors_summary(void)
 
 static void on_ref_set(void)
 {
-    zsw_pressure_sensor_fetch_pressure(&relative_pressure);
+    zsw_pressure_sensor_get_pressure(&relative_pressure);
 }
 
 static int sensors_summary_app_add(void)

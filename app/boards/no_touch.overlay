@@ -17,7 +17,6 @@
         spi-max-frequency = <8000000>;
         reg = <0>;
         width = <240>;
-        label = "buydisplay_gc9a01";
         height = <240>;
         bl-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
         reset-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;

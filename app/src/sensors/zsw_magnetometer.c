@@ -5,21 +5,19 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/zbus/zbus.h>
 #include <inttypes.h>
 #include <math.h>
 
+#include "events/zsw_periodic_event.h"
+#include "events/magnetometer_event.h"
 #include "sensors/zsw_magnetometer.h"
 
-LOG_MODULE_REGISTER(magnetometer, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(zsw_magnetometer, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
 #ifndef M_PI
 #define M_PI        3.14159265358979323846
 #endif
-
-static const struct device *const magnetometer = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(lis2mdl));
-
-static double xyz_to_rotation(double x, double y, double z);
-static void lis2mdl_trigger_handler(const struct device *dev, const struct sensor_trigger *trig);
 
 static double last_heading;
 static double last_x;
@@ -36,99 +34,41 @@ static float offset_x;
 static float offset_y;
 static float offset_z;
 
-int zsw_magnetometer_init(void)
+static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
+
+ZBUS_CHAN_DECLARE(magnetometer_data_chan);
+ZBUS_CHAN_DECLARE(periodic_event_slow_chan);
+ZBUS_LISTENER_DEFINE(zsw_magnetometer_lis, zbus_periodic_slow_callback);
+static const struct device *const magnetometer = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(lis2mdl));
+
+static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
-    if (!device_is_ready(magnetometer)) {
-        LOG_ERR("Device magnetometer is not ready\n");
-        return -ENODEV;
+    float x;
+    float y;
+    float z;
+
+    if (zsw_magnetometer_get_all(&x, &y, &z)) {
+        return;
     }
 
-    struct sensor_trigger trig;
-    struct sensor_value odr_attr;
+    struct magnetometer_event evt = {
+        .x = x,
+        .y = y,
+        .z = z
+    };
 
-    odr_attr.val1 = 10; // TODO what value
-    odr_attr.val2 = 0;
-
-    if (sensor_attr_set(magnetometer, SENSOR_CHAN_ALL,
-                        SENSOR_ATTR_SAMPLING_FREQUENCY, &odr_attr) < 0) {
-        LOG_ERR("Cannot set sampling frequency for LIS2MDL\n");
-        return -EFAULT;
-    }
-
-    trig.type = SENSOR_TRIG_DATA_READY;
-    trig.chan = SENSOR_CHAN_MAGN_XYZ;
-    sensor_trigger_set(magnetometer, &trig, lis2mdl_trigger_handler);
-
-    // TODO handle power save, enable/disable etc. to save power
-    int rc = pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND);
-    __ASSERT(rc == 0, "Failed to suspend LIS2MDL: %d\n", rc);
-
-    return 0;
+    zbus_chan_pub(&magnetometer_data_chan, &evt, K_MSEC(250));
 }
 
-int zsw_magnetometer_set_enable(bool enabled)
+// https://arduino.stackexchange.com/questions/18625/converting-three-axis-magnetometer-to-degrees/88707#88707
+// Note this assumes watch is flat to eath, TODO use accelerometer to compensate when tilted.
+static double xyz_to_rotation(double x, double y, double z)
 {
-    if (!device_is_ready(magnetometer)) {
-        return -ENODEV;
+    double heading = atan2(y, x) * 180 / M_PI;
+    if (heading < 0) {
+        heading = 360 + heading;
     }
-    int rc;
-    if (enabled) {
-        rc = pm_device_action_run(magnetometer, PM_DEVICE_ACTION_RESUME);
-        __ASSERT(rc == 0 || rc == -EALREADY, "Failed to resume LIS2MDL: %d\n", rc);
-    } else {
-        rc = pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND);
-        __ASSERT(rc == 0 || rc == -EALREADY, "Failed to suspend LIS2MDL: %d\n", rc);
-    }
-    return 0;
-}
-
-int zsw_magnetometer_start_calibration(void)
-{
-    if (!device_is_ready(magnetometer)) {
-        return -ENODEV;
-    }
-
-    max_x = -100000;
-    max_y = -100000;
-    max_z = -100000;
-    min_x = 100000;
-    min_y = 100000;
-    min_z = 100000;
-    is_calibrating = true;
-
-    return 0;
-}
-
-int zsw_magnetometer_stop_calibration(void)
-{
-    if (!device_is_ready(magnetometer)) {
-        return -ENODEV;
-    }
-
-    is_calibrating = false;
-    offset_x = (max_x + min_x) / 2;
-    offset_y = (max_y + min_y) / 2;
-    offset_z = (max_z + min_z) / 2;
-
-    return 0;
-}
-
-double zsw_magnetometer_get_heading(void)
-{
-    return last_heading;
-}
-
-int zsw_magnetometer_get_all(float *x, float *y, float *z)
-{
-    if (!device_is_ready(magnetometer)) {
-        return -ENODEV;
-    }
-
-    *x = last_x;
-    *y = last_y;
-    *z = last_z;
-
-    return 0;
+    return heading;
 }
 
 static void lis2mdl_trigger_handler(const struct device *dev,
@@ -185,13 +125,107 @@ static void lis2mdl_trigger_handler(const struct device *dev,
     LOG_DBG("Rotation: %f", last_heading);
 }
 
-// https://arduino.stackexchange.com/questions/18625/converting-three-axis-magnetometer-to-degrees/88707#88707
-// Note this assumes watch is flat to eath, TODO use accelerometer to compensate when tilted.
-static double xyz_to_rotation(double x, double y, double z)
+int zsw_magnetometer_init(void)
 {
-    double heading = atan2(y, x) * 180 / M_PI;
-    if (heading < 0) {
-        heading = 360 + heading;
+    if (!device_is_ready(magnetometer)) {
+        LOG_ERR("Device magnetometer is not ready");
+        return -ENODEV;
     }
-    return heading;
+
+    struct sensor_trigger trig;
+    struct sensor_value odr_attr;
+
+    odr_attr.val1 = 10; // TODO what value
+    odr_attr.val2 = 0;
+
+    if (sensor_attr_set(magnetometer, SENSOR_CHAN_ALL,
+                        SENSOR_ATTR_SAMPLING_FREQUENCY, &odr_attr) != 0) {
+        LOG_ERR("Cannot set sampling frequency for LIS2MDL");
+        return -EFAULT;
+    }
+
+    trig.type = SENSOR_TRIG_DATA_READY;
+    trig.chan = SENSOR_CHAN_MAGN_XYZ;
+    sensor_trigger_set(magnetometer, &trig, lis2mdl_trigger_handler);
+
+    // TODO handle power save, enable/disable etc. to save power
+    if (pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND) != 0) {
+        LOG_ERR("Failed to suspend LIS2MDL!");
+        return -EFAULT;
+    }
+
+    zsw_periodic_chan_add_obs(&periodic_event_slow_chan, &zsw_magnetometer_lis);
+
+    return 0;
+}
+
+int zsw_magnetometer_set_enable(bool enabled)
+{
+    if (!device_is_ready(magnetometer)) {
+        LOG_ERR("No magnetometer found!");
+        return -ENODEV;
+    }
+
+    if (enabled) {
+        if (pm_device_action_run(magnetometer, PM_DEVICE_ACTION_RESUME) != 0) {
+            LOG_ERR("Failed to resume LIS2MDL!");
+            return -EFAULT;
+        }
+    } else {
+        if (pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND) != 0) {
+            LOG_ERR("Failed to suspend LIS2MDL!");
+            return -EFAULT;
+        }
+    }
+
+    return 0;
+}
+
+int zsw_magnetometer_start_calibration(void)
+{
+    if (!device_is_ready(magnetometer)) {
+        return -ENODEV;
+    }
+
+    max_x = -100000;
+    max_y = -100000;
+    max_z = -100000;
+    min_x = 100000;
+    min_y = 100000;
+    min_z = 100000;
+    is_calibrating = true;
+
+    return 0;
+}
+
+int zsw_magnetometer_stop_calibration(void)
+{
+    if (!device_is_ready(magnetometer)) {
+        return -ENODEV;
+    }
+
+    is_calibrating = false;
+    offset_x = (max_x + min_x) / 2;
+    offset_y = (max_y + min_y) / 2;
+    offset_z = (max_z + min_z) / 2;
+
+    return 0;
+}
+
+double zsw_magnetometer_get_heading(void)
+{
+    return last_heading;
+}
+
+int zsw_magnetometer_get_all(float *x, float *y, float *z)
+{
+    if (!device_is_ready(magnetometer)) {
+        return -ENODEV;
+    }
+
+    *x = last_x;
+    *y = last_y;
+    *z = last_z;
+
+    return 0;
 }

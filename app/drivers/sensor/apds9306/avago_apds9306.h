@@ -1,4 +1,4 @@
-/* apds9306.c - Driver for Avago APDS9306 light sensor. */
+/* avago_apds9306.h - Driver for Broadcom / Avago APDS9306 light sensor. */
 
 /*
  * Copyright (c) 2023, Daniel Kampert
@@ -6,20 +6,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef ZEPHYR_DRIVERS_SENSOR_APDS9306_APDS9960_H_
-#define ZEPHYR_DRIVERS_SENSOR_APDS9306_APDS9960_H_
-
-#include <zephyr/drivers/sensor.h>
-
-#define DT_DRV_COMPAT avago_apds9306
+#pragma once
 
 /** @brief Attribute to set the gain range.
 */
-#define SENSOR_APDS9306_ATTR_GAIN       SENSOR_ATTR_PRIV_START + 1
+#define SENSOR_APDS9306_ATTR_GAIN       (SENSOR_ATTR_PRIV_START + 1)
 
 /** @brief Attribute to set the resolution.
 */
-#define SENSOR_APDS9306_ATTR_RESOLUTION SENSOR_ATTR_PRIV_START + 2
+#define SENSOR_APDS9306_ATTR_RESOLUTION (SENSOR_ATTR_PRIV_START + 2)
 
 /** @brief APDS9306 resolution options.
 */
@@ -53,5 +48,3 @@ typedef enum {
     APDS9306_GAIN_9,                /**< Measurement gain x9. */
     APDS9306_GAIN_18,               /**< Measurement gain x18. */
 } APDS9306_Gain_t;
-
-#endif /* ZEPHYR_DRIVERS_SENSOR_APDS9306_APDS9960_H_*/

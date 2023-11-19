@@ -7,11 +7,10 @@
 menuconfig APDS9306
     bool "APDS9306 Sensor"
     default y
-    # TODO
-    #depends on DT_HAS_AVAGO_APDS9306_ENABLED
+    depends on DT_HAS_AVAGO_APDS9306_ENABLED
     select I2C
     help
-          Enable the driver for the APDS9306 digital light sensor.
+        Enable the driver for the APDS9306 digital light sensor.
 
 if APDS9306
     config APDS9306_IS_APDS9306_065

@@ -15,18 +15,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ZSW_PRESSURE_SENSOR_H_
-#define ZSW_PRESSURE_SENSOR_H_
+#pragma once
 
 #include <zephyr/drivers/sensor.h>
-#include <bmp5_defs.h>
 
-typedef struct pressure_data_evt_t {
-    uint32_t    pressure;
-    uint32_t    temp;
-} pressure_data_evt_t;
+#include "ext_drivers/BMP5-Sensor-API/bmp5_defs.h"
 
-typedef enum bmp5_odr_t {
+typedef enum {
     PRESSURE_SENSOR_ODR_240_HZ = BMP5_ODR_240_HZ,
     PRESSURE_SENSOR_ODR_218_5_HZ = BMP5_ODR_218_5_HZ,
     PRESSURE_SENSOR_ODR_199_1_HZ = BMP5_ODR_199_1_HZ,
@@ -64,10 +59,8 @@ typedef enum bmp5_odr_t {
 
 int zsw_pressure_sensor_init(void);
 
-int zsw_pressure_sensor_set_odr(uint8_t bmp5_odr);
+int zsw_pressure_sensor_set_odr(uint8_t odr);
 
-int zsw_pressure_sensor_fetch_pressure(float *pressure);
+int zsw_pressure_sensor_get_pressure(float *pressure);
 
-int zsw_pressure_sensor_fetch_temperature(float *temperature);
-
-#endif
+int zsw_pressure_sensor_get_temperature(float *temperature);

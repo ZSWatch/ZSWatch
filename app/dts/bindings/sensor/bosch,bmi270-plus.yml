@@ -1,0 +1,27 @@
+description: |
+    The BMI270 is an inertial measurement unit. See more info at:
+    https://www.bosch-sensortec.com/products/motion-sensors/imus/bmi270.html
+
+compatible: "bosch,bmi270-plus"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+    int-gpios:
+      type: phandle-array
+      required: false
+
+    swap-xy:
+      type: boolean
+      description: |
+        Swap x and y axis.
+
+    invert-x:
+      type: boolean
+      description: |
+        Invert x axis.
+
+    invert-y:
+      type: boolean
+      description: |
+        Invert y axis.

@@ -49,7 +49,7 @@
         regulator-name = "display";
         enable-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
         regulator-boot-on;
-        startup-delay-us = < 50000 >;
+        startup-delay-us = <50000>;
     };
 
 	vib_pwr: vib-pwr-ctrl {
@@ -57,15 +57,16 @@
         regulator-name = "vib-pwr-ctrl";
         enable-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
     };
-
 };
 
 &i2c1 {
     bmi270: bmi270@68 {
-        compatible = "bosch,bmi270-ext";
+        compatible = "bosch,bmi270-plus";
         reg = <0x68>;
-        int1-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
-        int2-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+        status = "okay";
+        int-gpios = <&gpio0 21 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+        invert-x;
+        invert-y;
     };
 };
 
@@ -88,9 +89,7 @@
         reset-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
         dc-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
     };
-
 };
-
 
 &spi3  {
     status = "okay";
@@ -114,5 +113,4 @@
         // Rev. S Table 26. AC Electrical Characteristic
 		t-exit-dpd = <3000>;
 	};
-
 };

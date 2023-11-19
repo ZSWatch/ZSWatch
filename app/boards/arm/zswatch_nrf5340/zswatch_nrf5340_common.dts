@@ -54,9 +54,7 @@
         sw-top-left = &button4;
         sw-bottom-right = &button3;
         sw-bottom-left = &button2;
-        magn = &lis2mdl;
         watchdog0 = &wdt0;
-        accel = &bmi270;
         mcuboot-button1 = &button1;
     };
 };
@@ -105,11 +103,13 @@
     bme688: bme688@76 {
         compatible = "bosch,bme680";
         reg = <0x76>;
+        status = "okay";
     };
 
     lis2mdl: lis2mdl@1e {
         compatible = "st,lis2mdl";
         reg = <0x1e>;
+        status = "okay";
         irq-gpios = <&gpio0 24 0>;
         cancel-offset;
     };
@@ -117,6 +117,7 @@
     bmp581: bmp581@47 {
         compatible = "bosch,bmp581";
         reg = <0x47>;
+        status = "okay";
         int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };
 
@@ -134,6 +135,7 @@
     cst816s: cst816s@15 {
         compatible = "hynitron,cst816s";
         reg = <0x15>;
+        status = "okay";
         irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
     };

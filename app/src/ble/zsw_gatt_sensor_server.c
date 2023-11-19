@@ -30,10 +30,9 @@
 
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_magnetometer.h"
+#include "sensors/zsw_environment_sensor.h"
 
 LOG_MODULE_REGISTER(zsw_gatt_sensor_server, LOG_LEVEL_WRN);
-
-static const struct device *const bme688 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bme688));
 
 static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
 static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
@@ -110,26 +109,6 @@ BT_GATT_SERVICE_DEFINE(gyro_service,
 
 static bool notif_enabled;
 
-static void sensor_server_fetch(float *temperature, float *pressure, float *humidity)
-{
-    struct sensor_value sensor_val;
-
-    if (device_is_ready(bme688)) {
-        if (sensor_sample_fetch(bme688) != 0) {
-            return;
-        }
-
-        sensor_channel_get(bme688, SENSOR_CHAN_AMBIENT_TEMP, &sensor_val);
-        *temperature = sensor_value_to_float(&sensor_val);
-
-        sensor_channel_get(bme688, SENSOR_CHAN_HUMIDITY, &sensor_val);
-        *humidity = sensor_value_to_float(&sensor_val);
-
-        sensor_channel_get(bme688, SENSOR_CHAN_PRESS, &sensor_val);
-        *pressure = sensor_value_to_float(&sensor_val);
-    }
-}
-
 static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
 {
     int16_t x;
@@ -144,7 +123,7 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
     f_ptr = (float *)buf;
     write_len = 0;
 
-    sensor_server_fetch(&temperature, &pressure, &humidity);
+    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
 
     if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&temp_service.attrs[2])) {
         f_ptr[0] = temperature;
@@ -219,7 +198,7 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
     f_ptr = (float *)buf;
 
     // TODO use bt_gatt_notify_multiple instead of many bt_gatt_notify
-    sensor_server_fetch(&temperature, &pressure, &humidity);
+    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
     f_ptr[0] = temperature;
     write_len = sizeof(float);
     bt_gatt_notify(NULL, &temp_service.attrs[1], &buf, write_len);

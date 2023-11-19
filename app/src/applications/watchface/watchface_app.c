@@ -235,7 +235,7 @@ static void general_work(struct k_work *item)
 
             watchfaces[current_watchface]->set_date(time->tm_wday, time->tm_mday);
 
-            zsw_pressure_sensor_fetch_pressure(&pressure);
+            zsw_pressure_sensor_get_pressure(&pressure);
             watchfaces[current_watchface]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure);
 
             __ASSERT(0 <= k_work_schedule(&date_work.work, SLOW_UPDATE_INTERVAL), "FAIL date_work");

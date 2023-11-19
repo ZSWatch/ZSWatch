@@ -15,22 +15,22 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ZSW_IMU_H_
-#define ZSW_IMU_H_
+#pragma once
 
 #include <zephyr/drivers/sensor.h>
-#include <bmi270.h>
+
+#include "../../drivers/sensor/bmi270/bosch_bmi270.h"
 
 typedef enum zsw_imu_feature_t {
-    ZSW_IMU_FEATURE_ACCEL = BMI2_ACCEL,
-    ZSW_IMU_FEATURE_GYRO = BMI2_GYRO,
-    ZSW_IMU_FEATURE_STEP_COUNTER = BMI2_STEP_COUNTER,
-    ZSW_IMU_FEATURE_SIG_MOTION = BMI2_SIG_MOTION,
-    ZSW_IMU_FEATURE_ANY_MOTION = BMI2_ANY_MOTION,
-    ZSW_IMU_FEATURE_STEP_ACTIVITY = BMI2_STEP_ACTIVITY,
-    ZSW_IMU_FEATURE_WRIST_GESTURE = BMI2_WRIST_GESTURE,
-    ZSW_IMU_FEATURE_WRIST_WEAR_WAKE_UP = BMI2_WRIST_WEAR_WAKE_UP,
-    ZSW_IMU_FEATURE_NO_MOTION = BMI2_NO_MOTION,
+    ZSW_IMU_FEATURE_ACCEL = BOSCH_BMI270_FEAT_ACCEL,
+    ZSW_IMU_FEATURE_GYRO = BOSCH_BMI270_FEAT_GYRO,
+    ZSW_IMU_FEATURE_STEP_COUNTER = BOSCH_BMI270_FEAT_STEP_COUNTER,
+    ZSW_IMU_FEATURE_SIG_MOTION = BOSCH_BMI270_FEAT_SIG_MOTION,
+    ZSW_IMU_FEATURE_ANY_MOTION = BOSCH_BMI270_FEAT_ANY_MOTION,
+    ZSW_IMU_FEATURE_STEP_ACTIVITY = BOSCH_BMI270_FEAT_STEP_ACTIVITY,
+    ZSW_IMU_FEATURE_WRIST_GESTURE = BOSCH_BMI270_FEAT_WRIST_GESTURE,
+    ZSW_IMU_FEATURE_WRIST_WEAR_WAKE_UP = BOSCH_BMI270_FEAT_WEAR_WAKE_UP,
+    ZSW_IMU_FEATURE_NO_MOTION = BOSCH_BMI270_FEAT_NO_MOTION,
 } zsw_imu_feature_t;
 
 typedef enum zsw_imu_evt_type_t {
@@ -84,11 +84,15 @@ typedef struct zsw_imu_evt_t {
 
 int zsw_imu_init(void);
 
+int zsw_imu_fetch_accel_f(float *x, float *y, float *z);
+
+int zsw_imu_fetch_gyro_f(float *x, float *y, float *z);
+
 int zsw_imu_fetch_accel(int16_t *x, int16_t *y, int16_t *z);
 
 int zsw_imu_fetch_gyro(int16_t *x, int16_t *y, int16_t *z);
 
-int zsw_imu_fetch_temperature(struct sensor_value *temperature);
+int zsw_imu_fetch_temperature(float *temperature);
 
 int zsw_imu_fetch_num_steps(uint32_t *num_steps);
 
@@ -97,5 +101,3 @@ int zsw_imu_reset_step_count(void);
 int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
 
 int zsw_imu_feature_disable(zsw_imu_feature_t feature);
-
-#endif

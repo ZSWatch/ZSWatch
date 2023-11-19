@@ -1,3 +1,5 @@
+#pragma once
+
 #include "ble/ble_comm.h"
 
 struct ble_data_event {

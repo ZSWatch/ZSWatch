@@ -5,7 +5,7 @@
 #
 
 config BME68X_IAQ
-	bool "Use Bosch BSEC library"
+	bool "Bosch BSEC library"
 	depends on !BME680
 	depends on SETTINGS && !SETTINGS_NONE
 	depends on I2C
@@ -65,10 +65,10 @@ config BME68X_IAQ_SAMPLE_RATE_CONTINUOUS
 	  This is a particularly power-hungry sample mode that should only be considered for
 	  testing purposes.
 
-endchoice # BME68X_IAQ_SAMPLE_RATE
+endchoice
 
 module = BME68X_IAQ
 module-str = BME68X_IAQ
 source "subsys/logging/Kconfig.template.log_config"
 
-endif # BME68X_IAQ
+endif

@@ -6,9 +6,9 @@
 
 #include <string.h>
 
-#include "bme68x_iaq.h"
+#include "bosch_bme68x_iaq.h"
 
-LOG_MODULE_REGISTER(bsec, CONFIG_BME68X_IAQ_LOG_LEVEL);
+LOG_MODULE_REGISTER(bosch_bsec, CONFIG_BME68X_IAQ_LOG_LEVEL);
 
 #define DT_DRV_COMPAT 					bosch_bme680
 #define SETTINGS_NAME_BSEC 				"bsec"
@@ -560,7 +560,7 @@ static int bme68x_trigger_set(const struct device *p_dev,
 	    || (p_trig->chan == SENSOR_CHAN_HUMIDITY)
 	    || (p_trig->chan == SENSOR_CHAN_AMBIENT_TEMP)
 	    || (p_trig->chan == SENSOR_CHAN_PRESS)
-	    || (p_trig->chan == SENSOR_CHAN_IAQ)) {
+	    || (p_trig->chan == SENSOR_CHAN_VOC)) {
 		data->trigger = p_trig;
 		data->trg_handler = handler;
 	} else {
@@ -604,7 +604,7 @@ static int bme68x_channel_get(const struct device *p_dev,
 		sensor_value_from_double(p_val, data->latest.temperature);
 	} else if (chan == SENSOR_CHAN_PRESS) {
 		sensor_value_from_double(p_val, data->latest.pressure);
-	} else if (chan == SENSOR_CHAN_IAQ) {
+	} else if (chan == SENSOR_CHAN_VOC) {
 		p_val->val1 = data->latest.air_quality;
 		p_val->val2 = 0;
 	} else {

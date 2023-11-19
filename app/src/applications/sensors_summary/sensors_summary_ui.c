@@ -64,23 +64,22 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_align(temp_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(temp_label, "Temp:");
 
-    iaq_label = lv_label_create(parent);
-    lv_obj_set_width(iaq_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(iaq_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(iaq_label, 15);
-    lv_obj_set_y(iaq_label, -25);
-    lv_obj_set_align(iaq_label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(iaq_label, "IAQ:");
-
     rel_height_label = lv_label_create(parent);
     lv_obj_set_width(rel_height_label, LV_SIZE_CONTENT);
     lv_obj_set_height(rel_height_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(rel_height_label, 5);
-    lv_obj_set_y(rel_height_label, -5);
+    lv_obj_set_x(rel_height_label, 15);
+    lv_obj_set_y(rel_height_label, -25);
     lv_obj_set_align(rel_height_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(rel_height_label, "Rel. height:");
 
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(apds9306), okay)
+    iaq_label = lv_label_create(parent);
+    lv_obj_set_width(iaq_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(iaq_label, LV_SIZE_CONTENT);
+    lv_obj_set_x(iaq_label, 5);
+    lv_obj_set_y(iaq_label, -5);
+    lv_obj_set_align(iaq_label, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(iaq_label, "IAQ:");
+
     light_label = lv_label_create(parent);
     lv_obj_set_width(light_label, LV_SIZE_CONTENT);
     lv_obj_set_height(light_label, LV_SIZE_CONTENT);
@@ -88,7 +87,6 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_y(light_label, 15);
     lv_obj_set_align(light_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(light_label, "Light:");
-#endif
 
     lv_obj_add_event_cb(set_ref_btn, event_set_reference_button, LV_EVENT_CLICKED, NULL);
 }
