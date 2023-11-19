@@ -52,6 +52,12 @@ struct rtt_rx_data_header {
     uint32_t    address;
 };
 
+// Names must match partition manager and dts
+static char *partition_map[] = {
+    [FIXED_PARTITION_ID(lvgl_raw_partition)] = "lvgl_raw_partition",
+    [FIXED_PARTITION_ID(littlefs_storage)] = "littlefs_storage",
+};
+
 #define DATA_BUFFER_SIZE (SPI_FLASH_SECTOR_SIZE + sizeof(struct rtt_rx_data_header))
 #define UP_BUFFER_SIZE (SPI_FLASH_SECTOR_SIZE + 1 + sizeof(struct rtt_rx_data_header))
 #define DOWN_BUFFER_SIZE (SPI_FLASH_SECTOR_SIZE + 1 + sizeof(struct rtt_rx_data_header))
@@ -106,34 +112,15 @@ static int loader_read_flash(int partition_id, int buf_idx, uint8_t *buf, int le
     return 0;
 }
 
-static void flash_part_iter_cb(const struct flash_area *fa, void *user_data)
-{
-    struct flash_partition_search_user_data *search_data = (struct flash_partition_search_user_data *)user_data;
-    const char *fa_label = flash_area_label(fa);
-    if (fa_label == NULL) {
-        return;
-    }
-    if (strcmp(search_data->search_label_name, fa_label) == 0) {
-        search_data->found_part_id = fa->fa_id;
-    }
-}
-
 static int find_partition_id_from_label(char *label)
 {
-    struct flash_partition_search_user_data search_data = {
-        .search_label_name = label,
-        .found_part_id = -ENOENT
-    };
-
-    flash_area_foreach(flash_part_iter_cb, &search_data);
-
-    if (search_data.found_part_id >= 0) {
-        LOG_DBG("Found target partition id: %d", search_data.found_part_id);
-    } else {
-        LOG_ERR("Partition label not found: %s", label);
+    for (int i = 0; i < ARRAY_SIZE(partition_map); i++) {
+        if (strcmp(partition_map[i], label) == 0) {
+            return i;
+        }
     }
 
-    return search_data.found_part_id;
+    return -ENODEV;
 }
 
 static bool check_start_sequence(uint8_t *buf, uint32_t len, int *partition_id)

@@ -179,7 +179,7 @@ def rtt_run_flush_loader(target_device, file, partition, read_data_only=False):
     print("Done. Reset into flash loader mode...")
     jlink.reset(0, False)
     print("Done. Starting RTT transfer...")
-    time.sleep(5)
+    time.sleep(10)
     jlink.rtt_start(None)
 
     while True:

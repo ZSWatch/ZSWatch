@@ -55,7 +55,7 @@ class UploadFsWestCommand(WestCommand):
         print(images_path)
         if args.read_file:
             filename = args.read_file
-            partition = partition if partition else "lvgl_lfs_partition"
+            partition = partition if partition else "littlefs_storage"
         if args.read_file is None:
             if args.type == "raw":
                 source_dir = f"{images_path}/S"
@@ -63,7 +63,7 @@ class UploadFsWestCommand(WestCommand):
                 create_custom_raw_fs_image(filename, source_dir, block_size)
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"
-                partition = partition if partition else "lvgl_lfs_partition"
+                partition = partition if partition else "littlefs_storage"
                 create_littlefs_fs_image(
                     filename,
                     img_size,

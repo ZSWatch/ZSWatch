@@ -1,7 +1,8 @@
 #-------------------
 #  External partition
 # ------------------
-lvgl_lfs_partition:
+# Must have this name for nRF Partition Manager to work
+littlefs_storage:
   address: 0x0
   region: external_flash
   size: 0x200000
