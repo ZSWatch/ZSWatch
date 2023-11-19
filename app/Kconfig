@@ -189,7 +189,7 @@ menu "ZSWatch"
         config SPI_FLASH_LOADER
             bool
         prompt "Enable SPI flash loader"
-        default y
+        default n
         select USE_SEGGER_RTT
         #select SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL
         help
