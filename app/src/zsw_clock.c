@@ -39,8 +39,10 @@ ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
 
 void zsw_clock_init(uint64_t start_time_seconds)
 {
+#ifdef CONFIG_BLE_USES_GADGETBRIDGE
     setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
+#endif
 
     struct timespec tspec;
     tspec.tv_sec = start_time_seconds;
