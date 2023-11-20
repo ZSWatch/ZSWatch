@@ -61,7 +61,7 @@
 #include "ble/ble_ancs.h"
 #endif
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
 #define TASK_WDT_FEED_INTERVAL_MS  3000
 
@@ -353,7 +353,7 @@ static void open_notification_popup(void *data)
         lv_group_set_default(temp_group);
         lv_indev_set_group(enc_indev, temp_group);
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
-        zsw_notification_popup_show(not->title, not->body, not->src, not->id, on_popup_notifcation_closed, 10);
+        zsw_notification_popup_show(not->title, not->sender, not->src, not->id, on_popup_notifcation_closed, 10);
         is_buttons_for_lvgl = true;
     }
     pending_not_open = false;
@@ -553,6 +553,12 @@ static void on_ble_data_callback(ble_comm_cb_data_t *cb)
 
     switch (cb->type) {
         case BLE_COMM_DATA_TYPE_NOTIFY:
+            LOG_WRN("ID: %u", cb->data.notify.id);
+            LOG_WRN("Source: %s", cb->data.notify.src);
+            LOG_WRN("Sender: %s", cb->data.notify.sender);
+            LOG_WRN("Title: %s", cb->data.notify.title);
+            LOG_WRN("Body: %s", cb->data.notify.body);
+
             parsed_not = zsw_notification_manager_add(&cb->data.notify);
             if (!parsed_not) {
                 return;
