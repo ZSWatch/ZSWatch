@@ -29,6 +29,7 @@
 #include "ble/ble_ams.h"
 #include "ble/ble_comm.h"
 #include "events/ble_data_event.h"
+#include "events/music_event.h"
 
 LOG_MODULE_REGISTER(ble_ams, LOG_LEVEL_INF);
 
@@ -57,10 +58,41 @@ static struct bt_conn *current_conn;
 
 static void ble_ams_delayed_write_handle(struct k_work *item);
 static void ams_discover_retry_handle(struct k_work *item);
+static void music_control_event_callback(const struct zbus_channel *chan);
+
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+
+ZBUS_CHAN_DECLARE(music_control_data_chan);
+ZBUS_LISTENER_DEFINE(ios_music_control_lis, music_control_event_callback);
 
 K_WORK_DELAYABLE_DEFINE(ams_gatt_discover_retry, ams_discover_retry_handle);
 K_WORK_DELAYABLE_DEFINE(ble_ams_delayed_write, ble_ams_delayed_write_handle);
-ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+
+static void music_control_event_callback(const struct zbus_channel *chan)
+{
+    const struct music_event *event = zbus_chan_const_msg(chan);
+
+    switch (event->control_type) {
+        case MUSIC_CONTROL_UI_PLAY:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_PAUSE:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_NEXT_TRACK:
+            ble_ams_next_track();
+            break;
+        case MUSIC_CONTROL_UI_PREV_TRACK:
+            ble_ams_previous_track();
+            break;
+
+        case MUSIC_CONTROL_UI_CLOSE:
+        default:
+            // Nothing to do
+            break;
+    }
+
+}
 
 static void notify_rc_cb(struct bt_ams_client *ams_c,
                          const uint8_t *data, size_t len)

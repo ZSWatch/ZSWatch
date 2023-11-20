@@ -3,13 +3,10 @@
 #include <zsw_clock.h>
 #include <zephyr/zbus/zbus.h>
 
-#ifdef CONFIG_BLE_USES_IOS
-#include "ble/ble_ams.h"
-#endif
-
 #include "music_control_ui.h"
 #include "ble/ble_comm.h"
 #include "events/ble_data_event.h"
+#include "events/music_event.h"
 #include "managers/zsw_app_manager.h"
 
 // Functions needed for all applications
@@ -22,6 +19,8 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void handle_update_ui(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+
+ZBUS_CHAN_DECLARE(music_control_data_chan);
 ZBUS_LISTENER_DEFINE(music_app_ble_comm_lis, zbus_ble_comm_data_callback);
 
 static K_WORK_DEFINE(update_ui_work, handle_update_ui);
@@ -59,53 +58,16 @@ static void music_control_app_stop(void)
 
 static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
 {
-    uint8_t buf[50];
-    int msg_len = 0;
+    if (evt_type == MUSIC_CONTROL_UI_CLOSE) {
+        zsw_app_manager_app_close_request(&app);
+    } else {
+        struct music_event music_event = {
+            .control_type = evt_type,
+        };
 
-#if defined(CONFIG_BLE_USES_GADGETBRIDGE)
-
-    switch (evt_type) {
-        case MUSIC_CONTROL_UI_CLOSE:
-            zsw_app_manager_app_close_request(&app);
-            break;
-        case MUSIC_CONTROL_UI_PLAY:
-            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "play");
-            break;
-        case MUSIC_CONTROL_UI_PAUSE:
-            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "pause");
-            break;
-        case MUSIC_CONTROL_UI_NEXT_TRACK:
-            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "next");
-            break;
-        case MUSIC_CONTROL_UI_PREV_TRACK:
-            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "previous");
-            break;
-    }
-    if (msg_len > 0) {
-        ble_comm_send(buf, msg_len);
+        zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
     }
 
-#elif defined(CONFIG_BLE_USES_IOS)
-
-    switch (evt_type) {
-        case MUSIC_CONTROL_UI_CLOSE:
-            zsw_app_manager_app_close_request(&app);
-            break;
-        case MUSIC_CONTROL_UI_PLAY:
-            ble_ams_play_pause();
-            break;
-        case MUSIC_CONTROL_UI_PAUSE:
-            ble_ams_play_pause();
-            break;
-        case MUSIC_CONTROL_UI_NEXT_TRACK:
-            ble_ams_next_track();
-            break;
-        case MUSIC_CONTROL_UI_PREV_TRACK:
-            ble_ams_previous_track();
-            break;
-    }
-
-#endif // CONFIG_BLE_USES_IOS
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)

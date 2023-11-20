@@ -31,6 +31,7 @@
 #include "ble/ble_comm.h"
 #include "ble/ble_transport.h"
 #include "events/ble_data_event.h"
+#include "events/music_event.h"
 
 #ifdef CONFIG_BT_AMS_CLIENT
 #include <bluetooth/services/ams_client.h>
@@ -65,6 +66,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_handler(struct k_work *item);
+static void music_control_event_callback(const struct zbus_channel *chan);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = connected,
@@ -91,6 +93,9 @@ static const struct bt_data ad_nus[] = {
 
 K_WORK_DELAYABLE_DEFINE(conn_interval_work, update_conn_interval_handler);
 
+ZBUS_CHAN_DECLARE(music_control_data_chan);
+ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
+
 static struct bt_conn *current_conn;
 static uint32_t max_send_len;
 static uint8_t receive_buf[MAX_GB_PACKET_LENGTH];
@@ -101,6 +106,37 @@ static parse_state_t parse_state = WAIT_GB;
 static on_data_cb_t data_parsed_cb;
 
 static int pairing_enabled;
+
+static void music_control_event_callback(const struct zbus_channel *chan)
+{
+    const struct music_event *event = zbus_chan_const_msg(chan);
+
+    uint8_t buf[50];
+    int msg_len = 0;
+
+    switch (event->control_type) {
+        case MUSIC_CONTROL_UI_PLAY:
+            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "play");
+            break;
+        case MUSIC_CONTROL_UI_PAUSE:
+            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "pause");
+            break;
+        case MUSIC_CONTROL_UI_NEXT_TRACK:
+            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "next");
+            break;
+        case MUSIC_CONTROL_UI_PREV_TRACK:
+            msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"music\", \"n\": %s} \n", "previous");
+            break;
+        case MUSIC_CONTROL_UI_CLOSE:
+        default:
+            // Nothing to do
+            break;
+    }
+    if (msg_len > 0) {
+        ble_comm_send(buf, msg_len);
+    }
+
+}
 
 static struct ble_transport_cb ble_transport_callbacks = {
     .data_receive = bt_receive_cb,
