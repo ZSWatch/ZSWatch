@@ -64,6 +64,7 @@ ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 ZBUS_CHAN_DECLARE(music_control_data_chan);
 ZBUS_OBS_DECLARE(ios_music_control_lis);
+ZBUS_CHAN_ADD_OBS(music_control_data_chan, ios_music_control_lis, 1);
 ZBUS_LISTENER_DEFINE(ios_music_control_lis, music_control_event_callback);
 
 K_WORK_DELAYABLE_DEFINE(ams_gatt_discover_retry, ams_discover_retry_handle);
