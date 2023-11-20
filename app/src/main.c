@@ -59,6 +59,7 @@
 #ifdef CONFIG_BLE_USES_IOS
 #include "ble/ble_ams.h"
 #include "ble/ble_ancs.h"
+#include "ble/ble_cts.h"
 #endif
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
@@ -326,6 +327,7 @@ static void enable_bluetoth(void)
 
 #ifdef CONFIG_BLE_USES_IOS
     ble_ams_init();
+    ble_cts_init();
     ble_ancs_init(on_ble_data_callback);
 #endif
 }

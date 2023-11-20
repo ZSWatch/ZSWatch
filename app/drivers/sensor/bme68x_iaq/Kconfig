@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-config BME68X_IAQ
+config BME68X_EXT_IAQ
 	bool "Bosch BSEC library"
 	depends on !BME680
 	depends on SETTINGS && !SETTINGS_NONE
@@ -13,7 +13,7 @@ config BME68X_IAQ
 	  Enable the use of Bosch BSEC library.
 	  This configuration depends on the BME680 Zephyr driver being disabled.
 
-if BME68X_IAQ
+if BME68X_EXT_IAQ
 
 config BME68X_IAQ_SAVE_INTERVAL_MINUTES
 	int "Period in minutes after which BSEC state is saved to flash"

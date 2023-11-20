@@ -1,5 +1,5 @@
 /**
- * @file ble.ams.c
+ * @file ble_ams.c
  * @author Leonardo Bispo
  *
  * @brief Implements Apple Media Service (AMS), the native iOS GATT server allows the client
@@ -29,6 +29,7 @@
 #include "ble/ble_ams.h"
 #include "ble/ble_comm.h"
 #include "events/ble_data_event.h"
+#include "events/music_event.h"
 
 LOG_MODULE_REGISTER(ble_ams, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -53,11 +54,47 @@ static const enum bt_ams_track_attribute_id entity_update_track[] = {
 
 static struct bt_ams_client ams_c;
 static char msg_buff[MAX_MUSIC_FIELD_LENGTH + 1];
+static struct bt_conn *current_conn;
 
 static void ble_ams_delayed_write_handle(struct k_work *item);
+static void ams_discover_retry_handle(struct k_work *item);
+static void music_control_event_callback(const struct zbus_channel *chan);
 
-K_WORK_DELAYABLE_DEFINE(ble_ams_delayed_write, ble_ams_delayed_write_handle);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+
+ZBUS_CHAN_DECLARE(music_control_data_chan);
+ZBUS_OBS_DECLARE(ios_music_control_lis);
+ZBUS_CHAN_ADD_OBS(music_control_data_chan, ios_music_control_lis, 1);
+ZBUS_LISTENER_DEFINE(ios_music_control_lis, music_control_event_callback);
+
+K_WORK_DELAYABLE_DEFINE(ams_gatt_discover_retry, ams_discover_retry_handle);
+K_WORK_DELAYABLE_DEFINE(ble_ams_delayed_write, ble_ams_delayed_write_handle);
+
+static void music_control_event_callback(const struct zbus_channel *chan)
+{
+    const struct music_event *event = zbus_chan_const_msg(chan);
+
+    switch (event->control_type) {
+        case MUSIC_CONTROL_UI_PLAY:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_PAUSE:
+            ble_ams_play_pause();
+            break;
+        case MUSIC_CONTROL_UI_NEXT_TRACK:
+            ble_ams_next_track();
+            break;
+        case MUSIC_CONTROL_UI_PREV_TRACK:
+            ble_ams_previous_track();
+            break;
+
+        case MUSIC_CONTROL_UI_CLOSE:
+        default:
+            // Nothing to do
+            break;
+    }
+
+}
 
 static void notify_rc_cb(struct bt_ams_client *ams_c,
                          const uint8_t *data, size_t len)
@@ -162,7 +199,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_PLAYER &&
             attr_val == BT_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO) {
 
-            struct ble_data_event evt_music_state;
+            struct ble_data_event evt_music_state = { 0 };
 
             evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
 
@@ -264,25 +301,38 @@ static const struct bt_gatt_dm_cb discover_cb = {
     .error_found = discover_error_found_cb,
 };
 
+static void discover_gattp(struct bt_conn *conn)
+{
+    int dm_err = bt_gatt_dm_start(conn, BT_UUID_AMS, &discover_cb, &ams_c);
+    if (dm_err) {
+
+        // Only one DM discovery can happen at a time, AMS may be running, so queue it
+        if (dm_err == -EALREADY) {
+            current_conn = conn;
+            k_work_schedule(&ams_gatt_discover_retry, K_MSEC(500));
+            return;
+        }
+
+        LOG_ERR("Failed to start discovery (err %d)", dm_err);
+    }
+}
+
+static void ams_discover_retry_handle(struct k_work *item)
+{
+    discover_gattp(current_conn);
+}
+
 static void security_changed(struct bt_conn *conn, bt_security_t level,
                              enum bt_security_err err)
 {
-    int dm_err;
-    char addr[BT_ADDR_LE_STR_LEN];
-
-    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
     if (!err) {
-        LOG_INF("Security changed: %s level %u", addr, level);
+        LOG_INF("Security changed: level %u", level);
 
         if (bt_conn_get_security(conn) >= BT_SECURITY_L2) {
-            dm_err = bt_gatt_dm_start(conn, BT_UUID_AMS, &discover_cb, &ams_c);
-            if (dm_err) {
-                LOG_ERR("Failed to start discovery (err %d)", dm_err);
-            }
+            discover_gattp(conn);
         }
     } else {
-        LOG_ERR("Security failed: %s level %u err %d", addr, level, err);
+        LOG_ERR("Security failed: level %u err %d", level, err);
     }
 }
 

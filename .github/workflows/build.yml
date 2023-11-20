@@ -30,6 +30,7 @@ jobs:
         working-directory: ZSWatch
         run: |
           west init -l app
+          west config manifest.group-filter +bsec2
           west update -o=--depth=1 -n
       
       - name: Style
@@ -38,6 +39,15 @@ jobs:
           west format --dry-run
 
       - name: Build firmware
+        if: ${{ matrix.board != 'native_posix' }}
+        working-directory: ZSWatch
+        run: |
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf"
+          cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
+          mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
+      
+      - name: Build native_posix
+        if: ${{ matrix.board == 'native_posix' }}
         working-directory: ZSWatch
         run: |
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
@@ -45,9 +55,10 @@ jobs:
           mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
 
       - name: Build firmware for iOS
+        if: ${{ matrix.board != 'native_posix' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_ios -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DCONFIG_BLE_USES_IOS="y"
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_ios -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DCONFIG_BLE_USES_IOS="y"
           cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
           mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
       

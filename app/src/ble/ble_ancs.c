@@ -11,10 +11,12 @@
  *
  * @see https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html
  */
+#include "string.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/zbus/zbus.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -64,32 +66,6 @@ static uint8_t attr_posaction[BT_ANCS_ATTR_DATA_MAX];
 static uint8_t attr_negaction[BT_ANCS_ATTR_DATA_MAX];
 static uint8_t attr_disp_name[BT_ANCS_ATTR_DATA_MAX];
 
-/* String literals for the iOS notification categories.
- * Used then printing to UART.
- */
-static const char *lit_catid[BT_ANCS_CATEGORY_ID_COUNT] = {
-    "Other",
-    "Incoming Call",
-    "Missed Call",
-    "Voice Mail",
-    "Social",
-    "Schedule",
-    "Email",
-    "News",
-    "Health And Fitness",
-    "Business And Finance",
-    "Location",
-    "Entertainment"
-};
-
-/* String literals for the iOS notification event types.
- * Used then printing to UART.
- */
-static const char *lit_eventid[BT_ANCS_EVT_ID_COUNT] = {"Added",
-                                                        "Modified",
-                                                        "Removed"
-                                                       };
-
 /* String literals for the iOS notification attribute types.
  * Used when printing to UART.
  */
@@ -129,6 +105,7 @@ static void bt_ancs_write_response_handler(struct bt_ancs_client *ancs_c, uint8_
 static void gatt_discover_retry_handle(struct k_work *item);
 
 K_WORK_DELAYABLE_DEFINE(gatt_discover_retry, gatt_discover_retry_handle);
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 static void enable_ancs_notifications(struct bt_ancs_client *ancs_c)
 {
@@ -345,7 +322,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
-        LOG_ERR("Connection failed (err 0x%02x)\n", err);
+        LOG_ERR("Connection failed (err 0x%02x)", err);
         return;
     }
 
@@ -415,7 +392,7 @@ static void notif_attr_print(const struct bt_ancs_attr *attr)
 
 static int parse_notify(const struct bt_ancs_attr *attr)
 {
-    static ble_comm_cb_data_t cb = { '\0' };
+    static ble_comm_cb_data_t cb = { 0 };
 
     switch (attr->attr_id) {
         case ATTR_ID_TITLE:
@@ -429,10 +406,10 @@ static int parse_notify(const struct bt_ancs_attr *attr)
             break;
 
         case ATTR_ID_APP_ID:
-            // This comes as example com.facebook.Messenger, so use length as id
-            cb.data.notify.src = (char *)attr->attr_data;
-            cb.data.notify.src_len = attr->attr_len;
-            cb.data.notify.id = attr->attr_len;
+            // This comes as example com.facebook.Messenger
+            cb.data.notify.src = strrchr(attr->attr_data, '.') + 1;
+            cb.data.notify.src_len = strlen(cb.data.notify.src);
+            cb.data.notify.id = notification_latest.notif_uid;
             break;
 
         // the last message is Negative action label, send only when all data is received;
@@ -459,6 +436,20 @@ static void bt_ancs_notification_source_handler(struct bt_ancs_client *ancs_c,
 {
     if (!err) {
         notification_latest = *notif;
+
+        if (notification_latest.evt_id == BT_ANCS_EVENT_ID_NOTIFICATION_REMOVED) {
+            struct ble_data_event evt_notif_rem = {
+                .data.type = BLE_COMM_DATA_TYPE_NOTIFY_REMOVE,
+                .data.data.notify_remove.id = notification_latest.notif_uid,
+            };
+
+            LOG_DBG("Remove notification %d", evt_notif_rem.data.data.notify_remove.id);
+
+            zbus_chan_pub(&ble_comm_data_chan, &evt_notif_rem, K_MSEC(250));
+
+            return;
+        }
+
         bt_ancs_request_attrs(ancs_c, &notification_latest, bt_ancs_write_response_handler);
     }
 }

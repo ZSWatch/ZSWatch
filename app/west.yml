@@ -5,6 +5,10 @@ manifest:
   remotes:
     - name: sdk
       url-base: https://github.com/nrfconnect
+    - name: bosch
+      url-base: https://github.com/boschsensortec
+
+  group-filter: [-bsec2]
 
   projects:
     - name: sdk-nrf
@@ -29,6 +33,13 @@ manifest:
           - trusted-firmware-m
           - sof
       clone-depth: 1
+
+    - name: bsec2
+      repo-path: Bosch-BSEC2-Library
+      remote: bosch
+      path: app/src/ext_drivers/BSEC2
+      groups:
+        - bsec2
       
   self:
     west-commands: scripts/west-commands.yml

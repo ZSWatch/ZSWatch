@@ -202,7 +202,7 @@
 		lvgl_lfs: lvgl_lfs {
 			compatible = "zephyr,fstab,littlefs";
 			mount-point = "/lvgl_lfs";
-			partition = <&lvgl_lfs_partition>;
+			partition = <&littlefs_storage>;
 			automount;
 			read-size = <1024>;
 			prog-size = <512>;
@@ -221,8 +221,8 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		lvgl_lfs_partition: partition@0 {
-			label = "lvgl_lfs_partition";
+		littlefs_storage: partition@0 {
+			label = "littlefs_storage";
 			reg = <0x00000000 0x00200000>;
 		};
 		lvgl_raw_partition: partition@200000 {
