@@ -32,7 +32,7 @@
 #include "sensors/zsw_magnetometer.h"
 #include "sensors/zsw_environment_sensor.h"
 
-LOG_MODULE_REGISTER(zsw_gatt_sensor_server, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(zsw_gatt_sensor_server, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
 static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);

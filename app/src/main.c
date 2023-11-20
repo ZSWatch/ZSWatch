@@ -553,11 +553,11 @@ static void on_ble_data_callback(ble_comm_cb_data_t *cb)
 
     switch (cb->type) {
         case BLE_COMM_DATA_TYPE_NOTIFY:
-            LOG_WRN("ID: %u", cb->data.notify.id);
-            LOG_WRN("Source: %s", cb->data.notify.src);
-            LOG_WRN("Sender: %s", cb->data.notify.sender);
-            LOG_WRN("Title: %s", cb->data.notify.title);
-            LOG_WRN("Body: %s", cb->data.notify.body);
+            LOG_DBG("ID: %u", cb->data.notify.id);
+            LOG_DBG("Source: %s", cb->data.notify.src);
+            LOG_DBG("Sender: %s", cb->data.notify.sender);
+            LOG_DBG("Title: %s", cb->data.notify.title);
+            LOG_DBG("Body: %s", cb->data.notify.body);
 
             parsed_not = zsw_notification_manager_add(&cb->data.notify);
             if (!parsed_not) {

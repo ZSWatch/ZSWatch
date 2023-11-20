@@ -29,7 +29,7 @@
 #include "ble/ble_comm.h"
 #include "events/ble_data_event.h"
 
-LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
+LOG_MODULE_REGISTER(ble_ancs, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 enum {
     DISCOVERY_ANCS_ONGOING,
