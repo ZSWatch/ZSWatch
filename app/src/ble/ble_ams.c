@@ -197,7 +197,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_PLAYER &&
             attr_val == BT_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO) {
 
-            struct ble_data_event evt_music_state;
+            struct ble_data_event evt_music_state = { 0 };
 
             evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
 
