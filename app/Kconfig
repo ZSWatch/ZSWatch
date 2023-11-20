@@ -230,5 +230,8 @@ menu "ZSWatch"
         source "subsys/logging/Kconfig.template.log_config"
 
         rsource "src/sensors/Kconfig"
+        rsource "src/ble/Kconfig"
+        rsource "src/applications/settings/Kconfig"
+        rsource "src/applications/template/Kconfig"
     endmenu
 endmenu

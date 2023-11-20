@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BLE_TRANSPORT_H
-#define __BLE_TRANSPORT_H
+#pragma once
 
 #include <zephyr/types.h>
 #include <zephyr/bluetooth/conn.h>
@@ -37,5 +36,3 @@ struct ble_transport_cb {
 
 int ble_transport_init(struct ble_transport_cb *callback);
 int ble_transport_send(struct bt_conn *connection, const uint8_t *data, uint16_t length);
-
-#endif

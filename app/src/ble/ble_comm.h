@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __BLE_COMM_H
-#define __BLE_COMM_H
+#pragma once
 
 #include <zephyr/kernel.h>
 
@@ -127,5 +126,3 @@ int ble_comm_short_connection_interval(void);
  *  @return 0 when successful
 */
 int ble_comm_long_connection_interval(void);
-
-#endif

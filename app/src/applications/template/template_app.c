@@ -1,8 +1,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/logging/log.h>
 
 #include "template_ui.h"
 #include "managers/zsw_app_manager.h"
+
+LOG_MODULE_REGISTER(template_app, CONFIG_ZSW_TEMPLATE_APP_LOG_LEVEL);
 
 // Functions needed for all applications
 static void template_app_start(lv_obj_t *root, lv_group_t *group);

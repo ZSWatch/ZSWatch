@@ -22,7 +22,7 @@
 
 #include "ble/ble_transport.h"
 
-LOG_MODULE_REGISTER(ble_transport, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 static struct ble_transport_cb *callbacks;
 

@@ -1,5 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/gap.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/settings/settings.h>
@@ -11,6 +12,8 @@
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
 #include "zsw_settings.h"
+
+LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group);
 static void settings_app_stop(void);
@@ -34,6 +37,8 @@ typedef struct setting_app {
     zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
 } setting_app_t;
+
+static struct k_work_delayable ble_pairing_dwork;
 
 // Default values.
 static setting_app_t settings_app = {
@@ -162,6 +167,12 @@ static lv_settings_page_t settings_menu[] = {
     },
 };
 
+static void ble_pairing_work_handler(struct k_work *work)
+{
+    LOG_DBG("Timer expired. Disable pairing");
+    ble_comm_set_pairable(false);
+}
+
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
     lv_settings_create(settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
@@ -220,6 +231,13 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
         ble_comm_set_pairable(true);
+
+        if (!k_work_delayable_is_pending(&ble_pairing_dwork)) {
+            LOG_DBG("Schedule new work");
+
+            k_work_init_delayable(&ble_pairing_dwork, ble_pairing_work_handler);
+            k_work_schedule(&ble_pairing_dwork, K_MSEC(60 * 1000UL));
+        }
     } else {
         ble_comm_set_pairable(false);
     }
@@ -230,7 +248,7 @@ static void on_clear_bonded_changed(lv_setting_value_t value, bool final)
     if (final) {
         int err = bt_unpair(BT_ID_DEFAULT, NULL);
         if (err) {
-            printk("Cannot unpair for default ID");
+            LOG_ERR("Cannot unpair for default ID");
             return;
         }
     }

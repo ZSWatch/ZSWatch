@@ -1,0 +1,3 @@
+module = ZSW_BLE
+module-str = ZSW_BLE
+source "subsys/logging/Kconfig.template.log_config"
