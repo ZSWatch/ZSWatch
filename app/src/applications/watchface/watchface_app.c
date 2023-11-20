@@ -35,7 +35,7 @@
 #include "events/accel_event.h"
 #include "events/battery_event.h"
 #include "events/activity_event.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "managers/zsw_battery_manager.h"

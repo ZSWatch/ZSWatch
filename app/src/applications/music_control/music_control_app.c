@@ -5,7 +5,7 @@
 
 #include "music_control_ui.h"
 #include "ble/ble_comm.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 #include "events/music_event.h"
 #include "managers/zsw_app_manager.h"
 

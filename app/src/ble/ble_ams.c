@@ -28,7 +28,7 @@
 
 #include "ble/ble_ams.h"
 #include "ble/ble_comm.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 #include "events/music_event.h"
 
 LOG_MODULE_REGISTER(ble_ams, CONFIG_ZSW_BLE_LOG_LEVEL);

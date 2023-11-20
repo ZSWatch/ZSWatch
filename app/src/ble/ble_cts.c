@@ -23,7 +23,7 @@
 
 #include "ble/ble_comm.h"
 #include "ble/ble_cts.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 
 LOG_MODULE_REGISTER(ble_cts, LOG_LEVEL_WRN);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);

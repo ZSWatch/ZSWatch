@@ -14,12 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __ZSW_BATTERY_MANAGER_H_
-#define __ZSW_BATTERY_MANAGER_H_
 
-/*
-* Sample the battery voltage, output in mV and percent.
+#pragma once
+
+/** @brief          Sample the battery voltage, output in mV and percent.
+ *  @param mV
+ *  @param percent
+ *  @return         0 when successful
 */
 int zsw_battery_manager_sample_battery(int *mV, int *percent);
-
-#endif // __ZSW_BATTERY_MANAGER_H_

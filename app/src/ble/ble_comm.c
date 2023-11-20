@@ -30,7 +30,7 @@
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
 #include "ble/ble_transport.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 #include "events/music_event.h"
 
 #ifdef CONFIG_BT_AMS_CLIENT
@@ -61,16 +61,16 @@ static void parse_time(char *data);
 static void parse_remote_control(char *data, int len);
 static void send_ble_data_event(ble_comm_cb_data_t *data);
 
-static void connected(struct bt_conn *conn, uint8_t err);
-static void disconnected(struct bt_conn *conn, uint8_t reason);
+static void ble_connected(struct bt_conn *conn, uint8_t err);
+static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_handler(struct k_work *item);
 static void music_control_event_callback(const struct zbus_channel *chan);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-    .connected    = connected,
-    .disconnected = disconnected,
+    .connected    = ble_connected,
+    .disconnected = ble_disconnected,
     .le_param_updated = param_updated,
 };
 
@@ -93,6 +93,9 @@ static const struct bt_data ad_nus[] = {
 
 K_WORK_DELAYABLE_DEFINE(conn_interval_work, update_conn_interval_handler);
 
+ZBUS_CHAN_DECLARE(ble_comm_connected_chan);
+ZBUS_CHAN_DECLARE(ble_comm_disconnected_chan);
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
 
@@ -102,8 +105,6 @@ static uint8_t receive_buf[MAX_GB_PACKET_LENGTH];
 static uint8_t num_parsed_brackets;
 static uint16_t parsed_data_index = 0;
 static parse_state_t parse_state = WAIT_GB;
-
-static on_data_cb_t data_parsed_cb;
 
 static int pairing_enabled;
 
@@ -144,12 +145,12 @@ static struct ble_transport_cb ble_transport_callbacks = {
 
 static void auth_cancel(struct bt_conn *conn)
 {
-    LOG_ERR("Pairing cancelled\n");
+    LOG_ERR("Pairing cancelled");
 }
 
 static void pairing_complete(struct bt_conn *conn, bool bonded)
 {
-    LOG_DBG("Pairing Complete\n");
+    LOG_DBG("Pairing complete");
     struct bt_conn_info info;
     char addr[BT_ADDR_LE_STR_LEN];
 
@@ -175,19 +176,19 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
     if (pairing_enabled) {
         zsw_popup_show("Pairing Failed", "Address:", NULL, 5);
     }
-    LOG_WRN("Pairing Failed (%d). Disconnecting.\n", reason);
+    LOG_WRN("Pairing Failed (%d). Disconnecting.", reason);
     bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
 }
 
 static void pairing_deny(struct bt_conn *conn)
 {
-    LOG_ERR("Pairing deny\n");
+    LOG_ERR("Pairing deny");
     bt_conn_auth_cancel(conn);
 }
 
 static void pairing_accept(struct bt_conn *conn)
 {
-    LOG_WRN("Pairing accept\n");
+    LOG_WRN("Pairing accept");
     bt_conn_auth_pairing_confirm(conn);
 }
 
@@ -203,7 +204,7 @@ static struct bt_conn_auth_info_cb auth_cb_info = {
     .pairing_failed = pairing_failed,
 };
 
-int ble_comm_init(on_data_cb_t data_cb)
+int ble_comm_init(void)
 {
     bt_conn_auth_cb_register(&auth_cb_display);
     bt_conn_auth_info_cb_register(&auth_cb_info);
@@ -215,7 +216,6 @@ int ble_comm_init(on_data_cb_t data_cb)
         LOG_ERR("Failed to initialize UART service (err: %d)", err);
         return err;
     }
-    data_parsed_cb = data_cb;
 
     struct bt_le_adv_param adv_param = {
         .options = BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME,
@@ -225,9 +225,9 @@ int ble_comm_init(on_data_cb_t data_cb)
 
     err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
     if (err) {
-        LOG_ERR("Advertising failed to start (err %d)\n", err);
+        LOG_ERR("Advertising failed to start (err %d)", err);
     } else {
-        LOG_DBG("Advertising successfully started\n");
+        LOG_DBG("Advertising successfully started");
     }
 
     return err;
@@ -248,7 +248,7 @@ void ble_comm_set_pairable(bool pairable)
         auth_cb_display.pairing_confirm = pairing_accept;
         bt_conn_auth_cb_register(&auth_cb_display);
     } else {
-        LOG_WRN("Disable Pairable\n");
+        LOG_WRN("Disable Pairable");
         auth_cb_display.pairing_confirm = pairing_deny;
         bt_conn_auth_cb_register(&auth_cb_display);
     }
@@ -273,7 +273,7 @@ int ble_comm_short_connection_interval(void)
 
     err = bt_conn_le_param_update(current_conn, &param);
     if (err && err != -EALREADY) {
-        LOG_WRN("bt_conn_le_param_update failed: %d", err);
+        LOG_ERR("bt_conn_le_param_update failed: %d", err);
     }
 
     return err;
@@ -293,7 +293,7 @@ int ble_comm_long_connection_interval(void)
 
     err = bt_conn_le_param_update(current_conn, &param);
     if (err && err != -EALREADY) {
-        LOG_WRN("bt_conn_le_param_update failed %d", err);
+        LOG_ERR("bt_conn_le_param_update failed %d", err);
     }
 
     return err;
@@ -312,7 +312,7 @@ static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_ex
 
         max_send_len = bt_gatt_get_mtu(current_conn) - 3;
     } else {
-        LOG_WRN("MTU exchange failed (err %" PRIu8 ")", err);
+        LOG_ERR("MTU exchange failed (err %" PRIu8 ")", err);
     }
 }
 static void request_mtu_exchange(void)
@@ -323,13 +323,13 @@ static void request_mtu_exchange(void)
 
     err = bt_gatt_exchange_mtu(current_conn, &exchange_params);
     if (err) {
-        LOG_WRN("MTU exchange failed (err %d)", err);
+        LOG_ERR("MTU exchange failed (err %d)", err);
     } else {
         LOG_INF("MTU exchange pending");
     }
 }
 
-static void connected(struct bt_conn *conn, uint8_t err)
+static void ble_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
 
@@ -360,9 +360,12 @@ static void connected(struct bt_conn *conn, uint8_t err)
             bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
         }
     }
+
+    struct ble_connect_event evt;
+    zbus_chan_pub(&ble_comm_connected_chan, &evt, K_MSEC(250));
 }
 
-static void disconnected(struct bt_conn *conn, uint8_t reason)
+static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 {
     char addr[BT_ADDR_LE_STR_LEN];
 
@@ -375,6 +378,10 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }
+
+    struct ble_disconnect_event evt;
+    evt.reason = reason;
+    zbus_chan_pub(&ble_comm_disconnected_chan, &evt, K_MSEC(250));
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
@@ -778,7 +785,7 @@ static int parse_notify(char *data, int len)
         cb.data.notify.body[cb.data.notify.body_len] = '\0';
     }
 
-    data_parsed_cb(&cb);
+    send_ble_data_event(&cb);
 
     return 0;
 }
@@ -915,7 +922,7 @@ static void parse_remote_control(char *data, int len)
     memset(&cb, 0, sizeof(cb));
 
     button = atoi(data);
-    printk("Pressed: %d, len: %d\n", button, len);
+    LOG_DBG("Pressed: %d, len: %d", button, len);
     if (button < 0) {
         return;
     }

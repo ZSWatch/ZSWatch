@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_NOTIFICATION_MANAGER_H_
-#define __ZSW_NOTIFICATION_MANAGER_H_
+#pragma once
 
 #include <inttypes.h>
 
@@ -39,12 +38,42 @@ typedef struct not_mngr_notification {
     zsw_notification_src_t src;
 } zsw_not_mngr_notification_t;
 
+/** @brief
+*/
 void zsw_notification_manager_init(void);
-zsw_not_mngr_notification_t *zsw_notification_manager_add(ble_comm_notify_t *notification);
-int32_t zsw_notification_manager_remove(uint32_t id);
-int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
-int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, int *num_notifications);
-int32_t zsw_notification_manager_get_num(void);
-zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void);
 
-#endif
+/** @brief
+ *  @param notification
+ *  @return
+*/
+zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *notification);
+
+/** @brief
+ *  @param id
+ *  @return
+*/
+int32_t zsw_notification_manager_remove(uint32_t id);
+
+/** @brief
+ *  @param id
+ *  @param notification
+ *  @return
+*/
+int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
+
+/** @brief
+ *  @param notifications
+ *  @param num_notifications
+ *  @return
+*/
+int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, int *num_notifications);
+
+/** @brief
+ *  @return
+*/
+int32_t zsw_notification_manager_get_num(void);
+
+/** @brief
+ *  @return
+*/
+zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void);

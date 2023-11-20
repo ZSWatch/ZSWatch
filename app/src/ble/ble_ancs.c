@@ -29,7 +29,7 @@
 #include <zephyr/settings/settings.h>
 
 #include "ble/ble_comm.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 
 LOG_MODULE_REGISTER(ble_ancs, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -44,8 +44,6 @@ static struct bt_ancs_client ancs_c;
 static struct bt_gattp gattp;
 
 static atomic_t discovery_flags;
-
-static on_data_cb_t data_parsed_cb;
 
 /* Local copy to keep track of the newest arriving notifications. */
 static struct bt_ancs_evt_notif notification_latest;
@@ -414,11 +412,16 @@ static int parse_notify(const struct bt_ancs_attr *attr)
 
         // the last message is Negative action label, send only when all data is received;
         case ATTR_ID_NEGATIVE_ACTION_LABEL:
+            struct ble_data_event evt;
+
             cb.type = BLE_COMM_DATA_TYPE_NOTIFY;
-            data_parsed_cb(&cb);
+
+            memcpy(&evt.data, &cb, sizeof(ble_comm_cb_data_t));
+
+            zbus_chan_pub(&ble_comm_data_chan, &evt, K_MSEC(250));
+
             memset(&cb, 0, sizeof(cb));
             break;
-
         case ATTR_ID_DATE:
         case ATTR_ID_MESSAGE_SIZE:
         case ATTR_ID_SUBTITLE:
@@ -490,7 +493,7 @@ static int gattp_init(void)
 }
 
 
-int ble_ancs_init(on_data_cb_t data_cb)
+int ble_ancs_init(void)
 {
     int err = bt_ancs_client_init(&ancs_c);
     if (err) {
@@ -575,8 +578,6 @@ int ble_ancs_init(on_data_cb_t data_cb)
         LOG_ERR("Failed to start ANCS: 0x%x", err);
         return err;
     }
-
-    data_parsed_cb = data_cb;
 
     LOG_INF("Started Apple Notification Center Service client");
 

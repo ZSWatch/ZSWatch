@@ -24,7 +24,7 @@ void zsw_notification_manager_init(void)
     active_notification = NULL;
 }
 
-zsw_not_mngr_notification_t *zsw_notification_manager_add(ble_comm_notify_t *not)
+zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *not)
 {
     uint32_t idx = find_free_notification_idx();
     if (idx == NOTIFICATION_INVALID_INDEX) {
