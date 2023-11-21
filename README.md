@@ -146,6 +146,8 @@ To select watchface background see below config in prj.conf:
 <img src=".github/images/watchfaces.png" width="99%"/>
 </p>
 
+## Smartphone communication
+
 ## Android phone communication
 Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
 
@@ -155,7 +157,7 @@ Fortunately there is a great Android app called [GadgetBridge](https://codeberg.
 - You should now be paired.
 
 ## iOS device communication
-Apple exposes [The Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using (Apple Media Service)[https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html]... The ZSWatch communicates straight to the iOS with no extra Apps.
+Apple exposes [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html)... The ZSWatch communicates straight to the iOS with no extra Apps.
 
 ### Pairing
 - In the watch go to Settings -> Bluetooth -> Enable pairing
