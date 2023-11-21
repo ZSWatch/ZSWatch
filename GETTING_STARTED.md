@@ -159,10 +159,6 @@ __Tips:__
 	]
 }
 ```
-2. If you want to scale up the SDL window (4x) apply the patch in `app/zephyr_patches/sdl_upscale.patch`
-
-https://github.com/jakkra/ZSWatch/assets/4318648/3b3e4831-a217-45a9-8b90-7b48cea7647e
-
 
 ### 2. Native Posix + dev-kit dongle
 In case there is no built-in Bluetooth module on the host computer, an external nRF dev kit can be used as a BLE module. In fact, any external BLE module that supports the HCI interface can be used. In doing so, the application will run on the host machine and communicate with BLE controller over hci_usb/hci_uart depending on the hardware you have.
