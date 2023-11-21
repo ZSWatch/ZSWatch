@@ -166,24 +166,6 @@ menu "ZSWatch"
         help
             "Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes."
         
-        choice BLE_SMARTPHONE_INTERFACE
-            bool
-            prompt "Select which BLE smartphone interface to use."
-            def_bool BLE_USES_GADGETBRIDGE
-            help
-              "If using with iOS you likely use AMS"
-
-        config BLE_USES_GADGETBRIDGE
-            prompt "Smartphone interaction and notifications uses Gadgetbridge"
-        config BLE_USES_IOS
-            prompt "Smartphone uses Apple Services Client"
-            select BT_GATTP
-            select BT_GATT_DM
-            select BT_AMS_CLIENT
-            select BT_ANCS_CLIENT
-            select BT_CTS_CLIENT
-        endchoice
-       
     endmenu
     
     menu "SPI RTT Flash Loader"

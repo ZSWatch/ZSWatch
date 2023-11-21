@@ -33,10 +33,8 @@
 #include "events/ble_data_event.h"
 #include "events/music_event.h"
 
-#ifdef CONFIG_BT_AMS_CLIENT
 #include <bluetooth/services/ams_client.h>
 #include <bluetooth/services/ancs_client.h>
-#endif
 
 LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -81,9 +79,7 @@ static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA_BYTES(BT_DATA_UUID16_ALL,
                   BT_UUID_16_ENCODE(BT_UUID_DIS_VAL)),
-#ifdef CONFIG_BT_AMS_CLIENT
     BT_DATA_BYTES(BT_DATA_SOLICIT128, BT_UUID_ANCS_VAL),
-#endif
 };
 
 static const struct bt_data ad_nus[] = {
