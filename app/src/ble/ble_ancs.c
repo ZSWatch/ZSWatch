@@ -329,9 +329,17 @@ static void connected(struct bt_conn *conn, uint8_t err)
     current_conn = bt_conn_ref(conn);
 }
 
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    if (current_conn) {
+        bt_conn_unref(current_conn);
+    }
+}
+
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected = connected,
     .security_changed = security_changed,
+    .disconnected = disconnected
 };
 
 /**@brief Function for printing iOS notification attribute data.
