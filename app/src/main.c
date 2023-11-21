@@ -374,7 +374,7 @@ static void open_notification_popup(void *data)
         lv_group_set_default(temp_group);
         lv_indev_set_group(enc_indev, temp_group);
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
-        zsw_notification_popup_show(not->title, not->sender, not->src, not->id, on_popup_notifcation_closed, 10);
+        zsw_notification_popup_show(not->title, not->body, not->src, not->id, on_popup_notifcation_closed, 10);
         is_buttons_for_lvgl = true;
     }
     pending_not_open = false;
