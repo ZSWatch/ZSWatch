@@ -292,8 +292,7 @@ int main(void)
     // it has the required amount of stack.
     k_work_submit(&init_work);
 
-    while(1)
-    {
+    while (1) {
         const struct zbus_channel *chan;
 
         if (!zbus_sub_wait(&ble_data_subscriber, &chan, K_FOREVER)) {

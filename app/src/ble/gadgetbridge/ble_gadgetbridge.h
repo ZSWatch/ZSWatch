@@ -7,29 +7,29 @@
 
 #define MAX_GB_PACKET_LENGTH                    1000
 
-/** @brief              
- *  @param key          
- *  @param data         
- *  @param value_lem    
- *  @return             
+/** @brief
+ *  @param key
+ *  @param data
+ *  @param value_lem
+ *  @return
 */
 char *extract_value_str(char *key, char *data, int *value_len);
 
-/** @brief      
- *  @param data 
- *  @param len  
- *  @return     
+/** @brief
+ *  @param data
+ *  @param len
+ *  @return
 */
 int parse_data(char *data, int len);
 
-/** @brief      
- *  @param data 
- *  @return     
+/** @brief
+ *  @param data
+ *  @return
 */
 void parse_time(char *data);
 
-/** @brief      
- *  @param data 
- *  @param len  
+/** @brief
+ *  @param data
+ *  @param len
 */
 void parse_remote_control(char *data, int len);

@@ -1,25 +1,23 @@
-#include <notification/notification_ui.h>
 #include <lvgl.h>
+
+#include "notification/notification_ui.h"
 
 static void not_button_pressed(lv_event_t *e);
 static void scroll_event_cb(lv_event_t *e);
-static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *input_group);
+static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group);
 
 static on_notification_remove_cb_t not_removed_callback;
 
 static lv_obj_t *main_page;
-static lv_group_t *group;
 
-void notifications_page_init(on_notification_remove_cb_t not_removed_cb)
+void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
 {
     not_removed_callback = not_removed_cb;
 }
 
-void notifications_page_create(zsw_not_mngr_notification_t *notifications, uint8_t num_notifications,
-                               lv_group_t *input_group)
+void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, uint8_t num_notifications,
+                               lv_group_t *group)
 {
-    group = input_group;
-
     main_page = lv_obj_create(lv_scr_act());
     lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
 
@@ -34,22 +32,29 @@ void notifications_page_create(zsw_not_mngr_notification_t *notifications, uint8
     lv_obj_add_event_cb(main_page, scroll_event_cb, LV_EVENT_SCROLL, NULL);
 
     for (int i = 0; i < num_notifications; i++) {
-        build_notification_entry(main_page, &notifications[i], input_group);
+        build_notification_entry(main_page, &notifications[i], group);
     }
 
-    /* Update the notifications position manually firt time */
+    // Update the notifications position manually firt time
     lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
 
-    /* Be sure the fist notification is in the middle */
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 0), LV_ANIM_OFF);
+    // Be sure the fist notification is in the middle
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
 }
 
-void notifications_page_close(void)
+void notifications_ui_page_close(void)
 {
     lv_obj_del(main_page);
 }
 
-static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *input_group)
+void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
+{
+    build_notification_entry(main_page, not, group);
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
+    lv_obj_update_layout(main_page);
+}
+
+static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     lv_obj_t *title;
     lv_obj_t *cont;
@@ -77,7 +82,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_add_style(cont, &outline_focused, LV_STATE_FOCUS_KEY);
 
     lv_obj_add_event_cb(cont, not_button_pressed, LV_EVENT_CLICKED, (void *)not->id);
-    lv_group_add_obj(input_group, cont);
+    lv_group_add_obj(group, cont);
     lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
     LV_FONT_DECLARE(lv_font_montserrat_14_full)

@@ -412,7 +412,7 @@ static int parse_notify(const struct bt_ancs_attr *attr)
 
         // the last message is Negative action label, send only when all data is received;
         case ATTR_ID_NEGATIVE_ACTION_LABEL:
-            struct ble_data_event evt;
+            static struct ble_data_event evt;
 
             cb.type = BLE_COMM_DATA_TYPE_NOTIFY;
 

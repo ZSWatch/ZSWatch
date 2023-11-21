@@ -3,12 +3,12 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
-#include <zephyr/zbus/zbus.h>
 
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
