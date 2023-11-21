@@ -131,7 +131,7 @@ static void discover_ancs_completed_cb(struct bt_gatt_dm *dm, void *ctx)
 
     int err = bt_ancs_handles_assign(dm, ancs_c);
     if (err) {
-        LOG_ERR("Could not init ANCS client object, error: %d", err);
+        LOG_DBG("Could not init ANCS client object, error: %d", err);
     } else {
         atomic_set_bit(&discovery_flags, DISCOVERY_ANCS_SUCCEEDED);
         enable_ancs_notifications(ancs_c);
@@ -148,7 +148,7 @@ static void discover_ancs_completed_cb(struct bt_gatt_dm *dm, void *ctx)
 
 static void discover_ancs_not_found_cb(struct bt_conn *conn, void *ctx)
 {
-    LOG_WRN("ANCS could not be found during the discovery");
+    LOG_DBG("ANCS could not be found during the discovery");
 
     atomic_clear_bit(&discovery_flags, DISCOVERY_ANCS_ONGOING);
     discover_ancs_again(conn);
@@ -202,7 +202,7 @@ static void discover_gattp_completed_cb(struct bt_gatt_dm *dm, void *ctx)
 
         err = bt_gattp_handles_assign(dm, gattp);
         if (err) {
-            LOG_ERR("Could not init GATT Service client object, error: %d", err);
+            LOG_DBG("Could not init GATT Service client object, error: %d", err);
         } else {
             enable_gattp_indications(gattp);
         }

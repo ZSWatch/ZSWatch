@@ -60,8 +60,9 @@ If you are interested in a kit, or want to get notified when the missing parts a
 - [Software Features](#software-features)
    * [Features and progress](#features-and-progress)
 - [Watchfaces](#watchfaces)
-- [Android phone communication](#android-phone-communication)
-   * [Pairing](#pairing)
+- [Smartphone communication](#smartphone-communication)
+  - [Android phone communication](#android-phone-communication)
+  - [iOS device communication](#ios-device-communication)
 - [PCB](#pcb)
 - [ZSWatch v1 in action (Note old, not updated for latest HW and SW).](#zswatch-v1-in-action-note-old-not-updated-for-latest-hw-and-sw)
 - [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
@@ -145,13 +146,23 @@ To select watchface background see below config in prj.conf:
 <img src=".github/images/watchfaces.png" width="99%"/>
 </p>
 
-## Android phone communication
+## Smartphone communication
+
+### Android phone communication
 Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
 
-### Pairing
+#### Pairing
 - In the watch go to Settings -> Bluetooth -> Enable pairing
 - Now go reconnect to the watch from Gadgetbridge app.
 - You should now be paired.
+
+### iOS device communication
+Apple exposes [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html)... The ZSWatch communicates straight to the iOS with no extra Apps.
+
+#### Pairing
+- In the watch go to Settings -> Bluetooth -> Enable pairing
+- Now go to your device settings -> Bluetooth and choose "ZSWatch"
+- You should be prompted to pair and allow share notifications
 
 ## PCB
 A 4 layer board which measures 38mm in diameter designed in KiCad.<br>

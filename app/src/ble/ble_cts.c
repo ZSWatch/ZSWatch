@@ -152,7 +152,7 @@ static void discover_completed_cb(struct bt_gatt_dm *dm, void *ctx)
 
 static void discover_service_not_found_cb(struct bt_conn *conn, void *ctx)
 {
-    LOG_WRN("The service could not be found during the discovery");
+    LOG_DBG("The service could not be found during the discovery");
 }
 
 static void discover_error_found_cb(struct bt_conn *conn, int err, void *ctx)
