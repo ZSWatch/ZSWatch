@@ -24,7 +24,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <math.h>
 #include <zephyr/zbus/zbus.h>
 
 #include "ui/zsw_ui.h"

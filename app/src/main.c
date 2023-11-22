@@ -344,7 +344,6 @@ static void enable_bluetoth(void)
     ble_ams_init();
     ble_cts_init();
     ble_ancs_init();
-#endif
 }
 
 static bool load_retention_ram(void)
