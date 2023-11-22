@@ -24,3 +24,7 @@ int zsw_environment_sensor_init(void);
 int zsw_environment_sensor_get(float *temperature, float *humidity, float *pressure);
 
 int zsw_environment_sensor_get_iaq(float *iaq);
+
+int zsw_environment_sensor_get_voc(float *voc);
+
+int zsw_environment_sensor_get_co2(float *co2);

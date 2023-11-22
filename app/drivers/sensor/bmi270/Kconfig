@@ -50,4 +50,9 @@ if BMI270_PLUS
 
     config BMI270_PLUS_TRIGGER
         bool
+
+module = BOSCH_BMI270_PLUS
+module-str = BOSCH_BMI270_PLUS
+source "subsys/logging/Kconfig.template.log_config"
+
 endif

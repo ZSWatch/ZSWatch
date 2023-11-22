@@ -12,7 +12,7 @@
 #include "../bosch_bmi270.h"
 #include "../private/bosch_bmi270_config.h"
 
-LOG_MODULE_REGISTER(bosch_bmi270_trigger, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(bosch_bmi270_trigger, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
 
 #ifdef CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD
 static K_KERNEL_STACK_DEFINE(bmi2_thread_stack, CONFIG_BMI270_PLUS_THREAD_STACK_SIZE);

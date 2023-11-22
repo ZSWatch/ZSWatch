@@ -12,6 +12,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
@@ -20,7 +21,7 @@
 
 #define DT_DRV_COMPAT                   bosch_bmp581
 
-LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_BOSCH_BMP581_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "bmp581 driver enabled without any devices"

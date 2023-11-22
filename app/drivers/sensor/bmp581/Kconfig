@@ -14,4 +14,8 @@ menuconfig BMP581
 
 if BMP581
 
+module = BOSCH_BMP581
+module-str = BOSCH_BMP581
+source "subsys/logging/Kconfig.template.log_config"
+
 endif

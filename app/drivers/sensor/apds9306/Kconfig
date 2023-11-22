@@ -17,4 +17,8 @@ if APDS9306
         bool "Enable this option if you are using the APDS-9306-065"
         default n
 
+module = AVAGO_APDS9306
+module-str = AVAGO_APDS9306
+source "subsys/logging/Kconfig.template.log_config"
+
 endif

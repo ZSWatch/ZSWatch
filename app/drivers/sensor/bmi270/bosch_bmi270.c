@@ -26,7 +26,7 @@
 #define DT_DRV_COMPAT                   bosch_bmi270_plus
 #define BMI2_READ_WRITE_LEN             UINT8_C(46)
 
-LOG_MODULE_REGISTER(bmi270, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(bmi270, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "bmi270 driver enabled without any devices"

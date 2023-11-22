@@ -48,7 +48,7 @@ west update
 
 ### Use Bosch BSEC2
 To use the air quality features of the BME688 the Bosch BSEC2 binaries needs to be downloaded, this is optional.<br>
-By downloading (running below commands) you approve this [License](https://www.bosch-sensortec.com/media/boschsensortec/downloads/software/bme688_development_software/2023_04/license_terms_bme688_bme680_bsec..pdf)<br>
+By downloading (running below commands) you approve this [License](https://www.bosch-sensortec.com/media/boschsensortec/downloads/software/bme688_development_software/2023_04/license_terms_bme688_bme680_bsec.pdf)<br>
 ```
 west config manifest.group-filter +bsec2
 west update
