@@ -53,7 +53,7 @@
 
 #define DT_DRV_COMPAT                       avago_apds9306
 
-LOG_MODULE_REGISTER(avago_apds9306, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(avago_apds9306, CONFIG_AVAGO_APDS9306_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "apds9306 driver enabled without any devices"

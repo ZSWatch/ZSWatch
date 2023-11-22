@@ -1,5 +1,8 @@
+# BME68x encironmental sensor configuration options.
+
 #
-# Copyright (c) 2023 Nordic Semiconductor
+# Copyright (c) 2023, Nordic Semiconductor
+# Copyright (c) 2023, Daniel Kampert
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -23,17 +26,9 @@ config BME68X_IAQ_THREAD_STACK_SIZE
 	int "BSEC thread stack size"
 	default 4096
 
-config BME68X_IAQ_EXPECTED_AMBIENT_TEMP
-	int "Expected ambient temperature in C"
-	default 25
-
 config BME68X_IAQ_TEMPERATURE_OFFSET
 	int "BSEC temperature offset in centidegrees"
-	default 200 if BOARD_THINGY91_NRF9160_NS
-	default 200 if BOARD_THINGY53_NRF5340_CPUAPP
-	default 200 if BOARD_THINGY53_NRF5340_CPUAPP_NS
-	default 200 if BOARD_THINGY53_NRF5340_CPUNET
-	default 100
+	default 0
 	help
 	  BSEC temperature offset. To account for external heat sources on the board.
 	  The actual value is divided by 100. This is due to the Kconfig parser

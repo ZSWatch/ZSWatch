@@ -22,6 +22,8 @@
 #include "events/environment_event.h"
 #include "sensors/zsw_environment_sensor.h"
 
+#include "../../drivers/sensor/bme68x_iaq/bosch_bme68x_iaq.h"
+
 LOG_MODULE_REGISTER(zsw_environment_sensor, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
@@ -108,11 +110,53 @@ int zsw_environment_sensor_get_iaq(float *iaq)
         return -ENODATA;
     }
 
-    if (sensor_channel_get(bme688, SENSOR_CHAN_VOC, &sensor_val) != 0) {
+    if (sensor_channel_get(bme688, SENSOR_CHAN_IAQ, &sensor_val) != 0) {
         return -ENODATA;
     }
 
     *iaq = sensor_value_to_float(&sensor_val);
+
+    return 0;
+}
+
+int zsw_environment_sensor_get_voc(float *voc)
+{
+    struct sensor_value sensor_val;
+
+    if (!device_is_ready(bme688)) {
+        return -ENODEV;
+    }
+
+    if (sensor_sample_fetch(bme688) != 0) {
+        return -ENODATA;
+    }
+
+    if (sensor_channel_get(bme688, SENSOR_CHAN_VOC, &sensor_val) != 0) {
+        return -ENODATA;
+    }
+
+    *voc = sensor_value_to_float(&sensor_val);
+
+    return 0;
+}
+
+int zsw_environment_sensor_get_co2(float *co2)
+{
+    struct sensor_value sensor_val;
+
+    if (!device_is_ready(bme688)) {
+        return -ENODEV;
+    }
+
+    if (sensor_sample_fetch(bme688) != 0) {
+        return -ENODATA;
+    }
+
+    if (sensor_channel_get(bme688, SENSOR_CHAN_CO2, &sensor_val) != 0) {
+        return -ENODATA;
+    }
+
+    *co2 = sensor_value_to_float(&sensor_val);
 
     return 0;
 }

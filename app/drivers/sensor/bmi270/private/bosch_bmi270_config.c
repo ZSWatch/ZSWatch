@@ -11,7 +11,7 @@
 
 #include "bosch_bmi270_config.h"
 
-LOG_MODULE_REGISTER(bmi270_config, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(bmi270_config, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
 
 typedef void(*feature_config_func)(struct bmi2_sens_config *p_config, struct bmi270_data *p_data);
 

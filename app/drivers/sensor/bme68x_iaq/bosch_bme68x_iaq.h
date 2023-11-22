@@ -1,8 +1,16 @@
+/* bosch_bme68x_iaq.h- Driver for Bosch BME68x encironmental sensor. */
+
+/*
+ * Copyright (c) 2023, Nordic Semiconductor
+ * Copyright (c) 2023, Daniel Kampert
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
-#include <zephyr/kernel.h>
 #include <zephyr/drivers/sensor.h>
 
-#include "bme68x.h"
-#include "bsec_interface.h"
-#include "bosch_bme68x_iaq.h"
+/** @brief IAQ sensor channel.
+*/
+#define SENSOR_CHAN_IAQ                 (SENSOR_CHAN_PRIV_START + 1)
