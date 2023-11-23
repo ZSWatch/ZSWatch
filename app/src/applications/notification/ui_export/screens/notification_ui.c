@@ -1,6 +1,4 @@
-#include <lvgl.h>
-
-#include "notification/notification_ui.h"
+#include "../notificaion_ui.h"
 
 static void not_button_pressed(lv_event_t *e);
 static void scroll_event_cb(lv_event_t *e);
@@ -39,7 +37,7 @@ void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, ui
     lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
 
     // Be sure the fist notification is in the middle
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 1), LV_ANIM_OFF);
 }
 
 void notifications_ui_page_close(void)
@@ -50,12 +48,14 @@ void notifications_ui_page_close(void)
 void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     build_notification_entry(main_page, not, group);
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 1), LV_ANIM_OFF);
     lv_obj_update_layout(main_page);
 }
 
 static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
+    // TODO: Add UI
+    /*
     lv_obj_t *title;
     lv_obj_t *cont;
     static lv_style_t outline_default;
@@ -81,23 +81,23 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_size(cont, LV_PCT(95), LV_SIZE_CONTENT);
     lv_obj_add_style(cont, &outline_focused, LV_STATE_FOCUS_KEY);
 
-    lv_obj_add_event_cb(cont, not_button_pressed, LV_EVENT_CLICKED, (void *)not->id);
+    lv_obj_add_event_cb(cont, not_button_pressed, LV_EVENT_CLICKED, (void *)not>id);
     lv_group_add_obj(group, cont);
     lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
     LV_FONT_DECLARE(lv_font_montserrat_14_full)
     title = lv_label_create(cont);
-    lv_label_set_text(title, not->title);
+    lv_label_set_text(title, not>title);
     lv_obj_set_size(title, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_center(title);
     lv_obj_add_flag(title, LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14_full, 0);
 
     title = lv_label_create(cont);
-    lv_label_set_text(title, not->body);
+    lv_label_set_text(title, not>body);
     lv_obj_set_size(title, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_add_flag(title, LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14_full, 0);*/
 }
 
 static void not_button_pressed(lv_event_t *e)
@@ -122,7 +122,7 @@ static void scroll_event_cb(lv_event_t *e)
 
         lv_coord_t child_y_center = child_a.y1 + lv_area_get_height(&child_a) / 2;
 
-        lv_coord_t diff_y = child_y_center - cont_y_center;
+        lv_coord_t diff_y = child_y_center  cont_y_center;
         diff_y = LV_ABS(diff_y);
 
         /* Get the x of diff_y on a circle. */
@@ -132,18 +132,18 @@ static void scroll_event_cb(lv_event_t *e)
             x = r;
         } else {
             /* Use Pythagoras theorem to get x from radius and y */
-            uint32_t x_sqr = r * r - diff_y * diff_y;
+            uint32_t x_sqr = r * r  diff_y * diff_y;
             lv_sqrt_res_t res;
             lv_sqrt(x_sqr, &res, 0x8000);   /* Use lvgl's built in sqrt root function */
-            x = r - res.i;
+            x = r  res.i;
         }
 
         /* Translate the item by the calculated X coordinate */
         lv_obj_set_style_translate_x(child, x, 0);
-        lv_obj_set_style_translate_y(child, -13, 0);
+        lv_obj_set_style_translate_y(child, 13, 0);
 
         /* Use some opacity with larger translations */
         lv_opa_t opa = lv_map(x, 0, r, LV_OPA_TRANSP, LV_OPA_COVER);
-        lv_obj_set_style_opa(child, LV_OPA_COVER - opa, 0);
+        lv_obj_set_style_opa(child, LV_OPA_COVER  opa, 0);
     }
 }

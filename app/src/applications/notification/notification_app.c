@@ -1,7 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 
-#include "notification_ui.h"
+#include "ui_export/notification_ui.h"
 #include "managers/zsw_notification_manager.h"
 #include "managers/zsw_app_manager.h"
 

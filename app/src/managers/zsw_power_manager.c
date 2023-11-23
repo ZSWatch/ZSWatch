@@ -232,6 +232,9 @@ static int zsw_power_manager_init(void)
     if (err == 0 && display_always_on) {
         idle_timeout_seconds = UINT32_MAX;
     }
+
+    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
+
     k_work_schedule(&idle_work, K_SECONDS(idle_timeout_seconds));
     return 0;
 }
