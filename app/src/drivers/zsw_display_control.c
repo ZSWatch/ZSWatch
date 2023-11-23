@@ -81,6 +81,14 @@ int zsw_display_control_sleep_ctrl(bool on)
                 res = -EALREADY;
             } else {
                 LOG_DBG("Put display to sleep");
+                // Cancel pending call to lv_task_handler
+                // Or let it finish if it's running.
+                k_work_cancel_delayable_sync(&lvgl_work, &canel_work_sync);
+                // Since actual flushing the data over SPI to the screen is done in a
+                // thread in the display driver, we need to give it some time to complete
+                // before we power off the display. If not the display will glitch.
+                // 100 ms wait seems to be enough.
+                k_msleep(100);
                 display_state = DISPLAY_STATE_SLEEPING;
                 display_blanking_on(display_dev);
                 // Suspend the display and touch chip
@@ -90,9 +98,6 @@ int zsw_display_control_sleep_ctrl(bool on)
                 }
                 // Turn off PWM peripheral as it consumes like 200-250uA
                 zsw_display_control_set_brightness(0);
-                // Cancel pending call to lv_task_handler
-                // Don't waste resosuces to rendering when display is off anyway.
-                k_work_cancel_delayable_sync(&lvgl_work, &canel_work_sync);
                 // Prepare for next call to lv_task_handler when screen is enabled again,
                 // Since the display will have been powered off, we need to tell LVGL
                 // to rerender the complete display.
