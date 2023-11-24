@@ -1,9 +1,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/gap.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/retention/bootmode.h>
 
 #include "settings_ui.h"
 #include "ble/ble_aoa.h"
@@ -12,6 +14,8 @@
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
 #include "zsw_settings.h"
+#include "filesystem/zsw_flash.h"
+#include "ui/popup/zsw_popup_window.h"
 
 LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
 
@@ -27,6 +31,7 @@ static void on_aoa_interval_changed(lv_setting_value_t value, bool final);
 static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
+static void on_clear_storage_changed(lv_setting_value_t value, bool final);
 
 static void ble_pairing_work_handler(struct k_work *work);
 
@@ -102,6 +107,17 @@ static lv_settings_item_t general_page_items[] = {
             .btn = {
                 .name = "Reset step counter",
                 .text = LV_SYMBOL_REFRESH
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_BACKSPACE,
+        .change_callback = on_clear_storage_changed,
+        .item = {
+            .btn = {
+                .name = "Erase external flash.",
+                .text = LV_SYMBOL_TRASH
             }
         }
     },
@@ -256,6 +272,24 @@ static void on_reset_steps_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
         zsw_imu_reset_step_count();
+    }
+}
+
+static void on_clear_storage_confirm(bool yes_pressed)
+{
+    if (yes_pressed) {
+        LOG_ERR("FULL ERASE REQUEST");
+        bootmode_set(ZSW_BOOT_MODE_FLASH_ERASE);
+        sys_reboot(SYS_REBOOT_COLD);
+    }
+}
+
+static void on_clear_storage_changed(lv_setting_value_t value, bool final)
+{
+    if (final) {
+        zsw_popup_show("Erase all settings?",
+                       "Are you sure?\nThis can take up to 300s, but probably less.\nThe watch will restart once done.",
+                       on_clear_storage_confirm, 10, true);
     }
 }
 
