@@ -57,8 +57,6 @@ target_sources(app PRIVATE src/ui/utils/zsw_ui_utils.c)
 target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_flash_loader.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_lvgl_spi_decoder.c)
-target_sources(app PRIVATE src/filesystem/zsw_flash.c)
-
 
 if(DFU_BUILD)
     target_sources(app PRIVATE src/dfu.c)

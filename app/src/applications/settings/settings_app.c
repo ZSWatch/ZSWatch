@@ -5,7 +5,6 @@
 #include <zephyr/bluetooth/gap.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/settings/settings.h>
-#include <zephyr/retention/bootmode.h>
 
 #include "settings_ui.h"
 #include "ble/ble_aoa.h"
@@ -14,7 +13,7 @@
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
 #include "zsw_settings.h"
-#include "filesystem/zsw_flash.h"
+#include <filesystem/zsw_rtt_flash_loader.h>
 #include "ui/popup/zsw_popup_window.h"
 
 LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
@@ -278,9 +277,9 @@ static void on_reset_steps_changed(lv_setting_value_t value, bool final)
 static void on_clear_storage_confirm(bool yes_pressed)
 {
     if (yes_pressed) {
-        LOG_ERR("FULL ERASE REQUEST");
-        bootmode_set(ZSW_BOOT_MODE_FLASH_ERASE);
-        sys_reboot(SYS_REBOOT_COLD);
+#ifdef CONFIG_SPI_FLASH_LOADER
+        zsw_rtt_flash_loader_reboot_and_erase_flash();
+#endif
     }
 }
 

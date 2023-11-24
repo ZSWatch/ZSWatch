@@ -21,9 +21,12 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/retention/bootmode.h>
+#include <filesystem/zsw_rtt_flash_loader.h>
 #include <SEGGER_RTT.h>
 
 LOG_MODULE_REGISTER(zsw_rtt_flash_loader, LOG_LEVEL_DBG);
@@ -301,6 +304,8 @@ int zsw_rtt_flash_loader_start(void)
 {
     int partition_id;
 
+    bootmode_clear();
+
     data_buf = k_malloc(DATA_BUFFER_SIZE);
     up_buffer = k_malloc(UP_BUFFER_SIZE);
     down_buffer = k_malloc(DOWN_BUFFER_SIZE);
@@ -338,6 +343,36 @@ int zsw_rtt_flash_loader_start(void)
         } else {
             printk("Unknown sequence received\n");
         }
+    }
+
+    return 0;
+}
+
+int zsw_rtt_flash_loader_erase_external(void)
+{
+    struct flash_pages_info flash_get_page;
+    const struct device *flash_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
+
+    bootmode_clear();
+
+    if (flash_dev) {
+        flash_get_page_info_by_idx(flash_dev, 0, &flash_get_page);
+        flash_erase(flash_dev, 0, flash_get_page_count(flash_dev) * flash_get_page.size);
+        sys_reboot(SYS_REBOOT_COLD);
+        return 0;
+    } else {
+        return -ENODEV;
+    }
+}
+
+int zsw_rtt_flash_loader_reboot_and_erase_flash(void)
+{
+    const struct device *flash_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
+    if (flash_dev) {
+        bootmode_set(ZSW_BOOT_MODE_FLASH_ERASE);
+        sys_reboot(SYS_REBOOT_COLD);
+    } else {
+        return -ENODEV;
     }
 
     return 0;
