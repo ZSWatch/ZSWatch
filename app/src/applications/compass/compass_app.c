@@ -37,7 +37,7 @@ static void compass_app_start(lv_obj_t *root, lv_group_t *group)
     zsw_magnetometer_start_calibration();
     is_calibrating = true;
     cal_start_ms = lv_tick_get();
-    zsw_popup_show("Calibration", "Spin around 360 degrees for 10.", NULL, 100);
+    zsw_popup_show("Calibration", "Spin around 360 degrees for 10.", NULL, 100, false);
 }
 
 static void compass_app_stop(void)

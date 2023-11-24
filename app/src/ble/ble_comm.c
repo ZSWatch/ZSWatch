@@ -154,7 +154,7 @@ static void pairing_complete(struct bt_conn *conn, bool bonded)
     }
 
     bt_addr_le_to_str(info.le.remote, addr, sizeof(addr));
-    zsw_popup_show("Pairing successful", addr, NULL, 5);
+    zsw_popup_show("Pairing successful", addr, NULL, 5, false);
     ble_comm_set_pairable(false);
 }
 
@@ -169,7 +169,7 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 
     bt_addr_le_to_str(info.le.remote, addr, sizeof(addr));
     if (pairing_enabled) {
-        zsw_popup_show("Pairing Failed", "Address:", NULL, 5);
+        zsw_popup_show("Pairing Failed", "Address:", NULL, 5, false);
     }
     LOG_WRN("Pairing Failed (%d). Disconnecting.\n", reason);
     bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
