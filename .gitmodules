@@ -16,3 +16,6 @@
 [submodule "app/src/ext_drivers/BME68x-Sensor-API"]
 	path = app/src/ext_drivers/BME68x-Sensor-API
 	url = https://github.com/boschsensortec/BME68x-Sensor-API.git
+[submodule "sensor-fusion"]
+	path = app/src/ext_drivers/fusion
+	url = https://github.com/xioTechnologies/Fusion.git
