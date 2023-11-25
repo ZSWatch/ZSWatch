@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <zephyr/logging/log.h>
 #include <stdlib.h>
-#include <ram_retention_storage.h>
+#include <zsw_retained_ram_storage.h>
 
 #include "events/zsw_periodic_event.h"
 
@@ -67,5 +67,5 @@ time_t zsw_clock_get_time_unix(void)
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
     retained.current_time_seconds = zsw_clock_get_time_unix();
-    retained_update();
+    zsw_retained_ram_update();
 }

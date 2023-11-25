@@ -237,9 +237,9 @@
 };
 
 / {
-    sram@2007FFFF {
+    sram@2007FEFF {
         compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2007FFFF 0x1>;
+        reg = <0x2007FEFF 0x100>;
         zephyr,memory-region = "RetainedMem";
         status = "okay";
 
@@ -254,6 +254,13 @@
                 status = "okay";
                 reg = <0x0 0x1>;
             };
+            retention1: retention@1 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1 0xFF>;
+                prefix = [04 fa];
+                checksum = <1>;
+              };
         };
     };
 
@@ -262,10 +269,10 @@
     };
 };
 
-/* Reduce SRAM0 usage by 4 byte to account for non-init area
-* Even though boot mode is only one byte, nrfjprog only allows
-* 4 byte writes, hence reserve 4.
+/*
+* Reduce SRAM0 usage by 256 bytes to account for non-init area.
+* The last 256 bytes of SRAM0 are used for retention memory.
 */
 &sram0 {
-    reg = <0x20000000 0x7FFFC>;
+    reg = <0x20000000 0x7FEFF>;
 };

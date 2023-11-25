@@ -23,7 +23,7 @@
 #include <lvgl.h>
 #include <zephyr/logging/log.h>
 #include <events/activity_event.h>
-#include <ram_retention_storage.h>
+#include <zsw_retained_ram_storage.h>
 #include <zsw_cpu_freq.h>
 #include <zephyr/settings/settings.h>
 #include <zsw_settings.h>
@@ -61,7 +61,7 @@ static void enter_inactive(void)
     LOG_INF("Enter inactive");
     is_active = false;
     retained.wakeup_time += k_uptime_get_32() - last_wakeup_time;
-    retained_update();
+    zsw_retained_ram_update();
     zsw_display_control_sleep_ctrl(false);
 
     zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, true);
@@ -93,7 +93,7 @@ static void enter_active(void)
 
     if (ret == 0) {
         retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
-        retained_update();
+        zsw_retained_ram_update();
     }
 
     // Only used when display is not active.
@@ -190,7 +190,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
                 is_stationary = false;
                 zsw_display_control_pwr_ctrl(true);
                 retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
-                retained_update();
+                zsw_retained_ram_update();
                 zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
                 zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 

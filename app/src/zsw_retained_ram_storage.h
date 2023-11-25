@@ -30,12 +30,6 @@ struct retained_data {
 
     /* Number of times the application has gone into system off. */
     uint32_t off_count;
-
-    /* CRC used to validate the retained data.  This must be
-     * stored little-endian, and covers everything up to but not
-     * including this field.
-     */
-    uint32_t crc;
 };
 
 /* For simplicity in the sample just allow anybody to see and
@@ -53,8 +47,8 @@ bool retained_validate(void);
 /* Update any generic retained state and recalculate its checksum so
  * subsequent boots can verify the retained state.
  */
-void retained_update(void);
+void zsw_retained_ram_update(void);
 
-void retained_reset(void);
+void zsw_retained_ram_reset(void);
 
 #endif /* RETAINED_H_ */

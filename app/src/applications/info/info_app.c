@@ -2,7 +2,7 @@
 #include <zephyr/init.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
-#include <ram_retention_storage.h>
+#include <zsw_retained_ram_storage.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 
@@ -73,7 +73,7 @@ static void timer_callback(lv_timer_t *timer)
 
 static void on_reset_pressed(void)
 {
-    retained_reset();
+    zsw_retained_ram_reset();
 }
 
 static int info_app_add(void)
