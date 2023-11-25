@@ -5,6 +5,11 @@
 
 #include "managers/zsw_notification_manager.h"
 
+LV_IMG_DECLARE(ui_img_whatsapp_png);
+LV_IMG_DECLARE(ui_img_gadget_png);
+LV_IMG_DECLARE(ui_img_mail_png);
+LV_IMG_DECLARE(ui_img_call_png);
+
 typedef void(*on_notification_remove_cb_t)(uint32_t id);
 
 void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb);

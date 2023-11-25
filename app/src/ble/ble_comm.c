@@ -73,8 +73,6 @@ static const struct bt_data ad_nus[] = {
 
 K_WORK_DELAYABLE_DEFINE(conn_interval_work, update_conn_interval_handler);
 
-ZBUS_CHAN_DECLARE(ble_comm_connected_chan);
-ZBUS_CHAN_DECLARE(ble_comm_disconnected_chan);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
 
@@ -264,6 +262,7 @@ static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_ex
         LOG_ERR("MTU exchange failed (err %" PRIu8 ")", err);
     }
 }
+
 static void request_mtu_exchange(void)
 {
     int err;
@@ -309,9 +308,6 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
             bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
         }
     }
-
-    struct ble_connect_event evt;
-    zbus_chan_pub(&ble_comm_connected_chan, &evt, K_MSEC(250));
 }
 
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -327,10 +323,6 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }
-
-    struct ble_disconnect_event evt;
-    evt.reason = reason;
-    zbus_chan_pub(&ble_comm_disconnected_chan, &evt, K_MSEC(250));
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)

@@ -3,7 +3,7 @@
 // LVGL version: 8.3.6
 // Project name: notification
 
-#include "../ui.h"
+#include "../notification_ui.h"
 
 #ifndef LV_ATTRIBUTE_MEM_ALIGN
 #define LV_ATTRIBUTE_MEM_ALIGN
@@ -22,5 +22,5 @@ const lv_img_dsc_t ui_img_whatsapp_png = {
    .header.h = 16,
    .data_size = sizeof(ui_img_whatsapp_png_data),
    .header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA,
-   .data = ui_img_whatsapp_png_data};
-
+   .data = ui_img_whatsapp_png_data
+};

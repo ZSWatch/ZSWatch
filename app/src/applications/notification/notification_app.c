@@ -1,12 +1,21 @@
-#include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/kernel.h>
+#include <zephyr/zbus/zbus.h>
+#include <zephyr/logging/log.h>
 
 #include "ui_export/notification_ui.h"
 #include "managers/zsw_notification_manager.h"
 #include "managers/zsw_app_manager.h"
 
+LOG_MODULE_REGISTER(notification_app, CONFIG_NOTIFICATION_APP_LOG_LEVEL);
+
 static void notification_app_start(lv_obj_t *root, lv_group_t *group);
 static void notification_app_stop(void);
+static void notification_app_zbus_notification_callback(const struct zbus_channel *chan);
+
+ZBUS_LISTENER_DEFINE(notification_app_lis, notification_app_zbus_notification_callback);
+
+static lv_group_t *notification_group;
 
 static application_t app = {
     .name = "Notification",
@@ -15,32 +24,15 @@ static application_t app = {
     .stop_func = notification_app_stop
 };
 
-static lv_group_t *notification_group;
-
-// Test
-void my_work_handler(struct k_work *work);
-void my_timer_handler(struct k_timer *timer_id);
-K_WORK_DEFINE(my_work, my_work_handler);
-K_TIMER_DEFINE(my_timer, my_timer_handler, NULL);
-zsw_not_mngr_notification_t not = {
-    .id = 0,
-    .title = "Hallo",
-    .body = "Test"
-};
-
-
-void my_work_handler(struct k_work *work)
+static void notification_app_zbus_notification_callback(const struct zbus_channel *chan)
 {
-    sprintf(not.body, "Test: %u", not.id);
-    not.id++;
-    notifications_ui_add_notification(&not, notification_group);
-}
+    zsw_not_mngr_notification_t* not;
 
-void my_timer_handler(struct k_timer *dummy)
-{
-    k_work_submit(&my_work);
+    LOG_DBG("New notification available");
+
+    not = zsw_notification_manager_get_newest();
+    notifications_ui_add_notification(not, notification_group);
 }
-//
 
 static void on_notification_page_notification_close(uint32_t not_id)
 {
@@ -51,15 +43,13 @@ static void on_notification_page_notification_close(uint32_t not_id)
 static void notification_app_start(lv_obj_t *root, lv_group_t *group)
 {
     int num_unread;
-    zsw_not_mngr_notification_t notifications[NOTIFICATION_MANAGER_MAX_STORED];
+    zsw_not_mngr_notification_t notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
 
     notification_group = group;
 
     zsw_notification_manager_get_all(notifications, &num_unread);
     notifications_ui_page_init(on_notification_page_notification_close);
     notifications_ui_page_create(notifications, num_unread, notification_group);
-
-    k_timer_start(&my_timer, K_SECONDS(10), K_SECONDS(2));
 }
 
 static void notification_app_stop(void)

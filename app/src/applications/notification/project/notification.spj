@@ -50,7 +50,7 @@
                     "flags": 17,
                     "strtype": "OBJECT/Position",
                     "intarray": [
-                      -35,
+                      15,
                       -40
                     ],
                     "InheritedType": 7
@@ -68,7 +68,7 @@
                   {
                     "nid": 1345540854,
                     "strtype": "OBJECT/Align",
-                    "strval": "CENTER",
+                    "strval": "LEFT_MID",
                     "InheritedType": 3
                   },
                   {
@@ -276,7 +276,7 @@
                   {
                     "nid": -2025382884,
                     "strtype": "LABEL/Text",
-                    "strval": "Messages",
+                    "strval": "WhatsApp",
                     "InheritedType": 10
                   },
                   {
@@ -1424,7 +1424,6 @@
                   },
                   {
                     "nid": 926328644,
-                    "flags": 1048576,
                     "strtype": "OBJECT/States",
                     "InheritedType": 1
                   },
@@ -2181,8 +2180,8 @@
     "theme_color1": 5,
     "theme_color2": 0,
     "exportFolderPath": "F:\\Git\\ZSWatch\\app\\src\\applications\\notification\\ui_export",
-    "projectExportFolderPath": "",
-    "backup_cnt": 84,
+    "projectExportFolderPath": "F:\\Git\\ZSWatch\\app\\src\\applications\\notification",
+    "backup_cnt": 108,
     "autosave_cnt": 0,
     "lvgl_version": "8.3.6",
     "callfuncsexport": "C_FILE",

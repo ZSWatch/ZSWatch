@@ -92,6 +92,7 @@ static void handle_screen_gesture(lv_dir_t event_code);
 
 static void on_application_manager_close(void);
 static void on_popup_notifcation_closed(uint32_t id);
+static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void on_input_subsys_callback(struct input_event *evt);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
@@ -119,6 +120,7 @@ K_WORK_DEFINE(input_work, run_input_work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(main_ble_comm_lis, on_zbus_ble_data_callback);
+ZBUS_LISTENER_DEFINE(main_notification_lis, on_zbus_notification_callback);
 
 ZBUS_SUBSCRIBER_DEFINE(ble_data_subscriber, 4);
 
@@ -290,23 +292,6 @@ int main(void)
     // it has the required amount of stack.
     k_work_submit(&init_work);
 
-    while (1) {
-        const struct zbus_channel *chan;
-
-        if (!zbus_sub_wait(&ble_data_subscriber, &chan, K_FOREVER)) {
-            struct ble_data_event evt;
-
-            zbus_chan_read(chan, &evt, K_NO_WAIT);
-            LOG_DBG("ID: %u", evt.data.data.notify.id);
-            LOG_DBG("Source: %s", evt.data.data.notify.src);
-            LOG_DBG("Sender: %s", evt.data.data.notify.sender);
-            LOG_DBG("Title: %s", evt.data.data.notify.title);
-            LOG_DBG("Body: %s", evt.data.data.notify.body);
-        }
-
-        k_msleep(1000);
-    }
-
     return 0;
 }
 
@@ -385,8 +370,6 @@ static void open_application_manager_page(void *app_name)
 
 static void close_popup_notification(lv_timer_t *timer)
 {
-    int msg_len;
-    char buf[100];
     uint32_t id;
 
     id = (uint32_t)timer->user_data;
@@ -400,12 +383,6 @@ static void close_popup_notification(lv_timer_t *timer)
     } else {
         is_buttons_for_lvgl = 1;
     }
-
-    memset(buf, 0, sizeof(buf));
-
-    // Send to phone notification read => It will be remove on phone too.
-    msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\", \"id\": %d, \"n\": %s} \n", id, "\"DISMISS\"");
-    ble_comm_send(buf, msg_len);
 }
 
 static void on_popup_notifcation_closed(uint32_t id)
@@ -563,40 +540,25 @@ static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e)
     }
 }
 
+static void on_zbus_notification_callback(const struct zbus_channel *chan)
+{
+    if (zsw_notification_popup_is_shown() || pending_not_open) {
+        return;
+    }
+
+    pending_not_open = true;
+
+    if (zsw_power_manager_get_state() != ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
+        zsw_power_manager_reset_idle_timout();
+        lv_async_call(open_notification_popup, NULL);
+    }
+}
+
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 {
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
-    zsw_not_mngr_notification_t *parsed_not;
 
     switch (event->data.type) {
-        case BLE_COMM_DATA_TYPE_NOTIFY:
-            //LOG_DBG("ID: %u", event->data.data.notify.id);
-            //LOG_DBG("Source: %s", event->data.data.notify.src);
-            //LOG_DBG("Sender: %s", event->data.data.notify.sender);
-            //LOG_DBG("Title: %s", event->data.data.notify.title);
-            //LOG_DBG("Body: %s", event->data.data.notify.body);
-
-            parsed_not = zsw_notification_manager_add(&event->data.data.notify);
-            if (!parsed_not) {
-                return;
-            }
-
-            if (zsw_notification_popup_is_shown() || pending_not_open) {
-                return;
-            }
-
-            pending_not_open = true;
-
-            if (zsw_power_manager_get_state() != ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
-                zsw_power_manager_reset_idle_timout();
-                lv_async_call(open_notification_popup, NULL);
-            }
-            break;
-        case BLE_COMM_DATA_TYPE_NOTIFY_REMOVE:
-            if (zsw_notification_manager_remove(event->data.data.notify_remove.id) != 0) {
-                LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
-            }
-            break;
         case BLE_COMM_DATA_TYPE_SET_TIME: {
             struct timespec tspec;
             tspec.tv_sec = event->data.data.time.seconds;

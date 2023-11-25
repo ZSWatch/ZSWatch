@@ -21,21 +21,31 @@
 
 #include "ble/ble_comm.h"
 
-#define NOTIFICATION_MGR_MAX_FIELD_LEN  50
-#define NOTIFICATION_MANAGER_MAX_STORED 20
+/** @brief The field "LabelHeader" allows 19 characters. So the maximum length is 20 bytes.
+*/
+#define ZSW_NOTIFICATION_MGR_MAX_SENDER_LEN     20
 
-typedef enum zsw_notification_src {
-    NOTIFICATION_SRC_MESSENGER,
+#define NOTIFICATION_MGR_MAX_FIELD_LEN          50
+
+/** @brief Maximum number of notification stored at a time.
+*/
+#define ZSW_NOTIFICATION_MGR_MAX_STORED         20
+
+typedef enum {
+    NOTIFICATION_SRC_COMMON_MESSENGER,
+    NOTIFICATION_SRC_WHATSAPP,
+    NOTIFICATION_SRC_COMMON_MAIL,
     NOTIFICATION_SRC_GMAIL,
     NOTIFICATION_SRC_NONE
 } zsw_notification_src_t;
 
 typedef struct not_mngr_notification {
-    uint32_t id;
-    char sender[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    char title[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    char body[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    zsw_notification_src_t src;
+    uint32_t id;                                                /**< Notification ID. */
+    uint32_t timestamp;                                         /**< Active notification time in seconds. */
+    char sender[ZSW_NOTIFICATION_MGR_MAX_SENDER_LEN];           /**< */
+    char title[NOTIFICATION_MGR_MAX_FIELD_LEN];//TODO: Maybe remove?
+    char body[NOTIFICATION_MGR_MAX_FIELD_LEN];                  /**< */
+    zsw_notification_src_t src;                                 /**< */
 } zsw_not_mngr_notification_t;
 
 /** @brief
