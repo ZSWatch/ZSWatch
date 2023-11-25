@@ -13,22 +13,41 @@ typedef struct {
     lv_timer_t *timer;
 } active_notification_t;
 
-static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group);
-
-static on_notification_remove_cb_t not_removed_callback;
+static on_notification_remove_cb_t notification_removed_callback;
 static lv_obj_t *main_page;
 static active_notification_t active_notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
 static uint32_t active_notification_num;
+
+/** @brief          Convert a time in seconds to a age string.
+ *  @param delta    Time in seconds
+ *  @param buf      Pointer to output buffer
+*/
+static void notification_delta2char(uint32_t delta, char *buf)
+{
+    uint32_t seconds = (delta % 60);
+    uint32_t minutes = (delta % 3600) / 60;
+    uint32_t hours = (delta % 86400) / 3600;
+    uint32_t days = (delta % (86400 * 30)) / 86400;
+
+    if (minutes > 0) {
+        sprintf(buf, "%u min", minutes);
+    } else if (hours > 0) {
+        sprintf(buf, "%u h", hours);
+    } else if (days > 0) {
+        sprintf(buf, "%u d", days);
+    } else {
+        sprintf(buf, "%u s", seconds);
+    }
+}
 
 static void label_on_Timer_Callback(lv_timer_t *timer)
 {
     char buf[16];
     active_notification_t *active_notification = timer->user_data;
     uint32_t delta = time(NULL) - active_notification->notification->timestamp;
-
     LOG_DBG("Notification %u: Delta %u", active_notification->notification->id, delta);
 
-    sprintf(buf, "%u s", delta);
+    notification_delta2char(delta, buf);
 
     lv_label_set_text(active_notification->deltaLabel, buf);
 }
@@ -50,61 +69,14 @@ static void notifications_ui_on_clicked(lv_event_t *e)
             }
 
             lv_obj_del(lv_event_get_target(e));
-            not_removed_callback(id);
+            notification_removed_callback(id);
+
+            lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
+            lv_obj_update_layout(main_page);
 
             break;
         }
     }
-}
-
-void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
-{
-    not_removed_callback = not_removed_cb;
-    active_notification_num = 0;
-    memset(active_notifications, 0, sizeof(active_notifications));
-}
-
-void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, uint8_t num_notifications,
-                                  lv_group_t *group)
-{
-    main_page = lv_obj_create(lv_scr_act());
-    lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
-
-    lv_obj_set_size(main_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_border_side(main_page, LV_BORDER_SIDE_NONE, 0);
-    lv_obj_center(main_page);
-
-    lv_obj_set_flex_flow(main_page, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_scroll_dir(main_page, LV_DIR_VER);
-    lv_obj_set_scroll_snap_y(main_page, LV_SCROLL_SNAP_CENTER);
-    lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
-
-    for (int i = 0; i < num_notifications; i++) {
-        build_notification_entry(main_page, &notifications[i], group);
-    }
-
-    // Update the notifications position manually firt time.
-    lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
-
-    // Be sure the fist notification is in the middle.
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 0), LV_ANIM_OFF);
-}
-
-void notifications_ui_page_close(void)
-{
-    lv_obj_del(main_page);
-    main_page = NULL;
-}
-
-void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
-{
-    if (main_page == NULL) {
-        return;
-    }
-
-    build_notification_entry(main_page, not, group);
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
-    lv_obj_update_layout(main_page);
 }
 
 static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group)
@@ -117,8 +89,9 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_t *ui_TextAreaBody;
 
     const lv_img_dsc_t *image_source;
-    const char *source;
     uint8_t sender_length;
+    const char *source;
+    char buf[16];
     char sender[ZSW_NOTIFICATION_MGR_MAX_SENDER_LEN];
 
     // Check the length of the sender and cap it if needed.
@@ -155,7 +128,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_style_bg_color(ui_Panel, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_side(ui_Panel, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_Panel, notifications_ui_on_clicked, LV_EVENT_CLICKED, (void *)not->id);
+    lv_obj_add_event_cb(ui_Panel, notifications_ui_on_clicked, LV_EVENT_LONG_PRESSED, (void *)not->id);
 
     ui_LabelSource = lv_label_create(ui_Panel);
     lv_obj_set_width(ui_LabelSource, LV_SIZE_CONTENT);
@@ -176,7 +149,10 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_x(ui_LabelTimeDelta, 70);
     lv_obj_set_y(ui_LabelTimeDelta, -40);
     lv_obj_set_align(ui_LabelTimeDelta, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_LabelTimeDelta, "0 s");
+
+    notification_delta2char(time(NULL) - not->timestamp, buf);
+    lv_label_set_text(ui_LabelTimeDelta, buf);
+
     lv_obj_clear_flag(ui_LabelTimeDelta,
                       LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
                       LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
@@ -224,7 +200,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
                       LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE);
     lv_obj_set_style_text_color(ui_TextAreaBody, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_TextAreaBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_TextAreaBody, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_TextAreaBody, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_TextAreaBody, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_TextAreaBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_TextAreaBody, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -240,4 +216,58 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     if (active_notification_num < ZSW_NOTIFICATION_MGR_MAX_STORED) {
         active_notification_num++;
     }
+}
+
+void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
+{
+    notification_removed_callback = not_removed_cb;
+    active_notification_num = 0;
+    memset(active_notifications, 0, sizeof(active_notifications));
+}
+
+void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, uint8_t num_notifications,
+                                  lv_group_t *group)
+{
+    main_page = lv_obj_create(lv_scr_act());
+    lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
+
+    lv_obj_set_size(main_page, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_border_side(main_page, LV_BORDER_SIDE_NONE, 0);
+    lv_obj_center(main_page);
+
+    lv_obj_set_flex_flow(main_page, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_scroll_dir(main_page, LV_DIR_VER);
+    lv_obj_set_scroll_snap_y(main_page, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
+
+    for (int i = 0; i < num_notifications; i++) {
+        build_notification_entry(main_page, &notifications[i], group);
+    }
+
+    // Update the notifications position manually firt time.
+    lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
+
+    // Be sure the fist notification is in the middle.
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 0), LV_ANIM_OFF);
+}
+
+void notifications_ui_page_close(void)
+{
+    for (uint32_t i = 0; i < active_notification_num; i++) {
+        lv_timer_del(active_notifications[i].timer);
+    }
+
+    lv_obj_del(main_page);
+    main_page = NULL;
+}
+
+void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
+{
+    if (main_page == NULL) {
+        return;
+    }
+
+    build_notification_entry(main_page, not, group);
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
+    lv_obj_update_layout(main_page);
 }

@@ -10,7 +10,7 @@
 #include "events/zsw_notification_event.h"
 #include "zsw_notification_manager.h"
 
-LOG_MODULE_REGISTER(notification_mgr, LOG_LEVEL_ERR);
+LOG_MODULE_REGISTER(notification_mgr, LOG_LEVEL_DBG);
 
 #define NOTIFICATION_INVALID_ID             0xFFFFFFFF
 #define NOTIFICATION_INVALID_INDEX          0xFFFFFFFF
@@ -78,6 +78,7 @@ void zsw_notification_manager_init(void)
 zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *not)
 {
     uint32_t idx = find_free_notification_idx();
+
     if (idx == NOTIFICATION_INVALID_INDEX) {
         // List full then we replace the oldest
         idx = find_oldest_notification_idx();
