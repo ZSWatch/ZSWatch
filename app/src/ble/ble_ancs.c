@@ -398,37 +398,34 @@ static void notif_attr_print(const struct bt_ancs_attr *attr)
 
 static int parse_notify(const struct bt_ancs_attr *attr)
 {
-    static ble_comm_cb_data_t cb = { 0 };
+    static struct ble_data_event evt = { 0 };
 
     switch (attr->attr_id) {
         case ATTR_ID_TITLE:
-            cb.data.notify.title = attr->attr_data;
-            cb.data.notify.title_len = attr->attr_len;
+            evt.data.data.notify.title = attr->attr_data;
+            evt.data.data.notify.title_len = attr->attr_len;
             break;
 
         case ATTR_ID_MESSAGE:
-            cb.data.notify.body = (char *)attr->attr_data;
-            cb.data.notify.body_len = attr->attr_len;
+            evt.data.data.notify.body = (char *)attr->attr_data;
+            evt.data.data.notify.body_len = attr->attr_len;
             break;
 
         case ATTR_ID_APP_ID:
             // This comes as example com.facebook.Messenger
-            cb.data.notify.src = strrchr(attr->attr_data, '.') + 1;
-            cb.data.notify.src_len = strlen(cb.data.notify.src);
-            cb.data.notify.id = notification_latest.notif_uid;
+            evt.data.data.notify.src = strrchr(attr->attr_data, '.') + 1;
+            evt.data.data.notify.src_len = strlen(evt.data.data.notify.src);
+            evt.data.data.notify.id = notification_latest.notif_uid;
             break;
 
         // the last message is Negative action label, send only when all data is received;
         case ATTR_ID_NEGATIVE_ACTION_LABEL:
-            static struct ble_data_event evt;
 
-            cb.type = BLE_COMM_DATA_TYPE_NOTIFY;
-
-            memcpy(&evt.data, &cb, sizeof(ble_comm_cb_data_t));
+            evt.data.type = BLE_COMM_DATA_TYPE_NOTIFY;
 
             zbus_chan_pub(&ble_comm_data_chan, &evt, K_MSEC(250));
 
-            memset(&cb, 0, sizeof(cb));
+            memset(&evt, 0, sizeof(evt));
             break;
         case ATTR_ID_DATE:
         case ATTR_ID_MESSAGE_SIZE:
