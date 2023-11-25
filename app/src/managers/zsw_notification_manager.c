@@ -30,6 +30,7 @@ static ble_comm_notify_t notification;
 static K_WORK_DEFINE(notification_work, notification_mgr_update_worker);
 ZBUS_LISTENER_DEFINE(notification_mgr_ble_comm_lis, notification_mgr_zbus_ble_comm_data_callback);
 ZBUS_CHAN_DECLARE(zsw_notification_mgr_chan);
+ZBUS_CHAN_DECLARE(zsw_notification_mgr_remove_chan);
 
 static void notification_mgr_update_worker(struct k_work *item)
 {
@@ -60,6 +61,8 @@ static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_chann
         memcpy(&notification, &event->data.data.notify, sizeof(ble_comm_notify_t));
         k_work_submit(&notification_work);
     } else if (event->data.type == BLE_COMM_DATA_TYPE_NOTIFY_REMOVE) {
+        LOG_DBG("Remove notification with ID %u", event->data.data.notify_remove.id);
+
         if (zsw_notification_manager_remove(event->data.data.notify_remove.id) != 0) {
             LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
         }
@@ -92,28 +95,35 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
     if (strncmp(not->src, "Messenger", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_COMMON_MESSENGER;
         notifications[idx].id = not->id;
-        memcpy(notifications[idx].title, not->title, MIN(not->title_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].body, not->body, MIN(not->body_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].sender, not->sender, MIN(not->sender_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].title, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->sender, MIN(not->sender_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "WhatsApp", not->src_len) == 0) {
+        // {"t":"notify","id":1700974318,"src":"WhatsApp","title":"Daniel Kampert","subject":"","body":"H","sender":""}
+
+        notifications[idx].src = NOTIFICATION_SRC_WHATSAPP;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "YouTube", not->src_len) == 0) {
+
     } else if (strncmp(not->src, "Gmail", not->src_len) == 0) {
         // {t:"notify",id:1670967782,src:"Gmail",title:"Jakob Krantz",body:"Nytt test\nDetta YR NÖTT"
 
         // TODO Subject is before first \n in body so extract that into title field.
         notifications[idx].src = NOTIFICATION_SRC_GMAIL;
         notifications[idx].id = not->id;
-        memcpy(notifications[idx].body, not->body, MIN(not->body_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-
-        memcpy(notifications[idx].title, not->title, MIN(not->title_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     } else {
         // TODO add more
         // For example debug notfication
         // {t:"notify",id:1670967783,src:"Bangle.js Gadgetbridge",subject:"Testar",body:"Testar",sender:"Testar",tel:"Testar"}
         notifications[idx].src = NOTIFICATION_SRC_NONE;
         notifications[idx].id = not->id;
-        memcpy(notifications[idx].title, not->src, MIN(not->src_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].body, not->body, MIN(not->body_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].sender, not->sender, MIN(not->sender_len, NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].title, not->src, MIN(not->src_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->sender, MIN(not->sender_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     }
 
     notifications[idx].timestamp = time(NULL);
@@ -127,26 +137,39 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
 
 int32_t zsw_notification_manager_remove(uint32_t id)
 {
-    int msg_len;
-    char buf[100];
     uint32_t idx = find_notification_idx(id);
 
     if (idx != NOTIFICATION_INVALID_INDEX) {
-        notifications[idx].id = NOTIFICATION_INVALID_ID;
+        struct zsw_notification_remove_event evt;
+        memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
 
-        // TODO: We have to check the type of notification here to figure out the sender (BLE or other sources).
-        memset(buf, 0, sizeof(buf));
-        msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\", \"id\": %d, \"n\": %s} \n", id, "\"DISMISS\"");
-        ble_comm_send(buf, msg_len);
+        zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
+
+        // NOTE: We pass a copy of the notification into the ZBUS event. This help the listeners to
+        // handle the notification, because the data in the notification buffer can change before
+        // the listeners have ececuted their operations.
+        notifications[idx].id = NOTIFICATION_INVALID_ID;
 
         if (num_notifications > 0) {
             num_notifications--;
         }
 
         return 0;
-    } else {
-        return -ENOENT;
     }
+
+    return -ENOENT;
+}
+
+void zsw_notification_manager_remove_all(void)
+{
+    for (uint32_t i = 0; i < num_notifications; i++) {
+
+        notifications[i].id = NOTIFICATION_INVALID_ID;
+    }
+
+    zbus_chan_notify(&zsw_notification_mgr_remove_chan, K_NO_WAIT);
+
+    num_notifications = 0;
 }
 
 int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, int *num_notifications)
@@ -158,7 +181,9 @@ int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, int 
             num_stored++;
         }
     }
+
     *num_notifications = num_stored;
+
     return 0;
 }
 

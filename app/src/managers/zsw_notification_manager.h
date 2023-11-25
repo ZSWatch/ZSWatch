@@ -21,30 +21,33 @@
 
 #include "ble/ble_comm.h"
 
-/** @brief The field "LabelHeader" allows 19 characters. So the maximum length is 20 bytes.
+/** @brief
 */
-#define ZSW_NOTIFICATION_MGR_MAX_SENDER_LEN     20
-
-#define NOTIFICATION_MGR_MAX_FIELD_LEN          50
+#define ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN      50
 
 /** @brief Maximum number of notification stored at a time.
 */
 #define ZSW_NOTIFICATION_MGR_MAX_STORED         20
 
+/** @brief Notification sources definitions.
+*/
 typedef enum {
-    NOTIFICATION_SRC_COMMON_MESSENGER,
-    NOTIFICATION_SRC_WHATSAPP,
-    NOTIFICATION_SRC_COMMON_MAIL,
-    NOTIFICATION_SRC_GMAIL,
-    NOTIFICATION_SRC_NONE
+    NOTIFICATION_SRC_COMMON_MESSENGER,                          /**< */
+    NOTIFICATION_SRC_WHATSAPP,                                  /**< */
+    NOTIFICATION_SRC_COMMON_MAIL,                               /**< */
+    NOTIFICATION_SRC_GMAIL,                                     /**< */
+    NOTIFICATION_SRC_YOUTUBE,                                   /**< */
+    NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
+/** @brief Notification object definition.
+*/
 typedef struct not_mngr_notification {
     uint32_t id;                                                /**< Notification ID. */
     uint32_t timestamp;                                         /**< Active notification time in seconds. */
-    char sender[ZSW_NOTIFICATION_MGR_MAX_SENDER_LEN];           /**< */
-    char title[NOTIFICATION_MGR_MAX_FIELD_LEN];//TODO: Maybe remove?
-    char body[NOTIFICATION_MGR_MAX_FIELD_LEN];                  /**< */
+    char sender[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];            /**< Contains the notification sender (e-mail address or name in WhatsApp). */
+    char title[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];             /**< */
+    char body[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];              /**< */
     zsw_notification_src_t src;                                 /**< */
 } zsw_not_mngr_notification_t;
 
@@ -63,6 +66,10 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
  *  @return
 */
 int32_t zsw_notification_manager_remove(uint32_t id);
+
+/** @brief Remove all notifications.
+*/
+void zsw_notification_manager_remove_all(void);
 
 /** @brief
  *  @param id

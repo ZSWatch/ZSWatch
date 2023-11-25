@@ -4,16 +4,19 @@
 #include <zephyr/logging/log.h>
 
 #include "ui_export/notification_ui.h"
-#include "managers/zsw_notification_manager.h"
+#include "events/zsw_notification_event.h"
 #include "managers/zsw_app_manager.h"
+#include "managers/zsw_notification_manager.h"
 
 LOG_MODULE_REGISTER(notification_app, CONFIG_NOTIFICATION_APP_LOG_LEVEL);
 
 static void notification_app_start(lv_obj_t *root, lv_group_t *group);
 static void notification_app_stop(void);
 static void notification_app_zbus_notification_callback(const struct zbus_channel *chan);
+static void notification_app_zbus_notification_remove_callback(const struct zbus_channel *chan);
 
 ZBUS_LISTENER_DEFINE(notification_app_lis, notification_app_zbus_notification_callback);
+ZBUS_LISTENER_DEFINE(notification_app_remove_lis, notification_app_zbus_notification_remove_callback);
 
 static lv_group_t *notification_group;
 
@@ -26,7 +29,7 @@ static application_t app = {
 
 static void notification_app_zbus_notification_callback(const struct zbus_channel *chan)
 {
-    zsw_not_mngr_notification_t* not;
+    zsw_not_mngr_notification_t *not;
 
     LOG_DBG("New notification available");
 
@@ -34,9 +37,26 @@ static void notification_app_zbus_notification_callback(const struct zbus_channe
     notifications_ui_add_notification(not, notification_group);
 }
 
+static void notification_app_zbus_notification_remove_callback(const struct zbus_channel *chan)
+{
+    int msg_len;
+    char buf[100];
+    const struct zsw_notification_remove_event *evt = zbus_chan_const_msg(chan);
+    uint32_t id = evt->notification.id;
+
+    LOG_DBG("Remove notification with ID %u", id);
+    notifications_ui_remove_notification(id);
+
+    // TODO: We have to check the type of notification here to figure out the sender (BLE or other sources).
+    // TODO: Move this to BLE Gadgetbridge
+    //memset(buf, 0, sizeof(buf));
+    //msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\", \"id\": %d, \"n\": %s} \n", id, "\"DISMISS\"");
+    //ble_comm_send(buf, msg_len);
+}
+
 static void on_notification_page_notification_close(uint32_t not_id)
 {
-    // TODO send to phone that the notification was read.
+    // Inform the noti
     zsw_notification_manager_remove(not_id);
 }
 

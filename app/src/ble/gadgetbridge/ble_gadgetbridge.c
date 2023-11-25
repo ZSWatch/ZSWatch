@@ -388,7 +388,9 @@ static int parse_notify_delete(char *data, int len)
 
     cb.type = BLE_COMM_DATA_TYPE_NOTIFY_REMOVE;
     cb.data.notify.id = extract_value_uint32("\"id\":", data);
+
     send_ble_data_event(&cb);
+
     return 0;
 }
 
