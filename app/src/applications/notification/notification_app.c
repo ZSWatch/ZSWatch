@@ -46,17 +46,11 @@ static void notification_app_zbus_notification_remove_callback(const struct zbus
 
     LOG_DBG("Remove notification with ID %u", id);
     notifications_ui_remove_notification(id);
-
-    // TODO: We have to check the type of notification here to figure out the sender (BLE or other sources).
-    // TODO: Move this to BLE Gadgetbridge
-    //memset(buf, 0, sizeof(buf));
-    //msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\", \"id\": %d, \"n\": %s} \n", id, "\"DISMISS\"");
-    //ble_comm_send(buf, msg_len);
 }
 
 static void on_notification_page_notification_close(uint32_t not_id)
 {
-    // Inform the noti
+    // Inform the notification manager to remove the notification.
     zsw_notification_manager_remove(not_id);
 }
 

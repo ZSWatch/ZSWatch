@@ -141,13 +141,13 @@ int32_t zsw_notification_manager_remove(uint32_t id)
 
     if (idx != NOTIFICATION_INVALID_INDEX) {
         struct zsw_notification_remove_event evt;
-        memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
-
-        zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
 
         // NOTE: We pass a copy of the notification into the ZBUS event. This help the listeners to
         // handle the notification, because the data in the notification buffer can change before
         // the listeners have ececuted their operations.
+        memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
+        zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
+
         notifications[idx].id = NOTIFICATION_INVALID_ID;
 
         if (num_notifications > 0) {
