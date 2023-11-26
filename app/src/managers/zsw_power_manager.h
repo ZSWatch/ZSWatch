@@ -14,34 +14,30 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __ZSW_POWER_MANAGER_H_
-#define __ZSW_POWER_MANAGER_H_
+
+# pragma once
+
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum zsw_power_manager_state_t {
+typedef enum {
     ZSW_ACTIVITY_STATE_ACTIVE,
     ZSW_ACTIVITY_STATE_INACTIVE,
     ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY,
 } zsw_power_manager_state_t;
 
-/*
-*   Resets the inactivity timeout that will make the watch go
-*   into inactive mode with display etc. turned off to save power.
-*
-*   Return true if the call caused wakup from inactive state, false otherwise.
+/** @brief  Resets the inactivity timeout that will make the watch go
+*           into inactive mode with display etc. turned off to save power.
+ *  @return true if the call caused wakup from inactive state, false otherwise.
 */
 bool zsw_power_manager_reset_idle_timout(void);
 
-/*
-*   Returns the time in seconds until the watch will go into inactive state.
+/** @brief  Returns the time in seconds until the watch will go into inactive state.
+ *  @return Time until the watch will go into inactive state
 */
 uint32_t zsw_power_manager_get_ms_to_inactive(void);
 
-/*
-*   Returns the current power manager state, see @zsw_power_manager_state_t
+/** @brief  Returns the current power manager state, see @zsw_power_manager_state_t.
+ *  @return Power manager state
 */
 zsw_power_manager_state_t zsw_power_manager_get_state(void);
-
-#endif // __ZSW_POWER_MANAGER_H_
-

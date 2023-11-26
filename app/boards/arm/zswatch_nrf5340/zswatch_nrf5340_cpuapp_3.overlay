@@ -90,7 +90,10 @@
         reg = <0x68>;
         status = "okay";
         int-gpios = <&gpio0 14 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+        // NOTE: The swap is performed AFTER the axis inversion. So we have to invert the y axis of the sensor
+        // to get the x axis of the watch coordinate system.
         swap-xy;
+        invert-y;
     };
 
     apds9306: apds9306@52 {

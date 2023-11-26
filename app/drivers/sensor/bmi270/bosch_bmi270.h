@@ -24,6 +24,10 @@
 */
 #define SENSOR_CHAN_FEATURE             (SENSOR_CHAN_PRIV_START + 4)
 
+/** @brief Device configuration channel.
+*/
+#define SENSOR_CHAN_CONFIG              (SENSOR_CHAN_PRIV_START + 5)
+
 /** @brief Wrist gesture detection like flick in/out, push arm down(pivot up, wrist jiggle/shake).
 */
 #define SENSOR_TRIG_WRIST_GESTURE       (SENSOR_TRIG_PRIV_START + 1)
@@ -89,6 +93,30 @@
 /** @brief
 */
 #define BOSCH_BMI270_FEAT_WEAR_WAKE_UP  20
+
+/** @brief Unknown gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_UNKNOWN    0
+
+/** @brief Arm down gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_ARM_DOWN   1
+
+/** @brief Pivot up gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_PIVOT_UP   2
+
+/** @brief Wrist shake jiggle gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_JIGGLE     3
+
+/** @brief FLick in gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_FLICK_IN   4
+
+/** @brief Flick out gesture value from trigger event.
+*/
+#define BOSCH_BMI270_GESTURE_FLICK_OUT  5
 
 #define BOSCH_BMI270_ACC_ODR_25D32_HZ   0x01
 #define BOSCH_BMI270_ACC_ODR_25D16_HZ   0x02

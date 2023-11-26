@@ -56,8 +56,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         case SENSOR_TRIG_STEP: {
             struct sensor_value sensor_val;
 
-            if ((sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_STEPS) == 0) &&
-                (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) == 0)) {
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) == 0) {
 
                 evt.type = ZSW_IMU_EVT_TYPE_STEP;
                 evt.data.step.count = sensor_val.val1;
@@ -70,8 +69,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         case SENSOR_TRIG_ACTIVITY: {
             struct sensor_value sensor_val;
 
-            if ((sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ACTIVITY) == 0) &&
-                (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) == 0)) {
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) == 0) {
 
                 evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
                 evt.data.step_activity = sensor_val.val1;
@@ -90,8 +88,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         case SENSOR_TRIG_WRIST_GESTURE: {
             struct sensor_value sensor_val;
 
-            if ((sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_GESTURE) == 0) &&
-                (sensor_channel_get(bmi270, SENSOR_CHAN_GESTURE, &sensor_val) == 0)) {
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_GESTURE, &sensor_val) == 0) {
 
                 evt.type = ZSW_IMU_EVT_TYPE_GESTURE;
                 evt.data.gesture = sensor_val.val1;

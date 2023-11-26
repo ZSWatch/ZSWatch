@@ -75,10 +75,10 @@ static void bmi2_delay_us(uint32_t period, void *p_intf)
     k_usleep(period);
 }
 
-/** @brief  
- *  @param p_val    
- *  @param raw_val  
- *  @param range    
+/** @brief
+ *  @param p_val
+ *  @param raw_val
+ *  @param range
 */
 static void bmi2_raw2accel_convert(struct sensor_value *p_val, int64_t raw_val, uint8_t range)
 {
@@ -88,10 +88,10 @@ static void bmi2_raw2accel_convert(struct sensor_value *p_val, int64_t raw_val, 
     p_val->val2 = raw_val % 1000000LL;
 }
 
-/** @brief  
- *  @param p_val    
- *  @param raw_val  
- *  @param range    
+/** @brief
+ *  @param p_val
+ *  @param raw_val
+ *  @param range
 */
 static void bmi2_raw2gyro_convert(struct sensor_value *p_val, int64_t raw_val, uint16_t range)
 {
@@ -99,8 +99,8 @@ static void bmi2_raw2gyro_convert(struct sensor_value *p_val, int64_t raw_val, u
     p_val->val2 = ((raw_val * ((int64_t)range) * SENSOR_PI) / (180LL * INT16_MAX)) % 1000000LL;
 }
 
-/** @brief          
- *  @param p_dev    
+/** @brief
+ *  @param p_dev
  *  @return         0 when successful
 */
 static int bmi2_configure_axis_remapping(const struct device *p_dev)
@@ -114,7 +114,7 @@ static int bmi2_configure_axis_remapping(const struct device *p_dev)
         return -EFAULT;
     }
 
-    // Initialize 
+    // Initialize
     // x -> x
     // y -> y
     // z -> z
@@ -162,15 +162,15 @@ static int bmi2_configure_axis_remapping(const struct device *p_dev)
     return 0;
 }
 
-/** @brief              
- *  @param p_dev        
- *  @param channel      
- *  @param attribute    
- *  @param p_value      
+/** @brief
+ *  @param p_dev
+ *  @param channel
+ *  @param attribute
+ *  @param p_value
  *  @return             0 when successful
 */
 static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel channel, enum sensor_attribute attribute,
-                             const struct sensor_value *p_value)
+                           const struct sensor_value *p_value)
 {
     __ASSERT_NO_MSG(p_value != NULL);
 
@@ -187,14 +187,14 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
                 return bmi2_set_accel_osr(p_dev, p_value);
             case SENSOR_ATTR_FULL_SCALE:
                 return bmi2_set_accel_range(p_dev, p_value);
-    /*
-    #if CONFIG_BMI270_PLUS_TRIGGER
-            case SENSOR_ATTR_SLOPE_DUR:
-                return bmi270_write_anymo_duration(p_dev, p_value->val1);
-            case SENSOR_ATTR_SLOPE_TH:
-                return bmi270_write_anymo_threshold(p_dev, *p_value);
-    #endif
-    */
+            /*
+            #if CONFIG_BMI270_PLUS_TRIGGER
+                    case SENSOR_ATTR_SLOPE_DUR:
+                        return bmi270_write_anymo_duration(p_dev, p_value->val1);
+                    case SENSOR_ATTR_SLOPE_TH:
+                        return bmi270_write_anymo_threshold(p_dev, *p_value);
+            #endif
+            */
             default:
                 return -ENOTSUP;
         }
@@ -238,8 +238,7 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
                     if (bmi2_disable_feature(p_dev, p_value->val1 & 0xFF) != BMI2_OK) {
                         return -EFAULT;
                     }
-                }
-                else if ((p_value->val2 & 0x01) == 1) {
+                } else if ((p_value->val2 & 0x01) == 1) {
                     if (bmi2_enable_feature(p_dev, p_value->val1, (p_value->val2 >> 1) & 0x01) != BMI2_OK) {
                         return -EFAULT;
                     }
@@ -247,14 +246,17 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
             default:
                 return -ENOTSUP;
         }
+    } else if (channel == SENSOR_CHAN_CONFIG) {
+        // TODO: Implement this
+        return -ENOTSUP;
     }
 
     return -ENOTSUP;
 }
 
-/** @brief          
- *  @param p_dev    
- *  @param channel  
+/** @brief
+ *  @param p_dev
+ *  @param channel
  *  @return         0 when successful
 */
 static int bmi270_sample_fetch(const struct device *p_dev, enum sensor_channel channel)
@@ -303,10 +305,10 @@ static int bmi270_sample_fetch(const struct device *p_dev, enum sensor_channel c
     return 0;
 }
 
-/** @brief          
- *  @param p_dev    
- *  @param channel  
- *  @param p_value  
+/** @brief
+ *  @param p_dev
+ *  @param channel
+ *  @param p_value
  *  @return         0 when successful
 */
 static int bmi270_channel_get(const struct device *p_dev, enum sensor_channel channel, struct sensor_value *p_value)
@@ -338,8 +340,7 @@ static int bmi270_channel_get(const struct device *p_dev, enum sensor_channel ch
     } else if (channel == SENSOR_CHAN_AMBIENT_TEMP) {
         float temperature = (((float)((int16_t)data->temp)) / 512.0) + 23.0;
         sensor_value_from_float(p_value, temperature);
-    }
-    else if (channel == SENSOR_CHAN_STEPS) {
+    } else if (channel == SENSOR_CHAN_STEPS) {
         struct bmi2_feat_sensor_data sensor_data;
 
         sensor_data.type = BMI2_STEP_COUNTER;
@@ -368,7 +369,7 @@ static int bmi270_channel_get(const struct device *p_dev, enum sensor_channel ch
         p_value->val1 = sensor_data.sens_data.wrist_gesture_output;
     } else {
         return -ENOTSUP;
-    } 
+    }
 
     return 0;
 }
@@ -382,8 +383,8 @@ static const struct sensor_driver_api bmi270_driver_api = {
 #endif
 };
 
-/** @brief          
- *  @param p_dev    
+/** @brief
+ *  @param p_dev
  *  @return         0 when successful
 */
 static int bmi270_sensor_init(const struct device *p_dev)
@@ -448,9 +449,9 @@ static int bmi270_sensor_init(const struct device *p_dev)
 }
 
 #ifdef CONFIG_PM_DEVICE
-/** @brief          
- *  @param p_dev    
- *  @param action   
+/** @brief
+ *  @param p_dev
+ *  @param action
  *  @return         0 when successful
 */
 static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action action)
@@ -490,7 +491,7 @@ static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action ac
         .invert_x = DT_INST_PROP(inst, invert_x),                                   \
         .invert_y = DT_INST_PROP(inst, invert_y),                                   \
         IF_ENABLED(CONFIG_BMI270_PLUS_TRIGGER,                                      \
-            (.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, { 0 }),))	    \
+            (.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, { 0 }),))        \
     };                                                                              \
                                                                                     \
     PM_DEVICE_DT_INST_DEFINE(inst, bmi270_pm_action);                               \

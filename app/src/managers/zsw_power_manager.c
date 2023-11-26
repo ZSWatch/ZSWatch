@@ -17,18 +17,18 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
-#include <events/accel_event.h>
 #include <zephyr/zbus/zbus.h>
-#include "drivers/zsw_display_control.h"
 #include <lvgl.h>
 #include <zephyr/logging/log.h>
 #include <events/activity_event.h>
 #include <zsw_retained_ram_storage.h>
-#include <zsw_cpu_freq.h>
 #include <zephyr/settings/settings.h>
-#include <zsw_settings.h>
 
+#include "zsw_settings.h"
+#include "zsw_cpu_freq.h"
+#include "events/accel_event.h"
 #include "managers/zsw_power_manager.h"
+#include "drivers/zsw_display_control.h"
 
 LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 
@@ -37,6 +37,8 @@ LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 #else
 #define IDLE_TIMEOUT_SECONDS    CONFIG_POWER_MANAGEMENT_IDLE_TIMEOUT_SECONDS
 #endif
+
+#define POWER_MANAGEMENT_MIN_ACTIVE_PERIOD_SECONDS                  1
 
 static void update_and_publish_state(zsw_power_manager_state_t new_state);
 static void handle_idle_timeout(struct k_work *item);
@@ -58,6 +60,11 @@ static zsw_power_manager_state_t state;
 
 static void enter_inactive(void)
 {
+    // Minimum time the device should stay active before switching back to inactive.
+    if ((k_uptime_get_32() - last_wakeup_time) < (POWER_MANAGEMENT_MIN_ACTIVE_PERIOD_SECONDS * 1000UL)) {
+        return;
+    }
+
     LOG_INF("Enter inactive");
     is_active = false;
     retained.wakeup_time += k_uptime_get_32() - last_wakeup_time;
@@ -195,6 +202,14 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
                 zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
                 update_and_publish_state(ZSW_ACTIVITY_STATE_INACTIVE);
+            }
+            break;
+        }
+        case ZSW_IMU_EVT_TYPE_GESTURE: {
+            // Use the flick out event
+            if (event->data.data.gesture == BOSCH_BMI270_GESTURE_FLICK_OUT) {
+                LOG_INF("Put device into standby");
+                enter_inactive();
             }
             break;
         }
