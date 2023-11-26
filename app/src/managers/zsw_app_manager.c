@@ -41,6 +41,7 @@ static on_app_manager_cb_fn close_cb_func;
 static lv_obj_t *grid;
 static uint8_t last_index;
 static bool app_launch_only;
+static lv_timer_t *async_app_start_timer;
 
 static void delete_application_picker(void)
 {
@@ -89,12 +90,15 @@ static void app_clicked(lv_event_t *e)
     // which registers a button press callback then that callback
     // may get called, but we don't want that. So delay the opening
     // of the new application some time.
-    lv_timer_t *timer = lv_timer_create(async_app_start, 500,  NULL);
-    lv_timer_set_repeat_count(timer, 1);
+    if (async_app_start_timer == NULL) {
+        async_app_start_timer = lv_timer_create(async_app_start, 500,  NULL);
+        lv_timer_set_repeat_count(async_app_start_timer, 1);
+    }
 }
 
 static void async_app_start(lv_timer_t *timer)
 {
+    async_app_start_timer = NULL;
     LOG_DBG("Start %d", current_app);
     delete_application_picker();
     apps[current_app]->start_func(root_obj, group_obj);
@@ -276,8 +280,10 @@ int zsw_app_manager_show(on_app_manager_cb_fn close_cb, lv_obj_t *root, lv_group
                 if (!apps[i]->hidden) {
                     last_index = i;
                 }
-                lv_timer_t *timer = lv_timer_create(async_app_start, 1,  NULL);
-                lv_timer_set_repeat_count(timer, 1);
+                if (async_app_start_timer == NULL) {
+                    async_app_start_timer = lv_timer_create(async_app_start, 1,  NULL);
+                    lv_timer_set_repeat_count(async_app_start_timer, 1);
+                }
             }
         }
     }
@@ -341,7 +347,7 @@ static int application_manager_init(void)
     memset(apps, 0, sizeof(apps));
     num_apps = 0;
     current_app = INVALID_APP_ID;
-
+    async_app_start_timer = NULL;
     return 0;
 }
 

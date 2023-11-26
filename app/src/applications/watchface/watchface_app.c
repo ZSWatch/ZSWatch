@@ -26,7 +26,7 @@
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
 #include <zsw_clock.h>
-#include <ram_retention_storage.h>
+#include <zsw_retained_ram_storage.h>
 #include <zephyr/zbus/zbus.h>
 
 #include "watchface_app.h"

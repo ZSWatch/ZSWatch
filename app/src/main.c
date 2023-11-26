@@ -47,7 +47,7 @@
 #include "sensors/zsw_pressure_sensor.h"
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_environment_sensor.h"
-#include <ram_retention_storage.h>
+#include <zsw_retained_ram_storage.h>
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_power_manager.h"
@@ -55,7 +55,6 @@
 #include "managers/zsw_notification_manager.h"
 #include "applications/watchface/watchface_app.h"
 #include <filesystem/zsw_rtt_flash_loader.h>
-
 #include "ble/ble_ams.h"
 #include "ble/ble_ancs.h"
 #include "ble/ble_cts.h"
@@ -82,7 +81,7 @@ static void run_init_work(struct k_work *item);
 
 static void run_wdt_work(struct k_work *item);
 static void enable_bluetoth(void);
-static bool load_retention_ram(void);
+static void print_retention_ram(void);
 static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e);
 static void open_notification_popup(void *data);
@@ -142,7 +141,7 @@ static void run_input_work(struct k_work *item)
             LOG_INF("Force restart");
 
             retained.off_count += 1;
-            retained_update();
+            zsw_retained_ram_update();
             sys_reboot(SYS_REBOOT_COLD);
 
             break;
@@ -209,7 +208,7 @@ static void run_init_work(struct k_work *item)
 {
     lv_indev_t *touch_indev;
 
-    load_retention_ram();
+    print_retention_ram();
     zsw_notification_manager_init();
     enable_bluetoth();
     zsw_imu_init();
@@ -266,11 +265,12 @@ void run_wdt_work(struct k_work *item)
 int main(void)
 {
 #ifdef CONFIG_SPI_FLASH_LOADER
-    if (bootmode_check(0xA)) {
+    if (bootmode_check(ZSW_BOOT_MODE_RTT_FLASH_LOADER)) {
         LOG_WRN("SPI Flash Loader Boot Mode");
-        bootmode_clear();
         zsw_rtt_flash_loader_start();
         return 0;
+    } else if (bootmode_check(ZSW_BOOT_MODE_FLASH_ERASE)) {
+        zsw_rtt_flash_loader_erase_external();
     }
 #endif
 #if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
@@ -331,20 +331,11 @@ static void enable_bluetoth(void)
     ble_ancs_init();
 }
 
-static bool load_retention_ram(void)
+static void print_retention_ram(void)
 {
-    bool retained_ok = retained_validate();
-    //memset(&retained, 0, sizeof(retained));
-    /* Increment for this boot attempt and update. */
-    retained.boots += 1;
-    retained_update();
-
-    LOG_DBG("Retained data: %s\n", retained_ok ? "valid" : "INVALID");
     LOG_DBG("Boot count: %u\n", retained.boots);
     LOG_DBG("uptime_latest: %" PRIu64 "\n", retained.uptime_latest);
     LOG_DBG("Active Ticks: %" PRIu64 "\n", retained.uptime_sum);
-
-    return retained_ok;
 }
 
 static void open_notification_popup(void *data)

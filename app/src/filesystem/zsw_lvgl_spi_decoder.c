@@ -24,6 +24,7 @@
 #include "lv_conf.h"
 #include LV_MEM_CUSTOM_INCLUDE
 
+#define TABLE_HEADER_MAGIC 0x0A0A0A0A
 
 #define SPI_FLASH_SECTOR_SIZE        4096
 
@@ -125,7 +126,13 @@ static lv_fs_res_t errno_to_lv_fs_res(int err)
 
 static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode)
 {
-    file_header_t *file = find_file(path);
+    file_header_t *file;
+
+    if (file_table.magic != TABLE_HEADER_MAGIC) {
+        return NULL;
+    }
+
+    file = find_file(path);
     opened_file_t *open_file;
 
     if (!file) {

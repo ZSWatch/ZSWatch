@@ -222,9 +222,9 @@ zephyr_udc0: &usbd {
 };
 
 / {
-    sram@2007FFFF {
+    sram@2007FEFF {
         compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2007FFFF 0x1>;
+        reg = <0x2007FEFF 0x100>;
         zephyr,memory-region = "RetainedMem";
         status = "okay";
 
@@ -237,22 +237,32 @@ zephyr_udc0: &usbd {
             retention0: retention@0 {
                 compatible = "zephyr,retention";
                 status = "okay";
-                reg = <0x0 0x1>;
+                reg = <0x0 0xFB>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+            // Last byte in RAM is for boot mode.
+            // Du to debugger only supports writing 4 bytes at a time
+            // we need to leave a 3 byte gap between the two retention areas.
+            retention1: retention@FF {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0xFF 0x1>;
             };
         };
     };
 
     chosen {
-            zephyr,boot-mode = &retention0;
+            zephyr,boot-mode = &retention1;
     };
 };
 
-/* Reduce SRAM0 usage by 4 byte to account for non-init area
-* Even though boot mode is only one byte, nrfjprog only allows
-* 4 byte writes, hence reserve 4.
+/*
+* Reduce SRAM0 usage by 256 bytes to account for non-init area.
+* The last 256 bytes of SRAM0 are used for retention memory.
 */
 &sram0 {
-    reg = <0x20000000 0x7FFFC>;
+    reg = <0x20000000 0x7FEFF>;
 };
 
 /* Include partition configuration file */

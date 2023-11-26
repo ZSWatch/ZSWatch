@@ -17,4 +17,11 @@
 
 #pragma once
 
+#define ZSW_BOOT_MODE_RTT_FLASH_LOADER  0x0A
+#define ZSW_BOOT_MODE_FLASH_ERASE       0xFF
+
 int zsw_rtt_flash_loader_start(void);
+
+int zsw_rtt_flash_loader_erase_external(void);
+
+int zsw_rtt_flash_loader_reboot_and_erase_flash(void);

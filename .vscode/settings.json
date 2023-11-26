@@ -11,4 +11,5 @@
         "${workspaceFolder}/app/build": "Launch build"
     },
     "editor.defaultFormatter": "chiehyu.vscode-astyle",
+    "astyle.astylerc": "${workspaceRoot}/app/tools/astyle.cfg",
 }
