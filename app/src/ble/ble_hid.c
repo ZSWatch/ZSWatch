@@ -166,11 +166,7 @@ static void key_release_handle(struct k_work *item)
 
 static void send_key_release(void)
 {
-    if (k_work_delayable_is_pending(&key_release)) {
-        k_work_cancel_delayable(&key_release);
-    }
-
-    k_work_schedule(&key_release, K_MSEC(250));
+    k_work_reschedule(&key_release, K_MSEC(250));
 }
 
 void ble_hid_init(void)
@@ -178,32 +174,42 @@ void ble_hid_init(void)
     ;
 }
 
-void ble_hid_next(void)
+int ble_hid_next(void)
 {
+    int ret = 0;
+
     // Byte 0: Modifier
     // Byte 1: Reserved
     // Byte 2: Keypress
     int8_t report[8] = {0x00, 0x00, HID_KEY_RIGHT_ARROW};
-    int ret = bt_gatt_notify(NULL, &hog_svc.attrs[5], report, sizeof(report));
+    ret = bt_gatt_notify(NULL, &hog_svc.attrs[5], report, sizeof(report));
 
     if (ret != 0) {
         LOG_ERR("ble_hid_next err: %d", ret);
+        return ret;
     }
 
     send_key_release();
+
+    return ret;
 }
 
-void ble_hid_previous(void)
+int ble_hid_previous(void)
 {
+    int ret = 0;
+
     // Byte 0: Modifier
     // Byte 1: Reserved
     // Byte 2: Keypress
     int8_t report[8] = {0x00, 0x00, HID_KEY_LEFT_ARROW};
-    int ret = bt_gatt_notify(NULL, &hog_svc.attrs[5], report, sizeof(report));
+    ret = bt_gatt_notify(NULL, &hog_svc.attrs[5], report, sizeof(report));
 
     if (ret != 0) {
         LOG_ERR("ble_hid_previous err: %d", ret);
+        return ret;
     }
 
     send_key_release();
+
+    return ret;
 }
