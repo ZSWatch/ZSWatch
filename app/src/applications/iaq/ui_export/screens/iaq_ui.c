@@ -17,7 +17,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_obj_set_style_border_width(ui_root_page, 0, LV_PART_MAIN);
     lv_obj_set_size(ui_root_page, LV_PCT(100), LV_PCT(100));
 
-    lv_obj_clear_flag(ui_root_page, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_clear_flag(ui_root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(ui_root_page, lv_color_hex(0x0061FF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_root_page, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -27,7 +27,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_obj_set_x(ui_Panel1, 0);
     lv_obj_set_y(ui_Panel1, 24);
     lv_obj_set_align(ui_Panel1, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_Panel1, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_clear_flag(ui_Panel1, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(ui_Panel1, lv_color_hex(0x7F7F00), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_grad_dir(ui_Panel1, LV_GRAD_DIR_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -39,22 +39,22 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_obj_set_style_pad_bottom(ui_Panel1, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_Label1 = lv_label_create(ui_Panel1);
-    lv_obj_set_width(ui_Label1, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_Label1, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_width(ui_Label1, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_Label1, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_Label1, LV_ALIGN_TOP_MID);
     lv_label_set_text(ui_Label1, "IAQ");
     lv_obj_set_style_text_color(ui_Label1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LabelAQI = lv_label_create(ui_Panel1);
-    lv_obj_set_width(ui_LabelAQI, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_LabelAQI, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_width(ui_LabelAQI, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_LabelAQI, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_LabelAQI, LV_ALIGN_BOTTOM_MID);
     lv_label_set_text(ui_LabelAQI, "-");
     lv_obj_set_style_text_color(ui_LabelAQI, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LabelQuality = lv_label_create(ui_root_page);
-    lv_obj_set_width(ui_LabelQuality, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_LabelQuality, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_width(ui_LabelQuality, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_LabelQuality, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_LabelQuality, 0);
     lv_obj_set_y(ui_LabelQuality, 64);
     lv_obj_set_align(ui_LabelQuality, LV_ALIGN_CENTER);
@@ -71,16 +71,16 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_img_set_src(ui_ImgSocket, &iaq_img_socket_png);
 #endif
 
-    lv_obj_set_width(ui_ImgSocket, LV_SIZE_CONTENT);  /// 60
-    lv_obj_set_height(ui_ImgSocket, LV_SIZE_CONTENT);   /// 30
+    lv_obj_set_width(ui_ImgSocket, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_ImgSocket, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_ImgSocket, 0);
     lv_obj_set_y(ui_ImgSocket, -22);
     lv_obj_set_align(ui_ImgSocket, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_ImgSocket, LV_OBJ_FLAG_ADV_HITTEST);   /// Flags
-    lv_obj_clear_flag(ui_ImgSocket, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_add_flag(ui_ImgSocket, LV_OBJ_FLAG_ADV_HITTEST);
+    lv_obj_clear_flag(ui_ImgSocket, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_ImgScale = lv_img_create(ui_root_page);
-    
+
 #ifdef CONFIG_LV_Z_USE_FILESYSTEM
     lv_img_set_src(ui_ImgScale, "S:iaq_scale.bin");
 #else
@@ -88,35 +88,35 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     lv_img_set_src(ui_ImgScale, &iaq_img_scale_png);
 #endif
 
-    lv_obj_set_width(ui_ImgScale, LV_SIZE_CONTENT);  /// 220
-    lv_obj_set_height(ui_ImgScale, LV_SIZE_CONTENT);   /// 110
+    lv_obj_set_width(ui_ImgScale, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_ImgScale, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_ImgScale, 0);
     lv_obj_set_y(ui_ImgScale, -60);
     lv_obj_set_align(ui_ImgScale, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_ImgScale, LV_OBJ_FLAG_ADV_HITTEST);   /// Flags 
-    lv_obj_clear_flag(ui_ImgScale, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_add_flag(ui_ImgScale, LV_OBJ_FLAG_ADV_HITTEST);
+    lv_obj_clear_flag(ui_ImgScale, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_ImgCursor = lv_img_create(ui_root_page);
 
-/* TODO: Fix strange rotation bug with cursor (cursor disapears) when using file system
-#ifdef CONFIG_LV_Z_USE_FILESYSTEM
-    lv_img_set_src(ui_ImgCursor, "S:iaq_cursor.bin");
-#else
-    LV_IMG_DECLARE(iaq_img_cursor_png);
-    lv_img_set_src(ui_ImgCursor, &iaq_img_cursor_png);
-#endif
-*/
+    /* TODO: Fix strange rotation bug with cursor (cursor disapears) when using file system
+    #ifdef CONFIG_LV_Z_USE_FILESYSTEM
+        lv_img_set_src(ui_ImgCursor, "S:iaq_cursor.bin");
+    #else
+        LV_IMG_DECLARE(iaq_img_cursor_png);
+        lv_img_set_src(ui_ImgCursor, &iaq_img_cursor_png);
+    #endif
+    */
 
     LV_IMG_DECLARE(iaq_img_cursor_png);
     lv_img_set_src(ui_ImgCursor, &iaq_img_cursor_png);
 
-    lv_obj_set_width(ui_ImgCursor, LV_SIZE_CONTENT);  /// 14
-    lv_obj_set_height(ui_ImgCursor, LV_SIZE_CONTENT);   /// 63
+    lv_obj_set_width(ui_ImgCursor, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_ImgCursor, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_ImgCursor, 0);
     lv_obj_set_y(ui_ImgCursor, -52);
     lv_obj_set_align(ui_ImgCursor, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_ImgCursor, LV_OBJ_FLAG_ADV_HITTEST);   /// Flags
-    lv_obj_clear_flag(ui_ImgCursor, LV_OBJ_FLAG_SCROLLABLE);    /// Flags
+    lv_obj_add_flag(ui_ImgCursor, LV_OBJ_FLAG_ADV_HITTEST);
+    lv_obj_clear_flag(ui_ImgCursor, LV_OBJ_FLAG_SCROLLABLE);
     lv_img_set_pivot(ui_ImgCursor, 7, 63);
     lv_img_set_angle(ui_ImgCursor, 0);
 }
@@ -152,41 +152,28 @@ void iaq_app_ui_home_set_iaq_label(float iaq)
 
 void iaq_app_ui_home_set_iaq_status(float iaq)
 {
-    char* text;
+    const char *text;
     lv_color_t color;
 
-    if(iaq < 50)
-    {
+    if (iaq < 50) {
         text = "Excellent";
         color = lv_color_hex(0x00FF00);
-    }
-    else if(iaq < 100)
-    {
+    } else if (iaq < 100) {
         text = "Good";
         color = lv_color_hex(0x4CA200);
-    }
-    else if(iaq < 150)
-    {
+    } else if (iaq < 150) {
         text = "Lightly polluted";
         color = lv_color_hex(0xECF500);
-    }
-    else if(iaq < 200)
-    {
+    } else if (iaq < 200) {
         text = "Moderately polluted";
         color = lv_color_hex(0xE59900);
-    }
-    else if(iaq < 250)
-    {
+    } else if (iaq < 250) {
         text = "Heavily polluted";
         color = lv_color_hex(0xFF0000);
-    }
-    else if(iaq < 350)
-    {
+    } else if (iaq < 350) {
         text = "Severely polluted";
         color = lv_color_hex(0xA8009D);
-    }
-    else
-    {
+    } else {
         text = "Extremely polluted";
         color = lv_color_hex(0x994C00);
     }

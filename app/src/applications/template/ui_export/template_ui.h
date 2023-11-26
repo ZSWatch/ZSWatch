@@ -1,7 +1,6 @@
 #pragma once
 
-#include <inttypes.h>
-#include <lvgl.h>
+#include "lvgl.h"
 
 typedef void(*on_ui_increment_cb_t)(void);
 
