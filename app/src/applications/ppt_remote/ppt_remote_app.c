@@ -27,7 +27,8 @@ static application_t app = {
 };
 
 static lv_timer_t *counter_timer = NULL;
-static int timer_counter;
+static int64_t start_time;
+static bool is_first_time = true;
 
 static void ppt_remote_app_start(lv_obj_t *root, lv_group_t *group)
 {
@@ -39,13 +40,14 @@ static void ppt_remote_app_stop(void)
     if (counter_timer != NULL) {
         lv_timer_del(counter_timer);
     }
+    is_first_time = true;
     ppt_remote_ui_remove();
 }
 
 static void timer_callback(lv_timer_t *timer)
 {
-    timer_counter++;
-    ppt_remote_ui_set_timer_counter_value(timer_counter);
+    int64_t now = k_uptime_get();
+    ppt_remote_ui_set_timer_counter_value((int)((now - start_time) / 1000));
 }
 
 static int ppt_remote_app_add(void)
@@ -58,10 +60,10 @@ static int ppt_remote_app_add(void)
 static void on_next(void)
 {
     // Start the timer when the presentation starts
-    static bool is_first_time = true;
     if (is_first_time == true) {
         counter_timer = lv_timer_create(timer_callback, 1000, NULL);
         is_first_time = false;
+        start_time = k_uptime_get();
     }
 
     ble_hid_next();

@@ -38,12 +38,12 @@ void ppt_remote_ui_show(lv_obj_t *root, on_button_press_cb_t next_cb, on_button_
     /*Transition descriptor when going back to the default state.
      *Add some delay to be sure the press transition is visible even if the press was very short*/
     static lv_style_transition_dsc_t transition_dsc_def;
-    lv_style_transition_dsc_init(&transition_dsc_def, props, lv_anim_path_overshoot, 250, 100, NULL);
+    lv_style_transition_dsc_init(&transition_dsc_def, props, lv_anim_path_overshoot, 200, 0, NULL);
 
     /*Transition descriptor when going to pressed state.
      *No delay, go to presses state immediately*/
     static lv_style_transition_dsc_t transition_dsc_pr;
-    lv_style_transition_dsc_init(&transition_dsc_pr, props, lv_anim_path_ease_in_out, 250, 0, NULL);
+    lv_style_transition_dsc_init(&transition_dsc_pr, props, lv_anim_path_ease_in_out, 200, 0, NULL);
 
     /*Add only the new transition to he default state*/
     static lv_style_t style_def;
