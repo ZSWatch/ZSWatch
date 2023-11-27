@@ -1,8 +1,282 @@
+diff --git a/dts/bindings/input/zephyr,lvgl-encoder-input.yaml b/dts/bindings/input/zephyr,lvgl-encoder-input.yaml
+new file mode 100644
+index 0000000000..8f16c69a1c
+--- /dev/null
++++ b/dts/bindings/input/zephyr,lvgl-encoder-input.yaml
+@@ -0,0 +1,32 @@
++# Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++# SPDX-License-Identifier: Apache-2.0
++
++description: |
++  LVGL encoder indev pseudo-device
++
++  Listens for button/encoder input events and routes the
++  lv_indev_data_t to the underlying encoder lv_indev_t managed by LVGL.
++
++  Example configuration:
++
++  encoder {
++          compatible = "zephyr,lvgl-encoder-input";
++          rotation-input-code = <INPUT_REL_Y>;
++          button-input-code = <INPUT_KEY_0>;
++  };
++
++compatible: "zephyr,lvgl-encoder-input"
++
++include: zephyr,lvgl-common-input.yaml
++
++properties:
++  rotation-input-code:
++    type: int
++    required: true
++    description: |
++      Input event code associated with rotation (INPUT_REL_*).
++
++  button-input-code:
++    type: int
++    description: |
++      Input event key code for encoder button (INPUT_KEY_* or INPUT_BTN_*).
+diff --git a/modules/lvgl/CMakeLists.txt b/modules/lvgl/CMakeLists.txt
+index e6286f8e20..51cfd309ae 100644
+--- a/modules/lvgl/CMakeLists.txt
++++ b/modules/lvgl/CMakeLists.txt
+@@ -14,6 +14,7 @@ zephyr_library()
+ 
+ zephyr_include_directories(${LVGL_DIR}/src/)
+ zephyr_include_directories(.)
++zephyr_include_directories(include)
+ 
+ zephyr_compile_definitions(LV_CONF_INCLUDE_SIMPLE=1)
+ zephyr_compile_definitions(LV_CONF_PATH=${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h)
+@@ -227,6 +228,7 @@ zephyr_library_sources(input/lvgl_common_input.c)
+ zephyr_library_sources_ifdef(CONFIG_LV_Z_POINTER_KSCAN  input/lvgl_pointer_kscan.c)
+ zephyr_library_sources_ifdef(CONFIG_LV_Z_POINTER_INPUT input/lvgl_pointer_input.c)
+ zephyr_library_sources_ifdef(CONFIG_LV_Z_BUTTON_INPUT input/lvgl_button_input.c)
++zephyr_library_sources_ifdef(CONFIG_LV_Z_ENCODER_INPUT input/lvgl_encoder_input.c)
+ 
+ zephyr_library_link_libraries(LVGL)
+ target_link_libraries(LVGL INTERFACE zephyr_interface)
+diff --git a/modules/lvgl/Kconfig.input b/modules/lvgl/Kconfig.input
+index 37b316dc36..b6cbdad0c2 100644
+--- a/modules/lvgl/Kconfig.input
++++ b/modules/lvgl/Kconfig.input
+@@ -4,10 +4,6 @@
+ 
+ menu "Input device settings"
+ 
+-config LV_Z_INPUT_INIT_PRIORITY
+-	int
+-	default 91
+-
+ config LV_Z_POINTER_KSCAN
+ 	bool "Keyboard scan pointer input"
+ 	depends on KSCAN
+@@ -68,4 +64,17 @@ config LV_Z_BUTTON_INPUT_MSGQ_COUNT
+ 	help
+ 	  Size of the button message queue buffering input events.
+ 
++config LV_Z_ENCODER_INPUT
++	bool "Input lvgl encoder"
++	default y
++	depends on INPUT
++	depends on DT_HAS_ZEPHYR_LVGL_ENCODER_INPUT_ENABLED
++
++config LV_Z_ENCODER_INPUT_MSGQ_COUNT
++	int "Input encoder queue message count"
++	default 4
++	depends on LV_Z_ENCODER_INPUT
++	help
++	  Size of the encoder message queue buffering input events.
++
+ endmenu
+diff --git a/modules/lvgl/include/lvgl_button_input.h b/modules/lvgl/include/lvgl_button_input.h
+new file mode 100644
+index 0000000000..dd97b5e7c7
+--- /dev/null
++++ b/modules/lvgl/include/lvgl_button_input.h
+@@ -0,0 +1,22 @@
++/*
++ * Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#ifndef ZEPHYR_MODULES_LVGL_LVGL_BUTTON_INPUT_H_
++#define ZEPHYR_MODULES_LVGL_LVGL_BUTTON_INPUT_H_
++
++#include <zephyr/device.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++int lvgl_button_input_init(const struct device *dev);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ZEPHYR_MODULES_LVGL_LVGL_BUTTON_INPUT_H_ */
+diff --git a/modules/lvgl/input/lvgl_common_input.h b/modules/lvgl/include/lvgl_common_input.h
+similarity index 96%
+rename from modules/lvgl/input/lvgl_common_input.h
+rename to modules/lvgl/include/lvgl_common_input.h
+index e9d0ef34f8..c34dabe1a8 100644
+--- a/modules/lvgl/input/lvgl_common_input.h
++++ b/modules/lvgl/include/lvgl_common_input.h
+@@ -23,9 +23,11 @@ struct lvgl_common_input_data {
+ 	lv_indev_drv_t indev_drv;
+ 	lv_indev_t *indev;
+ 	lv_indev_data_t pending_event;
++	lv_indev_data_t previous_event;
+ };
+ 
+ int lvgl_input_register_driver(lv_indev_type_t indev_type, const struct device *dev);
++int lvgl_init_input_devices(void);
+ 
+ #define LVGL_INPUT_EVENT_MSGQ(inst, type) lvgl_input_msgq_##type##_##inst
+ #define LVGL_INPUT_DEVICE(inst)           DEVICE_DT_GET_OR_NULL(DT_INST_PHANDLE(inst, input))
+diff --git a/modules/lvgl/include/lvgl_encoder_input.h b/modules/lvgl/include/lvgl_encoder_input.h
+new file mode 100644
+index 0000000000..1fe9a23c2c
+--- /dev/null
++++ b/modules/lvgl/include/lvgl_encoder_input.h
+@@ -0,0 +1,22 @@
++/*
++ * Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#ifndef ZEPHYR_MODULES_LVGL_LVGL_ENCODER_INPUT_H_
++#define ZEPHYR_MODULES_LVGL_LVGL_ENCODER_INPUT_H_
++
++#include <zephyr/device.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++int lvgl_encoder_input_init(const struct device *dev);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ZEPHYR_MODULES_LVGL_LVGL_ENCODER_INPUT_H_ */
+diff --git a/modules/lvgl/include/lvgl_input_device.h b/modules/lvgl/include/lvgl_input_device.h
+new file mode 100644
+index 0000000000..2e538c92d3
+--- /dev/null
++++ b/modules/lvgl/include/lvgl_input_device.h
+@@ -0,0 +1,23 @@
++/*
++ * Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#ifndef ZEPHYR_MODULES_LVGL_INPUT_DEVICE_H_
++#define ZEPHYR_MODULES_LVGL_INPUT_DEVICE_H_
++
++#include <zephyr/device.h>
++#include <lvgl.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++lv_indev_t *lvgl_input_get_indev(const struct device *dev);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ZEPHYR_MODULES_LVGL_INPUT_DEVICE_H_ */
+diff --git a/modules/lvgl/include/lvgl_pointer_input.h b/modules/lvgl/include/lvgl_pointer_input.h
+new file mode 100644
+index 0000000000..f168477b98
+--- /dev/null
++++ b/modules/lvgl/include/lvgl_pointer_input.h
+@@ -0,0 +1,22 @@
++/*
++ * Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#ifndef ZEPHYR_MODULES_LVGL_LVGL_POINTER_INPUT_H_
++#define ZEPHYR_MODULES_LVGL_LVGL_POINTER_INPUT_H_
++
++#include <zephyr/device.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++int lvgl_pointer_input_init(const struct device *dev);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* ZEPHYR_MODULES_LVGL_LVGL_POINTER_INPUT_H_ */
+diff --git a/modules/lvgl/input/lvgl_button_input.c b/modules/lvgl/input/lvgl_button_input.c
+index d340721b55..f9c9d59f4d 100644
+--- a/modules/lvgl/input/lvgl_button_input.c
++++ b/modules/lvgl/input/lvgl_button_input.c
+@@ -7,6 +7,7 @@
+ #define DT_DRV_COMPAT zephyr_lvgl_button_input
+ 
+ #include "lvgl_common_input.h"
++#include "lvgl_button_input.h"
+ 
+ #include <zephyr/logging/log.h>
+ 
+@@ -44,7 +45,7 @@ static void lvgl_button_process_event(const struct device *dev, struct input_eve
+ 	}
+ }
+ 
+-static int lvgl_button_input_init(const struct device *dev)
++int lvgl_button_input_init(const struct device *dev)
+ {
+ 	struct lvgl_common_input_data *data = dev->data;
+ 	const struct lvgl_button_input_config *cfg = dev->config;
+@@ -79,8 +80,8 @@ static int lvgl_button_input_init(const struct device *dev)
+ 		.coordinates = lvgl_button_coordinates_##inst,                                     \
+ 	};                                                                                         \
+ 	static struct lvgl_common_input_data lvgl_common_input_data_##inst;                        \
+-	DEVICE_DT_INST_DEFINE(inst, lvgl_button_input_init, NULL, &lvgl_common_input_data_##inst,  \
+-			      &lvgl_button_input_config_##inst, APPLICATION,                       \
+-			      CONFIG_LV_Z_INPUT_INIT_PRIORITY, NULL);
++	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &lvgl_common_input_data_##inst,                    \
++			      &lvgl_button_input_config_##inst, POST_KERNEL,                       \
++			      CONFIG_INPUT_INIT_PRIORITY, NULL);
+ 
+ DT_INST_FOREACH_STATUS_OKAY(LVGL_BUTTON_INPUT_DEFINE)
 diff --git a/modules/lvgl/input/lvgl_common_input.c b/modules/lvgl/input/lvgl_common_input.c
-index 23b61a230e..9e2cfb5019 100644
+index 23b61a230e..f91b01bacd 100644
 --- a/modules/lvgl/input/lvgl_common_input.c
 +++ b/modules/lvgl/input/lvgl_common_input.c
-@@ -15,7 +15,18 @@ static void lvgl_input_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
+@@ -8,15 +8,36 @@
+ #include <zephyr/device.h>
+ #include <zephyr/kernel.h>
+ #include <zephyr/logging/log.h>
++#include <lvgl_input_device.h>
++#include "lvgl_pointer_input.h"
++#include "lvgl_button_input.h"
++#include "lvgl_encoder_input.h"
+ 
+ LOG_MODULE_DECLARE(lvgl);
+ 
++lv_indev_t *lvgl_input_get_indev(const struct device *dev)
++{
++	struct lvgl_common_input_data *common_data = dev->data;
++
++	return common_data->indev;
++}
++
+ static void lvgl_input_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
  {
  	const struct device *dev = drv->user_data;
  	const struct lvgl_common_input_config *cfg = dev->config;
@@ -17,19 +291,191 @@ index 23b61a230e..9e2cfb5019 100644
 +		return;
 +	}
  
+-	k_msgq_get(cfg->event_msgq, data, K_NO_WAIT);
 +	memcpy(&common_data->previous_event, data, sizeof(lv_indev_data_t));
- 	k_msgq_get(cfg->event_msgq, data, K_NO_WAIT);
  	data->continue_reading = k_msgq_num_used_get(cfg->event_msgq) > 0;
  }
-diff --git a/modules/lvgl/input/lvgl_common_input.h b/modules/lvgl/input/lvgl_common_input.h
-index e9d0ef34f8..2c1b2bd9a5 100644
---- a/modules/lvgl/input/lvgl_common_input.h
-+++ b/modules/lvgl/input/lvgl_common_input.h
-@@ -23,6 +23,7 @@ struct lvgl_common_input_data {
- 	lv_indev_drv_t indev_drv;
- 	lv_indev_t *indev;
- 	lv_indev_data_t pending_event;
-+	lv_indev_data_t previous_event;
- };
  
- int lvgl_input_register_driver(lv_indev_type_t indev_type, const struct device *dev);
+@@ -44,3 +65,30 @@ int lvgl_input_register_driver(lv_indev_type_t indev_type, const struct device *
+ 
+ 	return 0;
+ }
++
++#define LV_DEV_INIT(node_id, init_fn)                                                              \
++	do {                                                                                       \
++		int ret = init_fn(DEVICE_DT_GET(node_id));                                         \
++		if (ret) {                                                                         \
++			return ret;                                                                \
++		}                                                                                  \
++	} while (0)
++
++int lvgl_init_input_devices(void)
++{
++#ifdef CONFIG_LV_Z_POINTER_INPUT
++	DT_FOREACH_STATUS_OKAY_VARGS(zephyr_lvgl_pointer_input, LV_DEV_INIT,
++				     lvgl_pointer_input_init);
++#endif /* CONFIG_LV_Z_POINTER_INPUT */
++
++#ifdef CONFIG_LV_Z_BUTTON_INPUT
++	DT_FOREACH_STATUS_OKAY_VARGS(zephyr_lvgl_button_input, LV_DEV_INIT, lvgl_button_input_init);
++#endif /* CONFIG_LV_Z_BUTTON_INPUT */
++
++#ifdef CONFIG_LV_Z_ENCODER_INPUT
++	DT_FOREACH_STATUS_OKAY_VARGS(zephyr_lvgl_encoder_input, LV_DEV_INIT,
++				     lvgl_encoder_input_init);
++#endif /* CONFIG_LV_Z_ENCODER_INPUT */
++
++	return 0;
++}
+diff --git a/modules/lvgl/input/lvgl_encoder_input.c b/modules/lvgl/input/lvgl_encoder_input.c
+new file mode 100644
+index 0000000000..a49f1eeca2
+--- /dev/null
++++ b/modules/lvgl/input/lvgl_encoder_input.c
+@@ -0,0 +1,72 @@
++/*
++ * Copyright 2023 Fabian Blatz <fabianblatz@gmail.com>
++ *
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++#define DT_DRV_COMPAT zephyr_lvgl_encoder_input
++
++#include "lvgl_common_input.h"
++#include "lvgl_encoder_input.h"
++
++#include <zephyr/logging/log.h>
++
++LOG_MODULE_DECLARE(lvgl);
++
++struct lvgl_encoder_input_config {
++	struct lvgl_common_input_config common_config; /* Needs to be first member */
++	int rotation_input_code;
++	int button_input_code;
++};
++
++static void lvgl_encoder_process_event(const struct device *dev, struct input_event *evt)
++{
++	struct lvgl_common_input_data *data = dev->data;
++	const struct lvgl_encoder_input_config *cfg = dev->config;
++
++	if (evt->code == cfg->rotation_input_code) {
++		data->pending_event.enc_diff = evt->value;
++	} else if (evt->code == cfg->button_input_code) {
++		data->pending_event.state = evt->value ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
++	} else {
++		LOG_DBG("Ignored input event: %u", evt->code);
++		return;
++	}
++
++	if (k_msgq_put(cfg->common_config.event_msgq, &data->pending_event, K_NO_WAIT) != 0) {
++		LOG_WRN("Could not put input data into queue");
++	}
++}
++
++int lvgl_encoder_input_init(const struct device *dev)
++{
++	return lvgl_input_register_driver(LV_INDEV_TYPE_ENCODER, dev);
++}
++
++#define BUTTON_CODE(inst)   DT_INST_PROP_OR(inst, button_input_code, -1)
++#define ROTATION_CODE(inst) DT_INST_PROP(inst, rotation_input_code)
++
++#define ASSERT_PROPERTIES(inst)                                                                    \
++	BUILD_ASSERT(IN_RANGE(ROTATION_CODE(inst), 0, 65536),                                      \
++		     "Property rotation-input-code needs to be between 0 and 65536.");             \
++	BUILD_ASSERT(!DT_INST_NODE_HAS_PROP(inst, button_input_code) ||                            \
++			     IN_RANGE(BUTTON_CODE(inst), 0, 65536),                                \
++		     "Property button-input-code needs to be between 0 and 65536.");               \
++	BUILD_ASSERT(ROTATION_CODE(inst) != BUTTON_CODE(inst),                                     \
++		     "Property rotation-input-code and button-input-code should not be equal.")
++
++#define LVGL_ENCODER_INPUT_DEFINE(inst)                                                            \
++	ASSERT_PROPERTIES(inst);                                                                   \
++	LVGL_INPUT_DEFINE(inst, encoder, CONFIG_LV_Z_ENCODER_INPUT_MSGQ_COUNT,                     \
++			  lvgl_encoder_process_event);                                             \
++	static const struct lvgl_encoder_input_config lvgl_encoder_input_config_##inst = {         \
++		.common_config.event_msgq = &LVGL_INPUT_EVENT_MSGQ(inst, encoder),                 \
++		.rotation_input_code = ROTATION_CODE(inst),                                        \
++		.button_input_code = BUTTON_CODE(inst),                                            \
++	};                                                                                         \
++	static struct lvgl_common_input_data lvgl_common_input_data_##inst;                        \
++	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &lvgl_common_input_data_##inst,                    \
++			      &lvgl_encoder_input_config_##inst, POST_KERNEL,                      \
++			      CONFIG_INPUT_INIT_PRIORITY, NULL);
++
++DT_INST_FOREACH_STATUS_OKAY(LVGL_ENCODER_INPUT_DEFINE)
+diff --git a/modules/lvgl/input/lvgl_pointer_input.c b/modules/lvgl/input/lvgl_pointer_input.c
+index 483c36a456..19c71eb197 100644
+--- a/modules/lvgl/input/lvgl_pointer_input.c
++++ b/modules/lvgl/input/lvgl_pointer_input.c
+@@ -7,6 +7,7 @@
+ #define DT_DRV_COMPAT zephyr_lvgl_pointer_input
+ 
+ #include "lvgl_common_input.h"
++#include "lvgl_pointer_input.h"
+ 
+ #include <lvgl_display.h>
+ #include <zephyr/logging/log.h>
+@@ -108,7 +109,7 @@ static void lvgl_pointer_process_event(const struct device *dev, struct input_ev
+ 	}
+ }
+ 
+-static int lvgl_pointer_input_init(const struct device *dev)
++int lvgl_pointer_input_init(const struct device *dev)
+ {
+ 	return lvgl_input_register_driver(LV_INDEV_TYPE_POINTER, dev);
+ }
+@@ -123,8 +124,8 @@ static int lvgl_pointer_input_init(const struct device *dev)
+ 		.invert_y = DT_INST_PROP(inst, invert_y),                                          \
+ 	};                                                                                         \
+ 	static struct lvgl_common_input_data lvgl_common_input_data_##inst;                        \
+-	DEVICE_DT_INST_DEFINE(inst, lvgl_pointer_input_init, NULL, &lvgl_common_input_data_##inst, \
+-			      &lvgl_pointer_input_config_##inst, APPLICATION,                      \
+-			      CONFIG_LV_Z_INPUT_INIT_PRIORITY, NULL);
++	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &lvgl_common_input_data_##inst,                    \
++			      &lvgl_pointer_input_config_##inst, POST_KERNEL,                      \
++			      CONFIG_INPUT_INIT_PRIORITY, NULL);
+ 
+ DT_INST_FOREACH_STATUS_OKAY(LVGL_POINTER_INPUT_DEFINE)
+diff --git a/modules/lvgl/input/lvgl_pointer_kscan.c b/modules/lvgl/input/lvgl_pointer_kscan.c
+index f3115ffa02..197106e4f2 100644
+--- a/modules/lvgl/input/lvgl_pointer_kscan.c
++++ b/modules/lvgl/input/lvgl_pointer_kscan.c
+@@ -146,4 +146,4 @@ static int lvgl_kscan_pointer_init(void)
+ 	return 0;
+ }
+ 
+-SYS_INIT(lvgl_kscan_pointer_init, APPLICATION, CONFIG_LV_Z_INPUT_INIT_PRIORITY);
++SYS_INIT(lvgl_kscan_pointer_init, APPLICATION, CONFIG_INPUT_INIT_PRIORITY);
+diff --git a/modules/lvgl/lvgl.c b/modules/lvgl/lvgl.c
+index 46c575e224..65f46323dc 100644
+--- a/modules/lvgl/lvgl.c
++++ b/modules/lvgl/lvgl.c
+@@ -8,6 +8,7 @@
+ #include <zephyr/kernel.h>
+ #include <lvgl.h>
+ #include "lvgl_display.h"
++#include "lvgl_common_input.h"
+ #ifdef CONFIG_LV_Z_USE_FILESYSTEM
+ #include "lvgl_fs.h"
+ #endif
+@@ -235,12 +236,13 @@ static int lvgl_init(void)
+ 		return -EPERM;
+ 	}
+ 
++	err = lvgl_init_input_devices();
++	if (err < 0) {
++		LOG_ERR("Failed to initialize input devices.");
++		return err;
++	}
++
+ 	return 0;
+ }
+ 
+-BUILD_ASSERT(CONFIG_APPLICATION_INIT_PRIORITY < CONFIG_LV_Z_INPUT_INIT_PRIORITY);
+-#ifdef CONFIG_INPUT
+-BUILD_ASSERT(CONFIG_INPUT_INIT_PRIORITY < CONFIG_LV_Z_INPUT_INIT_PRIORITY);
+-#endif /* CONFIG_INPUT */
+-
+ SYS_INIT(lvgl_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
