@@ -83,10 +83,7 @@ static application_t app = {
 
 static void speedometer_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    // Screen always on
-    zsw_settings_display_always_on_t display_always_on = true;
-    settings_save_one(ZSW_SETTINGS_DISPLAY_ALWAYS_ON, &display_always_on,
-                      sizeof(display_always_on));
+    /// @todo Screen always on
 
     speedometer_ui_show(root);
     sensor_fusion_init();
@@ -95,10 +92,7 @@ static void speedometer_app_start(lv_obj_t *root, lv_group_t *group)
 
 static void speedometer_app_stop(void)
 {
-    // Screen always on - off
-    zsw_settings_display_always_on_t display_always_on = false;
-    settings_save_one(ZSW_SETTINGS_DISPLAY_ALWAYS_ON, &display_always_on,
-                      sizeof(display_always_on));
+    // @todo Screen always on - off
 
     speedometer_ui_remove();
     sensor_fusion_deinit();

@@ -31,6 +31,11 @@ void speedometer_ui_show(lv_obj_t *root)
     lv_obj_center(meter);
     lv_obj_set_size(meter, 200, 200);
 
+    /*Create a label below the meter */
+    lv_obj_t *label = lv_label_create(lv_scr_act());
+    lv_label_set_text(label, "km/h");
+    lv_obj_align_to(label, meter, LV_ALIGN_BOTTOM_MID, 0, -15);    /*Align top of the slider*/
+
     /*Add a scale first*/
     lv_meter_scale_t *scale = lv_meter_add_scale(meter);
     lv_meter_set_scale_ticks(meter, scale, 31, 2, 10, lv_palette_main(LV_PALETTE_GREY));
