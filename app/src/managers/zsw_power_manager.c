@@ -206,8 +206,8 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
             break;
         }
         case ZSW_IMU_EVT_TYPE_GESTURE: {
-            // Use the flick out event
-            if (event->data.data.gesture == BOSCH_BMI270_GESTURE_FLICK_OUT) {
+            if ((event->data.data.gesture == BOSCH_BMI270_GESTURE_FLICK_OUT) &&
+                (idle_timeout_seconds != UINT32_MAX)) {
                 LOG_INF("Put device into standby");
                 enter_inactive();
             }
