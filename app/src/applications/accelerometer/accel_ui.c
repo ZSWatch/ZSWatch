@@ -78,7 +78,7 @@ void accel_ui_set_values(int32_t x, int32_t y, int32_t z)
     lv_bar_set_value(bar_acc_y, y, LV_ANIM_ON);
     lv_bar_set_value(bar_acc_z, z, LV_ANIM_ON);
 
-    lv_label_set_text_fmt(acc_x_label, "X: %d g", x);
-    lv_label_set_text_fmt(acc_y_label, "Y: %d g", y);
-    lv_label_set_text_fmt(acc_z_label, "Z: %d g", z);
+    lv_label_set_text_fmt(acc_x_label, "X: %d m/s2", x);
+    lv_label_set_text_fmt(acc_y_label, "Y: %d m/s2", y);
+    lv_label_set_text_fmt(acc_z_label, "Z: %d m/s2", z);
 }
