@@ -865,6 +865,35 @@ static int parse_musicstate(char *data, int len)
     return 0;
 }
 
+static int parse_httpstate(char *data, int len)
+{
+    // {"t":"http","resp":"{\"response_code\":0,\"results\":[{\"type\":\"boolean\",\"difficulty\":\"easy\",\"category\":\"Geography\",\"question\":\"Hungary is the only country in the world beginning with H.\",\"correct_answer\":\"False\",\"incorrect_answers\":[\"True\"]}]}"}
+    char *temp_value;
+    int temp_len;
+    ble_comm_cb_data_t cb;
+    memset(&cb, 0, sizeof(cb));
+
+    cb.type = BLE_COMM_DATA_TYPE_HTTP;
+
+    // {"t":"http","err":"Internet access not enabled in this Gadgetbridge build"}
+    temp_value = extract_value_str("\"err\":", data, &temp_len);
+
+    if (temp_value != NULL) {
+        LOG_ERR("HTTP err: %s", temp_value);
+        memcpy(cb.data.http_response.err, temp_value, strlen(cb.data.http_response.err));
+        return -1;
+    }
+
+    temp_value = extract_value_str("\"resp\":", data, &temp_len);
+    LOG_DBG("HTTP response: %s", temp_value);
+    memcpy(cb.data.http_response.response, temp_value,
+           (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
+
+    send_ble_data_event(&cb);
+
+    return 0;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -899,6 +928,10 @@ static int parse_data(char *data, int len)
 
     if (strlen("musicstate") == type_len && strncmp(type, "musicstate", type_len) == 0) {
         return parse_musicstate(data, len);
+    }
+
+    if (strlen("http") == type_len && strncmp(type, "http", type_len) == 0) {
+        return parse_httpstate(data, len);
     }
 
     return 0;

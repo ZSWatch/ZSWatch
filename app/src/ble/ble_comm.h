@@ -20,6 +20,7 @@
 #include <zephyr/kernel.h>
 
 #define MAX_MUSIC_FIELD_LENGTH          100
+#define MAX_HTTP_FIELD_LENGTH           512
 #define MAX_WEATHER_REPORT_TEXT_LENGTH  25
 
 typedef enum ble_comm_data_type {
@@ -30,6 +31,7 @@ typedef enum ble_comm_data_type {
     BLE_COMM_DATA_TYPE_MUSIC_INFO,
     BLE_COMM_DATA_TYPE_MUSIC_STATE,
     BLE_COMM_DATA_TYPE_REMOTE_CONTROL,
+    BLE_COMM_DATA_TYPE_HTTP,
     BLE_COMM_DATA_TYPE_EMPTY
 } ble_comm_data_type_t;
 
@@ -84,6 +86,12 @@ typedef struct ble_comm_remote_control {
     int button;
 } ble_comm_remote_control_t;
 
+typedef struct ble_comm_http_response {
+    char err[MAX_HTTP_FIELD_LENGTH + 1];
+    char response[MAX_HTTP_FIELD_LENGTH + 1];
+} ble_comm_http_response_t;
+
+
 typedef struct ble_comm_cb_data {
     ble_comm_data_type_t type;
     union {
@@ -94,6 +102,7 @@ typedef struct ble_comm_cb_data {
         ble_comm_music_info_t music_info;
         ble_comm_music_state_t music_state;
         ble_comm_remote_control_t remote_control;
+        ble_comm_http_response_t http_response;
     } data;
 } ble_comm_cb_data_t;
 

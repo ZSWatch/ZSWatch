@@ -1,0 +1,3 @@
+module = ZSW_TRIVIA_APP
+module-str = ZSW_TRIVIA_APP
+source "subsys/logging/Kconfig.template.log_config"

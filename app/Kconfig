@@ -216,6 +216,7 @@ menu "ZSWatch"
         rsource "src/ble/Kconfig"
         rsource "src/applications/settings/Kconfig"
         rsource "src/applications/template/Kconfig"
+        rsource "src/applications/trivia/Kconfig"
         rsource "src/applications/ppt_remote/Kconfig"
     endmenu
 endmenu
