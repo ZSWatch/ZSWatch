@@ -60,6 +60,16 @@ menu "ZSWatch"
         prompt "Activate the application 'IAQ'"
         depends on EXTERNAL_USE_BOSCH_BSEC && LV_Z_USE_FILESYSTEM
         default n
+
+        config APPLICATIONS_USE_TRIVIA
+            bool
+        prompt "Activate the application 'Trivia'"
+        default y
+
+        config APPLICATIONS_USE_PPT_REMOTE
+            bool
+        prompt "Activate the application 'PPT remote'"
+        default y
     endmenu
 
     menu "Watchface"
