@@ -33,6 +33,9 @@ static void on_button_click(trivia_button_t trivia_button);
 static void request_new_question(void);
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
+ZBUS_OBS_DECLARE(trivia_app_ble_comm_lis);
+ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, trivia_app_ble_comm_lis, 1);
 ZBUS_LISTENER_DEFINE(trivia_app_ble_comm_lis, zbus_ble_comm_data_callback);
 
 LV_IMG_DECLARE(quiz);
