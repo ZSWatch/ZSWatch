@@ -56,6 +56,7 @@ typedef enum parse_state {
 static char *extract_value_str(char *key, char *data, int *value_len);
 static int parse_data(char *data, int len);
 static void parse_time(char *data);
+static void parse_time_zone(char *offset);
 static void parse_remote_control(char *data, int len);
 static void send_ble_data_event(ble_comm_cb_data_t *data);
 
@@ -399,6 +400,15 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint1
         parse_time(time_start);
         return;
     }
+
+    // ie. ;E.setTimeZone(1.0);
+    char *offset = strstr(data, ";E.setTimeZone(");
+    if (offset && parse_state == WAIT_GB) {
+        offset += strlen(";E.setTimeZone(");
+        parse_time_zone(offset);
+        return;
+    }
+
     switch (parse_state) {
         case WAIT_GB: {
             if (gb_start) {
@@ -472,6 +482,33 @@ static void parse_time(char *start_time)
         cb.data.notify.id = strtol(start_time, &end_time, 10);
         if (start_time != end_time && errno == 0) {
             cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
+            send_ble_data_event(&cb);
+        } else {
+            LOG_WRN("Failed parsing time");
+        }
+    }
+
+    // If setTime contains timezone, process here, i.e setTime(1700556601);E.setTimeZone(1.0);(...
+    char *time_zone = strstr(start_time, ";E.setTimeZone(");
+    if (time_zone) {
+        time_zone += strlen(";E.setTimeZone(");
+        parse_time_zone(time_zone);
+    }
+}
+
+static void parse_time_zone(char *offset)
+{
+    char *end_timezone;
+    ble_comm_cb_data_t cb;
+    memset(&cb, 0, sizeof(cb));
+
+    end_timezone = strstr(offset, ")");
+    if (end_timezone) {
+        cb.data.time.tz_offset = strtof(offset, &end_timezone);
+
+        if (offset != end_timezone) {
+            cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
+            LOG_DBG("set time offset: %.1f", cb.data.time.tz_offset);
             send_ble_data_event(&cb);
         } else {
             LOG_WRN("Failed parsing time");

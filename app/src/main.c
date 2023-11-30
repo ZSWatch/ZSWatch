@@ -584,10 +584,21 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
             }
             break;
         case BLE_COMM_DATA_TYPE_SET_TIME: {
-            struct timespec tspec;
-            tspec.tv_sec = event->data.data.time.seconds;
-            tspec.tv_nsec = 0;
-            clock_settime(CLOCK_REALTIME, &tspec);
+            if (event->data.data.time.seconds > 0) {
+                struct timespec tspec;
+                tspec.tv_sec = event->data.data.time.seconds;
+                tspec.tv_nsec = 0;
+
+                clock_settime(CLOCK_REALTIME, &tspec);
+            }
+
+            if (event->data.data.time.tz_offset != 0) {
+                char tz[sizeof("UTC+01")] = { '\0' };
+                char sign = (event->data.data.time.tz_offset < 0) ? '+' : '-';
+                snprintf(tz, sizeof(tz), "UTC%c%d", sign, MIN(abs(event->data.data.time.tz_offset), 99));
+                setenv("TZ", tz, 1);
+                tzset();
+            }
             break;
         }
         case BLE_COMM_DATA_TYPE_WEATHER:
