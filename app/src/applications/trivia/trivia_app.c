@@ -129,7 +129,8 @@ static int trivia_app_add(void)
 
 static void request_new_question()
 {
-    ble_comm_send(GB_HTTP_REQUEST, sizeof(GB_HTTP_REQUEST));
+    // Gadgetbridge does not like the null character.
+    ble_comm_send(GB_HTTP_REQUEST, sizeof(GB_HTTP_REQUEST) - 1);
 }
 
 static void on_button_click(trivia_button_t trivia_button)
@@ -148,6 +149,7 @@ static void on_button_click(trivia_button_t trivia_button)
         case PLAY_MORE_BUTTON:
             LOG_DBG("More button pressed");
             trivia_ui_close_popup();
+            trivia_ui_update_question("-");
             request_new_question();
             break;
 
