@@ -26,6 +26,7 @@ struct bmi270_config {
 	bool swap_xy;
 	bool invert_x;
 	bool invert_y;
+	uint16_t rotation;
 };
 
 /** @brief 

@@ -25,3 +25,15 @@ properties:
       type: boolean
       description: |
         Invert the y axis.
+    rotation:
+      type: int
+      default: 0
+      enum:
+        - 0
+        - 90
+        - 180
+        - 270
+      description:
+        Display rotation (CW) in degrees.
+        This will apply a rotation after actual axis-remap.
+        Used to allow generic rotation of PCB for all PCB revision.

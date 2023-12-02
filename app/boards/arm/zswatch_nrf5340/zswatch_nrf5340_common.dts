@@ -36,7 +36,7 @@
         };
     };
 
-    lvgl_pointer {
+    lvgl_pointer_input: lvgl_pointer {
         compatible = "zephyr,lvgl-pointer-input";
         input = <&cst816s>;
         swap-xy;

@@ -99,6 +99,38 @@ static void bmi2_raw2gyro_convert(struct sensor_value *p_val, int64_t raw_val, u
     p_val->val2 = ((raw_val * ((int64_t)range) * SENSOR_PI) / (180LL * INT16_MAX)) % 1000000LL;
 }
 
+static int swap_bmi_axis_swap(int axis)
+{
+    switch (axis) {
+        case BMI2_X:
+            return BMI2_Y;
+        case BMI2_Y:
+            return BMI2_X;
+        case BMI2_NEG_X:
+            return BMI2_NEG_Y;
+        case BMI2_NEG_Y:
+            return BMI2_NEG_X;
+        default:
+            return axis;
+    }
+}
+
+static int swap_bmi_axis_swap_sign(int axis)
+{
+    switch (axis) {
+        case BMI2_X:
+            return BMI2_NEG_X;
+        case BMI2_Y:
+            return BMI2_NEG_Y;
+        case BMI2_NEG_X:
+            return BMI2_X;
+        case BMI2_NEG_Y:
+            return BMI2_Y;
+        default:
+            return axis;
+    }
+}
+
 /** @brief
  *  @param p_dev
  *  @return         0 when successful
@@ -146,6 +178,19 @@ static int bmi2_configure_axis_remapping(const struct device *p_dev)
 
         remapped_axis.x = remapped_axis.y;
         remapped_axis.y = temp;
+    }
+
+    if (config->rotation == 90) {
+        remapped_axis.x = swap_bmi_axis_swap(remapped_axis.x);
+        remapped_axis.x = swap_bmi_axis_swap_sign(remapped_axis.x);
+        remapped_axis.y = swap_bmi_axis_swap(remapped_axis.y);
+    } else if (config->rotation == 180) {
+        remapped_axis.x = swap_bmi_axis_swap_sign(remapped_axis.x);
+        remapped_axis.y = swap_bmi_axis_swap_sign(remapped_axis.y);
+    } else if (config->rotation == 270) {
+        remapped_axis.x = swap_bmi_axis_swap(remapped_axis.x);
+        remapped_axis.y = swap_bmi_axis_swap(remapped_axis.y);
+        remapped_axis.y = swap_bmi_axis_swap_sign(remapped_axis.y);
     }
 
     if ((bmi2_set_remap_axes(&remapped_axis, &data->bmi2) != BMI2_OK) ||
@@ -490,6 +535,7 @@ static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action ac
         .swap_xy = DT_INST_PROP(inst, swap_xy),                                     \
         .invert_x = DT_INST_PROP(inst, invert_x),                                   \
         .invert_y = DT_INST_PROP(inst, invert_y),                                   \
+        .rotation = DT_INST_PROP(inst, rotation),                       \
         IF_ENABLED(CONFIG_BMI270_PLUS_TRIGGER,                                      \
             (.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, { 0 }),))        \
     };                                                                              \

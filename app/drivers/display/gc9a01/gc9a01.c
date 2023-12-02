@@ -91,7 +91,7 @@ LOG_MODULE_REGISTER(gc9a01, CONFIG_DISPLAY_LOG_LEVEL);
 #define SLPIN               0x10
 #define SLPOUT              0x11
 
-static int gc9a01_init(const struct device *dev);
+
 
 static const uint8_t initcmd[] = {
     GC9A01A_INREGEN2, 0,
@@ -112,7 +112,17 @@ static const uint8_t initcmd[] = {
     0x8E, 1, 0xFF,
     0x8F, 1, 0xFF,
     0xB6, 2, 0x00, 0x00,
+#if DT_PROP(DT_INST(0, buydisplay_gc9a01), rotation) == 0
     GC9A01A_MADCTL, 1,  MADCTL_MV | MADCTL_MY | MADCTL_MX | MADCTL_BGR,
+#elif DT_PROP(DT_INST(0, buydisplay_gc9a01), rotation) == 90
+    GC9A01A_MADCTL, 1,  MADCTL_MH | MADCTL_MY | 0 | MADCTL_BGR,
+#elif DT_PROP(DT_INST(0, buydisplay_gc9a01), rotation) == 180
+    GC9A01A_MADCTL, 1,  MADCTL_MV | 0 | 0 | MADCTL_BGR,
+#elif DT_PROP(DT_INST(0, buydisplay_gc9a01), rotation) == 270
+    GC9A01A_MADCTL, 1,  MADCTL_MH | MADCTL_MX | 0 | 0 | MADCTL_BGR,
+#else
+#error "Unsupported rotation. Use 0, 90, 180 or 270."
+#endif
     GC9A01A_PIXFMT, 1, COLOR_MODE_16_BIT,
     0x90, 4, 0x08, 0x08, 0x08, 0x08,
     0xBD, 1, 0x06,
@@ -310,6 +320,9 @@ static int gc9a01_set_pixel_format(const struct device *dev,
 static int gc9a01_controller_init(const struct device *dev)
 {
     int rc;
+    int i = 0;
+    uint8_t cmd, x, numArgs;
+    const uint8_t *addr;
     const struct gc9a01_config *config = dev->config;
 
     LOG_DBG("Initialize GC9A01 controller");
@@ -320,9 +333,7 @@ static int gc9a01_controller_init(const struct device *dev)
     rc = pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_RESUME);
     __ASSERT(rc == -EALREADY || rc == 0, "Failed resume SPI Bus");
 
-    uint8_t cmd, x, numArgs;
-    int i = 0;
-    const uint8_t *addr = initcmd;
+    addr = initcmd;
     while ((cmd = *addr++) > 0) {
         x = *addr++;
         numArgs = x & 0x7F;

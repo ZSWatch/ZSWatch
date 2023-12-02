@@ -1,0 +1,35 @@
+
+&gc9a01 {
+    rotation = <90>;
+};
+
+&lvgl_pointer_input {
+    /delete-property/ swap-xy;
+    /delete-property/ invert-x;
+    invert-y;
+    invert-x;
+};
+
+&button1 {
+    label = "top-right";
+    zephyr,code = <INPUT_KEY_3>;
+};
+
+&button2 {
+    label = "bottom-left";
+    zephyr,code = <INPUT_KEY_KP0>;
+};
+
+&button3 {
+    label = "bottom-right";
+    zephyr,code = <INPUT_KEY_2>;
+};
+
+&button4 {
+    label = "top-left";
+    zephyr,code = <INPUT_KEY_1>;
+};
+
+&bmi270 {
+    rotation = <90>;
+};
