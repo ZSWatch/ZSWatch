@@ -74,7 +74,7 @@
         input = <&buttons>;
         compatible = "zephyr,input-longpress";
         input-codes = <INPUT_KEY_KP0>;
-        short-codes = <INPUT_KEY_4>;
+        short-codes = <INPUT_KEY_1>;
         long-codes = <INPUT_KEY_Y>;
         long-delay-ms = <1000>;
     };
@@ -84,7 +84,7 @@
         button1: button_1 {
             label = "top-right";
             gpios = <&gpio0 27 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_1>;
+            zephyr,code = <INPUT_KEY_KP0>;
         };
         button2: button_2 {
             label = "bottom-left";
@@ -99,7 +99,7 @@
         button4: button_4 {
             label = "top-left";
             gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_KP0>;
+            zephyr,code = <INPUT_KEY_4>;
         };
     };
 

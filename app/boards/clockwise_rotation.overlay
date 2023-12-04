@@ -17,12 +17,12 @@
 
 &button2 {
     label = "bottom-left";
-    zephyr,code = <INPUT_KEY_KP0>;
+    zephyr,code = <INPUT_KEY_1>;
 };
 
 &button3 {
     label = "bottom-right";
-    zephyr,code = <INPUT_KEY_2>;
+    zephyr,code = <INPUT_KEY_KP0>;
 };
 
 &button4 {
