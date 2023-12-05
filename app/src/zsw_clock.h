@@ -20,7 +20,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-void zsw_clock_init(uint64_t start_time_seconds);
+void zsw_clock_init(uint64_t start_time_seconds, char *timezone);
 struct tm *zsw_clock_get_time(void);
 time_t zsw_clock_get_time_unix(void);
 

@@ -18,6 +18,7 @@
 #include <zephyr/kernel.h>
 #include <zsw_retained_ram_storage.h>
 #ifndef CONFIG_BOARD_NATIVE_POSIX
+#include <stdlib.h>
 #include <zephyr/device.h>
 #include <zephyr/retention/retention.h>
 
@@ -28,9 +29,11 @@ struct retained_data retained;
 void zsw_retained_ram_update(void)
 {
     uint64_t now = k_uptime_get();
+    char *timezone = getenv("TZ");
 
     retained.uptime_sum += (now - retained.uptime_latest);
     retained.uptime_latest = now;
+    strncpy(retained.timezone, timezone, sizeof(retained.timezone));
     retention_write(retention_area, 0, (uint8_t *)&retained, sizeof(retained));
 }
 
@@ -48,7 +51,7 @@ static int zsw_retained_init(void)
     retention_read(retention_area, 0, (uint8_t *)&retained, sizeof(retained));
     retained.uptime_latest = 0;
     retained.boots++;
-    zsw_retained_ram_update();
+    retention_write(retention_area, 0, (uint8_t *)&retained, sizeof(retained));
     return 0;
 }
 

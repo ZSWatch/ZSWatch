@@ -30,6 +30,8 @@ struct retained_data {
 
     /* Number of times the application has gone into system off. */
     uint32_t off_count;
+
+    char timezone[10];
 };
 
 /* For simplicity in the sample just allow anybody to see and

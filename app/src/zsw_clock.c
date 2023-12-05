@@ -37,12 +37,17 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(periodic_event_slow_chan);
 ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
 
-void zsw_clock_init(uint64_t start_time_seconds)
+void zsw_clock_init(uint64_t start_time_seconds, char *timezone)
 {
     struct timespec tspec;
     tspec.tv_sec = start_time_seconds;
     tspec.tv_nsec = 0;
     clock_settime(CLOCK_REALTIME, &tspec);
+    if (timezone && strlen(timezone) > 0) {
+        setenv("TZ", timezone, 1);
+        tzset();
+    }
+
     zsw_periodic_chan_add_obs(&periodic_event_slow_chan, &zsw_clock_lis);
 }
 
