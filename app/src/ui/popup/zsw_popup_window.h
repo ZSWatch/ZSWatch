@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_POPUP_WINDOW_H
-#define __ZSW_POPUP_WINDOW_H
+#pragma once
 
 #include <lvgl.h>
 
@@ -25,5 +24,3 @@ typedef void(*on_close_popup_cb_t)(bool confirmed);
 void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint32_t close_after_seconds,
                     bool display_yes_no);
 void zsw_popup_remove(void);
-
-#endif

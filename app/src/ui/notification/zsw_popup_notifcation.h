@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_POPUP_NOTIFCATION_H
-#define __ZSW_POPUP_NOTIFCATION_H
+#pragma once
 
 #include "managers/zsw_notification_manager.h"
 
@@ -29,5 +28,3 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
 void zsw_notification_popup_remove(void);
 
 bool zsw_notification_popup_is_shown(void);
-
-#endif

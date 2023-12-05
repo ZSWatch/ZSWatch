@@ -15,8 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_DISPLAY_CONTROL_H_
-#define __ZSW_DISPLAY_CONTROL_H_
+#pragma once
+
 #include <inttypes.h>
 #include <stdbool.h>
 
@@ -25,4 +25,3 @@ int zsw_display_control_sleep_ctrl(bool on);
 int zsw_display_control_pwr_ctrl(bool on);
 void zsw_display_control_set_brightness(uint8_t percent);
 uint8_t zsw_display_control_get_brightness(void);
-#endif

@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_VIBRATION_MOTOR_H_
-#define __ZSW_VIBRATION_MOTOR_H_
+#pragma once
 
 typedef enum zsw_vibration_pattern {
     ZSW_VIBRATION_PATTERN_CLICK,
@@ -24,5 +23,3 @@ typedef enum zsw_vibration_pattern {
 } zsw_vibration_pattern_t;
 
 int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern);
-
-#endif

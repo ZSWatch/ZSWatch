@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef APPLICATION_BATTERY_H_
-#define APPLICATION_BATTERY_H_
+#pragma once
 
 /** Enable or disable measurement of the battery voltage.
  *
@@ -49,5 +48,3 @@ struct battery_level_point {
  */
 unsigned int battery_level_pptt(unsigned int batt_mV,
                                 const struct battery_level_point *curve);
-
-#endif /* APPLICATION_BATTERY_H_ */

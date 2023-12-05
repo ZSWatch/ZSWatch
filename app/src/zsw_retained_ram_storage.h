@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef RETAINED_H_
-#define RETAINED_H_
+#pragma once
 
 #include <inttypes.h>
 #include <time.h>
@@ -52,5 +51,3 @@ bool retained_validate(void);
 void zsw_retained_ram_update(void);
 
 void zsw_retained_ram_reset(void);
-
-#endif /* RETAINED_H_ */

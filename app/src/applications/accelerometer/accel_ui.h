@@ -1,5 +1,5 @@
-#ifndef __ACCEL_UI_H
-#define __ACCEL_UI_H
+#pragma once
+
 #include <inttypes.h>
 #include <lvgl.h>
 
@@ -10,5 +10,3 @@ void accel_ui_show(lv_obj_t *root, on_close_cb_t close_cb);
 void accel_ui_remove(void);
 
 void accel_ui_set_values(int32_t x, int32_t y, int32_t z);
-
-#endif

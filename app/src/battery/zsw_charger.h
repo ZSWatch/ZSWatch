@@ -15,10 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_CHARGER_H_
-#define __ZSW_CHARGER_H_
+#pragma once
+
 #include <stdbool.h>
 
 bool zsw_charger_is_charging(void);
-
-#endif

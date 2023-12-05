@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifndef __DFU_H
-#define __DFU_H
+#pragma once
 
 /**
  * @brief Initialize Device firmware upgrade functionality
@@ -13,5 +12,3 @@
  *
  */
 void dfu_init();
-
-#endif

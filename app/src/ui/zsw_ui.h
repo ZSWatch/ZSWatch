@@ -15,11 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_UI_H
-#define __ZSW_UI_H
+#pragma once
 
 #include "utils/zsw_ui_utils.h"
 #include "popup/zsw_popup_window.h"
 #include "notification/zsw_popup_notifcation.h"
-
-#endif

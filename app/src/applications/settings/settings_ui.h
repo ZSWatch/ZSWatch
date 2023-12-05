@@ -1,5 +1,4 @@
-#ifndef LV_SETTINGS_H
-#define LV_SETTINGS_H
+#pragma once
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
 #include "lvgl.h"
@@ -86,5 +85,3 @@ void lv_settings_create(lv_settings_page_t *pages, uint8_t num_pages, const char
                         on_close_cb_t close_cb);
 
 void settings_ui_remove(void);
-
-#endif /*LV_SETTINGS_H*/

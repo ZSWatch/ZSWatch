@@ -14,8 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __ZSW_CPU_FREQ_H_
-#define __ZSW_CPU_FREQ_H_
+
+#pragma once
+
 #include <stdbool.h>
 
 typedef enum zsw_cpu_freq_t {
@@ -26,6 +27,3 @@ typedef enum zsw_cpu_freq_t {
 void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait);
 
 zsw_cpu_freq_t zsw_cpu_get_freq(void);
-
-#endif // __ZSW_CPU_FREQ_H_
-

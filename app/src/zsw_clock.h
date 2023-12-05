@@ -15,13 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_CLOCK_H
-#define __ZSW_CLOCK_H
+#pragma once
+
 #include <inttypes.h>
 #include <time.h>
 
 void zsw_clock_init(uint64_t start_time_seconds, char *timezone);
 struct tm *zsw_clock_get_time(void);
 time_t zsw_clock_get_time_unix(void);
-
-#endif

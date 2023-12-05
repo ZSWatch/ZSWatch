@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_GATT_SENSOR_SERVER_H
-#define __ZSW_GATT_SENSOR_SERVER_H
+#pragma once
 
 #include <zephyr/types.h>
 #include <zephyr/bluetooth/conn.h>
@@ -50,5 +49,3 @@
 
 #define BLE_UUID_TRANSPORT_VAL \
     BT_UUID_128_ENCODE(0x6e400001, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
-
-#endif
