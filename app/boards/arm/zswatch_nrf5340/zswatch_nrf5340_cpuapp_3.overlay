@@ -60,14 +60,6 @@
         };
     };
 
-	charger {
-        compatible = "gpio-keys";
-        charging_status: charging_status {
-            gpios = <&gpio1 13 (GPIO_PULL_UP | GPIO_ACTIVE_HIGH)>;
-            zephyr,code = <INPUT_KEY_POWER>;
-        };
-    };
-
 	regulator_3v3: regulator-3v3-ctrl {
         compatible = "regulator-fixed";
         regulator-name = "display";

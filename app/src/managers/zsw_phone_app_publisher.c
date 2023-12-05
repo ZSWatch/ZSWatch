@@ -25,7 +25,6 @@
 
 #include "ble/ble_comm.h"
 #include "battery/battery.h"
-#include "battery/zsw_charger.h"
 #include "events/chg_event.h"
 #include "events/battery_event.h"
 #include "managers/zsw_battery_manager.h"
@@ -66,7 +65,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 {
     struct battery_sample_event *event = zbus_chan_msg(chan);
     bt_bas_set_battery_level(event->percent);
-    send_battery_state_update(event->mV, event->percent, zsw_charger_is_charging());
+    send_battery_state_update(event->mV, event->percent, false);
 }
 
 static void zbus_chg_state_data_callback(const struct zbus_channel *chan)
@@ -100,7 +99,7 @@ static void handle_delayed_send_status(struct k_work *item)
     // When new connection, send latest data to phone.
     rc = zsw_battery_manager_sample_battery(&batt_mv, &batt_percent);
     if (rc == 0) {
-        send_battery_state_update(batt_mv, batt_percent, zsw_charger_is_charging());
+        send_battery_state_update(batt_mv, batt_percent, false);
     }
 }
 

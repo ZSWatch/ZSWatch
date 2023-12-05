@@ -30,7 +30,6 @@
 #include <zephyr/zbus/zbus.h>
 
 #include "watchface_app.h"
-#include "battery/zsw_charger.h"
 #include "events/chg_event.h"
 #include "events/accel_event.h"
 #include "events/battery_event.h"
