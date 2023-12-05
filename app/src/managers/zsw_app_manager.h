@@ -33,14 +33,33 @@ typedef struct application_t {
     uint8_t                 private_list_index;
 } application_t;
 
+/** @brief
+ *  @param close_cb
+ *  @param root
+ *  @param group
+ *  @param app_name
+*/
 int zsw_app_manager_show(on_app_manager_cb_fn close_cb, lv_obj_t *root, lv_group_t *group, char *app_name);
 
+/** @brief
+*/
 void zsw_app_manager_delete(void);
 
+/** @brief
+ *  @param app
+*/
 void zsw_app_manager_add_application(application_t *app);
 
+/** @brief
+ *  @param app
+*/
 void zsw_app_manager_app_close_request(application_t *app);
 
+/** @brief
+*/
 void zsw_app_manager_exit_app(void);
 
+/** @brief
+ *  @param index
+*/
 void zsw_app_manager_set_index(int index);

@@ -15,36 +15,78 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __ZSW_NOTIFICATION_MANAGER_H_
-#define __ZSW_NOTIFICATION_MANAGER_H_
+#pragma once
 
 #include <inttypes.h>
 
 #include "ble/ble_comm.h"
 
-#define NOTIFICATION_MGR_MAX_FIELD_LEN  50
-#define NOTIFICATION_MANAGER_MAX_STORED 20
+/** @brief
+*/
+#define ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN      50
 
-typedef enum zsw_notification_src {
-    NOTIFICATION_SRC_MESSENGER,
-    NOTIFICATION_SRC_GMAIL,
-    NOTIFICATION_SRC_NONE
+/** @brief Maximum number of notification stored at a time.
+*/
+#define ZSW_NOTIFICATION_MGR_MAX_STORED         20
+
+/** @brief Notification sources definitions.
+*/
+typedef enum {
+    NOTIFICATION_SRC_COMMON_MESSENGER,                          /**< */
+    NOTIFICATION_SRC_WHATSAPP,                                  /**< */
+    NOTIFICATION_SRC_COMMON_MAIL,                               /**< */
+    NOTIFICATION_SRC_GMAIL,                                     /**< */
+    NOTIFICATION_SRC_YOUTUBE,                                   /**< */
+    NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
+/** @brief Notification object definition.
+*/
 typedef struct not_mngr_notification {
-    uint32_t id;
-    char sender[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    char title[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    char body[NOTIFICATION_MGR_MAX_FIELD_LEN];
-    zsw_notification_src_t src;
+    uint32_t id;                                                /**< Notification ID. */
+    uint32_t timestamp;                                         /**< Active notification time in seconds. */
+    char sender[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];            /**< Contains the notification sender (e-mail address or name in WhatsApp). */
+    char title[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];             /**< */
+    char body[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];              /**< */
+    zsw_notification_src_t src;                                 /**< */
 } zsw_not_mngr_notification_t;
 
+/** @brief
+*/
 void zsw_notification_manager_init(void);
-zsw_not_mngr_notification_t *zsw_notification_manager_add(ble_comm_notify_t *notification);
-int32_t zsw_notification_manager_remove(uint32_t id);
-int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
-int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, int *num_notifications);
-int32_t zsw_notification_manager_get_num(void);
-zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void);
 
-#endif
+/** @brief
+ *  @param notification
+ *  @return
+*/
+zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *notification);
+
+/** @brief
+ *  @param id
+ *  @return
+*/
+int32_t zsw_notification_manager_remove(uint32_t id);
+
+/** @brief
+ *  @param id
+ *  @param notification
+ *  @return
+*/
+int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
+
+/** @brief
+ *  @param notifications
+ *  @param num_notifications
+ *  @return
+*/
+int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, int *num_notifications);
+
+/** @brief
+ *  @return
+*/
+int32_t zsw_notification_manager_get_num(void);
+
+/** @brief
+ *  @return
+*/
+zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void);

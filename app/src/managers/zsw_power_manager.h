@@ -15,7 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-# pragma once
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -27,7 +27,7 @@ typedef enum {
 } zsw_power_manager_state_t;
 
 /** @brief  Resets the inactivity timeout that will make the watch go
-*           into inactive mode with display etc. turned off to save power.
+ *          into inactive mode with display etc. turned off to save power.
  *  @return true if the call caused wakup from inactive state, false otherwise.
 */
 bool zsw_power_manager_reset_idle_timout(void);
