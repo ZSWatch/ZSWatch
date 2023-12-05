@@ -112,7 +112,7 @@ typedef void(*on_data_cb_t)(ble_comm_cb_data_t *data);
 /** @brief
  *  @return 0 when successful
 */
-int ble_comm_init(on_data_cb_t data_cb);
+int ble_comm_init(void);
 
 /** @brief
  *  @param data

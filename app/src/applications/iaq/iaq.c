@@ -8,7 +8,7 @@
 #include "sensors/zsw_environment_sensor.h"
 
 LV_IMG_DECLARE(move);
-LOG_MODULE_REGISTER(iaq_app, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(iaq_app, CONFIG_IAQ_APP_LOG_LEVEL);
 
 static void iaq_app_start(lv_obj_t *root, lv_group_t *group);
 static void iaq_app_stop(void);

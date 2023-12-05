@@ -175,7 +175,6 @@ menu "ZSWatch"
         default n
         help
             "Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes."
-        
     endmenu
     
     menu "SPI RTT Flash Loader"
@@ -226,6 +225,8 @@ menu "ZSWatch"
         rsource "src/ble/Kconfig"
         rsource "src/applications/settings/Kconfig"
         rsource "src/applications/template/Kconfig"
+        rsource "src/applications/iaq/Kconfig"
+        rsource "src/applications/notification/Kconfig"
         rsource "src/applications/trivia/Kconfig"
         rsource "src/applications/ppt_remote/Kconfig"
     endmenu

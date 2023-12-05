@@ -19,7 +19,7 @@
 #include "trivia_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "ble/ble_comm.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 
 /*Get 1x easy question with true/false type*/
 #define GB_HTTP_REQUEST "{\"t\":\"http\", \"url\":\"https://opentdb.com/api.php?amount=1&difficulty=easy&type=boolean\"} \n"
@@ -106,7 +106,6 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
         trivia_app_question.correct_answer = (temp_value[0] == 'F') ? false : true;
     }
 }
-
 
 static void trivia_app_start(lv_obj_t *root, lv_group_t *group)
 {

@@ -41,7 +41,7 @@
 #include "battery/battery.h"
 #include "battery/zsw_charger.h"
 #include "events/accel_event.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_magnetometer.h"
 #include "sensors/zsw_pressure_sensor.h"
@@ -91,7 +91,7 @@ static void handle_screen_gesture(lv_dir_t event_code);
 
 static void on_application_manager_close(void);
 static void on_popup_notifcation_closed(uint32_t id);
-static void on_ble_data_callback(ble_comm_cb_data_t *cb);
+static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void on_input_subsys_callback(struct input_event *evt);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
@@ -119,6 +119,7 @@ K_WORK_DEFINE(input_work, run_input_work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(main_ble_comm_lis, on_zbus_ble_data_callback);
+ZBUS_LISTENER_DEFINE(main_notification_lis, on_zbus_notification_callback);
 
 static void run_input_work(struct k_work *item)
 {
@@ -273,8 +274,8 @@ int main(void)
 #if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
     const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
     if (!device_is_ready(hw_wdt_dev)) {
-        printk("Hardware watchdog %s is not ready; ignoring it.\n",
-               hw_wdt_dev->name);
+        LOG_DBG("Hardware watchdog %s is not ready; ignoring it.",
+                hw_wdt_dev->name);
         hw_wdt_dev = NULL;
     }
 
@@ -320,12 +321,12 @@ static void enable_bluetoth(void)
         return;
     }
 
-    __ASSERT_NO_MSG(ble_comm_init(on_ble_data_callback) == 0);
+    __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();
 
     ble_ams_init();
     ble_cts_init();
-    ble_ancs_init(on_ble_data_callback);
+    ble_ancs_init();
 }
 
 static void print_retention_ram(void)
@@ -342,7 +343,7 @@ static void open_notification_popup(void *data)
         lv_group_set_default(temp_group);
         lv_indev_set_group(enc_indev, temp_group);
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
-        zsw_notification_popup_show(not->title, not->body, not->src, not->id, on_popup_notifcation_closed, 10);
+        zsw_notification_popup_show(not->sender, not->body, not->src, not->id, on_popup_notifcation_closed, 10);
         is_buttons_for_lvgl = true;
     }
     pending_not_open = false;
@@ -358,8 +359,6 @@ static void open_application_manager_page(void *app_name)
 
 static void close_popup_notification(lv_timer_t *timer)
 {
-    int msg_len;
-    char buf[100];
     uint32_t id;
 
     id = (uint32_t)timer->user_data;
@@ -373,12 +372,6 @@ static void close_popup_notification(lv_timer_t *timer)
     } else {
         is_buttons_for_lvgl = 1;
     }
-
-    memset(buf, 0, sizeof(buf));
-
-    // Send to phone notification read => It will be remove on phone too.
-    msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\", \"id\": %d, \"n\": %s} \n", id, "\"DISMISS\"");
-    ble_comm_send(buf, msg_len);
 }
 
 static void on_popup_notifcation_closed(uint32_t id)
@@ -536,53 +529,25 @@ static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e)
     }
 }
 
-static void on_ble_data_callback(ble_comm_cb_data_t *cb)
+static void on_zbus_notification_callback(const struct zbus_channel *chan)
 {
-    zsw_not_mngr_notification_t *parsed_not;
+    if (zsw_notification_popup_is_shown() || pending_not_open) {
+        return;
+    }
 
-    switch (cb->type) {
-        case BLE_COMM_DATA_TYPE_NOTIFY:
-            LOG_DBG("ID: %u", cb->data.notify.id);
-            LOG_DBG("Source: %s", cb->data.notify.src);
-            LOG_DBG("Sender: %s", cb->data.notify.sender);
-            LOG_DBG("Title: %s", cb->data.notify.title);
-            LOG_DBG("Body: %s", cb->data.notify.body);
+    pending_not_open = true;
 
-            parsed_not = zsw_notification_manager_add(&cb->data.notify);
-            if (!parsed_not) {
-                return;
-            }
-
-            if (zsw_notification_popup_is_shown() || pending_not_open) {
-                return;
-            }
-
-            pending_not_open = true;
-
-            if (zsw_power_manager_get_state() != ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
-                zsw_power_manager_reset_idle_timout();
-                lv_async_call(open_notification_popup, NULL);
-            }
-            break;
-
-        default:
-            break;
+    if (zsw_power_manager_get_state() != ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
+        zsw_power_manager_reset_idle_timout();
+        lv_async_call(open_notification_popup, NULL);
     }
 }
 
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 {
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
+
     switch (event->data.type) {
-        case BLE_COMM_DATA_TYPE_NOTIFY:
-            // TODO, this one not supported yet through events
-            // Handled in ble_comm callback for now
-            break;
-        case BLE_COMM_DATA_TYPE_NOTIFY_REMOVE:
-            if (zsw_notification_manager_remove(event->data.data.notify_remove.id) != 0) {
-                LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
-            }
-            break;
         case BLE_COMM_DATA_TYPE_SET_TIME: {
             if (event->data.data.time.seconds > 0) {
                 struct timespec tspec;

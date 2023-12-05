@@ -29,7 +29,7 @@
 #include <zephyr/settings/settings.h>
 
 #include "ble/ble_comm.h"
-#include "events/ble_data_event.h"
+#include "events/ble_event.h"
 
 LOG_MODULE_REGISTER(ble_ancs, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -44,8 +44,6 @@ static struct bt_ancs_client ancs_c;
 static struct bt_gattp gattp;
 
 static atomic_t discovery_flags;
-
-static on_data_cb_t data_parsed_cb;
 
 /* Local copy to keep track of the newest arriving notifications. */
 static struct bt_ancs_evt_notif notification_latest;
@@ -400,33 +398,35 @@ static void notif_attr_print(const struct bt_ancs_attr *attr)
 
 static int parse_notify(const struct bt_ancs_attr *attr)
 {
-    static ble_comm_cb_data_t cb = { 0 };
+    static struct ble_data_event evt = { 0 };
 
     switch (attr->attr_id) {
         case ATTR_ID_TITLE:
-            cb.data.notify.title = attr->attr_data;
-            cb.data.notify.title_len = attr->attr_len;
+            evt.data.data.notify.title = attr->attr_data;
+            evt.data.data.notify.title_len = attr->attr_len;
             break;
 
         case ATTR_ID_MESSAGE:
-            cb.data.notify.body = (char *)attr->attr_data;
-            cb.data.notify.body_len = attr->attr_len;
+            evt.data.data.notify.body = (char *)attr->attr_data;
+            evt.data.data.notify.body_len = attr->attr_len;
             break;
 
         case ATTR_ID_APP_ID:
             // This comes as example com.facebook.Messenger
-            cb.data.notify.src = strrchr(attr->attr_data, '.') + 1;
-            cb.data.notify.src_len = strlen(cb.data.notify.src);
-            cb.data.notify.id = notification_latest.notif_uid;
+            evt.data.data.notify.src = strrchr(attr->attr_data, '.') + 1;
+            evt.data.data.notify.src_len = strlen(evt.data.data.notify.src);
+            evt.data.data.notify.id = notification_latest.notif_uid;
             break;
 
         // the last message is Negative action label, send only when all data is received;
         case ATTR_ID_NEGATIVE_ACTION_LABEL:
-            cb.type = BLE_COMM_DATA_TYPE_NOTIFY;
-            data_parsed_cb(&cb);
-            memset(&cb, 0, sizeof(cb));
-            break;
 
+            evt.data.type = BLE_COMM_DATA_TYPE_NOTIFY;
+
+            zbus_chan_pub(&ble_comm_data_chan, &evt, K_MSEC(250));
+
+            memset(&evt, 0, sizeof(evt));
+            break;
         case ATTR_ID_DATE:
         case ATTR_ID_MESSAGE_SIZE:
         case ATTR_ID_SUBTITLE:
@@ -498,7 +498,7 @@ static int gattp_init(void)
 }
 
 
-int ble_ancs_init(on_data_cb_t data_cb)
+int ble_ancs_init(void)
 {
     int err = bt_ancs_client_init(&ancs_c);
     if (err) {
@@ -583,8 +583,6 @@ int ble_ancs_init(on_data_cb_t data_cb)
         LOG_ERR("Failed to start ANCS: 0x%x", err);
         return err;
     }
-
-    data_parsed_cb = data_cb;
 
     LOG_INF("Started Apple Notification Center Service client");
 
