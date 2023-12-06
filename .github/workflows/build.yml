@@ -32,6 +32,7 @@ jobs:
           west init -l app
           west config manifest.group-filter +bsec2
           west update -o=--depth=1 -n
+          mkdir fw_images
       
       - name: Style
         working-directory: ZSWatch
@@ -43,20 +44,20 @@ jobs:
         working-directory: ZSWatch
         run: |
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf"
-          cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
-          mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
-      
+          mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}.hex
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_rotated -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay"
+          mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.hex
+
       - name: Build native_posix
         if: ${{ matrix.board == 'native_posix' }}
         working-directory: ZSWatch
         run: |
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
-          cd ${{ matrix.board }}_${{ matrix.built_type }}/zephyr
-          mv zephyr.hex ${{ matrix.board }}_${{ matrix.built_type }}.hex || true
       
       - name : Upload Firmware
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.board }}_${{ matrix.built_type }}
-          path: ZSWatch/${{ matrix.board }}_${{ matrix.built_type }}/zephyr/${{ matrix.board }}_${{ matrix.built_type }}.hex
+          path: |
+            ZSWatch/fw_images
           if-no-files-found: ignore

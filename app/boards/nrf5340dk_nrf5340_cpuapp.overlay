@@ -62,11 +62,18 @@
         nordic,pm-ext-flash = &mx25r64;
     };
 
+    lvgl_pointer_input: lvgl_pointer {
+        compatible = "zephyr,lvgl-pointer-input";
+        input = <&cst816s>;
+        swap-xy;
+        invert-x;
+    };
+
     aliases {
-        sw-top-right = &button2;
-        sw-top-left = &button1;
-        sw-bottom-right = &button0;
-        sw-bottom-left = &button3;
+        sw-top-right = &button3;
+        sw-top-left = &button2;
+        sw-bottom-right = &button1;
+        sw-bottom-left = &button4;
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
@@ -83,22 +90,22 @@
 
     buttons: buttons {
         compatible = "gpio-keys";
-        button0: button_0 {
+        button1: button_1 {
             label = "top-right";
             gpios = <&gpio0 23 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_1>;
         };
-        button1: button_1 {
+        button2: button_2 {
             label = "bottom-left";
             gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_2>;
         };
-        button2: button_2 {
+        button3: button_3 {
             label = "bottom-right";
             gpios = <&gpio0 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_3>;
         };
-        button3: button_3 {
+        button4: button_4z {
             label = "top-left";
             gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_KP0>;
