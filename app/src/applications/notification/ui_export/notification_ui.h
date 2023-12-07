@@ -1,7 +1,7 @@
 #pragma once
 
-#include <inttypes.h>
 #include <lvgl.h>
+#include <inttypes.h>
 
 #include "managers/zsw_notification_manager.h"
 
@@ -16,6 +16,8 @@ LV_IMG_DECLARE(ui_img_gadget_png);
 LV_IMG_DECLARE(ui_img_mail_png);
 LV_IMG_DECLARE(ui_img_call_png);
 LV_IMG_DECLARE(ui_img_trash_png);
+LV_IMG_DECLARE(ui_img_youtube_png);
+LV_IMG_DECLARE(ui_img_homeassistant_png);
 
 typedef void(*on_notification_remove_cb_t)(uint32_t id);
 

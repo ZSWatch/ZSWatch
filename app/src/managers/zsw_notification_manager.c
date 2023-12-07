@@ -110,6 +110,13 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         notifications[idx].id = not->id;
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "Home Assistant", not->src_len) == 0) {
+        // {"t":"notify","id":1701847200,"src":"Home Assistant","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
+
+        notifications[idx].src = NOTIFICATION_SRC_HOME_ASSISTANT;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     } else {
         // TODO add more
         // For example debug notfication

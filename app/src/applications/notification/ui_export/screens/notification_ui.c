@@ -100,6 +100,10 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
             image_source = &ui_img_mail_png;
             source = "Mail";
             break;
+        case NOTIFICATION_SRC_HOME_ASSISTANT:
+            image_source = &ui_img_homeassistant_png;
+            source = "Home Assistant";
+            break;
         default:
             image_source = &ui_img_gadget_png;
             source = "Unknown";

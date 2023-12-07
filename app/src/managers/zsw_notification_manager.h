@@ -37,6 +37,7 @@ typedef enum {
     NOTIFICATION_SRC_COMMON_MAIL,                               /**< */
     NOTIFICATION_SRC_GMAIL,                                     /**< */
     NOTIFICATION_SRC_YOUTUBE,                                   /**< */
+    NOTIFICATION_SRC_HOME_ASSISTANT,                            /**< */
     NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
