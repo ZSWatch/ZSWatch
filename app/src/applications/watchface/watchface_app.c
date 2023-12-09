@@ -155,6 +155,10 @@ void watchface_app_stop(void)
 
 void watchface_change(void)
 {
+    if (num_watchfaces == 1) {
+        return;
+    }
+
     watchfaces[current_watchface]->remove();
     current_watchface = (current_watchface + 1) % num_watchfaces;
 
