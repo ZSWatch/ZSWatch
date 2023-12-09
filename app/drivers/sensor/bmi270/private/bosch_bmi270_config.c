@@ -64,67 +64,6 @@ static bool bmi2_is_sensor_feature(uint8_t sensor_id)
     }
 }
 
-int8_t bmi2_configure_enable_all(const struct device *p_dev, struct bmi270_data *p_data)
-{
-    uint8_t num_features;
-    uint8_t num_enabled_features;
-    struct bmi270_data *data = p_dev->data;
-
-    // Structure to define all sensors and their configs
-    struct bmi2_sens_config config[ARRAY_SIZE(bmi270_enabled_features)];
-
-    // To enable the sensors the Bosch API expects a list of all features.
-    uint8_t all_sensors[ARRAY_SIZE(bmi270_enabled_features)];
-
-    // There is a difference between a "sensor" and a "feature".
-    // Accel, Gyro are sensors, but step counter is a feature.
-    // We map sensor INT to INT1 pin and feature ISR to INT2 pin.
-    // The API needs a list of all those features to do that map.
-    struct bmi2_sens_int_config all_features[ARRAY_SIZE(bmi270_enabled_features)];
-
-    num_features = 0;
-    num_enabled_features = 0;
-
-    for (uint8_t i = 0; i < ARRAY_SIZE(bmi270_enabled_features); i++) {
-        config[i].type = bmi270_enabled_features[i].sensor_id;
-        if (!bmi270_enabled_features[i].skip_enable) {
-            all_sensors[num_enabled_features] = bmi270_enabled_features[i].sensor_id;
-            num_enabled_features++;
-        }
-
-        if (bmi2_is_sensor_feature(bmi270_enabled_features[i].sensor_id)) {
-            all_features[num_features].type = bmi270_enabled_features[i].sensor_id;
-            if (bmi270_enabled_features[i].isr_disable) {
-                all_features[num_features].hw_int_pin = BMI2_INT_NONE;
-            } else {
-                all_features[num_features].hw_int_pin = BMI2_INT2;
-            }
-
-            num_features++;
-        }
-    }
-
-    // Get default configurations for the type of feature selected.
-    if (bmi270_get_sensor_config(config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) {
-        return -EFAULT;
-    }
-
-    for (int i = 0; i < ARRAY_SIZE(bmi270_enabled_features); i++) {
-        if (bmi270_enabled_features[i].cfg_func) {
-            bmi270_enabled_features[i].cfg_func(&config[i], p_data);
-        }
-    }
-
-    // Accel and Gyro enable must be done after setting configurations.
-    if ((bmi270_sensor_enable(all_sensors, num_enabled_features, &data->bmi2) != BMI2_OK) ||
-        (bmi270_set_sensor_config(config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) ||
-        (bmi270_map_feat_int(all_features, num_features, &data->bmi2) != BMI2_OK)) {
-        return -EFAULT;
-    }
-
-    return 0;
-}
-
 /** @brief
  *  @param p_config
  *  @param p_data
@@ -276,6 +215,67 @@ static void bmi2_configure_no_motion(struct bmi2_sens_config *p_config, struct b
     // 1LSB equals 20ms. Default is 100ms, setting to 80ms.
     // Max value is 163 seconds, hence below calc. We want max.
     p_config->cfg.no_motion.duration = (160 * 1000) / 20;
+}
+
+int bmi2_configure_enable_all(const struct device *p_dev, struct bmi270_data *p_data)
+{
+    uint8_t num_features;
+    uint8_t num_enabled_features;
+    struct bmi270_data *data = p_dev->data;
+
+    // Structure to define all sensors and their configs
+    struct bmi2_sens_config config[ARRAY_SIZE(bmi270_enabled_features)];
+
+    // To enable the sensors the Bosch API expects a list of all features.
+    uint8_t all_sensors[ARRAY_SIZE(bmi270_enabled_features)];
+
+    // There is a difference between a "sensor" and a "feature".
+    // Accel, Gyro are sensors, but step counter is a feature.
+    // We map sensor INT to INT1 pin and feature ISR to INT2 pin.
+    // The API needs a list of all those features to do that map.
+    struct bmi2_sens_int_config all_features[ARRAY_SIZE(bmi270_enabled_features)];
+
+    num_features = 0;
+    num_enabled_features = 0;
+
+    for (uint8_t i = 0; i < ARRAY_SIZE(bmi270_enabled_features); i++) {
+        config[i].type = bmi270_enabled_features[i].sensor_id;
+        if (!bmi270_enabled_features[i].skip_enable) {
+            all_sensors[num_enabled_features] = bmi270_enabled_features[i].sensor_id;
+            num_enabled_features++;
+        }
+
+        if (bmi2_is_sensor_feature(bmi270_enabled_features[i].sensor_id)) {
+            all_features[num_features].type = bmi270_enabled_features[i].sensor_id;
+            if (bmi270_enabled_features[i].isr_disable) {
+                all_features[num_features].hw_int_pin = BMI2_INT_NONE;
+            } else {
+                all_features[num_features].hw_int_pin = BMI2_INT2;
+            }
+
+            num_features++;
+        }
+    }
+
+    // Get default configurations for the type of feature selected.
+    if (bmi270_get_sensor_config(config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) {
+        return -EFAULT;
+    }
+
+    for (int i = 0; i < ARRAY_SIZE(bmi270_enabled_features); i++) {
+        if (bmi270_enabled_features[i].cfg_func) {
+            bmi270_enabled_features[i].cfg_func(&config[i], p_data);
+        }
+    }
+
+    // Accel and Gyro enable must be done after setting configurations.
+    if ((bmi270_sensor_enable(all_sensors, num_enabled_features, &data->bmi2) != BMI2_OK) ||
+        (bmi270_set_sensor_config(config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) ||
+        (bmi270_map_feat_int(all_features, num_features, &data->bmi2) != BMI2_OK)) {
+        return -EFAULT;
+    }
+
+    return 0;
 }
 
 int bmi2_set_accel_range(const struct device *p_dev, const struct sensor_value *p_range)
@@ -613,6 +613,21 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
     cfg.type = feature;
 
     if (bmi270_map_feat_int(&cfg, 1, &data->bmi2) != BMI2_OK) {
+        return -EFAULT;
+    }
+
+    return 0;
+}
+
+int bmi2_reset_step_counter(const struct device *p_dev)
+{
+    struct bmi2_sens_config config;
+    struct bmi270_data *data = p_dev->data;
+
+    config.type = BMI2_STEP_COUNTER;
+    config.cfg.step_counter.reset_counter = 1;
+
+    if (bmi270_set_sensor_config(&config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) {
         return -EFAULT;
     }
 

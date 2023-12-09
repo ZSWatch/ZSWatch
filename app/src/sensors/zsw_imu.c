@@ -18,6 +18,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 
+#include "zsw_clock.h"
+
 #include "../drivers/sensor/bmi270/bosch_bmi270.h"
 
 #include "events/zsw_periodic_event.h"
@@ -36,8 +38,18 @@ static struct sensor_trigger bmi270_trigger;
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
+    struct tm *timeinfo;
     struct accel_event evt = {
     };
+
+    timeinfo = zsw_clock_get_time();
+
+    if ((timeinfo->tm_hour == 23) && (timeinfo->tm_min == 59)) {
+
+        LOG_DBG("Reset step counter");
+        zsw_imu_reset_step_count();
+    }
+
     zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
 }
 
@@ -289,7 +301,20 @@ int zsw_imu_fetch_temperature(float *temperature)
 
 int zsw_imu_reset_step_count(void)
 {
-    return -ENOENT;
+    struct sensor_value value;
+
+    if (!device_is_ready(bmi270)) {
+        return -ENODEV;
+    }
+
+    value.val1 = 0;
+    value.val2 = 0;
+
+    if (sensor_attr_set(bmi270, SENSOR_CHAN_STEPS, SENSOR_ATTR_OFFSET, &value) != 0) {
+        return -EFAULT;
+    }
+
+    return 0;
 }
 
 int zsw_imu_feature_disable(zsw_imu_feature_t feature)

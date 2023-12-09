@@ -27,6 +27,14 @@
 		spi-flash0 = &at25sl128a;
 	};
 
+    vbatt {
+        compatible = "voltage-divider";
+        io-channels = <&adc 7>;
+        output-ohms = <220000>;
+        full-ohms = <(1500000 + 220000)>;
+        power-gpios = <&gpio1 10 0>;
+    };
+
     longpress: longpress {
         input = <&buttons>;
         compatible = "zephyr,input-longpress";
@@ -73,7 +81,6 @@
         regulator-name = "vib-pwr-ctrl";
         enable-gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
     };
-
 };
 
 &i2c1 {

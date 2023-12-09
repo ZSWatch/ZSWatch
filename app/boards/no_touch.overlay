@@ -22,5 +22,4 @@
         reset-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
         dc-gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;
     };
-
 };

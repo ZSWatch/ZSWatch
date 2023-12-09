@@ -2,12 +2,14 @@
 
 #include "lvgl.h"
 
-/** @brief          
+LV_IMG_DECLARE(move);
+
+/** @brief
  *  @param p_parent Pointer to UI parent
 */
 void iaq_app_ui_show(lv_obj_t *p_parent);
 
-/** @brief  
+/** @brief
 */
 void iaq_app_ui_remove(void);
 

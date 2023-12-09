@@ -70,10 +70,6 @@
     };
 
     aliases {
-        sw-top-right = &button3;
-        sw-top-left = &button2;
-        sw-bottom-right = &button1;
-        sw-bottom-left = &button4;
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;

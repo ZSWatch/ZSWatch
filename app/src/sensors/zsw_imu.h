@@ -98,6 +98,6 @@ int zsw_imu_fetch_num_steps(uint32_t *num_steps);
 
 int zsw_imu_reset_step_count(void);
 
-int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
-
 int zsw_imu_feature_disable(zsw_imu_feature_t feature);
+
+int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);

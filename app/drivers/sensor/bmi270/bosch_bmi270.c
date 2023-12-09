@@ -99,7 +99,11 @@ static void bmi2_raw2gyro_convert(struct sensor_value *p_val, int64_t raw_val, u
     p_val->val2 = ((raw_val * ((int64_t)range) * SENSOR_PI) / (180LL * INT16_MAX)) % 1000000LL;
 }
 
-static int swap_bmi_axis_swap(int axis)
+/** @brief      Swap the X or Y axis.
+ *  @param axis Target axis
+ *  @return     Swapped axis
+*/
+static int bmi2_swap_axis(int axis)
 {
     switch (axis) {
         case BMI2_X:
@@ -115,7 +119,11 @@ static int swap_bmi_axis_swap(int axis)
     }
 }
 
-static int swap_bmi_axis_swap_sign(int axis)
+/** @brief      Swap the sign of an axis.
+ *  @param axis Target axis
+ *  @return     Axis with swapped sign
+*/
+static int bmi2_swap_axis_sign(int axis)
 {
     switch (axis) {
         case BMI2_X:
@@ -181,16 +189,16 @@ static int bmi2_configure_axis_remapping(const struct device *p_dev)
     }
 
     if (config->rotation == 90) {
-        remapped_axis.x = swap_bmi_axis_swap(remapped_axis.x);
-        remapped_axis.x = swap_bmi_axis_swap_sign(remapped_axis.x);
-        remapped_axis.y = swap_bmi_axis_swap(remapped_axis.y);
+        remapped_axis.x = bmi2_swap_axis(remapped_axis.x);
+        remapped_axis.x = bmi2_swap_axis_sign(remapped_axis.x);
+        remapped_axis.y = bmi2_swap_axis(remapped_axis.y);
     } else if (config->rotation == 180) {
-        remapped_axis.x = swap_bmi_axis_swap_sign(remapped_axis.x);
-        remapped_axis.y = swap_bmi_axis_swap_sign(remapped_axis.y);
+        remapped_axis.x = bmi2_swap_axis_sign(remapped_axis.x);
+        remapped_axis.y = bmi2_swap_axis_sign(remapped_axis.y);
     } else if (config->rotation == 270) {
-        remapped_axis.x = swap_bmi_axis_swap(remapped_axis.x);
-        remapped_axis.y = swap_bmi_axis_swap(remapped_axis.y);
-        remapped_axis.y = swap_bmi_axis_swap_sign(remapped_axis.y);
+        remapped_axis.x = bmi2_swap_axis(remapped_axis.x);
+        remapped_axis.y = bmi2_swap_axis(remapped_axis.y);
+        remapped_axis.y = bmi2_swap_axis_sign(remapped_axis.y);
     }
 
     if ((bmi2_set_remap_axes(&remapped_axis, &data->bmi2) != BMI2_OK) ||
@@ -260,9 +268,12 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
                 return -ENOTSUP;
         }
     } else if (channel == SENSOR_CHAN_STEPS) {
+        // Step counter configuration channel. Supported options:
+        //  - Offset:
+        //      Values are ignored. Only reset
         switch (attribute) {
             case SENSOR_ATTR_OFFSET:
-
+                return bmi2_reset_step_counter(p_dev);
             default:
                 return -ENOTSUP;
         }
@@ -280,13 +291,9 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
         switch (attribute) {
             case SENSOR_ATTR_CONFIGURATION:
                 if ((p_value->val2 & 0x01) == 0) {
-                    if (bmi2_disable_feature(p_dev, p_value->val1 & 0xFF) != BMI2_OK) {
-                        return -EFAULT;
-                    }
+                    return bmi2_disable_feature(p_dev, p_value->val1 & 0xFF);
                 } else if ((p_value->val2 & 0x01) == 1) {
-                    if (bmi2_enable_feature(p_dev, p_value->val1, (p_value->val2 >> 1) & 0x01) != BMI2_OK) {
-                        return -EFAULT;
-                    }
+                    return bmi2_enable_feature(p_dev, p_value->val1, (p_value->val2 >> 1) & 0x01);
                 }
             default:
                 return -ENOTSUP;

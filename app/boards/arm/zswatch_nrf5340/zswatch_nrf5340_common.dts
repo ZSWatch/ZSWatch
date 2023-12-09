@@ -18,14 +18,6 @@
         zephyr,display = &gc9a01;
     };
 
-    vbatt {
-        compatible = "voltage-divider";
-        io-channels = <&adc 7>;
-        output-ohms = <220000>;
-        full-ohms = <(1500000 + 220000)>;
-        power-gpios = <&gpio1 10 0>;
-    };
-
     pwmleds {
         compatible = "pwm-leds";
         display_blk: pwm_led_0 {
@@ -43,6 +35,11 @@
         invert-x;
     };
 
+    rtc: rtc {
+        status = "okay";
+        compatible = "zephyr,rtc-emul";
+    };
+
     aliases {
         display-blk = &display_blk;
         vibrator-pwm = &vibrator_pwm;
@@ -50,10 +47,6 @@
         sw2 = &button2;
         sw3 = &button3;
         sw4 = &button4;
-        sw-top-right = &button1;
-        sw-top-left = &button4;
-        sw-bottom-right = &button3;
-        sw-bottom-left = &button2;
         watchdog0 = &wdt0;
         mcuboot-button1 = &button1;
     };
@@ -120,7 +113,6 @@
         status = "okay";
         int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };
-
 };
 
 &i2c2 {
@@ -201,7 +193,6 @@ zephyr_udc0: &usbd {
 };
 
 / {
-
     reserved-memory {
         #address-cells = <1>;
         #size-cells = <1>;
