@@ -16,3 +16,7 @@ __pycache__
 /test
 
 /.vscode
+
+.cache/
+app/.cache/
+

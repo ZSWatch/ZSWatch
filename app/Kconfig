@@ -24,6 +24,11 @@ menu "ZSWatch"
         prompt "Activate the application 'Battery'"
         default y
 
+        config APPLICATIONS_USE_CALENDAR
+            bool
+        prompt "Activate the application 'Calendar'"
+        default y
+
         config APPLICATIONS_USE_COMPASS
             bool
         prompt "Activate the application 'Compass'"
