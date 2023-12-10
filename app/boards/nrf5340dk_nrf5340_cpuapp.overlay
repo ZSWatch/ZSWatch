@@ -73,7 +73,6 @@
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
-        rtc = &rtc;
     };
 
     longpress: longpress {
@@ -107,12 +106,6 @@
             gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_KP0>;
         };
-    };
-
-    rtc: rtc {
-        status = "okay";
-        compatible = "zephyr,rtc-emul";
-        alarms-count = < 10 >;
     };
 };
 

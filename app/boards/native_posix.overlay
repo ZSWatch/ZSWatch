@@ -2,19 +2,11 @@
 
 /{
 
-    aliases {
-        rtc = &rtc;
-    };
-
     sdl_dc {
         compatible = "zephyr,sdl-dc";
         height = <240>;
         width = <240>;
     };
-};
 
-&rtc {
-    status = "okay";
-    alarms-count = < 100 >;
 };
  

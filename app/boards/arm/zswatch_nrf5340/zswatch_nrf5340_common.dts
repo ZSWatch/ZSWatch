@@ -38,7 +38,6 @@
     rtc: rtc {
         status = "okay";
         compatible = "zephyr,rtc-emul";
-        alarms-count = < 10 >;
     };
 
     aliases {
@@ -50,7 +49,6 @@
         sw4 = &button4;
         watchdog0 = &wdt0;
         mcuboot-button1 = &button1;
-        rtc = &rtc;
     };
 };
 

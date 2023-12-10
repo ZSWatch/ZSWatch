@@ -17,10 +17,9 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
-#include <zephyr/drivers/rtc.h>
 
 #include "zsw_clock.h"
-#include "zsw_rtc_alarm_id.h"
+
 #include "../drivers/sensor/bmi270/bosch_bmi270.h"
 
 #include "events/zsw_periodic_event.h"
@@ -37,12 +36,19 @@ ZBUS_LISTENER_DEFINE(zsw_imu_lis, zbus_periodic_slow_callback);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
 
-static const struct device *rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
-
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
+    struct tm *timeinfo;
     struct accel_event evt = {
     };
+
+    timeinfo = zsw_clock_get_time();
+
+    if ((timeinfo->tm_hour == 23) && (timeinfo->tm_min == 59)) {
+
+        LOG_DBG("Reset step counter");
+        zsw_imu_reset_step_count();
+    }
 
     zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
 }
@@ -123,18 +129,8 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
     zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
 }
 
-static void rtc_alarm_reset_step_counter(const struct device *dev, uint16_t id,
-                                         void *user_data)
-{
-    LOG_DBG("RTC alarm callback. Reset time.");
-    zsw_imu_reset_step_count();
-}
-
 int zsw_imu_init(void)
 {
-    int ret;
-    struct rtc_time step_counter_alarm_time;
-    uint16_t alarm_time_mask_set;
     if (!device_is_ready(bmi270)) {
         LOG_ERR("No IMU found!");
         return -ENODEV;
@@ -149,23 +145,6 @@ int zsw_imu_init(void)
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
 
     zsw_periodic_chan_add_obs(&periodic_event_slow_chan, &zsw_imu_lis);
-
-    step_counter_alarm_time.tm_hour = 23;
-    step_counter_alarm_time.tm_min = 59;
-    step_counter_alarm_time.tm_sec = 59;
-    alarm_time_mask_set = (RTC_ALARM_TIME_MASK_MINUTE | RTC_ALARM_TIME_MASK_HOUR | RTC_ALARM_TIME_MASK_SECOND);
-
-    ret = rtc_alarm_set_time(rtc, ZSW_RTC_ALARM_ID_IMU_STEP_RESET, alarm_time_mask_set, &step_counter_alarm_time);
-    if (ret != 0) {
-        LOG_ERR("Failed to set alarm time: %d", ret);
-        return ret;
-    }
-
-    ret = rtc_alarm_set_callback(rtc, ZSW_RTC_ALARM_ID_IMU_STEP_RESET, rtc_alarm_reset_step_counter, NULL);
-    if (ret != 0) {
-        LOG_ERR("Failed to set alarm callback time: %d", ret);
-        return ret;
-    }
 
     return 0;
 }

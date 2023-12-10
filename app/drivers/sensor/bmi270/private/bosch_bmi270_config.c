@@ -619,15 +619,15 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
     return 0;
 }
 
-int bmi2_reset_step_counter(const struct device* p_dev)
+int bmi2_reset_step_counter(const struct device *p_dev)
 {
-    struct bmi2_sens_config config[1];
-    struct bmi270_data* data = p_dev->data;
+    struct bmi2_sens_config config;
+    struct bmi270_data *data = p_dev->data;
 
-    config[0].type = BMI2_STEP_COUNTER;
-    config[0].cfg.step_counter.reset_counter = 1;
+    config.type = BMI2_STEP_COUNTER;
+    config.cfg.step_counter.reset_counter = 1;
 
-    if (bmi270_set_sensor_config(config, ARRAY_SIZE(config), &data->bmi2) != BMI2_OK) {
+    if (bmi270_set_sensor_config(&config, ARRAY_SIZE(bmi270_enabled_features), &data->bmi2) != BMI2_OK) {
         return -EFAULT;
     }
 
