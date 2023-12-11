@@ -29,6 +29,7 @@
 #include <ble/zsw_gatt_sensor_server.h>
 
 #include "sensors/zsw_imu.h"
+#include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_magnetometer.h"
 #include "sensors/zsw_environment_sensor.h"
 
@@ -106,6 +107,14 @@ BT_GATT_SERVICE_DEFINE(gyro_service,
                                               on_read, NULL, NULL),
                        BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
                       );
+BT_GATT_SERVICE_DEFINE(light_service,
+                       BT_GATT_PRIMARY_SERVICE(ADAFRUIT_SERVICE_LIGHT),
+                       BT_GATT_CHARACTERISTIC(ADAFRUIT_CHAR_LIGHT,
+                                              BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
+                                              ZSW_GATT_READ_WRITE_PERM,
+                                              on_read, NULL, NULL),
+                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                      );
 
 static bool notif_enabled;
 
@@ -151,6 +160,9 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
         f_ptr[1] = y;
         f_ptr[2] = z;
         write_len = 3 * sizeof(float);
+    } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&light_service.attrs[2])) {
+        zsw_light_sensor_get_light(&f_ptr[0]);
+        write_len = sizeof(float);
     }
 
     return write_len;
@@ -232,5 +244,10 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
         zsw_magnetometer_set_enable(false);
         write_len = 3 * sizeof(float);
         bt_gatt_notify(NULL, &mag_service.attrs[1], &buf, write_len);
+    }
+
+    if (zsw_light_sensor_get_light(&f_ptr[0]) == 0) {
+        write_len = sizeof(float);
+        bt_gatt_notify(NULL, &light_service.attrs[1], &buf, write_len);
     }
 }

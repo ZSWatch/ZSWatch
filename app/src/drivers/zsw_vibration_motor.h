@@ -17,9 +17,30 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 typedef enum zsw_vibration_pattern {
     ZSW_VIBRATION_PATTERN_CLICK,
     ZSW_VIBRATION_PATTERN_NOTIFICATION,
 } zsw_vibration_pattern_t;
 
+/*
+* @brief Run a vibration pattern
+*
+* @details Run a vibration pattern, the pattern will run asynchronously and
+* any try to run a pattern while another is running will resutlt in -EBUSY.
+*
+* @param pattern The pattern to run
+* @return 0 on success, negative error code on failure
+*/
 int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern);
+
+/*
+* @brief Enable or disable the vibration motor
+*
+* @details Used to globally disable the vibration motor, for example when the watch
+* is in DND mode or when battery is low.
+*
+* @param enable true to enable, false to disable
+*/
+int zsw_vibration_set_enabled(bool enable);

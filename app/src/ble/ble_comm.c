@@ -42,7 +42,8 @@ static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
-static void update_conn_interval_handler(struct k_work *item);
+static void update_conn_interval_slow_handler(struct k_work *item);
+static void update_conn_interval_short_handler(struct k_work *item);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = ble_connected,
@@ -65,7 +66,8 @@ static const struct bt_data ad_nus[] = {
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UUID_TRANSPORT_VAL),
 };
 
-K_WORK_DELAYABLE_DEFINE(conn_interval_work, update_conn_interval_handler);
+K_WORK_DELAYABLE_DEFINE(conn_interval_slow_work, update_conn_interval_slow_handler);
+K_WORK_DELAYABLE_DEFINE(conn_interval_fast_work, update_conn_interval_short_handler);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
@@ -203,7 +205,15 @@ int ble_comm_short_connection_interval(void)
 
     // If someone explicitly requested short connection interval,
     // don't change it back.
-    k_work_cancel_delayable(&conn_interval_work);
+    k_work_cancel_delayable(&conn_interval_slow_work);
+
+    if (current_conn == NULL) {
+        // Need context switch as this function can get called before
+        // the connection is propogated to this file.
+        // For example in CCC notify callbacks, triggered by a connect.
+        k_work_schedule(&conn_interval_fast_work, K_MSEC(1));
+        return 0;
+    }
 
     LOG_DBG("Set short conection interval");
 
@@ -235,10 +245,18 @@ int ble_comm_long_connection_interval(void)
     return err;
 }
 
-static void update_conn_interval_handler(struct k_work *item)
+static void update_conn_interval_slow_handler(struct k_work *item)
 {
     LOG_DBG("Change to long connection interval");
     ble_comm_long_connection_interval();
+}
+
+static void update_conn_interval_short_handler(struct k_work *item)
+{
+    LOG_DBG("Change to fast connection interval");
+    if (current_conn != NULL) {
+        ble_comm_short_connection_interval();
+    }
 }
 
 static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_exchange_params *params)
@@ -288,7 +306,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     // to let the peer discover services etc. quickly.
     // After some time assume the peer is done and change to longer intervals
     // to save power.
-    k_work_schedule(&conn_interval_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
+    k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
 
     if (pairing_enabled) {
         int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -308,7 +326,7 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
     LOG_INF("Disconnected: %s (reason %u)", addr, reason);
 
     if (current_conn) {
-        k_work_cancel_delayable(&conn_interval_work);
+        k_work_cancel_delayable(&conn_interval_slow_work);
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }

@@ -33,7 +33,7 @@ void zsw_retained_ram_update(void)
 
     retained.uptime_sum += (now - retained.uptime_latest);
     retained.uptime_latest = now;
-    strncpy(retained.timezone, timezone, sizeof(retained.timezone));
+    strncpy(retained.timezone, timezone, sizeof(retained.timezone) - 1);
     retention_write(retention_area, 0, (uint8_t *)&retained, sizeof(retained));
 }
 

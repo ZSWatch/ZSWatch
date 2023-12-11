@@ -198,18 +198,21 @@ int zsw_magnetometer_init(void)
 
 int zsw_magnetometer_set_enable(bool enabled)
 {
+    int ret;
     if (!device_is_ready(magnetometer)) {
         LOG_ERR("No magnetometer found!");
         return -ENODEV;
     }
 
     if (enabled) {
-        if (pm_device_action_run(magnetometer, PM_DEVICE_ACTION_RESUME) != 0) {
+        ret = pm_device_action_run(magnetometer, PM_DEVICE_ACTION_RESUME);
+        if (ret != 0 && ret != -EALREADY) {
             LOG_ERR("Failed to resume LIS2MDL!");
             return -EFAULT;
         }
     } else {
-        if (pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND) != 0) {
+        ret = pm_device_action_run(magnetometer, PM_DEVICE_ACTION_SUSPEND);
+        if (ret != 0 && ret != -EALREADY) {
             LOG_ERR("Failed to suspend LIS2MDL!");
             return -EFAULT;
         }
