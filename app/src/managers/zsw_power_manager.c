@@ -27,8 +27,10 @@
 #include "zsw_settings.h"
 #include "zsw_cpu_freq.h"
 #include "events/accel_event.h"
+#include "events/battery_event.h"
 #include "managers/zsw_power_manager.h"
 #include "drivers/zsw_display_control.h"
+#include "drivers/zsw_vibration_motor.h"
 
 LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 
@@ -39,10 +41,12 @@ LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 #endif
 
 #define POWER_MANAGEMENT_MIN_ACTIVE_PERIOD_SECONDS                  1
+#define LOW_BATTERY_VOLTAGE_MV                                      3750
 
 static void update_and_publish_state(zsw_power_manager_state_t new_state);
 static void handle_idle_timeout(struct k_work *item);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
+static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 
 K_WORK_DELAYABLE_DEFINE(idle_work, handle_idle_timeout);
 
@@ -50,6 +54,11 @@ ZBUS_CHAN_DECLARE(activity_state_data_chan);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_LISTENER_DEFINE(power_manager_accel_lis, zbus_accel_data_callback);
+
+ZBUS_CHAN_DECLARE(battery_sample_data_chan);
+ZBUS_OBS_DECLARE(zsw_power_manager_bat_listener);
+ZBUS_CHAN_ADD_OBS(battery_sample_data_chan, zsw_power_manager_bat_listener, 1);
+ZBUS_LISTENER_DEFINE(zsw_power_manager_bat_listener, zbus_battery_sample_data_callback);
 
 static uint32_t idle_timeout_seconds = IDLE_TIMEOUT_SECONDS;
 static bool is_active = true;
@@ -215,6 +224,17 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         }
         default:
             break;
+    }
+}
+
+static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
+{
+    const struct battery_sample_event *event = zbus_chan_const_msg(chan);
+
+    if (event->mV <= LOW_BATTERY_VOLTAGE_MV) {
+        zsw_vibration_set_enabled(false);
+    } else {
+        zsw_vibration_set_enabled(true);
     }
 }
 
