@@ -65,6 +65,11 @@ void zsw_display_control_init(void)
         LOG_WRN("Device touch not ready.");
     }
 
+    pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
+    if (device_is_ready(touch_dev)) {
+        pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
+    }
+
     display_state = DISPLAY_STATE_SLEEPING;
 }
 
@@ -176,7 +181,7 @@ int zsw_display_control_pwr_ctrl(bool on)
             if (on) {
                 LOG_DBG("Display is off, power already on");
                 if (device_is_ready(reg_dev)) {
-                    display_state = DISPLAY_STATE_SLEEPING;
+                    display_state = DISPLAY_STATE_AWAKE;
 #ifndef CONFIG_BOARD_NATIVE_POSIX
                     regulator_enable(reg_dev);
 #endif
