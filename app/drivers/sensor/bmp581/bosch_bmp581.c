@@ -91,7 +91,7 @@ static int8_t bmp5_set_config(struct bmp5_osr_odr_press_config *p_cfg, struct bm
         rslt = bmp5_get_osr_odr_press_config(p_cfg, p_dev);
 
         if (rslt == BMP5_OK) {
-            p_cfg->odr = BMP5_ODR_0_250_HZ;
+            p_cfg->odr = BOSCH_BMP581_ODR_DEFAULT;
             p_cfg->press_en = BMP5_ENABLE;
             p_cfg->osr_t = BMP5_OVERSAMPLING_64X;
             p_cfg->osr_p = BMP5_OVERSAMPLING_4X;

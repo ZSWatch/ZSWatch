@@ -40,4 +40,4 @@
 #define BOSCH_BMP581_ODR_0_5_HZ                         0x1D
 #define BOSCH_BMP581_ODR_0_250_HZ                       0x1E
 #define BOSCH_BMP581_ODR_0_125_HZ                       0x1F
-#define BOSCH_BMP581_ODR_DEFAULT                        0x20
+#define BOSCH_BMP581_ODR_DEFAULT                        BOSCH_BMP581_ODR_0_250_HZ

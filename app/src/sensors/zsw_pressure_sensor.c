@@ -55,6 +55,8 @@ int zsw_pressure_sensor_init(void)
 
     zsw_periodic_chan_add_obs(&periodic_event_mid_chan, &zsw_pressure_sensor_lis);
 
+    zsw_pressure_sensor_set_odr(BOSCH_BMP581_ODR_DEFAULT);
+
     return 0;
 }
 
