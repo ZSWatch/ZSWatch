@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_mid_chan);
+ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_imu_lis, zbus_periodic_slow_callback);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
@@ -144,7 +144,7 @@ int zsw_imu_init(void)
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
 
-    zsw_periodic_chan_add_obs(&periodic_event_mid_chan, &zsw_imu_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_imu_lis);
 
     return 0;
 }

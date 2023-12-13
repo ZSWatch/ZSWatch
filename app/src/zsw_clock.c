@@ -34,7 +34,7 @@
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
-ZBUS_CHAN_DECLARE(periodic_event_mid_chan);
+ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
 
 void zsw_clock_init(uint64_t start_time_seconds, char *timezone)
@@ -48,7 +48,7 @@ void zsw_clock_init(uint64_t start_time_seconds, char *timezone)
         tzset();
     }
 
-    zsw_periodic_chan_add_obs(&periodic_event_mid_chan, &zsw_clock_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
 }
 
 struct tm *zsw_clock_get_time(void)
