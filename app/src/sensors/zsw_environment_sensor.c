@@ -29,7 +29,7 @@ LOG_MODULE_REGISTER(zsw_environment_sensor, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(environment_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_slow_chan);
+ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
 ZBUS_LISTENER_DEFINE(zsw_environment_sensor_lis, zbus_periodic_slow_callback);
 static const struct device *const bme688 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bme688));
 
@@ -63,7 +63,7 @@ int zsw_environment_sensor_init(void)
         return -ENODEV;
     }
 
-    zsw_periodic_chan_add_obs(&periodic_event_slow_chan, &zsw_environment_sensor_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_environment_sensor_lis);
 
     return 0;
 }

@@ -6,7 +6,6 @@ static on_notification_remove_cb_t notification_removed_callback;
 static lv_obj_t *main_page;
 static lv_timer_t *timer;
 static active_notification_t active_notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
-static uint32_t active_notification_num;
 
 /** @brief          Convert a time in seconds to a age string.
  *  @param delta    Time in seconds
@@ -39,7 +38,7 @@ static void label_on_Timer_Callback(lv_timer_t *timer)
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
         // Make sure that the notification exists and prevent exceptions because of a fragmented array.
-        if (active_notifications[i].deltaLabel != NULL) {
+        if ((active_notifications[i].panel != NULL) && (active_notifications[i].deltaLabel != NULL)) {
             delta = time(NULL) - active_notifications[i].notification->timestamp;
             notification_delta2char(delta, buf);
 
@@ -79,9 +78,26 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_t *ui_LabelHeader;
     lv_obj_t *ui_LabelBody;
 
+    uint32_t index;
+
     const lv_img_dsc_t *image_source;
     const char *source;
     char buf[16];
+
+    // Look for a free location for the notification.
+    // TODO: Make me better
+    index = 0xFFFFFFFF;
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (active_notifications[i].notification == NULL) {
+            index = i;
+
+            break;
+        }
+    }
+
+    if (index == 0xFFFFFFFF) {
+        return;
+    }
 
     switch (not->src) {
         case NOTIFICATION_SRC_COMMON_MESSENGER:
@@ -91,6 +107,10 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
         case NOTIFICATION_SRC_WHATSAPP:
             image_source = &ui_img_whatsapp_png;
             source = "WhatsApp";
+            break;
+        case NOTIFICATION_SRC_DISCORD:
+            image_source = &ui_img_discord_png;
+            source = "Discord";
             break;
         case NOTIFICATION_SRC_GMAIL:
             image_source = &ui_img_mail_png;
@@ -103,6 +123,10 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
         case NOTIFICATION_SRC_HOME_ASSISTANT:
             image_source = &ui_img_homeassistant_png;
             source = "Home Assistant";
+            break;
+        case NOTIFICATION_SRC_LINKEDIN:
+            image_source = &ui_img_linkedin_png;
+            source = "LinkedIn";
             break;
         default:
             image_source = &ui_img_gadget_png;
@@ -149,9 +173,9 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_style_text_color(ui_LabelTimeDelta, lv_color_hex(0x8C8C8C), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelTimeDelta, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    active_notifications[active_notification_num].panel = ui_Panel;
-    active_notifications[active_notification_num].deltaLabel = ui_LabelTimeDelta;
-    active_notifications[active_notification_num].notification = not;
+    active_notifications[index].panel = ui_Panel;
+    active_notifications[index].deltaLabel = ui_LabelTimeDelta;
+    active_notifications[index].notification = not;
 
     ui_ImageIcon = lv_img_create(ui_Panel);
     lv_obj_set_width(ui_ImageIcon, 16);
@@ -204,21 +228,15 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
 
     // Remove the cursor and the highlighting (visible for the first entry).
     lv_obj_clear_state(ui_LabelBody, LV_STATE_CHECKED | LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
-
-    if (active_notification_num < ZSW_NOTIFICATION_MGR_MAX_STORED) {
-        active_notification_num++;
-    }
 }
 
 void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
 {
     notification_removed_callback = not_removed_cb;
-    active_notification_num = 0;
     memset(active_notifications, 0, sizeof(active_notifications));
 }
 
-void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, uint8_t num_notifications,
-                                  lv_group_t *group)
+void notifications_ui_page_create(lv_group_t *group)
 {
     main_page = lv_obj_create(lv_scr_act());
     lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
@@ -245,15 +263,8 @@ void notifications_ui_page_create(zsw_not_mngr_notification_t *notifications, ui
         lv_obj_add_event_cb(ui_ImgButtonClearAll, on_ImgButtonClearAll_clicked, LV_EVENT_PRESSED, NULL);
     */
 
-    for (int i = 0; i < num_notifications; i++) {
-        build_notification_entry(main_page, &notifications[i], group);
-    }
-
     // Update the notifications position manually firt time.
     lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
-
-    // Be sure the fist notification is in the middle.
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, 0), LV_ANIM_OFF);
 
     timer = lv_timer_create(label_on_Timer_Callback, 5000UL, NULL);
 }
@@ -276,7 +287,7 @@ void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_grou
     }
 
     build_notification_entry(main_page, not, group);
-    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_OFF);
+    lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
     lv_obj_update_layout(main_page);
 }
 
@@ -287,12 +298,14 @@ void notifications_ui_remove_notification(uint32_t id)
     }
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification->id == id) {
+        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
+            lv_obj_add_flag(active_notifications[i].panel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_del(active_notifications[i].panel);
+            active_notifications[i].panel = NULL;
+            active_notifications[i].deltaLabel = NULL;
+            active_notifications[i].notification = NULL;
             lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
             lv_obj_update_layout(main_page);
-
-            active_notification_num--;
 
             break;
         }

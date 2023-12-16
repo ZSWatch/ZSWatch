@@ -9,7 +9,7 @@
 <img src=".github/images/v3_case.jpg" width="31%" object-fit="cover"/>
 </p>
 <sub>
-  ZSWatch v3 CNC:ed Stainless Steel (left), Clear Resin 3D print (right)
+  ZSWatch v4 CNC:ed Stainless Steel (left), Clear Resin 3D print (right)
 </sub>
 </div>
 <br/>
@@ -18,8 +18,6 @@
 
 Smartwatch built from scratch, both hardware and software. Built on the [Zephyrâ„¢ Project](https://www.zephyrproject.org/) RTOS, hence the name **ZSWatch** - *Zephyr Smartwatch*.
 <br/>
-
-<kbd><img title="Overview" src=".github/images/many_in_row.jpg"/></kbd><br/>
 
 <kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd><br/>
 
@@ -34,17 +32,18 @@ Smartwatch built from scratch, both hardware and software. Built on the [Zephyrâ
 
 
 ## Building or getting one
-Head over to the hardware repos https://github.com/jakkra/ZSWatch-HW and https://github.com/jakkra/ZSWatch-Dock for information about ordering the PCBs and assembly from PCBWay.
+- Head over to the hardware repos https://github.com/jakkra/ZSWatch-HW and https://github.com/jakkra/ZSWatch-Dock for information about ordering the PCBs and assembly from PCBWay.
+- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch.
 
 Some things are still in progress:
-- Documentation such as building instructions.
+- Work in progress [building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
 - Dock casing.
 
 **I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.<br/>
 In addition to assembled ZSWatch and dock you will get the following compared to if you build it yourself:
 - **A magnetic dock connector and cable**. I have got custom ordered cables to fit the needs of ZSWatch.
 - **Dock with onboard SEGGER J-Link OB debgger**, which means you won't need an external debugger for ZSWatch development and flashing.
-- **Possibly CNC:ed casing in Stainless steel** (in progress).
+- **Possibly CNC:ed casing in Stainless steel**.
 
 If you are interested in a kit, or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
 
@@ -190,22 +189,7 @@ https://github.com/jakkra/ZSWatch/assets/4318648/8d8ec724-8145-4a30-b241-e69a8c2
 See [GETTING_STARTED.md](GETTING_STARTED.md)
 
 ## Writing apps for the Application Manager
-I recommend watching [this part](https://youtu.be/MmCzV0jV9hs?t=1398) of my presentation at Zephyr Developer Summit where I build a sample app.
-
-Check out [the sample application](app/src/applications/template/) for the general app design. The main idea is each app have an `<app_name>_app.c` file which registers the app, chooses icon and drives the logic for the app. Then there should be one or more files named for example `<app_name>_ui.c` containing pure LVGL code with no dependencies to Zephyr or the watch software. The idea is that this UI code should be runnable in a LVGL simulator to speed up development of UI, however right now that's not set up yet. The `<app_name>_app.c` will do all logic and call functions in `<app_name>_ui.c` to update the UI accordingly. 
-
-Each application needs to have a way to close itself, for example a button, and then through callback tell the `application_manager.c` to close the app:
-
-When user clicks an app in the app picker:
-- `application_manager.c` deletes it's UI elements and calls the `application_start_fn`.
-- `<app_name>_app.c` will do necessary init and then call the `<app_name>_ui.c` to draw the app UI.
-- User can now navigate arund and the application and do whatever.
-
-When user for example presses a close button in the application:
-- Typically a callback from the UI code in `<app_name>_ui.c` will call `<app_name>_app.c` to tell that user requested to close the app. `<app_name>_app.c` will notify `application_manager.c` that it want to close itself. `application_manager.c` will then call `<app_name>_app.c` `application_stop_fn` and `<app_name>_app.c` will tell UI to close then do necessary de-init and return.
-- `application_manager.c` will now draw the app picker again.
-
-The application manager can also at any time close a running application by calling it's `application_stop_fn`.
+See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps)
 
 ## Other tools
 - Visit https://jakkra.github.io/ZSWatch-Web-Dashboard to connect and view sensor data in a browser that supports Web Bluetooth [(Source code)](https://github.com/jakkra/ZSWatch-Web-Dashboard 

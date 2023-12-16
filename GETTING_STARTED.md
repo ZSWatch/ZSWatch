@@ -53,7 +53,7 @@ By downloading (running below commands) you approve this [License](https://www.b
 west config manifest.group-filter +bsec2
 west update
 ```
-To enable the feature add below to prj.conf or build with boards/bsec.conf or use Kconfig to enable it.
+To enable the feature add below to `prj.conf` or build with `boards/bsec.conf` or use Kconfig to enable it.
 ```
 CONFIG_BME680=n
 CONFIG_EXTERNAL_USE_BOSCH_BSEC=y
@@ -66,8 +66,6 @@ There are two approaches to deal with Zephyr based projects:
 - [Using the command line](#using-the-command-line)
 
 ### Compiling
-Due to a bug in nRF Connect VSCode plugin at the moment it's necessary to do the first build using the command line. Afterwards everything can be done withing VSCode in the nRF Connect Plugin.
-
 ### Using the command line
 - Set revision zswatch_nrf5340_cpuapp@\<revision\> to 1 or 3 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1, otherwise revision 3.
 - Replace release.conf with debug.conf if the build is for development.
@@ -82,10 +80,11 @@ west flash
 To be able to build, flash and debug via VSCode please install [nRF Connect for VS Code Extension Pack](https://marketplace.visualstudio.com/items?itemName=nordic-semiconductor.nrf-connect-extension-pack).   
 [Here](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html) you can also find a manual on how to deal with the nRF Connect extension.
 Follow the steps below to open and build the ZSWatch application:
-- Make sure you compiled once using command line steps above.
-- Open the `app` folder in VSCode (important it's the `app` folder) the the nRF Connect plugin will automatically see the app and you should see the build, debug etc. buttons. If not press "Add Folder as Application and pick the app` folder. 
+- Open the `ZSWatch` root folder in VSCode (important it's the root and not `app` folder), the the nRF Connect plugin will automatically see the app.
+- Press `Create new build configuration` and fill in zswatch board, revision, and any config files wanted, for example debug.conf.
+- Now press the `Build Configuration` button and it will compile.
 
-__NOTE__
+__NOTE (Not applicable for nRF Connect)__
 <br>
 Since the nRF5340 is a dual core microcontroller where the second core is designed to serve the Bluetooth Controller, the second image needs to be flashed for BLE operation.
 If you are building with Zephyr you need in addition manually compile and flash the `zephyr/samples/bluetooth/hci_rpmsg` sample and flash that to the NET core. For convenience I have also uploaded a pre-compiled [hex image for NET CPU](app/child_image/GENERATED_CP_NETWORK_merged_domains.hex) if you don't want to recompile it yourself. Flash it using following:
