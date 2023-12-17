@@ -9,6 +9,8 @@ RED="\e[31m"
 GREEN="\e[32m"
 ENDCOLOR="\e[0m"
 
+mkdir ${TEMP_DIR}
+
 echo -e "${GREEN}Enable udev daemon${ENDCOLOR}"
 apt -y install udev
 /lib/systemd/systemd-udevd --daemon
