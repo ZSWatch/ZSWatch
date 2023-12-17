@@ -1,0 +1,33 @@
+{
+    "name": "ZSWatch Development",
+    "dockerFile": "Dockerfile",
+	"runArgs": [
+		"--privileged"
+	],
+	"containerEnv": {
+		"WORKSPACE_DIR": "${containerWorkspaceFolder}"
+	},
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "chiehyu.vscode-astyle", "ms-vscode.cpptools", "ms-vscode.cpptools-extension-pack",
+                "nordic-semiconductor.nrf-connect-extension-pack", "nordic-semiconductor.nrf-kconfig",
+                "nordic-semiconductor.nrf-devicetree", "nordic-semiconductor.nrf-connect",
+                "DavidAnson.vscode-markdownlint", "yzhang.markdown-all-in-one", "vscode-icons-team.vscode-icons",
+                "donjayamanne.githistory", "Gruntfuggly.todo-tree", "codechecker.vscode-codechecker"
+            ],
+            "settings": {
+                "editor.tabSize": 4,
+                "editor.insertSpaces": true,
+                "editor.detectIndentation": false,
+                "editor.formatOnSave": true, 
+                "editor.defaultFormatter": "chiehyu.vscode-astyle",
+                "workbench.iconTheme": "vscode-icons",
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "terminal.integrated.shell.linux": "/bin/bash",
+                "git.autofetch": true
+            }
+        }
+    },
+	"forwardPorts": [1234, 3000, 8001]
+}
