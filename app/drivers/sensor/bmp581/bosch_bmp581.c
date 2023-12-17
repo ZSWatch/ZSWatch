@@ -27,18 +27,9 @@ LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_BOSCH_BMP581_LOG_LEVEL);
 #warning "bmp581 driver enabled without any devices"
 #endif
 
-static void bmp581_worker(struct k_work *p_work);
-
-K_WORK_DEFINE(bmp581_work, bmp581_worker);
-
 struct bmp581_config {
     struct i2c_dt_spec i2c;
 };
-
-struct bmp581_worker_item_t {
-    struct k_work work;
-    const struct device *dev;
-} bmp581_worker_item;
 
 static struct bmp5_osr_odr_press_config bmp5_osr_odr_press_cfg;
 static const struct device *device;
@@ -100,7 +91,7 @@ static int8_t bmp5_set_config(struct bmp5_osr_odr_press_config *p_cfg, struct bm
         rslt = bmp5_get_osr_odr_press_config(p_cfg, p_dev);
 
         if (rslt == BMP5_OK) {
-            p_cfg->odr = BMP5_ODR_0_250_HZ;
+            p_cfg->odr = BOSCH_BMP581_ODR_DEFAULT;
             p_cfg->press_en = BMP5_ENABLE;
             p_cfg->osr_t = BMP5_OVERSAMPLING_64X;
             p_cfg->osr_p = BMP5_OVERSAMPLING_4X;
@@ -227,23 +218,6 @@ static int bmp581_attr_get(const struct device *p_dev, enum sensor_channel chann
     return 0;
 }
 
-/** @brief          Sensor worker handler.
- *  @param p_work   Pointer to worker object
-*/
-static void bmp581_worker(struct k_work *p_work)
-{
-    struct bmp581_worker_item_t *item = CONTAINER_OF(p_work, struct  bmp581_worker_item_t, work);
-	struct bmp5_sensor_data *data = item->dev->data;
-
-    LOG_DBG("Start a new measurement...");
-
-    if (bmp5_get_sensor_data(data, &bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-        LOG_ERR("Measurement error!");
-    }
-
-    return;
-}
-
 /** @brief          
  *  @param p_dev    
  *  @param channel  
@@ -252,6 +226,7 @@ static void bmp581_worker(struct k_work *p_work)
 static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel channel)
 {
     enum pm_device_state pm_state;
+    struct bmp5_sensor_data *data = p_dev->data;
 
     pm_device_state_get(p_dev, &pm_state);
     if (pm_state != PM_DEVICE_STATE_ACTIVE) {
@@ -264,10 +239,9 @@ static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel c
 
     LOG_DBG("Start a new measurement...");
 
-    bmp581_worker_item.dev = p_dev;
-    bmp581_worker_item.work = bmp581_work;
-
-    k_work_submit(&bmp581_worker_item.work);
+    if (bmp5_get_sensor_data(data, &bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
+        LOG_ERR("Measurement error!");
+    }
 
     return 0;
 }

@@ -12,13 +12,9 @@
 
 LOG_MODULE_REGISTER(notification_mgr, LOG_LEVEL_DBG);
 
-#define NOTIFICATION_INVALID_ID             0xFFFFFFFF
-#define NOTIFICATION_INVALID_INDEX          0xFFFFFFFF
+#define ZSW_NOTIFICATION_MGR_INVALID_ID         0xFFFFFFFF
+#define NOTIFICATION_INVALID_INDEX              0xFFFFFFFF
 
-static uint32_t find_free_notification_idx(void);
-static uint32_t find_notification_idx(uint32_t id);
-static uint32_t find_oldest_notification_idx(void);
-static uint32_t find_newest_notification_idx(void);
 static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void notification_mgr_update_worker(struct k_work *item);
 
@@ -30,11 +26,82 @@ ZBUS_LISTENER_DEFINE(notification_mgr_ble_comm_lis, notification_mgr_zbus_ble_co
 ZBUS_CHAN_DECLARE(zsw_notification_mgr_chan);
 ZBUS_CHAN_DECLARE(zsw_notification_mgr_remove_chan);
 
+/** @brief      Find a notification index by a given notification ID.
+ *  @param id   Notification ID
+ *  @return     Notification array index of the notification
+*/
+static uint32_t find_notification_idx(uint32_t id)
+{
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (notifications[i].id == id) {
+            return i;
+        }
+    }
+
+    return NOTIFICATION_INVALID_INDEX;
+}
+
+/** @brief  Get the next free notification index.
+ *  @return Free notification array index
+*/
+static uint32_t find_free_notification_idx(void)
+{
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (notifications[i].id == ZSW_NOTIFICATION_MGR_INVALID_ID) {
+            return i;
+        }
+    }
+
+    return NOTIFICATION_INVALID_INDEX;
+}
+
+/** @brief  Find the oldest notification.
+ *  @return Notification index of the oldest notification
+*/
+static uint32_t find_oldest_notification_idx(void)
+{
+    uint32_t oldest_idx = ZSW_NOTIFICATION_MGR_INVALID_ID;
+    uint32_t oldest_id = NOTIFICATION_INVALID_INDEX;
+
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if ((notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) && (notifications[i].id < oldest_id)) {
+            oldest_idx = i;
+            oldest_id = notifications[i].id;
+        }
+    }
+
+    return oldest_idx;
+}
+
+/** @brief  Find the newest notification.
+ *  @return Notification index of the newest notification
+*/
+static uint32_t find_newest_notification_idx(void)
+{
+    uint32_t newest_idx = ZSW_NOTIFICATION_MGR_INVALID_ID;
+    uint32_t newest_id = 0;
+
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if ((notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) && (notifications[i].id > newest_id)) {
+            newest_idx = i;
+            newest_id = notifications[i].id;
+        }
+    }
+
+    return newest_idx;
+}
+
+/** @brief
+ *  @param item
+*/
 static void notification_mgr_update_worker(struct k_work *item)
 {
     zbus_chan_notify(&zsw_notification_mgr_chan, K_NO_WAIT);
 }
 
+/** @brief
+ *  @param chan
+*/
 static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 {
     zsw_not_mngr_notification_t *not;
@@ -69,22 +136,33 @@ static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_chann
 void zsw_notification_manager_init(void)
 {
     memset(notifications, 0, sizeof(notifications));
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        notifications[i].id = NOTIFICATION_INVALID_ID;
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        notifications[i].id = ZSW_NOTIFICATION_MGR_INVALID_ID;
     }
     num_notifications = 0;
 }
 
 zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *not)
 {
-    uint32_t idx = find_free_notification_idx();
+    uint32_t idx;
 
+    // Prevent double notifications with the same ID. Return the double notification when found.
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (notifications[i].id == not->id) {
+            return &notifications[i];
+        }
+    }
+
+    idx = find_free_notification_idx();
+    // List full. We remove the oldest notification.
     if (idx == NOTIFICATION_INVALID_INDEX) {
-        // List full then we replace the oldest
+        LOG_DBG("Notification buffer full");
+
         idx = find_oldest_notification_idx();
-        __ASSERT_NO_MSG(idx != NOTIFICATION_INVALID_INDEX);
-        notifications[idx].id = NOTIFICATION_INVALID_ID;
-        num_notifications--;
+        zsw_notification_manager_remove(notifications[idx].id);
+
+        // No check needed because we have removed one notification.
+        idx = find_free_notification_idx();
     }
 
     memset(&notifications[idx], 0, sizeof(zsw_not_mngr_notification_t));
@@ -117,6 +195,20 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         notifications[idx].id = not->id;
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "Discord", not->src_len) == 0) {
+        // {"t":"notify","id":1701847200,"src":"Discord","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
+
+        notifications[idx].src = NOTIFICATION_SRC_DISCORD;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "LinkedIn", not->src_len) == 0) {
+        // {"t":"notify","id":1701847200,"src":"LinkedIn","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
+
+        notifications[idx].src = NOTIFICATION_SRC_LINKEDIN;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     } else {
         // TODO add more
         // For example debug notfication
@@ -134,6 +226,8 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         num_notifications++;
     }
 
+    LOG_DBG("Notifications: %u", num_notifications);
+
     return &notifications[idx];
 }
 
@@ -144,17 +238,21 @@ int32_t zsw_notification_manager_remove(uint32_t id)
     if (idx != NOTIFICATION_INVALID_INDEX) {
         struct zsw_notification_remove_event evt;
 
+        LOG_DBG("Remove notification on place %u with ID: %u", idx, notifications[idx].id);
+
         // NOTE: We pass a copy of the notification into the ZBUS event. This help the listeners to
         // handle the notification, because the data in the notification buffer can change before
         // the listeners have ececuted their operations.
         memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
         zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
 
-        notifications[idx].id = NOTIFICATION_INVALID_ID;
+        notifications[idx].id = ZSW_NOTIFICATION_MGR_INVALID_ID;
 
         if (num_notifications > 0) {
             num_notifications--;
         }
+
+        LOG_DBG("Notifications: %u", num_notifications);
 
         return 0;
     }
@@ -162,19 +260,17 @@ int32_t zsw_notification_manager_remove(uint32_t id)
     return -ENOENT;
 }
 
-int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, int *num_notifications)
+void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, uint32_t *num_notifications)
 {
-    int num_stored = 0;
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id != NOTIFICATION_INVALID_ID) {
+    uint32_t num_stored = 0;
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) {
             nots[num_stored] = notifications[i];
             num_stored++;
         }
     }
 
     *num_notifications = num_stored;
-
-    return 0;
 }
 
 int32_t zsw_notification_manager_get_num(void)
@@ -185,59 +281,9 @@ int32_t zsw_notification_manager_get_num(void)
 zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void)
 {
     int idx = find_newest_notification_idx();
-    if (idx != NOTIFICATION_INVALID_ID) {
+    if (idx != ZSW_NOTIFICATION_MGR_INVALID_ID) {
         return &notifications[idx];
-    } else {
-        return NULL;
-    }
-}
-
-static uint32_t find_notification_idx(uint32_t id)
-{
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id == id) {
-            return i;
-        }
-    }
-    return NOTIFICATION_INVALID_INDEX;
-}
-
-static uint32_t find_free_notification_idx(void)
-{
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id == NOTIFICATION_INVALID_ID) {
-            return i;
-        }
-    }
-    return NOTIFICATION_INVALID_INDEX;
-}
-
-static uint32_t find_oldest_notification_idx(void)
-{
-    uint32_t oldest_idx = NOTIFICATION_INVALID_ID;
-    uint32_t oldest_id = NOTIFICATION_INVALID_INDEX;
-
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id != NOTIFICATION_INVALID_ID && notifications[i].id < oldest_id) {
-            oldest_idx = i;
-            oldest_id = notifications[i].id;
-        }
     }
 
-    return oldest_idx;
-}
-
-static uint32_t find_newest_notification_idx(void)
-{
-    uint32_t newest_idx = NOTIFICATION_INVALID_ID;
-    uint32_t newest_id = 0;
-
-    for (int i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id != NOTIFICATION_INVALID_ID && notifications[i].id > newest_id) {
-            newest_idx = i;
-            newest_id = notifications[i].id;
-        }
-    }
-
-    return newest_idx;
+    return NULL;
 }

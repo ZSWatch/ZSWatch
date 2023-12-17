@@ -27,7 +27,7 @@
 
 /** @brief Maximum number of notification stored at a time.
 */
-#define ZSW_NOTIFICATION_MGR_MAX_STORED         20
+#define ZSW_NOTIFICATION_MGR_MAX_STORED         10
 
 /** @brief Notification sources definitions.
 */
@@ -38,6 +38,8 @@ typedef enum {
     NOTIFICATION_SRC_GMAIL,                                     /**< */
     NOTIFICATION_SRC_YOUTUBE,                                   /**< */
     NOTIFICATION_SRC_HOME_ASSISTANT,                            /**< */
+    NOTIFICATION_SRC_DISCORD,                                   /**< */
+    NOTIFICATION_SRC_LINKEDIN,                                  /**< */
     NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
@@ -63,13 +65,13 @@ void zsw_notification_manager_init(void);
 zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *notification);
 
 /** @brief
- *  @param id
- *  @return
+ *  @param id   Notification ID
+ *  @return     0 when successful
 */
 int32_t zsw_notification_manager_remove(uint32_t id);
 
 /** @brief
- *  @param id
+ *  @param id               Notification ID
  *  @param notification
  *  @return
 */
@@ -78,9 +80,8 @@ int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *n
 /** @brief
  *  @param notifications
  *  @param num_notifications
- *  @return
 */
-int32_t zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, int *num_notifications);
+void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, uint32_t *num_notifications);
 
 /** @brief
  *  @return

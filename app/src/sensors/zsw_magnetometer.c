@@ -46,7 +46,7 @@ static magn_calib_data_t calibration_data;
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(magnetometer_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_slow_chan);
+ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_magnetometer_lis, zbus_periodic_slow_callback);
 static const struct device *const magnetometer = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(lis2mdl));
 
@@ -191,7 +191,7 @@ int zsw_magnetometer_init(void)
         return -EFAULT;
     }
 
-    zsw_periodic_chan_add_obs(&periodic_event_slow_chan, &zsw_magnetometer_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_magnetometer_lis);
 
     return 0;
 }

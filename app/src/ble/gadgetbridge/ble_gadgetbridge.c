@@ -71,7 +71,6 @@ static void music_control_event_callback(const struct zbus_channel *chan)
     if (msg_len > 0) {
         ble_comm_send(buf, msg_len);
     }
-
 }
 
 void parse_time(char *start_time)
@@ -381,7 +380,7 @@ void convert_to_encoded_text(char *data, int len, char *out_data, int out_buf_le
     out_data[j] = '\0';
 }
 
-int parse_notify(char *data, int len)
+static int parse_notify(char *data, int len)
 {
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
@@ -460,7 +459,7 @@ static int parse_weather(char *data, int len)
     return 0;
 }
 
-int parse_musicinfo(char *data, int len)
+static int parse_musicinfo(char *data, int len)
 {
     // {t:"musicinfo",artist:"Ava Max",album:"Heaven & Hell",track:"Sweet but Psycho",dur:187,c:-1,n:-1}
     char *temp_value;
@@ -484,7 +483,7 @@ int parse_musicinfo(char *data, int len)
     return 0;
 }
 
-int parse_musicstate(char *data, int len)
+static int parse_musicstate(char *data, int len)
 {
     // {t:"musicinfo",artist:"Ava Max",album:"Heaven & Hell",track:"Sweet but Psycho",dur:187,c:-1,n:-1}
     char *temp_value;

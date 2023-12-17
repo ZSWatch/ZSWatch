@@ -14,7 +14,7 @@ static void on_close_accel(void);
 
 LV_IMG_DECLARE(move);
 
-ZBUS_CHAN_DECLARE(periodic_event_fast_chan);
+ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(accel_app_lis, zbus_fetch_accel_data_callback);
 
 static application_t app = {
@@ -27,12 +27,12 @@ static application_t app = {
 static void accel_app_start(lv_obj_t *root, lv_group_t *group)
 {
     accel_ui_show(root, on_close_accel);
-    zsw_periodic_chan_add_obs(&periodic_event_fast_chan, &accel_app_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &accel_app_lis);
 }
 
 static void accel_app_stop(void)
 {
-    zsw_periodic_chan_rm_obs(&periodic_event_fast_chan, &accel_app_lis);
+    zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &accel_app_lis);
     accel_ui_remove();
 }
 

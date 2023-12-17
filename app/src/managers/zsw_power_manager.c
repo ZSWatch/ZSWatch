@@ -205,6 +205,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
             if (!is_active) {
                 is_stationary = false;
                 zsw_display_control_pwr_ctrl(true);
+                zsw_display_control_sleep_ctrl(false);
                 retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
                 zsw_retained_ram_update();
                 zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
