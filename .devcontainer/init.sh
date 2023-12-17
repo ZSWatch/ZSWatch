@@ -11,6 +11,17 @@ ENDCOLOR="\e[0m"
 
 mkdir ${TEMP_DIR}
 
+echo -e "${GREEN}Install dependencies for POSIX GUI${ENDCOLOR}"
+dpkg --add-architecture i386
+apt update
+apt -y install pkg-config libsdl2-dev:i386
+export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
+
+echo -e "${GREEN}Install nRF Command Line Tools${ENDCOLOR}"
+NRF_CMD_LINE_DEB=${TEMP_DIR}/JLink_Linux_x86_64.deb
+wget https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-23-2/nrf-command-line-tools_10.23.2_amd64.deb -O ${NRF_CMD_LINE_DEB}
+dpkg -i ${NRF_CMD_LINE_DEB}
+
 echo -e "${GREEN}Enable udev daemon${ENDCOLOR}"
 apt -y install udev
 /lib/systemd/systemd-udevd --daemon
@@ -22,6 +33,7 @@ curl -s -X POST https://www.segger.com/downloads/jlink/${JLINK_VERSION}.deb H "C
 dpkg -i $JLINK_DEB
 
 echo -e "${GREEN}Initialize project${ENDCOLOR}"
+cd ${CURRENT_DIR}
 git config --global --add safe.directory '*'
 git submodule update --init --recursive
 cd ${CURRENT_DIR}/app
@@ -29,8 +41,8 @@ west init -l .
 west update
 
 echo -e "${GREEN}Add build configurations${ENDCOLOR}"
-west build --build-dir /workspaces/ZSWatch/app/debug_rev4 /workspaces/ZSWatch/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app;. -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=/workspaces/ZSWatch/app/boards/debug.conf
-west build --build-dir /workspaces/ZSWatch/app/release_rev4 /workspaces/ZSWatch/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app;. -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=/workspaces/ZSWatch/app/boards/release.conf
+west build --build-dir /workspaces/ZSWatch/app/debug_rev4 /workspaces/ZSWatch/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=/workspaces/ZSWatch/app/boards/debug.conf
+west build --build-dir /workspaces/ZSWatch/app/release_rev4 /workspaces/ZSWatch/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=/workspaces/ZSWatch/app/boards/release.conf
 
 echo -e "${GREEN}Clean up${ENDCOLOR}"
 rm -rf ${PWD}/${TEMP_DIR}

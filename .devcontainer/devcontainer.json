@@ -15,7 +15,8 @@
                 "nordic-semiconductor.nrf-connect-extension-pack", "nordic-semiconductor.nrf-kconfig",
                 "nordic-semiconductor.nrf-devicetree", "nordic-semiconductor.nrf-connect",
                 "DavidAnson.vscode-markdownlint", "yzhang.markdown-all-in-one", "vscode-icons-team.vscode-icons",
-                "donjayamanne.githistory", "Gruntfuggly.todo-tree", "codechecker.vscode-codechecker"
+                "donjayamanne.githistory", "Gruntfuggly.todo-tree", "codechecker.vscode-codechecker",
+                "mhutchie.git-graph"
             ],
             "settings": {
                 "editor.tabSize": 4,
@@ -30,5 +31,5 @@
             }
         }
     },
-	"forwardPorts": [1234, 3000, 8001]
+	"forwardPorts": [2332, 2333, 19021, 19022, 19030, 19080, 43649, 8001]
 }
