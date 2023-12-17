@@ -2,7 +2,8 @@
     "name": "ZSWatch Development",
     "dockerFile": "Dockerfile",
 	"runArgs": [
-		"--privileged"
+		"--privileged",
+		"--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
 	],
 	"containerEnv": {
 		"WORKSPACE_DIR": "${containerWorkspaceFolder}"

@@ -14,4 +14,5 @@ RUN sudo apt-get -y install libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-r
 RUN pip install --upgrade pip
 RUN pip install codechecker
 
-RUN chmod +x init.sh
+COPY init.sh /tmp/init.sh
+RUN chmod +x /tmp/init.sh
