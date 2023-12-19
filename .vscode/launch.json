@@ -1,0 +1,19 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "ZSWatch GDB Remote",
+			"type": "cortex-debug",
+			"request": "launch",
+			"runToEntryPoint": "main",
+			"executable": "${workspaceFolder}/app/debug_rev4/zephyr/zephyr.elf",
+			"cwd": "${workspaceFolder}",
+			"servertype": "external",
+			"interface": "swd",
+			"gdbTarget": "${env:TARGET_GDB_IP}:${env:TARGET_GDB_PORT}",
+			"gdbPath": "/usr/bin/gdb-multiarch",
+			"rtos": "GDBServer/RTOSPlugin_Zephyr",
+			"device": "nRF5340_xxAA_APP",
+		}
+	]
+}

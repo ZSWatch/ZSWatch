@@ -1,9 +1,9 @@
 {
-    "name": "ZSWatch Development",
+    "name": "ZSWatch Development Environment",
     "dockerFile": "Dockerfile",
 	"runArgs": [
-		"--privileged",
-		"--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
+		"--env-file", "${localWorkspaceFolder}/.devcontainer/.env",
+        "--network=host"
 	],
 	"containerEnv": {
 		"WORKSPACE_DIR": "${containerWorkspaceFolder}"
@@ -16,7 +16,7 @@
                 "nordic-semiconductor.nrf-devicetree", "nordic-semiconductor.nrf-connect",
                 "DavidAnson.vscode-markdownlint", "yzhang.markdown-all-in-one", "vscode-icons-team.vscode-icons",
                 "donjayamanne.githistory", "Gruntfuggly.todo-tree", "codechecker.vscode-codechecker",
-                "mhutchie.git-graph"
+                "mhutchie.git-graph", "cschlosser.doxdocgen", "mcu-debug.debug-tracker-vscode", "marus25.cortex-debug"
             ],
             "settings": {
                 "editor.tabSize": 4,
@@ -27,9 +27,19 @@
                 "workbench.iconTheme": "vscode-icons",
                 "terminal.integrated.defaultProfile.linux": "bash",
                 "terminal.integrated.shell.linux": "/bin/bash",
-                "git.autofetch": true
+                "git.autofetch": true,
+				"astyle.astylerc": "${workspaceRoot}/app/tools/astyle.cfg",
+				"nrf-connect.applications": [
+					"${workspaceFolder}/app"
+				],
+				"nrf-connect.boardRoots": [
+					"${workspaceFolder}/app"
+				],
+				"nrf-connect.debugging.bindings": {
+					"${workspaceFolder}/app/build": "Launch build"
+				}
             }
         }
     },
-	"forwardPorts": [2332, 2333, 19021, 19022, 19030, 19080, 43649, 8001]
+	"forwardPorts": [8001]
 }
