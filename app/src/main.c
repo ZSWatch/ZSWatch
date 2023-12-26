@@ -94,9 +94,7 @@ static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void on_input_subsys_callback(struct input_event *evt);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
-#ifdef CONFIG_BOARD_NATIVE_POSIX
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e);
-#endif
 
 static int kernal_wdt_id;
 
@@ -195,10 +193,6 @@ static void run_input_work(struct k_work *item)
         last_input_event.code = container->event.code;
         return;
     }
-
-    if (gesture_code != LV_DIR_NONE) {
-        handle_screen_gesture(gesture_code);
-    }
 }
 
 static void run_init_work(struct k_work *item)
@@ -246,9 +240,7 @@ static void run_init_work(struct k_work *item)
 
     watch_state = WATCHFACE_STATE;
 
-#ifdef CONFIG_BOARD_NATIVE_POSIX
     lv_obj_add_event_cb(lv_scr_act(), on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
-#endif
 
     watchface_app_start(input_group, on_watchface_app_event_callback);
 }
@@ -448,7 +440,6 @@ static void handle_screen_gesture(lv_dir_t event_code)
     }
 }
 
-#ifdef CONFIG_BOARD_NATIVE_POSIX
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
 {
     lv_dir_t  dir;
@@ -458,7 +449,6 @@ static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
         handle_screen_gesture(dir);
     }
 }
-#endif
 
 static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
