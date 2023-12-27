@@ -35,9 +35,10 @@
 				"nrf-connect.boardRoots": [
 					"${workspaceFolder}/app"
 				],
-				"nrf-connect.debugging.bindings": {
-					"${workspaceFolder}/app/build": "Launch build"
-				}
+                "nrf-connect.debugging.bindings": {
+                    "${workspaceFolder}/app/debug_rev3": "ZSWatch GDB Remote Debug-Rev3",
+                    "${workspaceFolder}/app/debug_rev4": "ZSWatch GDB Remote Debug-Rev4"
+                }
             }
         }
     },

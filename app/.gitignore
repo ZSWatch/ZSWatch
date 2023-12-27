@@ -1,5 +1,6 @@
 debug*
 release*
+native_posix*
 
 # Local History for Visual Studio Code
 .history/

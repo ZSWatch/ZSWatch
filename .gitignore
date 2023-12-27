@@ -1,4 +1,3 @@
-build*
 *.code-workspace
 *__pycache__*
 nrf/

@@ -3,7 +3,7 @@ FROM ghcr.io/zephyrproject-rtos/ci:v0.26.2
 ENV PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 
 RUN apt-get -y update
-RUN apt-get -y install astyle dos2unix nano curl
+RUN apt-get -y install dos2unix nano curl
 RUN apt-get -y install inetutils-ping
 
 # Install GDB

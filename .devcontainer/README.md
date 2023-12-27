@@ -43,7 +43,7 @@ This development container contains all the neccessary tools to start with the d
 
 - Start `J-Link GDB Server` on your host machine
 - Open a new connection with your J-Link. **Make sure that you disable the `Localhost only` option under `Server settings`**
-- Start a debug session in the development container of VS Code
+- Start a debug session over the nRF Connect plugin for the target debug build
 
 ## Maintainer
 
