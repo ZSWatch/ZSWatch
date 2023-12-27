@@ -31,8 +31,11 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
+static void on_reboot_changed(lv_setting_value_t value, bool final);
+static void on_restart_screen_changed(lv_setting_value_t value, bool final);
 
 static void ble_pairing_work_handler(struct k_work *work);
+static void display_restart_work_handler(struct k_work *work);
 
 LV_IMG_DECLARE(settings);
 
@@ -45,6 +48,8 @@ typedef struct setting_app {
 } setting_app_t;
 
 K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
+K_WORK_DEFINE(display_restart_work, display_restart_work_handler);
+
 
 // Default values.
 static setting_app_t settings_app = {
@@ -62,7 +67,7 @@ static application_t app = {
     .stop_func = settings_app_stop
 };
 
-static lv_settings_item_t general_page_items[] = {
+static lv_settings_item_t display_page_items[] = {
     {
         .type = LV_SETTINGS_TYPE_SLIDER,
         .icon = LV_SYMBOL_SETTINGS,
@@ -73,17 +78,6 @@ static lv_settings_item_t general_page_items[] = {
                 .inital_val = &settings_app.brightness,
                 .min_val = 1,
                 .max_val = 100,
-            }
-        }
-    },
-    {
-        .type = LV_SETTINGS_TYPE_SWITCH,
-        .icon = LV_SYMBOL_AUDIO,
-        .change_callback = on_display_vib_press_changed,
-        .item = {
-            .sw = {
-                .name = "Vibrate on click",
-                .inital_val = &settings_app.vibration_on_click,
             }
         }
     },
@@ -100,23 +94,12 @@ static lv_settings_item_t general_page_items[] = {
     },
     {
         .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_REFRESH,
-        .change_callback = on_reset_steps_changed,
+        .icon = LV_SYMBOL_IMAGE,
+        .change_callback = on_restart_screen_changed,
         .item = {
             .btn = {
-                .name = "Reset step counter",
+                .name = "Restart screen",
                 .text = LV_SYMBOL_REFRESH
-            }
-        }
-    },
-    {
-        .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_BACKSPACE,
-        .change_callback = on_clear_storage_changed,
-        .item = {
-            .btn = {
-                .name = "Erase external flash.",
-                .text = LV_SYMBOL_TRASH
             }
         }
     },
@@ -171,16 +154,68 @@ static lv_settings_item_t bluetooth_page_items[] = {
     },
 };
 
+static lv_settings_item_t other_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_POWER,
+        .change_callback = on_reboot_changed,
+        .item = {
+            .btn = {
+                .name = "Reboot",
+                .text = LV_SYMBOL_REFRESH
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_BACKSPACE,
+        .change_callback = on_clear_storage_changed,
+        .item = {
+            .btn = {
+                .name = "Erase external flash.",
+                .text = LV_SYMBOL_TRASH
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_AUDIO,
+        .change_callback = on_display_vib_press_changed,
+        .item = {
+            .sw = {
+                .name = "Vibrate on click",
+                .inital_val = &settings_app.vibration_on_click,
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_REFRESH,
+        .change_callback = on_reset_steps_changed,
+        .item = {
+            .btn = {
+                .name = "Reset step counter",
+                .text = LV_SYMBOL_REFRESH
+            }
+        }
+    },
+};
+
 static lv_settings_page_t settings_menu[] = {
     {
-        .name = "General",
-        .num_items = ARRAY_SIZE(general_page_items),
-        .items = general_page_items
+        .name = "Display",
+        .num_items = ARRAY_SIZE(display_page_items),
+        .items = display_page_items
     },
     {
         .name = "Bluetooth",
         .num_items = ARRAY_SIZE(bluetooth_page_items),
         .items = bluetooth_page_items
+    },
+    {
+        .name = "Other",
+        .num_items = ARRAY_SIZE(other_page_items),
+        .items = other_page_items
     },
 };
 
@@ -289,6 +324,32 @@ static void on_clear_storage_changed(lv_setting_value_t value, bool final)
         zsw_popup_show("Erase all settings?",
                        "Are you sure?\nThis can take up to 300s, but probably less.\nThe watch will restart once done.",
                        on_clear_storage_confirm, 10, true);
+    }
+}
+
+static void display_restart_work_handler(struct k_work *work)
+{
+    zsw_display_control_sleep_ctrl(false);
+    zsw_display_control_pwr_ctrl(false);
+    zsw_display_control_pwr_ctrl(true);
+    zsw_display_control_sleep_ctrl(false);
+    zsw_display_control_sleep_ctrl(true);
+}
+
+static void on_restart_screen_changed(lv_setting_value_t value, bool final)
+{
+    if (final) {
+        // Display functions can not run from LVGL context so a context switch is needed.
+        // Due to display_off function will wait for LVGL to finish rendering, so we will hang as we wait
+        // for ourselves to finish.
+        k_work_submit(&display_restart_work);
+    }
+}
+
+static void on_reboot_changed(lv_setting_value_t value, bool final)
+{
+    if (final) {
+        sys_reboot(SYS_REBOOT_COLD);
     }
 }
 

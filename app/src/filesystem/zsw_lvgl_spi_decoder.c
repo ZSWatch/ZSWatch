@@ -171,6 +171,7 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
         return errno_to_lv_fs_res(rc);
     }
     *br = btr;
+    open_file->index += btr;
     return errno_to_lv_fs_res(0);
 }
 
@@ -190,7 +191,7 @@ static lv_fs_res_t lvgl_fs_seek(struct _lv_fs_drv_t *drv, void *file, uint32_t p
             open_file->index = open_file->header->len;
             break;
         case LV_FS_SEEK_CUR:
-            // We are already there?
+            open_file->index += pos;
             break;
         case LV_FS_SEEK_SET:
         default:
