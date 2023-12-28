@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 JLINK_VERSION=JLink_Linux_V794b_x86_64
-TEMP_DIR="/tmp"
+TEMP_DIR="tmp"
 CURRENT_DIR=${PWD}
 
 RED="\e[31m"
 GREEN="\e[32m"
 ENDCOLOR="\e[0m"
 
-mkdir ${TEMP_DIR}/downloads
+mkdir -p ${TEMP_DIR}/downloads
 
 if [ -z "${BUILD_ASTYLE}" ]; then
     echo -e "${GREEN}Install AStyle 3.4${ENDCOLOR}"
@@ -64,8 +64,8 @@ fi
 if [ ! -z "${INIT_REV_4}" ];
 then
     echo -e "${GREEN}   Add hardware revision 4${ENDCOLOR}"
-    west build --build-dir ${PWD}/app/debug_rev4 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
-    west build --build-dir ${PWD}/app/release_rev4 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
+    west build --build-dir ${PWD}/app/debug_rev4 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
+    west build --build-dir ${PWD}/app/release_rev4 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@4 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
 else
     echo -e "${GREEN}   Skip revision 4${ENDCOLOR}"
 fi
@@ -73,8 +73,8 @@ fi
 if [ ! -z "${INIT_REV_3}" ];
 then
     echo -e "${GREEN}   Add revision 3${ENDCOLOR}"
-    west build --build-dir ${PWD}/app/debug_rev3 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@3 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
-    west build --build-dir ${PWD}/app/release_rev3 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@3 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
+    west build --build-dir ${PWD}/app/debug_rev3 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@3 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
+    west build --build-dir ${PWD}/app/release_rev3 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@3 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
 else
     echo -e "${GREEN}   Skip hardware revision 3${ENDCOLOR}"
 fi
@@ -82,8 +82,8 @@ fi
 if [ ! -z "${INIT_REV_2}" ];
 then
     echo -e "${GREEN}   Add revision 2${ENDCOLOR}"
-    west build --build-dir ${PWD}/app/debug_rev2 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@2 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
-    west build --build-dir ${PWD}/app/release_rev2 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@2 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
+    west build --build-dir ${PWD}/app/debug_rev2 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@2 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
+    west build --build-dir ${PWD}/app/release_rev2 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@2 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
 else
     echo -e "${GREEN}   Skip hardware revision 2${ENDCOLOR}"
 fi
@@ -91,12 +91,12 @@ fi
 if [ ! -z "${INIT_REV_1}" ];
 then
     echo -e "${GREEN}   Add revision 1${ENDCOLOR}"
-    west build --build-dir ${PWD}/app/debug_rev1 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@1 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
-    west build --build-dir ${PWD}/app/release_rev1 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@1 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=/workspaces/ZSWatch/app -DCONF_FILE=/workspaces/ZSWatch/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
+    west build --build-dir ${PWD}/app/debug_rev1 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@1 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/debug.conf
+    west build --build-dir ${PWD}/app/release_rev1 ${PWD}/app --pristine --board zswatch_nrf5340_cpuapp@1 --no-sysbuild -- -DNCS_TOOLCHAIN_VERSION=NONE -DBOARD_ROOT=${PWD}/app -DCONF_FILE=${PWD}/app/prj.conf -DEXTRA_CONF_FILE=${PWD}/app/boards/release.conf
 else
     echo -e "${GREEN}   Skip hardware revision 1${ENDCOLOR}"
 fi
 
 echo -e "${GREEN}Clean up${ENDCOLOR}"
-touch ~/.zswatch_initialized
-rm -rf ${TEMP_DIR}/downloads
+touch .vscode/.zswatch_initialized
+rm -rf ${PWD}/${TEMP_DIR}

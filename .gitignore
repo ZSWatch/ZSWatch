@@ -2,6 +2,9 @@
 *__pycache__*
 nrf/
 
+# Development container
+tmp/
+
 # Zephyr workspace
 /.west
 /bootloader

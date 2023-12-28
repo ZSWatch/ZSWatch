@@ -41,7 +41,12 @@ This development container contains all the neccessary tools to start with the d
 
 ## Start a debug session
 
-- Start `J-Link GDB Server` on your host machine
+- Start `J-Link GDB Server` on your host machine (GUI or shell) and use the following settings
+
+```sh
+JLinkGDBServerCL.exe -select USB=0 -device nRF5340_xxAA_APP -endian little -if SWD -speed 4000 -noir -noLocalhostOnly -nologtofile -port 2331 -SWOPort 2332 -TelnetPort 2333
+```
+
 - Open a new connection with your J-Link. **Make sure that you disable the `Localhost only` option under `Server settings`**
 - Start a debug session over the nRF Connect plugin for the target debug build
 
