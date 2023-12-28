@@ -22,3 +22,11 @@ void info_ui_set_ref_off_time_sec(uint64_t total_off_time, uint32_t percent_off)
 void info_ui_set_time_to_inactive_sec(uint32_t time_left_seconds);
 
 void info_ui_set_mac_addr(char *mac_str);
+
+void info_ui_set_gatt_status(bool cccd_enabled, uint16_t mtu);
+
+void info_app_ui_set_conn_params(uint16_t interval, uint16_t latency, uint16_t timeout);
+
+void info_app_ui_set_conn_mac(char *mac_str);
+
+void info_app_ui_set_conn_security_info(int info, int err);

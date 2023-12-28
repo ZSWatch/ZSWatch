@@ -245,6 +245,14 @@ int ble_comm_long_connection_interval(void)
     return err;
 }
 
+int ble_comm_get_mtu(void)
+{
+    if (current_conn == NULL) {
+        return 0;
+    }
+    return bt_gatt_get_mtu(current_conn);
+}
+
 static void update_conn_interval_slow_handler(struct k_work *item)
 {
     LOG_DBG("Change to long connection interval");

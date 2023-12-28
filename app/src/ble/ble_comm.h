@@ -136,3 +136,8 @@ int ble_comm_short_connection_interval(void);
  *  @return 0 when successful
 */
 int ble_comm_long_connection_interval(void);
+
+/** @brief
+ *  @return The MTU for current connection. 0 If no connection.
+*/
+int ble_comm_get_mtu(void);
