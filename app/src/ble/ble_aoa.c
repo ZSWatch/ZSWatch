@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <stdbool.h>
+#include <stdint.h>
+#ifdef CONFIG_BT_EXT_ADV
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/direction.h>
@@ -128,3 +130,14 @@ bool bleAoaAdvertise(uint16_t min, uint16_t max, bool on)
     }
     return ok;
 }
+#else
+bool bleAoaInit()
+{
+    return true;
+}
+
+bool bleAoaAdvertise(uint16_t min, uint16_t max, bool on)
+{
+    return true;
+}
+#endif
