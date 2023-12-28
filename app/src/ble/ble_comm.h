@@ -92,7 +92,6 @@ typedef struct ble_comm_http_response {
     char response[MAX_HTTP_FIELD_LENGTH + 1];
 } ble_comm_http_response_t;
 
-
 typedef struct ble_comm_cb_data {
     ble_comm_data_type_t type;
     union {

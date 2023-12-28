@@ -50,7 +50,6 @@ typedef struct setting_app {
 K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
 K_WORK_DEFINE(display_restart_work, display_restart_work_handler);
 
-
 // Default values.
 static setting_app_t settings_app = {
     .brightness = 30,

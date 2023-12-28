@@ -180,7 +180,6 @@ static void watchface_show(watchface_app_evt_listener evt_cb)
     lv_obj_set_style_img_recolor_opa(ui_pressure_image, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 #endif
 
-
     ui_humidity_arc = lv_arc_create(ui_digital_watchface);
     lv_obj_set_width(ui_humidity_arc, 240);
     lv_obj_set_height(ui_humidity_arc, 240);
