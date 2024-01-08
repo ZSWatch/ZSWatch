@@ -61,8 +61,8 @@ void ppt_remote_ui_show(lv_obj_t *root, on_button_press_cb_t next_cb, on_button_
     lv_style_set_transition(&style_pr, &transition_dsc_pr);
 
     /*Add a button the current screen*/
-    lv_obj_t *next = lv_btn_create(lv_scr_act());
-    lv_obj_align(next, LV_ALIGN_RIGHT_MID, -30, 0);
+    lv_obj_t *next = lv_btn_create(root_page);
+    lv_obj_align(next, LV_ALIGN_RIGHT_MID, -10, 0);
     lv_obj_add_style(next, &style_pr, LV_STATE_PRESSED);
     lv_obj_add_style(next, &style_def, 0);
 
@@ -76,8 +76,8 @@ void ppt_remote_ui_show(lv_obj_t *root, on_button_press_cb_t next_cb, on_button_
     lv_obj_center(label_next);
 
     /*Add a button the current screen*/
-    lv_obj_t *prev = lv_btn_create(lv_scr_act());
-    lv_obj_align(prev, LV_ALIGN_LEFT_MID, 30, 0);
+    lv_obj_t *prev = lv_btn_create(root_page);
+    lv_obj_align(prev, LV_ALIGN_LEFT_MID, 10, 0);
     lv_obj_add_style(prev, &style_pr, LV_STATE_PRESSED);
     lv_obj_add_style(prev, &style_def, 0);
 
