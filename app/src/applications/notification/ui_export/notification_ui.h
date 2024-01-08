@@ -25,7 +25,7 @@ typedef void(*on_notification_remove_cb_t)(uint32_t id);
 
 void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb);
 
-void notifications_ui_page_create(lv_group_t *input_group);
+void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group);
 
 void notifications_ui_page_close(void);
 

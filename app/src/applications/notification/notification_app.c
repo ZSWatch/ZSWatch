@@ -63,7 +63,7 @@ static void notification_app_start(lv_obj_t *root, lv_group_t *group)
 
     zsw_notification_manager_get_all(notifications, &num_notifications);
     notifications_ui_page_init(on_notification_page_notification_close);
-    notifications_ui_page_create(notification_group);
+    notifications_ui_page_create(root, notification_group);
 
     for (uint32_t i = 0; i < num_notifications; i++) {
         notifications_ui_add_notification(&notifications[i], notification_group);

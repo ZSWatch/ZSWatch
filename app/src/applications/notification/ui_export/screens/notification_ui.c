@@ -31,7 +31,7 @@ static void notification_delta2char(uint32_t delta, char *buf)
 /** @brief
  *  @param timer
 */
-static void label_on_Timer_Callback(lv_timer_t *timer)
+static void label_on_timer_callback(lv_timer_t *timer)
 {
     char buf[16];
     uint32_t delta;
@@ -50,7 +50,7 @@ static void label_on_Timer_Callback(lv_timer_t *timer)
 /** @brief
  *  @param event
 */
-static void notification_on_Clicked_Callback(lv_event_t *event)
+static void notification_on_clicked_callback(lv_event_t *event)
 {
     uint32_t id;
 
@@ -142,7 +142,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_style_bg_color(ui_Panel, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_side(ui_Panel, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_Panel, notification_on_Clicked_Callback, LV_EVENT_LONG_PRESSED, (void *)not->id);
+    lv_obj_add_event_cb(ui_Panel, notification_on_clicked_callback, LV_EVENT_LONG_PRESSED, (void *)not->id);
 
     ui_LabelSource = lv_label_create(ui_Panel);
     lv_obj_set_width(ui_LabelSource, LV_SIZE_CONTENT);
@@ -236,10 +236,10 @@ void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
     memset(active_notifications, 0, sizeof(active_notifications));
 }
 
-void notifications_ui_page_create(lv_group_t *group)
+void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
 {
-    main_page = lv_obj_create(lv_scr_act());
-    lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
+    main_page = lv_obj_create(parent);
+    lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
 
     lv_obj_set_size(main_page, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_border_side(main_page, LV_BORDER_SIDE_NONE, 0);
@@ -251,7 +251,7 @@ void notifications_ui_page_create(lv_group_t *group)
     lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
 
     /*
-        ui_ImgButtonClearAll = lv_imgbtn_create(lv_obj_create(lv_scr_act()));
+        ui_ImgButtonClearAll = lv_imgbtn_create(lv_obj_create(parent));
         lv_imgbtn_set_src(ui_ImgButtonClearAll, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_trash_png, NULL);
         lv_imgbtn_set_src(ui_ImgButtonClearAll, LV_IMGBTN_STATE_PRESSED, NULL, &ui_img_trash_png, NULL);
         lv_obj_set_width(ui_ImgButtonClearAll, 32);
@@ -266,7 +266,7 @@ void notifications_ui_page_create(lv_group_t *group)
     // Update the notifications position manually firt time.
     lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
 
-    timer = lv_timer_create(label_on_Timer_Callback, 5000UL, NULL);
+    timer = lv_timer_create(label_on_timer_callback, 5000UL, NULL);
 }
 
 void notifications_ui_page_close(void)
