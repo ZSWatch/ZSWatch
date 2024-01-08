@@ -243,9 +243,23 @@ static void run_init_work(struct k_work *item)
     lv_obj_add_event_cb(lv_scr_act(), on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
 
     watchface_app_start(input_group, on_watchface_app_event_callback);
+
+#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
+    const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
+    if (!device_is_ready(hw_wdt_dev)) {
+        LOG_DBG("Hardware watchdog %s is not ready; ignoring it.",
+                hw_wdt_dev->name);
+        hw_wdt_dev = NULL;
+    }
+
+    task_wdt_init(hw_wdt_dev);
+    kernal_wdt_id = task_wdt_add(TASK_WDT_FEED_INTERVAL_MS * 5, NULL, NULL);
+
+    k_work_schedule(&wdt_work, K_NO_WAIT);
+#endif
 }
 
-void run_wdt_work(struct k_work *item)
+static void run_wdt_work(struct k_work *item)
 {
     task_wdt_feed(kernal_wdt_id);
     k_work_schedule(&wdt_work, K_MSEC(TASK_WDT_FEED_INTERVAL_MS));
@@ -261,19 +275,6 @@ int main(void)
     } else if (bootmode_check(ZSW_BOOT_MODE_FLASH_ERASE)) {
         zsw_rtt_flash_loader_erase_external();
     }
-#endif
-#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
-    const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
-    if (!device_is_ready(hw_wdt_dev)) {
-        LOG_DBG("Hardware watchdog %s is not ready; ignoring it.",
-                hw_wdt_dev->name);
-        hw_wdt_dev = NULL;
-    }
-
-    task_wdt_init(hw_wdt_dev);
-    kernal_wdt_id = task_wdt_add(TASK_WDT_FEED_INTERVAL_MS * 5, NULL, NULL);
-
-    k_work_schedule(&wdt_work, K_NO_WAIT);
 #endif
     // The init code requires a bit of stack.
     // So in order to not increase CONFIG_MAIN_STACK_SIZE and loose
