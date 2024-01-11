@@ -278,7 +278,7 @@ static void add_date(lv_obj_t *parent)
     lv_obj_align_to(day_label, parent, LV_ALIGN_CENTER, SMALL_WATCHFACE_CENTER_OFFSET + 25, -7);
 }
 
-static void watchface_show(watchface_app_evt_listener evt_cb)
+static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ARG_UNUSED(evt_cb);
     lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);

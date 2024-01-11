@@ -28,8 +28,10 @@
 #include <zsw_clock.h>
 #include <zsw_retained_ram_storage.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/settings/settings.h>
 
 #include "watchface_app.h"
+#include "zsw_settings.h"
 #include "events/chg_event.h"
 #include "events/accel_event.h"
 #include "events/battery_event.h"
@@ -50,6 +52,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan);
 static void zbus_chg_state_data_callback(const struct zbus_channel *chan);
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void zbus_activity_event_callback(const struct zbus_channel *chan);
+static int settings_load_handler(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg, void *param);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(watchface_ble_comm_lis, zbus_ble_comm_data_callback);
@@ -115,16 +118,24 @@ static bool is_suspended;
 static watchface_ui_api_t *watchfaces[MAX_WATCHFACES];
 static uint8_t num_watchfaces;
 static uint8_t current_watchface;
+static zsw_settings_watchface_t watchface_settings;
 
 static watchface_app_evt_listener watchface_evt_cb;
 
 static int watchface_app_init(void)
 {
+    int err;
     k_work_init_delayable(&general_work_item.work, general_work);
     k_work_init_delayable(&clock_work.work, general_work);
     k_work_init_delayable(&date_work.work, general_work);
     running = false;
     is_suspended = false;
+
+    err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
+    if (err == 0) {
+        LOG_ERR("Failed loading watchface settings");
+    }
+
     current_watchface = 0;
     return 0;
 }
@@ -190,7 +201,7 @@ static void general_work(struct k_work *item)
         case OPEN_WATCHFACE: {
             running = true;
             is_suspended = false;
-            watchfaces[current_watchface]->show(watchface_evt_cb);
+            watchfaces[current_watchface]->show(watchface_evt_cb, &watchface_settings);
             refresh_ui();
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
@@ -339,6 +350,23 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
             __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL clock_work");
         }
     }
+}
+
+static int settings_load_handler(const char *key, size_t len,
+                                 settings_read_cb read_cb, void *cb_arg, void *param)
+{
+    int rc;
+    zsw_settings_watchface_t *settings = (zsw_settings_watchface_t *)param;
+    if (len != sizeof(zsw_settings_watchface_t)) {
+        return -EINVAL;
+    }
+
+    rc = read_cb(cb_arg, settings, sizeof(zsw_settings_watchface_t));
+    if (rc >= 0) {
+        return 0;
+    }
+
+    return -ENODATA;
 }
 
 SYS_INIT(watchface_app_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

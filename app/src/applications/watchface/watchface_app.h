@@ -19,6 +19,7 @@
 
 #include <lvgl.h>
 #include <zephyr/init.h>
+#include "../../zsw_settings.h"
 
 // UI need to be initialized after watchface_app
 #define WATCHFACE_UI_INIT_PRIO 99
@@ -32,7 +33,7 @@ typedef enum watchface_app_evt_t {
 typedef void(*watchface_app_evt_listener)(watchface_app_evt_t);
 
 typedef struct watchface_ui_api_t {
-    void (*show)(watchface_app_evt_listener);
+    void (*show)(watchface_app_evt_listener, zsw_settings_watchface_t *settings);
     void (*remove)(void);
     void (*set_battery_percent)(int32_t percent, int32_t value);
     void (*set_hrm)(int32_t value);
@@ -50,4 +51,3 @@ void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb);
 void watchface_app_stop(void);
 void watchface_change(void);
 void watchface_app_register_ui(watchface_ui_api_t *ui);
-
