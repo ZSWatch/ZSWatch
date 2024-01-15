@@ -497,7 +497,6 @@ static int gattp_init(void)
     return bt_gattp_init(&gattp);
 }
 
-
 int ble_ancs_init(void)
 {
     int err = bt_ancs_client_init(&ancs_c);

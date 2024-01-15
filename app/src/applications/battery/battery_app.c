@@ -59,7 +59,7 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
         if (battery_samples[(next_battery_sample_index + i) % CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].timestamp !=
             0) {
             battery_ui_add_measurement(battery_samples[(next_battery_sample_index + i) %
-                                                                                       CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].mV);
+                                                       CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].mV);
         }
     }
 }

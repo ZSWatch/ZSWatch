@@ -38,7 +38,6 @@ typedef struct {
     bool notifications_enabled;
 } ble_connection_info_t;
 
-
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = ble_connected,
     .disconnected = ble_disconnected,

@@ -23,3 +23,10 @@ typedef bool zsw_settings_ble_aoa_en_t;
 typedef int32_t zsw_settings_ble_aoa_int_t;
 #define ZSW_SETTINGS_KEY_BLE_AOA_INT "aoa_int"
 #define ZSW_SETTINGS_BLE_AOA_INT (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_AOA_INT)
+
+typedef struct {
+    bool animations_on;
+    uint8_t default_index;
+} zsw_settings_watchface_t;
+#define ZSW_SETTINGS_KEY_WATCHFACE "watchface"
+#define ZSW_SETTINGS_WATCHFACE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_WATCHFACE)

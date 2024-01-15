@@ -33,6 +33,7 @@ static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_restart_screen_changed(lv_setting_value_t value, bool final);
+static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 
 static void ble_pairing_work_handler(struct k_work *work);
 static void display_restart_work_handler(struct k_work *work);
@@ -45,11 +46,11 @@ typedef struct setting_app {
     zsw_settings_display_always_on_t    display_always_on;
     zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
+    zsw_settings_watchface_t            watchface;
 } setting_app_t;
 
 K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
 K_WORK_DEFINE(display_restart_work, display_restart_work_handler);
-
 
 // Default values.
 static setting_app_t settings_app = {
@@ -57,7 +58,11 @@ static setting_app_t settings_app = {
     .vibration_on_click = true,
     .display_always_on = false,
     .ble_aoa_enabled = false,
-    .ble_aoa_tx_interval = 100
+    .ble_aoa_tx_interval = 100,
+    .watchface = {
+        .animations_on = false,
+        .default_index = 0,
+    },
 };
 
 static application_t app = {
@@ -201,6 +206,20 @@ static lv_settings_item_t other_page_items[] = {
     },
 };
 
+static lv_settings_item_t ui_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_VIDEO,
+        .change_callback = on_watchface_animation_changed,
+        .item = {
+            .sw = {
+                .name = "Enable animations on watchface.",
+                .inital_val = &settings_app.watchface.animations_on,
+            }
+        }
+    }
+};
+
 static lv_settings_page_t settings_menu[] = {
     {
         .name = "Display",
@@ -211,6 +230,11 @@ static lv_settings_page_t settings_menu[] = {
         .name = "Bluetooth",
         .num_items = ARRAY_SIZE(bluetooth_page_items),
         .items = bluetooth_page_items
+    },
+    {
+        .name = "UI",
+        .num_items = ARRAY_SIZE(ui_page_items),
+        .items = ui_page_items
     },
     {
         .name = "Other",
@@ -346,6 +370,12 @@ static void on_restart_screen_changed(lv_setting_value_t value, bool final)
     }
 }
 
+static void on_watchface_animation_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.watchface.animations_on = value.item.sw;
+    settings_save_one(ZSW_SETTINGS_WATCHFACE, &settings_app.watchface, sizeof(settings_app.watchface));
+}
+
 static void on_reboot_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
@@ -415,6 +445,17 @@ static int settings_load_cb(const char *name, size_t len,
 
         rc = read_cb(cb_arg, &settings_app.ble_aoa_tx_interval, sizeof(settings_app.ble_aoa_tx_interval));
         settings_app.ble_aoa_tx_interval = settings_app.ble_aoa_tx_interval;
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_WATCHFACE, &next) && !next) {
+        if (len != sizeof(settings_app.watchface)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.watchface, sizeof(settings_app.watchface));
         if (rc >= 0) {
             return 0;
         }

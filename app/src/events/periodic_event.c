@@ -7,7 +7,6 @@ static struct k_work_delayable periodic_slow_work;
 static struct k_work_delayable periodic_fast_work;
 static struct k_work_delayable periodic_mid_work;
 
-
 ZBUS_CHAN_DEFINE(periodic_event_10s_chan,
                  struct periodic_event,
                  NULL,

@@ -91,8 +91,6 @@ LOG_MODULE_REGISTER(gc9a01, CONFIG_DISPLAY_LOG_LEVEL);
 #define SLPIN               0x10
 #define SLPOUT              0x11
 
-
-
 static const uint8_t initcmd[] = {
     GC9A01A_INREGEN2, 0,
     0xEB, 1, 0x14,

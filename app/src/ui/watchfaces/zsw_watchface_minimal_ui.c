@@ -46,7 +46,7 @@ static int last_minute = -1;
 static int last_second = -1;
 static int last_num_not = -1;
 
-static void watchface_show(watchface_app_evt_listener evt_cb)
+static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ARG_UNUSED(evt_cb);
     lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
@@ -111,6 +111,18 @@ static void watchface_show(watchface_app_evt_listener evt_cb)
     lv_img_set_pivot(ui_second_img, 4, 108);
     lv_obj_set_style_img_recolor(ui_second_img, lv_color_hex(0xFF4242), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_second_img, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+#if defined(CONFIG_LV_Z_USE_FILESYSTEM)
+    if (settings->animations_on) {
+        lv_obj_t *img = lv_gif_create(ui_minimal_watchface);
+        lv_gif_set_src(img, "/lvgl_lfs/snoopy_alt.gif");
+        lv_obj_set_align(img, LV_ALIGN_CENTER);
+        lv_obj_set_width(img, LV_SIZE_CONTENT);
+        lv_obj_set_height(img, LV_SIZE_CONTENT);
+        lv_obj_set_x(img, -10);
+        lv_obj_set_y(img, 90);
+    }
+#endif
 }
 
 static void watchface_remove(void)

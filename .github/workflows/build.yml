@@ -23,8 +23,14 @@ jobs:
 
       - name: Dependencies
         run: |
-          sudo apt update
-          sudo apt install astyle
+          wget https://sourceforge.net/projects/astyle/files/astyle/astyle%203.4/astyle-3.4.10.tar.bz2/download -O astyle.tar.bz2
+          tar -xf astyle.tar.bz2
+          cd astyle-3.4.10
+          mkdir as-gcc-exe
+          cd as-gcc-exe
+          cmake ../
+          make
+          make install
 
       - name: Initialize
         working-directory: ZSWatch

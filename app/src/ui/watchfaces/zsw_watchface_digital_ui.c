@@ -81,7 +81,7 @@ static int last_num_not = -1;
 
 static watchface_app_evt_listener ui_evt_cb;
 
-static void watchface_show(watchface_app_evt_listener evt_cb)
+static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ui_evt_cb = evt_cb;
     lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
@@ -179,7 +179,6 @@ static void watchface_show(watchface_app_evt_listener evt_cb)
     lv_obj_set_style_img_recolor(ui_pressure_image, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_pressure_image, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 #endif
-
 
     ui_humidity_arc = lv_arc_create(ui_digital_watchface);
     lv_obj_set_width(ui_humidity_arc, 240);
@@ -494,6 +493,17 @@ static void watchface_show(watchface_app_evt_listener evt_cb)
                       LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_img_recolor(ui_weather_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_weather_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+#if defined(CONFIG_LV_Z_USE_FILESYSTEM)
+    if (settings->animations_on) {
+        lv_obj_t *img = lv_gif_create(ui_digital_watchface);
+        lv_gif_set_src(img, "/lvgl_lfs/snoopy.gif");
+        lv_obj_set_align(img, LV_ALIGN_CENTER);
+        lv_obj_set_width(img, LV_SIZE_CONTENT);
+        lv_obj_set_height(img, LV_SIZE_CONTENT);
+        lv_obj_set_y(img, 45);
+    }
+#endif
 
     // Listeners
     lv_obj_add_event_cb(ui_battery_arc, arc_event_pressed, LV_EVENT_CLICKED, NULL);
