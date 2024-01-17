@@ -17,12 +17,12 @@ static void notification_delta2char(uint32_t delta, char *buf)
     uint32_t hours = (delta % 86400) / 3600;
     uint32_t days = (delta % (86400 * 30)) / 86400;
 
-    if (minutes > 0) {
-        sprintf(buf, "%u min", minutes);
+    if (days > 0) {
+        sprintf(buf, "%u d", days);
     } else if (hours > 0) {
         sprintf(buf, "%u h", hours);
-    } else if (days > 0) {
-        sprintf(buf, "%u d", days);
+    } else if (minutes > 0) {
+        sprintf(buf, "%u d", minutes);
     } else {
         sprintf(buf, "Now");
     }
