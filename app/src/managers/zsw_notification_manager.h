@@ -40,6 +40,7 @@ typedef enum {
     NOTIFICATION_SRC_HOME_ASSISTANT,                            /**< */
     NOTIFICATION_SRC_DISCORD,                                   /**< */
     NOTIFICATION_SRC_LINKEDIN,                                  /**< */
+    NOTIFICATION_SRC_CALENDAR,                                  /**< */
     NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
@@ -69,13 +70,6 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
  *  @return     0 when successful
 */
 int32_t zsw_notification_manager_remove(uint32_t id);
-
-/** @brief
- *  @param id               Notification ID
- *  @param notification
- *  @return
-*/
-int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
 
 /** @brief
  *  @param notifications
