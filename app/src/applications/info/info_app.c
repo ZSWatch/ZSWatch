@@ -10,6 +10,7 @@
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_app_manager.h"
 #include "ble/ble_comm.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(info_app, LOG_LEVEL_DBG);
 
@@ -45,11 +46,11 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .security_changed = security_changed,
 };
 
-LV_IMG_DECLARE(statistic_icon);
+ZSW_LV_IMG_DECLARE(statistic_icon);
 
 static application_t app = {
     .name = "System Info",
-    .icon = &statistic_icon,
+    .icon = ZSW_LV_IMG_USE(statistic_icon),
     .start_func = info_app_start,
     .stop_func = info_app_stop
 };

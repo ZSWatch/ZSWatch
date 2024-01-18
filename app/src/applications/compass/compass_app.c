@@ -7,6 +7,7 @@
 #include "sensors/zsw_magnetometer.h"
 #include "managers/zsw_app_manager.h"
 #include "sensor_fusion/zsw_sensor_fusion.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(compass_app, LOG_LEVEL_DBG);
 
@@ -18,11 +19,11 @@ static void compass_app_stop(void);
 static void timer_callback(lv_timer_t *timer);
 static void on_start_calibration(void);
 
-LV_IMG_DECLARE(move);
+ZSW_LV_IMG_DECLARE(move);
 
 static application_t app = {
     .name = "Compass",
-    .icon = &move,
+    .icon = ZSW_LV_IMG_USE(move),
     .start_func = compass_app_start,
     .stop_func = compass_app_stop
 };

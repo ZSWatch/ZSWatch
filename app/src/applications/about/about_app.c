@@ -3,15 +3,16 @@
 
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 static void about_app_start(lv_obj_t *root, lv_group_t *group);
 static void about_app_stop(void);
 
-LV_IMG_DECLARE(templates);
+ZSW_LV_IMG_DECLARE(templates);
 
 static application_t app = {
     .name = "About",
-    .icon = &templates,
+    .icon = ZSW_LV_IMG_USE(templates),
     .start_func = about_app_start,
     .stop_func = about_app_stop
 };

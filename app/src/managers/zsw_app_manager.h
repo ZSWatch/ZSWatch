@@ -28,7 +28,7 @@ typedef struct application_t {
     application_start_fn    start_func;
     application_stop_fn     stop_func;
     char                   *name;
-    const lv_img_dsc_t     *icon;
+    const void             *icon;
     bool                    hidden;
     uint8_t                 private_list_index;
 } application_t;

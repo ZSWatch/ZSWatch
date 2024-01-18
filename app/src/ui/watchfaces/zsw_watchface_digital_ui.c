@@ -61,13 +61,13 @@ static lv_obj_t *ui_bt_icon;
 static lv_obj_t *ui_weather_temperature_label;
 static lv_obj_t *ui_weather_icon;
 
-LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
-LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
-LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
-LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
-LV_IMG_DECLARE(ui_img_running_png);    // assets/running.png
-LV_IMG_DECLARE(ui_img_chat_png);    // assets/chat.png
-LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
+ZSW_LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
+ZSW_LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
+ZSW_LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
+ZSW_LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
+ZSW_LV_IMG_DECLARE(ui_img_running_png);    // assets/running.png
+ZSW_LV_IMG_DECLARE(ui_img_chat_png);    // assets/chat.png
+ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
 
 LV_FONT_DECLARE(ui_font_aliean_47);
 LV_FONT_DECLARE(ui_font_aliean_25);
@@ -151,12 +151,12 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_bg_opa(ui_co2_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     ui_iaq_co2_text_image = lv_img_create(ui_co2_arc);
-    lv_img_set_src(ui_iaq_co2_text_image, &ui_img_pressure_png);
+    lv_img_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
     lv_obj_set_width(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_pos(ui_iaq_co2_text_image, -80, -70);
     lv_obj_set_align(ui_iaq_co2_text_image, LV_ALIGN_CENTER);
-    lv_img_set_src(ui_iaq_co2_text_image, &ui_img_iaq_co2_text);
+    lv_img_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_iaq_co2_text));
     lv_img_set_angle(ui_iaq_co2_text_image, 300);
     lv_obj_add_flag(ui_iaq_co2_text_image, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(ui_iaq_co2_text_image,
@@ -166,7 +166,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_img_recolor_opa(ui_iaq_co2_text_image, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 #else
     ui_pressure_image = lv_img_create(ui_iaq_or_pressure_arc);
-    lv_img_set_src(ui_pressure_image, &ui_img_pressure_png);
+    lv_img_set_src(ui_pressure_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
     lv_obj_set_width(ui_pressure_image, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_pressure_image, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_pressure_image, -70);
@@ -203,7 +203,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_bg_opa(ui_humidity_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     ui_humidity_icon = lv_img_create(ui_humidity_arc);
-    lv_img_set_src(ui_humidity_icon, &ui_img_temperatures_png);
+    lv_img_set_src(ui_humidity_icon, ZSW_LV_IMG_USE(ui_img_temperatures_png));
     lv_obj_set_width(ui_humidity_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_humidity_icon, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_humidity_icon, 70);
@@ -322,7 +322,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_bg_opa(ui_battery_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     ui_battery_arc_icon = lv_img_create(ui_battery_arc);
-    lv_img_set_src(ui_battery_arc_icon, &ui_img_charging_png);
+    lv_img_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_charging_png));
     lv_obj_set_width(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_battery_arc_icon, LV_ALIGN_CENTER);
@@ -365,7 +365,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_bg_opa(ui_step_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
     ui_step_arc_icon = lv_img_create(ui_step_arc);
-    lv_img_set_src(ui_step_arc_icon, &ui_img_running_png);
+    lv_img_set_src(ui_step_arc_icon, ZSW_LV_IMG_USE(ui_img_running_png));
     lv_obj_set_width(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_step_arc_icon, LV_ALIGN_CENTER);
@@ -442,7 +442,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_pad_bottom(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_notification_icon = lv_img_create(ui_notifications);
-    lv_img_set_src(ui_notification_icon, &ui_img_chat_png);
+    lv_img_set_src(ui_notification_icon, ZSW_LV_IMG_USE(ui_img_chat_png));
     lv_obj_set_width(ui_notification_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_notification_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_notification_icon, LV_ALIGN_CENTER);
@@ -458,7 +458,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_text_font(ui_notification_count_label, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_bt_icon = lv_img_create(ui_notifications);
-    lv_img_set_src(ui_bt_icon, &ui_img_bluetooth_png);
+    lv_img_set_src(ui_bt_icon, ZSW_LV_IMG_USE(ui_img_bluetooth_png));
     lv_obj_set_width(ui_bt_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_bt_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_bt_icon, LV_ALIGN_CENTER);

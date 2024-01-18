@@ -9,6 +9,7 @@
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_environment_sensor.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group);
 static void sensors_summary_app_stop(void);
@@ -17,11 +18,11 @@ static void on_ref_set(void);
 
 static void timer_callback(lv_timer_t *timer);
 
-LV_IMG_DECLARE(move);
+ZSW_LV_IMG_DECLARE(move);
 
 static application_t app = {
     .name = "Sensors",
-    .icon = &move,
+    .icon = ZSW_LV_IMG_USE(move),
     .start_func = sensors_summary_app_start,
     .stop_func = sensors_summary_app_stop
 };

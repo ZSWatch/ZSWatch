@@ -8,6 +8,7 @@
 #include "events/ble_event.h"
 #include "events/music_event.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
 static void music_control_app_start(lv_obj_t *root, lv_group_t *group);
@@ -27,11 +28,11 @@ static K_WORK_DEFINE(update_ui_work, handle_update_ui);
 static ble_comm_music_info_t last_music_info;
 static ble_comm_music_state_t last_music_state = {.position = -1};
 
-LV_IMG_DECLARE(music);
+ZSW_LV_IMG_DECLARE(music);
 
 static application_t app = {
     .name = "Music",
-    .icon = &music,
+    .icon = ZSW_LV_IMG_USE(music),
     .start_func = music_control_app_start,
     .stop_func = music_control_app_stop
 };

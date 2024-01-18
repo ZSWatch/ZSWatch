@@ -180,14 +180,17 @@ static void scroll_event_cb(lv_event_t *e)
     }
 }
 
-static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const lv_img_dsc_t *icon, const char *name, int app_id)
+static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon, const char *name, int app_id)
 {
     lv_obj_t *cont = lv_obj_create(grid);
     lv_obj_center(cont);
     lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_NONE, 0);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
 
-    lv_obj_set_size(cont, LV_SIZE_CONTENT, icon->header.h);
+    lv_img_header_t header;
+    lv_img_decoder_get_info(icon, &header);
+
+    lv_obj_set_size(cont, LV_SIZE_CONTENT, header.h);
     lv_obj_clear_flag(cont,
                       LV_OBJ_FLAG_SCROLLABLE); // Needed, otherwise indev will first focus on this cont before it's contents.
 

@@ -178,7 +178,7 @@
 	at25sl128a: at25sl128a@0 {
 		compatible = "nordic,qspi-nor";
 		reg = <0>;
-		sck-frequency = <8000000>;
+		sck-frequency = <96000000>;
 		jedec-id = [ 1f 42 18];
 		size = <DT_SIZE_M(16*8)>;
 		has-dpd;
@@ -199,9 +199,9 @@
 			mount-point = "/lvgl_lfs";
 			partition = <&littlefs_storage>;
 			automount;
-			read-size = <1024>;
+			read-size = <512>;
 			prog-size = <512>;
-			cache-size = <4096>;
+			cache-size = <512>;
 			lookahead-size = <4096>;
 			block-cycles = <512>;
 		};

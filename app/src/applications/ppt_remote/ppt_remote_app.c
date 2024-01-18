@@ -5,6 +5,7 @@
 #include "ppt_remote_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "ble/ble_hid.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(ppt_remote_app, CONFIG_ZSW_REMOTE_APP_LOG_LEVEL);
 
@@ -17,11 +18,11 @@ static void on_prev(void);
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
 
-LV_IMG_DECLARE(remote_control);
+ZSW_LV_IMG_DECLARE(remote_control);
 
 static application_t app = {
     .name = "Ppt_remote",
-    .icon = &remote_control,
+    .icon = ZSW_LV_IMG_USE(remote_control),
     .start_func = ppt_remote_app_start,
     .stop_func = ppt_remote_app_stop
 };

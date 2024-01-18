@@ -15,6 +15,7 @@
 #include "zsw_settings.h"
 #include <filesystem/zsw_rtt_flash_loader.h>
 #include "ui/popup/zsw_popup_window.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
 
@@ -38,7 +39,7 @@ static void on_watchface_animation_changed(lv_setting_value_t value, bool final)
 static void ble_pairing_work_handler(struct k_work *work);
 static void display_restart_work_handler(struct k_work *work);
 
-LV_IMG_DECLARE(settings);
+ZSW_LV_IMG_DECLARE(settings);
 
 typedef struct setting_app {
     zsw_settings_brightness_t           brightness;
@@ -67,7 +68,7 @@ static setting_app_t settings_app = {
 
 static application_t app = {
     .name = "Settings",
-    .icon = &settings,
+    .icon = ZSW_LV_IMG_USE(settings),
     .start_func = settings_app_start,
     .stop_func = settings_app_stop
 };

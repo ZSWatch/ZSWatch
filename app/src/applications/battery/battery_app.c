@@ -7,6 +7,7 @@
 #include "battery/battery_ui.h"
 #include "events/battery_event.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(battery_app, LOG_LEVEL_WRN);
 
@@ -24,11 +25,11 @@ typedef struct battery_sample_t {
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
 
-LV_IMG_DECLARE(battery_app_icon);
+ZSW_LV_IMG_DECLARE(battery_app_icon);
 
 static application_t app = {
     .name = "Battery",
-    .icon = &battery_app_icon,
+    .icon = ZSW_LV_IMG_USE(battery_app_icon),
     .start_func = battery_app_start,
     .stop_func = battery_app_stop
 };

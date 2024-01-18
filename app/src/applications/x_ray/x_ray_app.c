@@ -4,16 +4,17 @@
 
 #include "x_ray_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
 static void x_ray_app_start(lv_obj_t *root, lv_group_t *group);
 static void x_ray_app_stop(void);
 
-LV_IMG_DECLARE(circuit_icon);
+ZSW_LV_IMG_DECLARE(circuit_icon);
 
 static application_t app = {
     .name = "X-ray",
-    .icon = &circuit_icon,
+    .icon = ZSW_LV_IMG_USE(circuit_icon),
     .start_func = x_ray_app_start,
     .stop_func = x_ray_app_stop
 };

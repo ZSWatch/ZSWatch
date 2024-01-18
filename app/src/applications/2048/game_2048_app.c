@@ -4,16 +4,17 @@
 
 #include "game_2048_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
 static void game_2048_app_start(lv_obj_t *root, lv_group_t *group);
 static void game_2048_app_stop(void);
 
-LV_IMG_DECLARE(icon_2048);
+ZSW_LV_IMG_DECLARE(icon_2048);
 
 static application_t app = {
     .name = "2048",
-    .icon = &icon_2048,
+    .icon = ZSW_LV_IMG_USE(zsw_icon_2048),
     .start_func = game_2048_app_start,
     .stop_func = game_2048_app_stop
 };
