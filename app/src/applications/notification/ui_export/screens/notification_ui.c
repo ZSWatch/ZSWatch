@@ -22,7 +22,7 @@ static void notification_delta2char(uint32_t delta, char *buf)
     } else if (hours > 0) {
         sprintf(buf, "%u h", hours);
     } else if (minutes > 0) {
-        sprintf(buf, "%u d", minutes);
+        sprintf(buf, "%u min", minutes);
     } else {
         sprintf(buf, "Now");
     }
