@@ -61,7 +61,7 @@ static lv_obj_t *ui_bt_icon;
 static lv_obj_t *ui_weather_temperature_label;
 static lv_obj_t *ui_weather_icon;
 
-ZSW_LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
+LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
 ZSW_LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
 ZSW_LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
 ZSW_LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
@@ -156,7 +156,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_height(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_pos(ui_iaq_co2_text_image, -80, -70);
     lv_obj_set_align(ui_iaq_co2_text_image, LV_ALIGN_CENTER);
-    lv_img_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_iaq_co2_text));
+    lv_img_set_src(ui_iaq_co2_text_image, &ui_img_iaq_co2_text);
     lv_img_set_angle(ui_iaq_co2_text_image, 300);
     lv_obj_add_flag(ui_iaq_co2_text_image, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(ui_iaq_co2_text_image,
