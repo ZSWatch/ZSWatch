@@ -67,7 +67,7 @@ There are two approaches to deal with Zephyr based projects:
 
 ### Compiling
 ### Using the command line
-- Set revision zswatch_nrf5340_cpuapp@\<revision\> to 1 or 3 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1, otherwise revision 3.
+- Set revision zswatch_nrf5340_cpuapp@\<revision\> to 1 or 3 depending on what version of ZSWatch is used. If your watch is built before Aug. 1 2023 it's revision 1, otherwise revision 3 or later.
 - Replace release.conf with debug.conf if the build is for development.
 
 Example of building for ZSWatch board:
@@ -84,26 +84,12 @@ Follow the steps below to open and build the ZSWatch application:
 - Press `Create new build configuration` and fill in zswatch board, revision, and any config files wanted, for example debug.conf.
 - Now press the `Build Configuration` button and it will compile.
 
-__NOTE (Not applicable for nRF Connect)__
-<br>
-Since the nRF5340 is a dual core microcontroller where the second core is designed to serve the Bluetooth Controller, the second image needs to be flashed for BLE operation.
-If you are building with Zephyr you need in addition manually compile and flash the `zephyr/samples/bluetooth/hci_rpmsg` sample and flash that to the NET core. For convenience I have also uploaded a pre-compiled [hex image for NET CPU](app/child_image/GENERATED_CP_NETWORK_merged_domains.hex) if you don't want to recompile it yourself. Flash it using following:
-<br>
-`nrfjprog -f NRF53 --coprocessor CP_NETWORK --program app/child_image/GENERATED_CP_NETWORK_merged_domains.hex --chiperase`
+## Getting image resources into the watch
+> Many images and icons are placed in external flash and not uploaded when flashing the watch.<br>
+> To upload the image resources into the external flash following needs to be done.
 
-To build the NET core image yourself:
-Command line: 
-- Navigate to `zephyr/samples/bluetooth/hci_rpmsg`
-- Build using `west build --board zswatch_nrf5340_cpunet@3 -- -DBOARD_ROOT=<ZSWatch absolute path>/app  -DOVERLAY_CONFIG=nrf5340_cpunet_df-bt_ll_sw_split.conf`
-- `west flash`
-- This only needs to be done once, unless you do a full erase or recover of the nRF5340, which you typically don't do.
-
-VScode:
-- Add `zephyr/samples/bluetooth/hci_rpmsg` as an application.
-- Select `zswatch_nrf5340_cpunet` as board (VSCode should pick this one up automatically if you added the ZSWatch application earlier).
-- Set revision depending on what version of ZSWatch is used.
-- Press `Add Fragment` under the "Kconfig fragments" field and select the `nrf5340_cpunet_df-bt_ll_sw_split.conf`
-- Done, press `Build Configuration`.
+In VSCode: Ctrl + shift + p -> Tasks: Run task -> Upload LittleFS<br>
+Or run `west upload_fs --type lfs`
 
 ## Running and developing the ZSWatch SW without the actual ZSWatch HW
 Depending on preference and available hardware, three options can be chosen:
