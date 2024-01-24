@@ -1,4 +1,5 @@
 #include <music_control/music_control_ui.h>
+#include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
 
 static lv_obj_t *root_page = NULL;
@@ -12,6 +13,11 @@ static lv_obj_t *time_label;
 
 static on_music_control_ui_event_cb_t ui_evt_callback;
 static bool is_playing;
+
+ZSW_LV_IMG_DECLARE(pause);
+ZSW_LV_IMG_DECLARE(play);
+ZSW_LV_IMG_DECLARE(next);
+ZSW_LV_IMG_DECLARE(previous);
 
 static void create_progress_arc(lv_obj_t *parent)
 {
@@ -33,6 +39,7 @@ static void create_progress_arc(lv_obj_t *parent)
 
 static void play_event_click_cb(lv_event_t *e)
 {
+    lv_img_header_t header;
     lv_obj_t *obj = lv_event_get_target(e);
     lv_event_code_t code = lv_event_get_code(e);
 
@@ -52,8 +59,8 @@ static void play_event_click_cb(lv_event_t *e)
                 ui_evt_callback(MUSIC_CONTROL_UI_PAUSE);
             }
             // Need to update the height after the image changes on imgbtn for some reason.
-            LV_IMG_DECLARE(play);
-            lv_obj_set_height(play_pause_button, play.header.h + 5);
+            lv_img_decoder_get_info(ZSW_LV_IMG_USE(play), &header);
+            lv_obj_set_height(play_pause_button, header.h + 5);
         } else if (obj == prev_button) {
             ui_evt_callback(MUSIC_CONTROL_UI_PREV_TRACK);
         } else if (obj == next_button) {
@@ -64,19 +71,16 @@ static void play_event_click_cb(lv_event_t *e)
 
 static void create_buttons(lv_obj_t *parent)
 {
-    LV_IMG_DECLARE(pause);
-    LV_IMG_DECLARE(play);
-    LV_IMG_DECLARE(next);
-    LV_IMG_DECLARE(previous);
-
+    lv_img_header_t header;
     lv_group_t *group = lv_group_get_default();
 
     play_pause_button = lv_imgbtn_create(parent);
     lv_obj_clear_flag(play_pause_button, LV_OBJ_FLAG_SCROLLABLE);
-    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_RELEASED, NULL, &play, NULL);
-    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_CHECKED_RELEASED, NULL, &pause, NULL);
-    lv_obj_set_width(play_pause_button, pause.header.w);
-    lv_obj_set_height(play_pause_button, pause.header.h + 5);
+    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_RELEASED, NULL, ZSW_LV_IMG_USE(play), NULL);
+    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_CHECKED_RELEASED, NULL, ZSW_LV_IMG_USE(pause), NULL);
+    lv_img_decoder_get_info(ZSW_LV_IMG_USE(pause), &header);
+    lv_obj_set_width(play_pause_button, header.w);
+    lv_obj_set_height(play_pause_button, header.h + 5);
     lv_obj_add_flag(play_pause_button, LV_OBJ_FLAG_CHECKABLE);
     lv_obj_add_flag(play_pause_button, LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_center(play_pause_button);
@@ -85,8 +89,9 @@ static void create_buttons(lv_obj_t *parent)
 
     next_button = lv_imgbtn_create(parent);
     lv_obj_clear_flag(next_button, LV_OBJ_FLAG_SCROLLABLE);
-    lv_imgbtn_set_src(next_button, LV_IMGBTN_STATE_RELEASED, NULL, &next, NULL);
-    lv_obj_set_width(next_button, next.header.w);
+    lv_imgbtn_set_src(next_button, LV_IMGBTN_STATE_RELEASED, NULL, ZSW_LV_IMG_USE(next), NULL);
+    lv_img_decoder_get_info(ZSW_LV_IMG_USE(next), &header);
+    lv_obj_set_width(next_button, header.w);
     lv_obj_add_flag(next_button, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_flag(next_button, LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_align_to(next_button, play_pause_button, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
@@ -95,8 +100,9 @@ static void create_buttons(lv_obj_t *parent)
 
     prev_button = lv_imgbtn_create(parent);
     lv_obj_clear_flag(prev_button, LV_OBJ_FLAG_SCROLLABLE);
-    lv_imgbtn_set_src(prev_button, LV_IMGBTN_STATE_RELEASED, NULL, &previous, NULL);
-    lv_obj_set_width(prev_button, previous.header.w);
+    lv_imgbtn_set_src(prev_button, LV_IMGBTN_STATE_RELEASED, NULL, ZSW_LV_IMG_USE(previous), NULL);
+    lv_img_decoder_get_info(ZSW_LV_IMG_USE(previous), &header);
+    lv_obj_set_width(prev_button, header.w);
     lv_obj_add_flag(prev_button, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_flag(prev_button, LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_align_to(prev_button, play_pause_button, LV_ALIGN_OUT_LEFT_MID, -10, 0);
@@ -178,6 +184,7 @@ void music_control_ui_set_time(int hour, int min, int second)
 
 void music_control_ui_set_music_state(bool playing, int percent_played, bool shuffle)
 {
+    lv_img_header_t header;
     lv_arc_set_value(progress_arc, percent_played);
     if (playing != is_playing) {
         is_playing = playing;
@@ -187,7 +194,7 @@ void music_control_ui_set_music_state(bool playing, int percent_played, bool shu
             lv_imgbtn_set_state(play_pause_button, LV_IMGBTN_STATE_RELEASED);
         }
         // Need to update the height after the image changes on imgbtn for some reason.
-        LV_IMG_DECLARE(play);
-        lv_obj_set_height(play_pause_button, play.header.h + 5);
+        lv_img_decoder_get_info(ZSW_LV_IMG_USE(play), &header);
+        lv_obj_set_height(play_pause_button, header.h + 5);
     }
 }
