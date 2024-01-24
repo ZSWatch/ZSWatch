@@ -19,6 +19,7 @@
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 
+#include "ui/utils/zsw_ui_utils.h"
 #include "managers/zsw_app_manager.h"
 
 LOG_MODULE_REGISTER(APP_MANAGER, LOG_LEVEL_INF);
@@ -30,6 +31,8 @@ static void draw_application_picker(void);
 static void app_clicked(lv_event_t *e);
 static void async_app_start(lv_timer_t *timer);
 static void async_app_close(lv_timer_t *timer);
+
+ZSW_LV_IMG_DECLARE(close_icon);
 
 static application_t *apps[MAX_APPS];
 static uint8_t num_apps;
@@ -250,8 +253,7 @@ static void draw_application_picker(void)
         }
     }
 
-    LV_IMG_DECLARE(close_icon);
-    entry = create_application_list_entry(grid, &close_icon, "Close", num_visible_apps);
+    entry = create_application_list_entry(grid, ZSW_LV_IMG_USE(close_icon), "Close", num_visible_apps);
     lv_obj_add_event_cb(entry, app_manager_close_button_pressed, LV_EVENT_CLICKED, NULL);
 
     lv_group_focus_obj(lv_obj_get_child(grid, apps[last_index]->private_list_index));
