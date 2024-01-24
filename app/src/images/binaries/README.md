@@ -10,4 +10,4 @@
     - Upload: `west upload_fs --type raw`
 
 ## Which one to use?
-For now those options are mostly for experimentation. Using littlefs may be faster due to littlefs caching. However the other custom filesystem allows us to do more optimization for ZSWatch in the future.
+Please use littlefs for now those options are mostly for experimentation. Using littlefs may be faster due to littlefs caching. However the other custom filesystem allows us to do more optimization for ZSWatch in the future. 

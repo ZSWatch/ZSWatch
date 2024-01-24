@@ -1,4 +1,5 @@
 #include <zds/zds_ui.h>
+#include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
 
 static void on_button_pressed(lv_event_t *e);
@@ -8,6 +9,8 @@ static lv_obj_t *root_page = NULL;
 static lv_obj_t *img;
 static bool is_rotating = false;
 static lv_anim_t rotate_anim;
+
+ZSW_LV_IMG_DECLARE(zephyr_project);
 
 void zds_ui_show(lv_obj_t *root)
 {
@@ -28,10 +31,8 @@ void zds_ui_show(lv_obj_t *root)
 
     lv_obj_set_style_bg_color(root_page, lv_color_hex(0x49936E), LV_PART_MAIN);
 
-    LV_IMG_DECLARE(zephyr_project);
-
     img = lv_img_create(root_page);
-    lv_img_set_src(img, &zephyr_project);
+    lv_img_set_src(img, ZSW_LV_IMG_USE(zephyr_project));
     lv_obj_add_flag(img, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
 

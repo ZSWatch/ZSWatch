@@ -14,7 +14,7 @@ ZSW_LV_IMG_DECLARE(icon_2048);
 
 static application_t app = {
     .name = "2048",
-    .icon = ZSW_LV_IMG_USE(zsw_icon_2048),
+    .icon = ZSW_LV_IMG_USE(icon_2048),
     .start_func = game_2048_app_start,
     .stop_func = game_2048_app_stop
 };

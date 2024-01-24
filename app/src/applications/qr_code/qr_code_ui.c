@@ -19,12 +19,7 @@ void qr_code_ui_show(lv_obj_t *root)
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
 
     lv_obj_t *img = lv_img_create(root_page);
-#ifdef CONFIG_LV_Z_USE_FILESYSTEM
     lv_img_set_src(img, "/lvgl_lfs/qr_code.bin");
-#else
-    LV_IMG_DECLARE(round_qr_full);
-    lv_img_set_src(img, &round_qr_full);
-#endif
     lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_size(img, 240, 240);
 }
