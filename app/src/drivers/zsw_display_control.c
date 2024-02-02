@@ -17,6 +17,7 @@
 
 #include "drivers/zsw_display_control.h"
 #include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/drivers/pwm.h>
@@ -26,9 +27,19 @@
 #include <zephyr/logging/log.h>
 #include "lvgl.h"
 
+#include <zephyr/drivers/counter.h>
+
 LOG_MODULE_REGISTER(display_control, LOG_LEVEL_WRN);
 
+#define DISPLAY_BRIGHTNESS_LEVELS 32
+
 static void lvgl_render(struct k_work *item);
+static void set_brightness_level(uint8_t brightness);
+static void brightness_alarm_start_cb(const struct device *counter_dev, uint8_t chan_id, uint32_t ticks,
+                                      void *user_data);
+static void brightness_alarm_run_cb(const struct device *counter_dev, uint8_t chan_id, uint32_t ticks, void *user_data);
+static void brightness_alarm_stop_cb(const struct device *counter_dev, uint8_t chan_id, uint32_t ticks,
+                                     void *user_data);
 
 typedef enum display_state {
     DISPLAY_STATE_AWAKE,
@@ -37,6 +48,7 @@ typedef enum display_state {
 } display_state_t;
 
 static const struct pwm_dt_spec display_blk = PWM_DT_SPEC_GET_OR(DT_ALIAS(display_blk), {});
+static const struct device *counter_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(timer1));
 static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_PATH(regulator_3v3_ctrl));
 static const struct device *display_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_display));
 static const struct device *touch_dev =  DEVICE_DT_GET_OR_NULL(DT_NODELABEL(cst816s));
@@ -44,11 +56,15 @@ static const struct device *touch_dev =  DEVICE_DT_GET_OR_NULL(DT_NODELABEL(cst8
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
 K_MUTEX_DEFINE(display_mutex);
+K_SEM_DEFINE(brightness_sem, 1, 1);
 
 static struct k_work_sync canel_work_sync;
 static display_state_t display_state;
 static bool first_render_since_poweron;
-static uint8_t last_brightness = 30;
+static uint8_t last_brightness = 1;
+static struct counter_alarm_cfg bri_alarm_start, bri_alarm_run, bri_alarm_stop;
+
+uint8_t current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
 
 void zsw_display_control_init(void)
 {
@@ -64,6 +80,18 @@ void zsw_display_control_init(void)
     if (!device_is_ready(touch_dev)) {
         LOG_WRN("Device touch not ready.");
     }
+
+    bri_alarm_start.flags = 0;
+    bri_alarm_start.callback = &brightness_alarm_start_cb;
+
+    bri_alarm_run.flags = 0;
+    bri_alarm_run.callback = &brightness_alarm_run_cb;
+
+    bri_alarm_stop.flags = 0;
+    bri_alarm_stop.callback = &brightness_alarm_stop_cb;
+
+    bri_alarm_start.ticks = counter_us_to_ticks(counter_dev, 0);
+    bri_alarm_run.ticks = counter_us_to_ticks(counter_dev, 750);
 
     pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
     if (device_is_ready(touch_dev)) {
@@ -187,6 +215,7 @@ int zsw_display_control_pwr_ctrl(bool on)
 #endif
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_ON);
                     first_render_since_poweron = true;
+                    current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
                     res = 0;
                 }
             } else {
@@ -207,27 +236,20 @@ uint8_t zsw_display_control_get_brightness(void)
 
 void zsw_display_control_set_brightness(uint8_t percent)
 {
+    uint8_t level = 0;
     if (!device_is_ready(display_blk.dev)) {
         return;
     }
     __ASSERT(percent >= 0 && percent <= 100, "Invalid range for brightness, valid range 0-100, was %d", percent);
-    int ret;
 
     k_mutex_lock(&display_mutex, K_FOREVER);
 
-    // TODO this is not correct, the FAN5622SX LED driver have 32 different brightness levels
-    // and we need to take that into consideration when choosing pwm period and pulse width.
-    uint32_t pulse_width = percent * (display_blk.period / 100);
-
-    if (display_state != DISPLAY_STATE_AWAKE && percent != 0) {
-        LOG_WRN("Setting brightness when display is off may cause issues with active/inactive state, make sure you know what you are doing.");
-    }
-
-    if (percent != 0) {
+    // Convert percent to a value between 1 and DISPLAY_BRIGHTNESS_LEVELS
+    if (percent > 0) {
+        level = MAX(((double)percent / (double)100.0) * DISPLAY_BRIGHTNESS_LEVELS, 1);
         last_brightness = percent;
     }
-    ret = pwm_set_pulse_dt(&display_blk, pulse_width);
-    __ASSERT(ret == 0, "pwm error: %d for pulse: %d", ret, pulse_width);
+    set_brightness_level(level);
 
     k_mutex_unlock(&display_mutex);
 }
@@ -240,4 +262,50 @@ static void lvgl_render(struct k_work *item)
         first_render_since_poweron = false;
     }
     k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
+}
+
+static void set_brightness_level(uint8_t brightness)
+{
+    uint8_t npulses;
+    current_driver_brightness_level = MIN(brightness, DISPLAY_BRIGHTNESS_LEVELS);
+    if (brightness == 0) {
+        pwm_set_pulse_dt(&display_blk,  display_blk.period);
+        current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
+        return;
+    }
+
+    // Must let current brightness setting complete before changing it again.
+    __ASSERT(k_sem_take(&brightness_sem, K_MSEC(50)) == 0, "Failed to take brightness semaphore");
+    npulses = DISPLAY_BRIGHTNESS_LEVELS - current_driver_brightness_level;
+
+    bri_alarm_stop.ticks =
+        bri_alarm_run.ticks +
+        counter_us_to_ticks(counter_dev, display_blk.period * (npulses + 1) / NSEC_PER_USEC);
+    counter_set_channel_alarm(counter_dev, 0, &bri_alarm_start);
+    counter_set_channel_alarm(counter_dev, 1, &bri_alarm_run);
+    counter_set_channel_alarm(counter_dev, 2, &bri_alarm_stop);
+    counter_start(counter_dev);
+}
+
+void brightness_alarm_start_cb(const struct device *counter_dev,
+                               uint8_t chan_id, uint32_t ticks,
+                               void *user_data)
+{
+    pwm_set_pulse_dt(&display_blk, display_blk.period);
+}
+
+void brightness_alarm_run_cb(const struct device *counter_dev,
+                             uint8_t chan_id, uint32_t ticks,
+                             void *user_data)
+{
+    pwm_set_pulse_dt(&display_blk, display_blk.period / 2);
+}
+
+void brightness_alarm_stop_cb(const struct device *counter_dev,
+                              uint8_t chan_id, uint32_t ticks,
+                              void *user_data)
+{
+    pwm_set_pulse_dt(&display_blk, 0);
+    counter_stop(counter_dev);
+    k_sem_give(&brightness_sem);
 }

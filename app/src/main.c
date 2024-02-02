@@ -199,6 +199,10 @@ static void run_init_work(struct k_work *item)
 {
     lv_indev_t *touch_indev;
 
+    // Not to self, PWM consumes like 250uA...
+    // Need to disable also when screen is off.
+    zsw_display_control_init();
+    zsw_display_control_sleep_ctrl(true);
     print_retention_ram();
     zsw_notification_manager_init();
     enable_bluetoth();
@@ -208,10 +212,6 @@ static void run_init_work(struct k_work *item)
     zsw_light_sensor_init();
     zsw_environment_sensor_init();
     zsw_clock_init(retained.current_time_seconds, retained.timezone);
-    // Not to self, PWM consumes like 250uA...
-    // Need to disable also when screen is off.
-    zsw_display_control_init();
-    zsw_display_control_sleep_ctrl(true);
 
     INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback);
 

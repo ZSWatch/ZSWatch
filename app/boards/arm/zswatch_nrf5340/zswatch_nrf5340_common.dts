@@ -21,7 +21,7 @@
     pwmleds {
         compatible = "pwm-leds";
         display_blk: pwm_led_0 {
-            pwms = <&pwm0 0 PWM_MSEC(5) 0>;
+            pwms = <&pwm0 0 PWM_USEC(15) PWM_POLARITY_INVERTED>;
         };
         vibrator_pwm: pwm_led_1 {
             pwms = <&pwm1 0 PWM_MSEC(20) 0>;
