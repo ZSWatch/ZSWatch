@@ -30,7 +30,6 @@ typedef struct {
     float offset_z;
 } magn_calib_data_t;
 
-static double last_heading;
 static double last_x;
 static double last_y;
 static double last_z;
@@ -69,17 +68,6 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
     zbus_chan_pub(&magnetometer_data_chan, &evt, K_MSEC(250));
 }
 
-// https://arduino.stackexchange.com/questions/18625/converting-three-axis-magnetometer-to-degrees/88707#88707
-// Note this assumes watch is flat to eath, TODO use accelerometer to compensate when tilted.
-static double xyz_to_rotation(double x, double y, double z)
-{
-    double heading = atan2(y, x) * 180 / M_PI;
-    if (heading < 0) {
-        heading = 360 + heading;
-    }
-    return heading;
-}
-
 static void lis2mdl_trigger_handler(const struct device *dev,
                                     const struct sensor_trigger *trig)
 {
@@ -91,16 +79,14 @@ static void lis2mdl_trigger_handler(const struct device *dev,
     sensor_channel_get(magnetometer, SENSOR_CHAN_DIE_TEMP, &die_temp2);
 
     LOG_DBG("LIS2MDL: Magn (gauss): x: %.3f, y: %.3f, z: %.3f\n",
-            sensor_value_to_float(&magn[0]),
             sensor_value_to_float(&magn[1]),
+            sensor_value_to_float(&magn[0]),
             sensor_value_to_float(&magn[2]));
 
-    last_x = sensor_value_to_float(&magn[0]);
-    last_y = sensor_value_to_float(&magn[1]);
-    last_z = sensor_value_to_float(&magn[2]);
-
-    LOG_DBG("LIS2MDL: Temperature: %.1f C\n",
-            sensor_value_to_float(&die_temp2));
+    // Convert Guass to micro Tesla
+    last_x = sensor_value_to_float(&magn[1]) * 10; // Swap x, y to match IMU orientation
+    last_y = sensor_value_to_float(&magn[0]) * 10;
+    last_z = sensor_value_to_float(&magn[2]) * 10;
 
     if (is_calibrating) {
         if (last_x < min_x) {
@@ -128,10 +114,6 @@ static void lis2mdl_trigger_handler(const struct device *dev,
     last_x = last_x - calibration_data.offset_x;
     last_y = last_y - calibration_data.offset_y;
     last_z = last_z - calibration_data.offset_z;
-
-    last_heading = xyz_to_rotation(last_x, last_y, last_z);
-
-    LOG_DBG("Rotation: %f", last_heading);
 }
 
 static int magn_cal_load(const char *p_key, size_t len,
@@ -148,6 +130,9 @@ static int magn_cal_load(const char *p_key, size_t len,
         LOG_ERR("Error reading magn calibration data");
         return -EIO;
     }
+
+    LOG_WRN("Calibration data loaded: x: %f, y: %f, z: %f",
+            calibration_data.offset_x, calibration_data.offset_y, calibration_data.offset_z);
 
     return 0;
 }
@@ -172,7 +157,7 @@ int zsw_magnetometer_init(void)
     struct sensor_trigger trig;
     struct sensor_value odr_attr;
 
-    odr_attr.val1 = 10; // TODO what value
+    odr_attr.val1 = 20; // TODO what value
     odr_attr.val2 = 0;
 
     if (sensor_attr_set(magnetometer, SENSOR_CHAN_ALL,
@@ -252,11 +237,6 @@ int zsw_magnetometer_stop_calibration(void)
     settings_save_one(SETTINGS_MAGN_CALIB, &calibration_data, sizeof(magn_calib_data_t));
 
     return 0;
-}
-
-double zsw_magnetometer_get_heading(void)
-{
-    return last_heading;
 }
 
 int zsw_magnetometer_get_all(float *x, float *y, float *z)

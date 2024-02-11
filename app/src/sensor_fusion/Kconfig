@@ -1,0 +1,3 @@
+module = ZSW_SENSORS_FUSION
+module-str = ZSW_SENSORS_FUSION
+source "subsys/logging/Kconfig.template.log_config"

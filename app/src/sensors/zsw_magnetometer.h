@@ -22,6 +22,18 @@
 int zsw_magnetometer_init(void);
 int zsw_magnetometer_set_enable(bool enabled);
 double zsw_magnetometer_get_heading(void);
+
+/*
+* Get the magnetometer data in micro Tesla.
+* Divide with 10 to get it in Guass.
+*
+* @param x Pointer to the x-axis data.
+* @param y Pointer to the y-axis data.
+* @param z Pointer to the z-axis data.
+*
+* @return 0 on success, negative error code on failure.
+
+*/
 int zsw_magnetometer_get_all(float *x, float *y, float *z);
 int zsw_magnetometer_start_calibration(void);
 int zsw_magnetometer_stop_calibration(void);

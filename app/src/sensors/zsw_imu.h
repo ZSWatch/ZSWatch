@@ -84,8 +84,14 @@ typedef struct zsw_imu_evt_t {
 
 int zsw_imu_init(void);
 
+/*
+* Get the accelerometer data in m/s^2.
+*/
 int zsw_imu_fetch_accel_f(float *x, float *y, float *z);
 
+/*
+* Get the gyroscope data in rad/s.
+*/
 int zsw_imu_fetch_gyro_f(float *x, float *y, float *z);
 
 int zsw_imu_fetch_accel(int16_t *x, int16_t *y, int16_t *z);

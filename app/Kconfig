@@ -69,7 +69,7 @@ menu "ZSWatch"
         config APPLICATIONS_USE_PPT_REMOTE
             bool
         prompt "Activate the application 'PPT remote'"
-        default y
+        default n
     endmenu
 
     menu "Watchface"
@@ -125,7 +125,7 @@ menu "ZSWatch"
             config DEFAULT_CONFIGURATION_COMPASS_CALIBRATION_TIME_S
                 int
             prompt "Calibration time in seconds"
-            default 10
+            default 30
         endmenu
 
         menu "Battery"
@@ -206,6 +206,31 @@ menu "ZSWatch"
         endif
     endmenu
 
+    menu "Sensor Fusion"
+        config SENSOR_FUSION_INCLUDE_MAGNETOMETER
+            bool
+        prompt "Include Magnetometer reading in sensor fusion algorithm"
+        default y
+        help
+            "If the magnetometer is not well calibrated, you must disable this option."
+
+        config SEND_SENSOR_READING_OVER_RTT
+            bool
+        prompt "Log sensor fusion reading to RTT"
+        default 1
+        help
+            "Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading."
+
+        if SEND_SENSOR_READING_OVER_RTT
+            config SENSOR_LOG_RTT_TRANSFER_CHANNEL
+                int
+            prompt "The RTT channel to use for transfer of sensor fusion reading"
+            default 1
+            help
+                "If RTT logging is enabled"
+        endif
+    endmenu
+
     menu "ZSWatch Init Priorities"
     config ZSW_DRIVER_INIT_PRIORITY
         int
@@ -222,6 +247,7 @@ menu "ZSWatch"
         source "subsys/logging/Kconfig.template.log_config"
 
         rsource "src/sensors/Kconfig"
+        rsource "src/sensor_fusion/Kconfig"
         rsource "src/ble/Kconfig"
         rsource "src/applications/settings/Kconfig"
         rsource "src/applications/template/Kconfig"
