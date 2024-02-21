@@ -130,6 +130,10 @@
     status = "okay";
 };
 
+&timer1 {
+    status = "okay";
+};
+
 &i2c1 {
     compatible = "nordic,nrf-twim";
     status = "okay";
