@@ -56,6 +56,8 @@
 };
 
 / {
+    /delete-node/ buttons;
+    
     chosen {
         zephyr,display = &gc9a01;
         zephyr,keyboard-scan = &cst816s;
@@ -73,6 +75,8 @@
         magn = &lis2mdl;
         accel = &bmi270;
         input = &cst816s;
+        mcuboot-button0 = &button1;
+        sw0 = &button4;
     };
 
     longpress: longpress {
@@ -101,7 +105,7 @@
             gpios = <&gpio0 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_3>;
         };
-        button4: button_4z {
+        button4: button_4 {
             label = "top-left";
             gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_KP0>;
@@ -192,7 +196,7 @@
         reg = <0>;
         width = <240>;
         height = <240>;
-        bl-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
+        bl-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>; // Backlight not supported on DK. Must connect to 3V3 directly!
         reset-gpios = <&gpio0 25 GPIO_ACTIVE_HIGH>;
         dc-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
     };
