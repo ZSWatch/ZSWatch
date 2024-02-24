@@ -81,17 +81,19 @@ void zsw_display_control_init(void)
         LOG_WRN("Device touch not ready.");
     }
 
-    bri_alarm_start.flags = 0;
-    bri_alarm_start.callback = &brightness_alarm_start_cb;
+    if (counter_dev) {
+        bri_alarm_start.flags = 0;
+        bri_alarm_start.callback = &brightness_alarm_start_cb;
 
-    bri_alarm_run.flags = 0;
-    bri_alarm_run.callback = &brightness_alarm_run_cb;
+        bri_alarm_run.flags = 0;
+        bri_alarm_run.callback = &brightness_alarm_run_cb;
 
-    bri_alarm_stop.flags = 0;
-    bri_alarm_stop.callback = &brightness_alarm_stop_cb;
+        bri_alarm_stop.flags = 0;
+        bri_alarm_stop.callback = &brightness_alarm_stop_cb;
 
-    bri_alarm_start.ticks = counter_us_to_ticks(counter_dev, 0);
-    bri_alarm_run.ticks = counter_us_to_ticks(counter_dev, 750);
+        bri_alarm_start.ticks = counter_us_to_ticks(counter_dev, 0);
+        bri_alarm_run.ticks = counter_us_to_ticks(counter_dev, 750);
+    }
 
     pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
     if (device_is_ready(touch_dev)) {
@@ -268,7 +270,7 @@ static void set_brightness_level(uint8_t brightness)
 {
     uint8_t npulses;
     current_driver_brightness_level = MIN(brightness, DISPLAY_BRIGHTNESS_LEVELS);
-    if (brightness == 0) {
+    if (brightness == 0 || counter_dev == NULL) {
         pwm_set_pulse_dt(&display_blk,  display_blk.period);
         current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
         return;
@@ -287,21 +289,21 @@ static void set_brightness_level(uint8_t brightness)
     counter_start(counter_dev);
 }
 
-void brightness_alarm_start_cb(const struct device *counter_dev,
+static void brightness_alarm_start_cb(const struct device *counter_dev,
                                uint8_t chan_id, uint32_t ticks,
                                void *user_data)
 {
     pwm_set_pulse_dt(&display_blk, display_blk.period);
 }
 
-void brightness_alarm_run_cb(const struct device *counter_dev,
+static void brightness_alarm_run_cb(const struct device *counter_dev,
                              uint8_t chan_id, uint32_t ticks,
                              void *user_data)
 {
     pwm_set_pulse_dt(&display_blk, display_blk.period / 2);
 }
 
-void brightness_alarm_stop_cb(const struct device *counter_dev,
+static void brightness_alarm_stop_cb(const struct device *counter_dev,
                               uint8_t chan_id, uint32_t ticks,
                               void *user_data)
 {
