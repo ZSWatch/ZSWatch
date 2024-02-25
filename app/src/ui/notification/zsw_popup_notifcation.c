@@ -142,8 +142,7 @@ static void on_notification_expand(lv_event_t *e)
     lv_obj_add_event_cb(notif_box.panel, on_notification_closed, LV_EVENT_PRESSED, NULL);
 
     if (auto_close_timer) {
-        lv_timer_del(auto_close_timer);
-        auto_close_timer = NULL;
+        lv_timer_set_period(auto_close_timer, 30000);
     }
 }
 
