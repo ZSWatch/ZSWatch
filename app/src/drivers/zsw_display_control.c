@@ -290,22 +290,22 @@ static void set_brightness_level(uint8_t brightness)
 }
 
 static void brightness_alarm_start_cb(const struct device *counter_dev,
-                               uint8_t chan_id, uint32_t ticks,
-                               void *user_data)
+                                      uint8_t chan_id, uint32_t ticks,
+                                      void *user_data)
 {
     pwm_set_pulse_dt(&display_blk, display_blk.period);
 }
 
 static void brightness_alarm_run_cb(const struct device *counter_dev,
-                             uint8_t chan_id, uint32_t ticks,
-                             void *user_data)
+                                    uint8_t chan_id, uint32_t ticks,
+                                    void *user_data)
 {
     pwm_set_pulse_dt(&display_blk, display_blk.period / 2);
 }
 
 static void brightness_alarm_stop_cb(const struct device *counter_dev,
-                              uint8_t chan_id, uint32_t ticks,
-                              void *user_data)
+                                     uint8_t chan_id, uint32_t ticks,
+                                     void *user_data)
 {
     pwm_set_pulse_dt(&display_blk, 0);
     counter_stop(counter_dev);
