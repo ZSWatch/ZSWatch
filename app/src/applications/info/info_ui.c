@@ -157,7 +157,7 @@ void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb)
     create_page_ble_ui(lv_tileview_add_tile(tv, 0, 1, LV_DIR_TOP));
 
     lv_obj_t *scroll_icon = lv_img_create(root_page);
-    lv_img_set_src(scroll_icon, "/lvgl_lfs/scroll_icon.bin");
+    lv_img_set_src(scroll_icon, "S:scroll_icon.bin");
     lv_obj_align(scroll_icon, LV_ALIGN_BOTTOM_RIGHT, -20, -25);
 }
 

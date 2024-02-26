@@ -4,6 +4,7 @@
 #include <inttypes.h>
 
 #include "managers/zsw_notification_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 typedef struct {
     zsw_not_mngr_notification_t *notification;
@@ -11,15 +12,15 @@ typedef struct {
     lv_obj_t *panel;
 } active_notification_t;
 
-LV_IMG_DECLARE(ui_img_whatsapp_png);
-LV_IMG_DECLARE(ui_img_gadget_png);
-LV_IMG_DECLARE(ui_img_mail_png);
-LV_IMG_DECLARE(ui_img_call_png);
-LV_IMG_DECLARE(ui_img_trash_png);
-LV_IMG_DECLARE(ui_img_youtube_png);
-LV_IMG_DECLARE(ui_img_homeassistant_png);
-LV_IMG_DECLARE(ui_img_discord_png);
-LV_IMG_DECLARE(ui_img_linkedin_png);
+ZSW_LV_IMG_DECLARE(ui_img_whatsapp_png);
+ZSW_LV_IMG_DECLARE(ui_img_gadget_png);
+ZSW_LV_IMG_DECLARE(ui_img_mail_png);
+ZSW_LV_IMG_DECLARE(ui_img_call_png);
+ZSW_LV_IMG_DECLARE(ui_img_trash_png);
+ZSW_LV_IMG_DECLARE(ui_img_youtube_png);
+ZSW_LV_IMG_DECLARE(ui_img_homeassistant_png);
+ZSW_LV_IMG_DECLARE(ui_img_discord_png);
+ZSW_LV_IMG_DECLARE(ui_img_linkedin_png);
 
 typedef void(*on_notification_remove_cb_t)(uint32_t id);
 

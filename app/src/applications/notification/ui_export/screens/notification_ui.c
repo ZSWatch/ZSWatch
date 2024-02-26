@@ -80,7 +80,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
 
     uint32_t index;
 
-    const lv_img_dsc_t *image_source;
+    const void *image_source;
     const char *source;
     char buf[16];
 
@@ -101,35 +101,35 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
 
     switch (not->src) {
         case NOTIFICATION_SRC_COMMON_MESSENGER:
-            image_source = &ui_img_whatsapp_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_whatsapp_png);
             source = "Messenger";
             break;
         case NOTIFICATION_SRC_WHATSAPP:
-            image_source = &ui_img_whatsapp_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_whatsapp_png);
             source = "WhatsApp";
             break;
         case NOTIFICATION_SRC_DISCORD:
-            image_source = &ui_img_discord_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_discord_png);
             source = "Discord";
             break;
         case NOTIFICATION_SRC_GMAIL:
-            image_source = &ui_img_mail_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_mail_png);
             source = "Gmail";
             break;
         case NOTIFICATION_SRC_COMMON_MAIL:
-            image_source = &ui_img_mail_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_mail_png);
             source = "Mail";
             break;
         case NOTIFICATION_SRC_HOME_ASSISTANT:
-            image_source = &ui_img_homeassistant_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_homeassistant_png);
             source = "Home Assistant";
             break;
         case NOTIFICATION_SRC_LINKEDIN:
-            image_source = &ui_img_linkedin_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_linkedin_png);
             source = "LinkedIn";
             break;
         default:
-            image_source = &ui_img_gadget_png;
+            image_source = ZSW_LV_IMG_USE(ui_img_gadget_png);
             source = "Unknown";
             break;
     }

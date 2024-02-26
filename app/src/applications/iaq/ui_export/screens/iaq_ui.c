@@ -65,7 +65,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     ui_ImgSocket = lv_img_create(ui_root_page);
 
 #ifdef CONFIG_LV_Z_USE_FILESYSTEM
-    lv_img_set_src(ui_ImgSocket, "/lvgl_lfs/iaq_socket.bin");
+    lv_img_set_src(ui_ImgSocket, "S:iaq_socket.bin");
 #else
     LV_IMG_DECLARE(iaq_img_socket_png);
     lv_img_set_src(ui_ImgSocket, &iaq_img_socket_png);
@@ -82,7 +82,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
     ui_ImgScale = lv_img_create(ui_root_page);
 
 #ifdef CONFIG_LV_Z_USE_FILESYSTEM
-    lv_img_set_src(ui_ImgScale, "/lvgl_lfs/iaq_scale.bin");
+    lv_img_set_src(ui_ImgScale, "S:iaq_scale.bin");
 #else
     LV_IMG_DECLARE(iaq_img_scale_png);
     lv_img_set_src(ui_ImgScale, &iaq_img_scale_png);
@@ -100,7 +100,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
 
     /* TODO: Fix strange rotation bug with cursor (cursor disapears) when using file system
     #ifdef CONFIG_LV_Z_USE_FILESYSTEM
-        lv_img_set_src(ui_ImgCursor, "/lvgl_lfs/iaq_cursor.bin");
+        lv_img_set_src(ui_ImgCursor, "S:iaq_cursor.bin");
     #else
         LV_IMG_DECLARE(iaq_img_cursor_png);
         lv_img_set_src(ui_ImgCursor, &iaq_img_cursor_png);
