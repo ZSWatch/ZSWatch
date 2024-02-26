@@ -24,7 +24,7 @@
 
 #if CONFIG_ZSWATCH_PCB_REV > 3
 #define ZSW_LV_IMG_DECLARE(var_name)
-#define ZSW_LV_IMG_USE(var_name)        "/lvgl_lfs/"#var_name".bin"
+#define ZSW_LV_IMG_USE(var_name)        "S:"#var_name".bin"
 #else
 #define ZSW_LV_IMG_DECLARE(var_name) LV_IMG_DECLARE(var_name)
 #define ZSW_LV_IMG_USE(var_name) &var_name
