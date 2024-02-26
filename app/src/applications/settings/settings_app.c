@@ -39,7 +39,7 @@ static void on_watchface_animation_changed(lv_setting_value_t value, bool final)
 static void ble_pairing_work_handler(struct k_work *work);
 static void display_restart_work_handler(struct k_work *work);
 
-ZSW_LV_IMG_DECLARE(settings);
+LV_IMG_DECLARE(settings);
 
 typedef struct setting_app {
     zsw_settings_brightness_t           brightness;
@@ -68,7 +68,7 @@ static setting_app_t settings_app = {
 
 static application_t app = {
     .name = "Settings",
-    .icon = ZSW_LV_IMG_USE(settings),
+    .icon = &settings,
     .start_func = settings_app_start,
     .stop_func = settings_app_stop
 };

@@ -25,11 +25,11 @@ typedef struct battery_sample_t {
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
 
-ZSW_LV_IMG_DECLARE(battery_app_icon);
+LV_IMG_DECLARE(battery_app_icon);
 
 static application_t app = {
     .name = "Battery",
-    .icon = ZSW_LV_IMG_USE(battery_app_icon),
+    .icon = &(battery_app_icon),
     .start_func = battery_app_start,
     .stop_func = battery_app_stop
 };

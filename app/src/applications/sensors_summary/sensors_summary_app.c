@@ -18,11 +18,11 @@ static void on_ref_set(void);
 
 static void timer_callback(lv_timer_t *timer);
 
-ZSW_LV_IMG_DECLARE(move);
+LV_IMG_DECLARE(move);
 
 static application_t app = {
     .name = "Sensors",
-    .icon = ZSW_LV_IMG_USE(move),
+    .icon = &move,
     .start_func = sensors_summary_app_start,
     .stop_func = sensors_summary_app_stop
 };

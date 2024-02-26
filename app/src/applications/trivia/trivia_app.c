@@ -39,7 +39,7 @@ ZBUS_OBS_DECLARE(trivia_app_ble_comm_lis);
 ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, trivia_app_ble_comm_lis, 1);
 ZBUS_LISTENER_DEFINE(trivia_app_ble_comm_lis, zbus_ble_comm_data_callback);
 
-ZSW_LV_IMG_DECLARE(quiz);
+LV_IMG_DECLARE(quiz);
 
 typedef struct trivia_app_question {
     char question[MAX_HTTP_FIELD_LENGTH + 1];
@@ -50,7 +50,7 @@ static trivia_app_question_t trivia_app_question;
 
 static application_t app = {
     .name = "Trivia",
-    .icon = ZSW_LV_IMG_USE(quiz),
+    .icon = &quiz,
     .start_func = trivia_app_start,
     .stop_func = trivia_app_stop
 };

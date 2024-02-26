@@ -8,11 +8,11 @@
 static void about_app_start(lv_obj_t *root, lv_group_t *group);
 static void about_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(templates);
+LV_IMG_DECLARE(templates);
 
 static application_t app = {
     .name = "About",
-    .icon = ZSW_LV_IMG_USE(templates),
+    .icon = &templates,
     .start_func = about_app_start,
     .stop_func = about_app_stop
 };
