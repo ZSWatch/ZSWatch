@@ -188,6 +188,10 @@
         // CS High to Standby Mode without Electronic Signature Read (tRES1) 3 us
         // Rev. S Table 26. AC Electrical Characteristic
 		t-exit-dpd = <3000>;
+		// Configure to actully use Quad SPI data.
+		writeoc = "pp4io";
+		readoc = "read4io";
+		quad-enable-requirements = "S2B1v6";
 	};
 };
 
