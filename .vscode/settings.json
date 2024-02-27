@@ -12,4 +12,8 @@
     },
     "editor.defaultFormatter": "chiehyu.vscode-astyle",
     "astyle.astylerc": "${workspaceRoot}/app/tools/astyle.cfg",
+    "C_Cpp.configurationWarnings": "disabled",
+    "terminal.integrated.env.linux": {
+        "GTK_PATH": ""
+    },
 }

@@ -12,6 +12,11 @@
             "label": "Upload LittleFS",
             "type": "shell",
             "command": "west upload_fs --type lfs"
+        },
+        {
+            "label": "Disable BT",
+            "type": "shell",
+            "command": "sudo btmgmt --index 0 power off"
         }
     ]
 }
