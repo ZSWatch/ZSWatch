@@ -71,3 +71,8 @@ FILE(GLOB events_sources src/events/*.c)
 target_sources(app PRIVATE ${events_sources})
 
 add_compile_definitions(LV_LVGL_H_INCLUDE_SIMPLE)
+
+file(GLOB ext_fs_files "src/images/binaries/S/*.*")
+list(LENGTH ext_fs_files num_ext_fs_files)
+add_compile_definitions(NUM_RAW_FS_FILES=${num_ext_fs_files})
+message("Number of external filesystem files:" ${num_ext_fs_files})

@@ -20,6 +20,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#include <filesystem/zsw_filesystem.h>
 #include <lvgl.h>
 #include "lv_conf.h"
 #include LV_MEM_CUSTOM_INCLUDE
@@ -61,6 +62,8 @@ static file_table_t file_table;
 static opened_file_t opened_files[MAX_OPENED_FILES];
 
 static const struct flash_area *flash_area;
+
+static lv_fs_drv_t fs_drv;
 
 static file_header_t *find_file(const char *name)
 {
@@ -226,9 +229,12 @@ static lv_fs_res_t lvgl_fs_dir_close(struct _lv_fs_drv_t *drv, void *dir)
     return errno_to_lv_fs_res(err);
 }
 
-static lv_fs_drv_t fs_drv;
+int zsw_filesytem_get_num_rawfs_files(void)
+{
+    return file_table.num_files;
+}
 
-int zsw_decoder_init(void)
+static int zsw_decoder_init(void)
 {
     int rc;
     lv_fs_drv_init(&fs_drv);

@@ -54,6 +54,8 @@
 #include "managers/zsw_notification_manager.h"
 #include "applications/watchface/watchface_app.h"
 #include <filesystem/zsw_rtt_flash_loader.h>
+#include <filesystem/zsw_filesystem.h>
+#include "ui/popup/zsw_popup_window.h"
 #include "ble/ble_ams.h"
 #include "ble/ble_ancs.h"
 #include "ble/ble_cts.h"
@@ -243,6 +245,14 @@ static void run_init_work(struct k_work *item)
     lv_obj_add_event_cb(lv_scr_act(), on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
 
     watchface_app_start(input_group, on_watchface_app_event_callback);
+
+#ifdef CONFIG_SPI_FLASH_LOADER
+    if (NUM_RAW_FS_FILES != zsw_filesytem_get_num_rawfs_files()) {
+        LOG_ERR("Number of rawfs files does not match the number of files in the file table: %d / %d",
+                zsw_filesytem_get_num_rawfs_files(), NUM_RAW_FS_FILES);
+        zsw_popup_show("Warning", "Missing files in external flash\nPlease run:\nwest upload_fs", NULL, 5, false);
+    }
+#endif
 
 #if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
     const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
