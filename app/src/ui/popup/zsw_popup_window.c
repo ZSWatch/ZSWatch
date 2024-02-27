@@ -37,8 +37,8 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
     on_close_cb = close_cb;
     static const char *btns[] = {"Yes", "No", ""};
 
-    mbox = lv_msgbox_create(lv_scr_act(), title, body, display_yes_no ? btns : NULL, true);
-    lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
+    mbox = lv_msgbox_create(lv_layer_top(), title, body, display_yes_no ? btns : NULL, true);
+    lv_obj_set_scrollbar_mode(lv_layer_top(), LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_scrollbar_mode(mbox, LV_SCROLLBAR_MODE_OFF);
     lv_obj_t *close_btn = lv_msgbox_get_close_btn(mbox);
     lv_obj_add_event_cb(close_btn, on_popup_close_button_pressed, LV_EVENT_PRESSED, NULL);
