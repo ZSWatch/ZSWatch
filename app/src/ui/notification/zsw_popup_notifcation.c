@@ -60,7 +60,7 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_obj_set_style_bg_color(notif_box.panel, lv_color_hex(0x0C0C1A), 0);
     lv_obj_set_style_border_color(notif_box.panel, lv_palette_main(LV_PALETTE_BLUE_GREY), 0);
     lv_obj_set_style_border_width(notif_box.panel, 1, 0);
-    lv_obj_add_event_cb(notif_box.panel, on_notification_expand, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(notif_box.panel, on_notification_expand, LV_EVENT_CLICKED, NULL);
 
     // create title text
     notif_box.title = lv_label_create(notif_box.panel);
@@ -139,7 +139,7 @@ static void on_notification_expand(lv_event_t *e)
 
     // click on expanded message will close and remove message
     lv_obj_remove_event_cb(notif_box.panel, on_notification_expand);
-    lv_obj_add_event_cb(notif_box.panel, on_notification_closed, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(notif_box.panel, on_notification_closed, LV_EVENT_CLICKED, NULL);
 
     if (auto_close_timer) {
         lv_timer_set_period(auto_close_timer, 30000);
