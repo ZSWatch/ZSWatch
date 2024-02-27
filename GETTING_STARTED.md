@@ -88,8 +88,8 @@ Follow the steps below to open and build the ZSWatch application:
 > Many images and icons are placed in external flash and not uploaded when flashing the watch.<br>
 > To upload the image resources into the external flash following needs to be done.
 
-In VSCode: Ctrl + shift + p -> Tasks: Run task -> Upload LittleFS<br>
-Or run `west upload_fs --type lfs`
+In VSCode: Ctrl + shift + p -> Tasks: Run task -> Upload Raw FS<br>
+Or run `west upload_fs`
 
 ## Running and developing the ZSWatch SW without the actual ZSWatch HW
 Depending on preference and available hardware, three options can be chosen:
@@ -107,15 +107,7 @@ sudo apt-get install pkg-config libsdl2-dev:i386
 export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig
 ```
 To execute ZSWatch application on native posix fist make sure that you have [required](https://docs.zephyrproject.org/latest/connectivity/bluetooth/bluetooth-tools.html#using-bluez-with-zephyr) version of linux kernel and BlueZ.    
-Find a HCI index on your host using: `sudo hcitool dev` command and try to execute some zephyr samples located in *<Zephyr base>/zephyr/samples/bluetooth/...*. Example:
-```
-cd <Zephyr base>/zephyr/samples/bluetooth/peripheral_hr
-west build -b native_posix
-sudo btmgmt --index 0 power off
-sudo ./build/zephyr/zephyr.exe --bt-dev=hci0
-```
-If everything was successful you will see the message "Advertising successfully started" in the logs and you will be able to connect to the device from your phone using e.g. [nRF Connect](https://play.google.com/store/apps/details?id=no.nordicsemi.android.mcp&hl=nl&pli=1) application.
-
+Find a HCI index on your host using: `sudo hcitool dev` this is needed later. Usually `hci0` for internal and `hci1` fo external HCI.
 
 #### Running ZSWatch app
 To build ZSWatch application for native posix simply run:
@@ -123,7 +115,7 @@ To build ZSWatch application for native posix simply run:
 cd <ZSWatch path>/app
 west build -b native_posix
 sudo btmgmt --index <hci index> power off
-sudo ./build/zephyr/zephyr.exe --bt-dev=hci<hci index>
+sudo ./build/zephyr/zephyr.exe --bt-dev=hci<hci_index>
 ```
 
 __Tips:__
@@ -170,7 +162,6 @@ You may also add _any_ of the sensors on the ZSWatch, Sparkfun for example have 
 [BMI270](https://www.sparkfun.com/products/17353)
 [BME688](https://www.sparkfun.com/products/19096)
 [BMP581](https://www.sparkfun.com/products/20170)
-[MAX30101](https://www.sparkfun.com/products/16474)
 [LIS2MDL](https://www.sparkfun.com/products/19851)
 
 When using the nRF5340-DK all you need to do is to replace `zswatch_nrf5340_cpuapp` with `nrf5340dk_nrf5340_cpuapp` as the board in the compiling instructions above. You may also need to tweak the pin assignment in [app/boards/nrf5340dk_nrf5340_cpuapp.overlay](app/boards/nrf5340dk_nrf5340_cpuapp.overlay) for your needs.

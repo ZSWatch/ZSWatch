@@ -20,4 +20,4 @@ If the resource is big and always shall be in external flash just do `lv_img_set
     - Upload: `west upload_fs --type raw`
 
 ### Which one to use?
-Please use littlefs for now those options are mostly for experimentation. Using littlefs may be faster due to littlefs caching. However the other custom filesystem allows us to do more optimization for ZSWatch in the future. 
+Please use the raw filesystem for now. For images that will be loader alot, for example watchscreen gifs, then use littlefs as it includes caching. Using littlefs may be faster due to littlefs caching. However the other custom filesystem allows us to do more optimization for ZSWatch in the future and won't run out of cache RAM causing images to to load.
