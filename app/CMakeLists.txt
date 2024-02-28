@@ -63,9 +63,9 @@ if(DFU_BUILD)
     target_sources(app PRIVATE src/dfu.c)
 endif()
 
-zephyr_sources_ifdef(CONFIG_WATCHFACE_ANALOG src/ui/watchfaces/zsw_watchface_analog_ui.c)
-zephyr_sources_ifdef(CONFIG_WATCHFACE_DIGITAL src/ui/watchfaces/zsw_watchface_digital_ui.c)
-zephyr_sources_ifdef(CONFIG_WATCHFACE_MINIMAL src/ui/watchfaces/zsw_watchface_minimal_ui.c)
+target_sources_ifdef(CONFIG_WATCHFACE_ANALOG app PRIVATE src/ui/watchfaces/zsw_watchface_analog_ui.c)
+target_sources_ifdef(CONFIG_WATCHFACE_DIGITAL app PRIVATE src/ui/watchfaces/zsw_watchface_digital_ui.c)
+target_sources_ifdef(CONFIG_WATCHFACE_MINIMAL app PRIVATE src/ui/watchfaces/zsw_watchface_minimal_ui.c)
 
 FILE(GLOB events_sources src/events/*.c)
 target_sources(app PRIVATE ${events_sources})

@@ -17,6 +17,7 @@
 
 #include <lvgl.h>
 #include "utils/zsw_ui_utils.h"
+#include "managers/zsw_notification_manager.h"
 
 #if CONFIG_WATCHFACE_BACKGROUND_SPACE
 LV_IMG_DECLARE(space_blur_bg);
@@ -40,6 +41,16 @@ LV_IMG_DECLARE(sunny);
 LV_IMG_DECLARE(partly_cloudy);
 LV_IMG_DECLARE(cloudy);
 LV_IMG_DECLARE(unknown);
+
+ZSW_LV_IMG_DECLARE(ui_img_whatsapp_png);
+ZSW_LV_IMG_DECLARE(ui_img_gadget_png);
+ZSW_LV_IMG_DECLARE(ui_img_mail_png);
+ZSW_LV_IMG_DECLARE(ui_img_call_png);
+ZSW_LV_IMG_DECLARE(ui_img_trash_png);
+ZSW_LV_IMG_DECLARE(ui_img_youtube_png);
+ZSW_LV_IMG_DECLARE(ui_img_homeassistant_png);
+ZSW_LV_IMG_DECLARE(ui_img_discord_png);
+ZSW_LV_IMG_DECLARE(ui_img_linkedin_png);
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color)
 {
@@ -89,5 +100,63 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
             printf("Unhandled weather code: %d", code);
             return &unknown;
         }
+    }
+}
+
+const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
+{
+    switch (src) {
+        case NOTIFICATION_SRC_COMMON_MESSENGER:
+            return ZSW_LV_IMG_USE(ui_img_whatsapp_png);
+            break;
+        case NOTIFICATION_SRC_WHATSAPP:
+            return ZSW_LV_IMG_USE(ui_img_whatsapp_png);
+            break;
+        case NOTIFICATION_SRC_DISCORD:
+            return ZSW_LV_IMG_USE(ui_img_discord_png);
+            break;
+        case NOTIFICATION_SRC_GMAIL:
+            return ZSW_LV_IMG_USE(ui_img_mail_png);
+            break;
+        case NOTIFICATION_SRC_COMMON_MAIL:
+            return ZSW_LV_IMG_USE(ui_img_mail_png);
+            break;
+        case NOTIFICATION_SRC_HOME_ASSISTANT:
+            return ZSW_LV_IMG_USE(ui_img_homeassistant_png);
+            break;
+        case NOTIFICATION_SRC_LINKEDIN:
+            return ZSW_LV_IMG_USE(ui_img_linkedin_png);
+            break;
+        default:
+            return ZSW_LV_IMG_USE(ui_img_gadget_png);
+    }
+}
+const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src)
+{
+    switch (src) {
+        case NOTIFICATION_SRC_COMMON_MESSENGER:
+            return "Messenger";
+            break;
+        case NOTIFICATION_SRC_WHATSAPP:
+            return "WhatsApp";
+            break;
+        case NOTIFICATION_SRC_DISCORD:
+            return "Discord";
+            break;
+        case NOTIFICATION_SRC_GMAIL:
+            return "Gmail";
+            break;
+        case NOTIFICATION_SRC_COMMON_MAIL:
+            return "Mail";
+            break;
+        case NOTIFICATION_SRC_HOME_ASSISTANT:
+            return "Home Assistant";
+            break;
+        case NOTIFICATION_SRC_LINKEDIN:
+            return "LinkedIn";
+            break;
+        default:
+            return "Unknown";
+            break;
     }
 }

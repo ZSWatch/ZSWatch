@@ -18,6 +18,7 @@
 #pragma once
 
 #include <lvgl.h>
+#include "managers/zsw_notification_manager.h"
 
 #define CONCATINATE_(a, b) a##b
 #define CONCATINATE(a, b) CONCATINATE_(a, b)
@@ -33,3 +34,7 @@
 extern const lv_img_dsc_t *global_watchface_bg_img;
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color);
+
+const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src);
+
+const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src);

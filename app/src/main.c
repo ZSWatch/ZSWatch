@@ -535,7 +535,6 @@ static void on_zbus_notification_callback(const struct zbus_channel *chan)
         return;
     }
 
-
     if (zsw_power_manager_get_state() != ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
         pending_not_open = true;
         zsw_power_manager_reset_idle_timout();

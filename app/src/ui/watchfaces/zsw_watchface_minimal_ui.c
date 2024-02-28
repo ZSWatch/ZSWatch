@@ -18,8 +18,8 @@
 
 #include <lvgl.h>
 
-#include "../utils/zsw_ui_utils.h"
-#include "../../applications/watchface/watchface_app.h"
+#include "ui/utils/zsw_ui_utils.h"
+#include "applications/watchface/watchface_app.h"
 
 #ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>

@@ -101,40 +101,8 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
         return;
     }
 
-    switch (not->src) {
-        case NOTIFICATION_SRC_COMMON_MESSENGER:
-            image_source = ZSW_LV_IMG_USE(ui_img_whatsapp_png);
-            source = "Messenger";
-            break;
-        case NOTIFICATION_SRC_WHATSAPP:
-            image_source = ZSW_LV_IMG_USE(ui_img_whatsapp_png);
-            source = "WhatsApp";
-            break;
-        case NOTIFICATION_SRC_DISCORD:
-            image_source = ZSW_LV_IMG_USE(ui_img_discord_png);
-            source = "Discord";
-            break;
-        case NOTIFICATION_SRC_GMAIL:
-            image_source = ZSW_LV_IMG_USE(ui_img_mail_png);
-            source = "Gmail";
-            break;
-        case NOTIFICATION_SRC_COMMON_MAIL:
-            image_source = ZSW_LV_IMG_USE(ui_img_mail_png);
-            source = "Mail";
-            break;
-        case NOTIFICATION_SRC_HOME_ASSISTANT:
-            image_source = ZSW_LV_IMG_USE(ui_img_homeassistant_png);
-            source = "Home Assistant";
-            break;
-        case NOTIFICATION_SRC_LINKEDIN:
-            image_source = ZSW_LV_IMG_USE(ui_img_linkedin_png);
-            source = "LinkedIn";
-            break;
-        default:
-            image_source = ZSW_LV_IMG_USE(ui_img_gadget_png);
-            source = "Unknown";
-            break;
-    }
+    image_source = zsw_ui_utils_icon_from_notification(not->src);
+    source = zsw_ui_utils_source_from_notification(not->src);
 
     ui_Panel = lv_obj_create(parent);
     lv_obj_set_width(ui_Panel, 200);

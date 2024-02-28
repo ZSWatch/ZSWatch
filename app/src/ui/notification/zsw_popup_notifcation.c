@@ -18,12 +18,14 @@
 #include <lvgl.h>
 
 #include "ui/notification/zsw_popup_notifcation.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 typedef struct {
     lv_obj_t *panel;
     lv_obj_t *title;
     lv_obj_t *body;
     lv_obj_t *close_btn;
+    lv_obj_t *icon;
 } notif_box_t;
 
 static void on_notification_closed(lv_event_t *e);
@@ -62,12 +64,20 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_obj_set_style_border_width(notif_box.panel, 1, 0);
     lv_obj_add_event_cb(notif_box.panel, on_notification_expand, LV_EVENT_CLICKED, NULL);
 
+    // create notification icon
+    notif_box.icon = lv_img_create(notif_box.panel);
+    lv_obj_set_width(notif_box.icon, LV_SIZE_CONTENT);
+    lv_obj_set_height(notif_box.icon, LV_SIZE_CONTENT);
+    lv_obj_set_style_img_recolor_opa(notif_box.icon, LV_OPA_COVER, 0);
+    lv_obj_set_style_img_recolor(notif_box.icon, lv_color_white(), 0);
+    lv_obj_align_to(notif_box.icon, notif_box.panel, LV_ALIGN_TOP_LEFT, 2, 2);
+    lv_img_set_src(notif_box.icon, zsw_ui_utils_icon_from_notification(icon));
+
     // create title text
     notif_box.title = lv_label_create(notif_box.panel);
-    lv_obj_align_to(notif_box.title, notif_box.panel, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align_to(notif_box.title, notif_box.icon, LV_ALIGN_OUT_RIGHT_MID, 2, 0);
     lv_obj_set_width(notif_box.title, 130);
-    // TODO: replace bell with application symbol
-    lv_label_set_text_fmt(notif_box.title, "%s %s", LV_SYMBOL_BELL, title);
+    lv_label_set_text_fmt(notif_box.title, "%s", title);
     lv_label_set_long_mode(notif_box.title, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_color(notif_box.title, lv_palette_main(LV_PALETTE_GREY), 0);
     lv_obj_set_style_text_font(notif_box.title, &lv_font_montserrat_14_full, 0);
