@@ -300,7 +300,9 @@ void notifications_ui_remove_notification(uint32_t id)
             active_notifications[i].panel = NULL;
             active_notifications[i].deltaLabel = NULL;
             active_notifications[i].notification = NULL;
-            lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
+            if (lv_obj_get_child(main_page, -1)) {
+                lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
+            }
             lv_obj_update_layout(main_page);
 
             break;
