@@ -193,7 +193,7 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_img_header_t header;
     lv_img_decoder_get_info(icon, &header);
 
-    lv_obj_set_size(cont, LV_SIZE_CONTENT, header.h);
+    lv_obj_set_size(cont, LV_PCT(100), header.h + 6);
     lv_obj_clear_flag(cont,
                       LV_OBJ_FLAG_SCROLLABLE); // Needed, otherwise indev will first focus on this cont before it's contents.
 
@@ -211,6 +211,7 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_label_set_text(title, name);
     lv_obj_set_size(title, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align_to(title, img_icon, LV_ALIGN_OUT_RIGHT_MID, 15, 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(title, lv_palette_main(LV_PALETTE_GREY), LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_ALIGN_OUT_LEFT_MID, LV_PART_MAIN);
 
