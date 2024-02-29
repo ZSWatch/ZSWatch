@@ -59,7 +59,7 @@ static void notification_on_clicked_callback(lv_event_t *event)
     id = (uint32_t)lv_event_get_user_data(event);
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification->id == id) {
+        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
             notification_removed_callback(id);
             break;
         }
