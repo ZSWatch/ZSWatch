@@ -65,6 +65,9 @@ void fusion_ui_show(lv_obj_t *root, on_close_cb_t close_cb)
 
 void fusion_ui_remove(void)
 {
+    if (!root_page) {
+        return;
+    }
     lv_obj_del(root_page);
     root_page = NULL;
 }

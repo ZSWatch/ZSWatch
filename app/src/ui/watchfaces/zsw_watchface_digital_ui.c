@@ -512,6 +512,9 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
 
 static void watchface_remove(void)
 {
+    if (!root_page) {
+        return;
+    }
     lv_obj_del(root_page);
     root_page = NULL;
 }
