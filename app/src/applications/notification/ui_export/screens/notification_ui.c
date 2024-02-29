@@ -6,6 +6,7 @@ LV_FONT_DECLARE(lv_font_montserrat_14_full)
 
 static on_notification_remove_cb_t notification_removed_callback;
 static lv_obj_t *main_page;
+static lv_obj_t *empty_label;
 static lv_timer_t *timer;
 static active_notification_t active_notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
 
@@ -28,6 +29,16 @@ static void notification_delta2char(uint32_t delta, char *buf)
     } else {
         sprintf(buf, "Now");
     }
+}
+
+static bool any_notifiction(void)
+{
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (active_notifications[i].notification != NULL) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /** @brief
@@ -63,6 +74,10 @@ static void notification_on_clicked_callback(lv_event_t *event)
             notification_removed_callback(id);
             break;
         }
+    }
+
+    if (!any_notifiction()) {
+        lv_obj_clear_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -220,6 +235,12 @@ void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_scroll_snap_y(main_page, LV_SCROLL_SNAP_CENTER);
     lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
 
+    empty_label = lv_label_create(parent);
+    lv_label_set_text(empty_label, "No notifications");
+    lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_color(empty_label, lv_color_hex(0x8C8C8C), 0);
+    lv_obj_center(empty_label);
+
     /*
         ui_ImgButtonClearAll = lv_imgbtn_create(lv_obj_create(parent));
         lv_imgbtn_set_src(ui_ImgButtonClearAll, LV_IMGBTN_STATE_RELEASED, NULL, &ui_img_trash_png, NULL);
@@ -246,6 +267,7 @@ void notifications_ui_page_close(void)
     }
 
     lv_obj_del(main_page);
+    lv_obj_del(empty_label);
     main_page = NULL;
     timer = NULL;
 }
@@ -254,6 +276,10 @@ void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_grou
 {
     if (main_page == NULL) {
         return;
+    }
+
+    if (!lv_obj_has_flag(empty_label, LV_OBJ_FLAG_HIDDEN)) {
+        lv_obj_add_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
     }
 
     build_notification_entry(main_page, not, group);
@@ -279,5 +305,9 @@ void notifications_ui_remove_notification(uint32_t id)
 
             break;
         }
+    }
+
+    if (!any_notifiction()) {
+        lv_obj_clear_flag(empty_label, LV_OBJ_FLAG_HIDDEN);
     }
 }
