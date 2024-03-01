@@ -34,19 +34,19 @@ void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
     lv_label_set_text(question_lb, "-");
 
     /*Create Buttons*/
-    lv_obj_t *btn_true = lv_btn_create(lv_scr_act());
+    lv_obj_t *btn_true = lv_btn_create(root_page);
     static trivia_button_t trivia_button_true = TRUE_BUTTON;
     lv_obj_add_event_cb(btn_true, click_event_cb, LV_EVENT_CLICKED, &trivia_button_true);
-    lv_obj_align(btn_true, LV_ALIGN_BOTTOM_RIGHT, -45, -45);
+    lv_obj_align(btn_true, LV_ALIGN_CENTER, -45, 45);
 
     lv_obj_t *label_true = lv_label_create(btn_true);
     lv_label_set_text(label_true, "True");
     lv_obj_center(label_true);
 
-    lv_obj_t *btn_false = lv_btn_create(lv_scr_act());
+    lv_obj_t *btn_false = lv_btn_create(root_page);
     static trivia_button_t trivia_button_false = FALSE_BUTTON;
     lv_obj_add_event_cb(btn_false, click_event_cb, LV_EVENT_CLICKED, &trivia_button_false);
-    lv_obj_align(btn_false, LV_ALIGN_BOTTOM_LEFT, 45, -45);
+    lv_obj_align(btn_false, LV_ALIGN_CENTER, 45, 45);
 
     lv_obj_t *label_false = lv_label_create(btn_false);
     lv_label_set_text(label_false, "False");
