@@ -168,7 +168,7 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
     memset(&notifications[idx], 0, sizeof(zsw_not_mngr_notification_t));
 
     if (strncmp(not->src, "Messenger", not->src_len) == 0) {
-        notifications[idx].src = NOTIFICATION_SRC_COMMON_MESSENGER;
+        notifications[idx].src = NOTIFICATION_SRC_FB_MESSENGER;
         notifications[idx].id = not->id;
         memcpy(notifications[idx].title, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
@@ -206,6 +206,16 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         // {"t":"notify","id":1701847200,"src":"LinkedIn","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
 
         notifications[idx].src = NOTIFICATION_SRC_LINKEDIN;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "Reddit", not->src_len) == 0) {
+        notifications[idx].src = NOTIFICATION_SRC_REDDIT;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "YouTube", not->src_len) == 0) {
+        notifications[idx].src = NOTIFICATION_SRC_YOUTUBE;
         notifications[idx].id = not->id;
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));

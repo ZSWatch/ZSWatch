@@ -51,6 +51,9 @@ ZSW_LV_IMG_DECLARE(ui_img_youtube_png);
 ZSW_LV_IMG_DECLARE(ui_img_homeassistant_png);
 ZSW_LV_IMG_DECLARE(ui_img_discord_png);
 ZSW_LV_IMG_DECLARE(ui_img_linkedin_png);
+ZSW_LV_IMG_DECLARE(fb_messenger_logo);
+ZSW_LV_IMG_DECLARE(reddit_logo);
+ZSW_LV_IMG_DECLARE(youtube_logo);
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color)
 {
@@ -106,6 +109,9 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
 const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
 {
     switch (src) {
+        case NOTIFICATION_SRC_FB_MESSENGER:
+            return ZSW_LV_IMG_USE(fb_messenger_logo);
+            break;
         case NOTIFICATION_SRC_COMMON_MESSENGER:
             return ZSW_LV_IMG_USE(ui_img_whatsapp_png);
             break;
@@ -127,15 +133,23 @@ const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
         case NOTIFICATION_SRC_LINKEDIN:
             return ZSW_LV_IMG_USE(ui_img_linkedin_png);
             break;
+        case NOTIFICATION_SRC_REDDIT:
+            return ZSW_LV_IMG_USE(reddit_logo);
+        case NOTIFICATION_SRC_YOUTUBE:
+            return ZSW_LV_IMG_USE(youtube_logo);
         default:
             return ZSW_LV_IMG_USE(ui_img_gadget_png);
     }
 }
+
 const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src)
 {
     switch (src) {
-        case NOTIFICATION_SRC_COMMON_MESSENGER:
+        case NOTIFICATION_SRC_FB_MESSENGER:
             return "Messenger";
+            break;
+        case NOTIFICATION_SRC_COMMON_MESSENGER:
+            return "Messages";
             break;
         case NOTIFICATION_SRC_WHATSAPP:
             return "WhatsApp";
@@ -154,6 +168,12 @@ const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src)
             break;
         case NOTIFICATION_SRC_LINKEDIN:
             return "LinkedIn";
+            break;
+        case NOTIFICATION_SRC_REDDIT:
+            return "Reddit";
+            break;
+        case NOTIFICATION_SRC_YOUTUBE:
+            return "YouTube";
             break;
         default:
             return "Unknown";

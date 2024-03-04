@@ -32,6 +32,7 @@
 /** @brief Notification sources definitions.
 */
 typedef enum {
+    NOTIFICATION_SRC_FB_MESSENGER,                              /**< */
     NOTIFICATION_SRC_COMMON_MESSENGER,                          /**< */
     NOTIFICATION_SRC_WHATSAPP,                                  /**< */
     NOTIFICATION_SRC_COMMON_MAIL,                               /**< */
@@ -40,6 +41,7 @@ typedef enum {
     NOTIFICATION_SRC_HOME_ASSISTANT,                            /**< */
     NOTIFICATION_SRC_DISCORD,                                   /**< */
     NOTIFICATION_SRC_LINKEDIN,                                  /**< */
+    NOTIFICATION_SRC_REDDIT,                                    /**< */
     NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
