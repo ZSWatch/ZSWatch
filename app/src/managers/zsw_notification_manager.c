@@ -111,6 +111,10 @@ static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_chann
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
 
     if (event->data.type == BLE_COMM_DATA_TYPE_NOTIFY) {
+        // Notification source is empty, ignore.
+        if (event->data.data.notify.src_len == 0) {
+            return;
+        }
         not = zsw_notification_manager_add(&event->data.data.notify);
         if (!not) {
             return;
@@ -170,9 +174,8 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
     if (strncmp(not->src, "Messenger", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_FB_MESSENGER;
         notifications[idx].id = not->id;
-        memcpy(notifications[idx].title, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
-        memcpy(notifications[idx].sender, not->sender, MIN(not->sender_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     } else if (strncmp(not->src, "WhatsApp", not->src_len) == 0) {
         // {"t":"notify","id":1700974318,"src":"WhatsApp","title":"Daniel Kampert","subject":"","body":"H","sender":""}
 
@@ -216,6 +219,16 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
     } else if (strncmp(not->src, "YouTube", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_YOUTUBE;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "Messages", not->src_len) == 0) {
+        notifications[idx].src = NOTIFICATION_SRC_COMMON_MESSENGER;
+        notifications[idx].id = not->id;
+        memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+        memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
+    } else if (strncmp(not->src, "Calendar", not->src_len) == 0 || strncmp(not->src, "Kalender", not->src_len) == 0) {
+        notifications[idx].src = NOTIFICATION_SRC_CALENDAR;
         notifications[idx].id = not->id;
         memcpy(notifications[idx].body, not->body, MIN(not->body_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));
         memcpy(notifications[idx].sender, not->title, MIN(not->title_len, ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1));

@@ -42,18 +42,19 @@ LV_IMG_DECLARE(partly_cloudy);
 LV_IMG_DECLARE(cloudy);
 LV_IMG_DECLARE(unknown);
 
-ZSW_LV_IMG_DECLARE(ui_img_whatsapp_png);
+ZSW_LV_IMG_DECLARE(ui_img_call_png);
 ZSW_LV_IMG_DECLARE(ui_img_gadget_png);
 ZSW_LV_IMG_DECLARE(ui_img_mail_png);
-ZSW_LV_IMG_DECLARE(ui_img_call_png);
+ZSW_LV_IMG_DECLARE(ui_img_whatsapp_png);
 ZSW_LV_IMG_DECLARE(ui_img_trash_png);
-ZSW_LV_IMG_DECLARE(ui_img_youtube_png);
 ZSW_LV_IMG_DECLARE(ui_img_homeassistant_png);
 ZSW_LV_IMG_DECLARE(ui_img_discord_png);
 ZSW_LV_IMG_DECLARE(ui_img_linkedin_png);
 ZSW_LV_IMG_DECLARE(fb_messenger_logo);
 ZSW_LV_IMG_DECLARE(reddit_logo);
 ZSW_LV_IMG_DECLARE(youtube_logo);
+ZSW_LV_IMG_DECLARE(sms_icon);
+ZSW_LV_IMG_DECLARE(google_calendar_icon);
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color)
 {
@@ -111,32 +112,26 @@ const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
     switch (src) {
         case NOTIFICATION_SRC_FB_MESSENGER:
             return ZSW_LV_IMG_USE(fb_messenger_logo);
-            break;
         case NOTIFICATION_SRC_COMMON_MESSENGER:
-            return ZSW_LV_IMG_USE(ui_img_whatsapp_png);
-            break;
+            return ZSW_LV_IMG_USE(sms_icon);
         case NOTIFICATION_SRC_WHATSAPP:
             return ZSW_LV_IMG_USE(ui_img_whatsapp_png);
-            break;
         case NOTIFICATION_SRC_DISCORD:
             return ZSW_LV_IMG_USE(ui_img_discord_png);
-            break;
         case NOTIFICATION_SRC_GMAIL:
             return ZSW_LV_IMG_USE(ui_img_mail_png);
-            break;
         case NOTIFICATION_SRC_COMMON_MAIL:
             return ZSW_LV_IMG_USE(ui_img_mail_png);
-            break;
         case NOTIFICATION_SRC_HOME_ASSISTANT:
             return ZSW_LV_IMG_USE(ui_img_homeassistant_png);
-            break;
         case NOTIFICATION_SRC_LINKEDIN:
             return ZSW_LV_IMG_USE(ui_img_linkedin_png);
-            break;
         case NOTIFICATION_SRC_REDDIT:
             return ZSW_LV_IMG_USE(reddit_logo);
         case NOTIFICATION_SRC_YOUTUBE:
             return ZSW_LV_IMG_USE(youtube_logo);
+        case NOTIFICATION_SRC_CALENDAR:
+            return ZSW_LV_IMG_USE(google_calendar_icon);
         default:
             return ZSW_LV_IMG_USE(ui_img_gadget_png);
     }
@@ -147,36 +142,27 @@ const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src)
     switch (src) {
         case NOTIFICATION_SRC_FB_MESSENGER:
             return "Messenger";
-            break;
         case NOTIFICATION_SRC_COMMON_MESSENGER:
             return "Messages";
-            break;
         case NOTIFICATION_SRC_WHATSAPP:
             return "WhatsApp";
-            break;
         case NOTIFICATION_SRC_DISCORD:
             return "Discord";
-            break;
         case NOTIFICATION_SRC_GMAIL:
             return "Gmail";
-            break;
         case NOTIFICATION_SRC_COMMON_MAIL:
             return "Mail";
-            break;
         case NOTIFICATION_SRC_HOME_ASSISTANT:
             return "Home Assistant";
-            break;
         case NOTIFICATION_SRC_LINKEDIN:
             return "LinkedIn";
-            break;
         case NOTIFICATION_SRC_REDDIT:
             return "Reddit";
-            break;
         case NOTIFICATION_SRC_YOUTUBE:
             return "YouTube";
-            break;
+        case NOTIFICATION_SRC_CALENDAR:
+            return "Calendar";
         default:
             return "Unknown";
-            break;
     }
 }

@@ -68,8 +68,6 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     notif_box.icon = lv_img_create(notif_box.panel);
     lv_obj_set_width(notif_box.icon, LV_SIZE_CONTENT);
     lv_obj_set_height(notif_box.icon, LV_SIZE_CONTENT);
-    lv_obj_set_style_img_recolor_opa(notif_box.icon, LV_OPA_COVER, 0);
-    lv_obj_set_style_img_recolor(notif_box.icon, lv_color_white(), 0);
     lv_obj_align_to(notif_box.icon, notif_box.panel, LV_ALIGN_TOP_LEFT, 2, 2);
     lv_img_set_src(notif_box.icon, zsw_ui_utils_icon_from_notification(icon));
 

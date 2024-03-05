@@ -42,6 +42,7 @@ typedef enum {
     NOTIFICATION_SRC_DISCORD,                                   /**< */
     NOTIFICATION_SRC_LINKEDIN,                                  /**< */
     NOTIFICATION_SRC_REDDIT,                                    /**< */
+    NOTIFICATION_SRC_CALENDAR,                                  /**< */
     NOTIFICATION_SRC_NONE                                       /**< */
 } zsw_notification_src_t;
 
