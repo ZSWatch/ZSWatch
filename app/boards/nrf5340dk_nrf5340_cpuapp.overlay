@@ -6,17 +6,17 @@
 
  &pinctrl {
     // Set to I2C pins that the sensors are connected to
-    i2c1_default: i2c1_default {
+    i2c3_default: i2c3_default {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 1, 2)>,
-                <NRF_PSEL(TWIM_SCL, 1, 3)>;
+            psels = <NRF_PSEL(TWIM_SDA, 1, 5)>,
+                <NRF_PSEL(TWIM_SCL, 1, 4)>;
         };
     };
 
-    i2c1_sleep: i2c1_sleep {
+    i2c3_sleep: i2c3_sleep {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 1, 2)>,
-                <NRF_PSEL(TWIM_SCL, 1, 3)>;
+            psels = <NRF_PSEL(TWIM_SDA, 1, 5)>,
+                <NRF_PSEL(TWIM_SCL, 1, 4)>;
             low-power-enable;
         };
     };
@@ -134,13 +134,13 @@
     status = "okay";
 };
 
-&i2c1 {
+&i2c3 {
     compatible = "nordic,nrf-twim";
     status = "okay";
     clock-frequency = <I2C_BITRATE_FAST>;
     zephyr,concat-buf-size = <512>;
-    pinctrl-0 = <&i2c1_default>;
-    pinctrl-1 = <&i2c1_sleep>;
+    pinctrl-0 = <&i2c3_default>;
+    pinctrl-1 = <&i2c3_sleep>;
     pinctrl-names = "default", "sleep";
 
     bmi270: bmi270@68 {
@@ -184,6 +184,17 @@
         rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
     };
 };
+
+&i2c3_default {
+    status = "okay";
+};
+
+&i2c3_default {
+	group1 {
+		bias-pull-up;
+	};
+};
+
 
 &spi4  {
     status = "okay";

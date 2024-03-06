@@ -41,6 +41,7 @@ add_subdirectory(src/ble)
 add_subdirectory(src/battery)
 add_subdirectory(src/images)
 add_subdirectory(src/images/fonts)
+add_subdirectory(src/fuel_gauge)
 
 include_directories(src/)
 include_directories(src/ui)
