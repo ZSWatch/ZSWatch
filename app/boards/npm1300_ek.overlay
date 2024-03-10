@@ -11,6 +11,8 @@
 	 npm1300_ek_pmic: pmic@6b {
 		 compatible = "nordic,npm1300";
 		 reg = <0x6b>;
+		 host-int-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+		 pmic-int-pin	= <4>;
  
 		 npm1300_ek_gpio: gpio-controller {
 			 compatible = "nordic,npm1300-gpio";
