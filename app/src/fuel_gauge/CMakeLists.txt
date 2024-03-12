@@ -1,2 +1,2 @@
 
-target_sources(app PRIVATE zsw_pmic.c)
+target_sources_ifdef(CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED app PRIVATE zsw_pmic.c)
