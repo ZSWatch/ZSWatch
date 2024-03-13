@@ -38,7 +38,7 @@ typedef struct watchface_ui_api_t {
     void (*set_battery_percent)(int32_t percent, int32_t value);
     void (*set_hrm)(int32_t value);
     void (*set_step)(int32_t value);
-    void (*set_time)(int32_t hour, int32_t minute, int32_t second);
+    void (*set_time)(int32_t hour, int32_t minute, int32_t second, uint32_t usec);
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t value);
     void (*set_weather)(int8_t temperature, int weather_code);

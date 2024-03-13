@@ -350,7 +350,7 @@ static void watchface_set_step(int32_t value)
     lv_obj_align_to(step_label, step_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
+static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
 {
     if (!root_page) {
         return;

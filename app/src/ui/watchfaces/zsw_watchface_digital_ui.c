@@ -544,14 +544,24 @@ static void watchface_set_step(int32_t value)
     lv_label_set_text_fmt(ui_step_arc_label, "%d", value);
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
+static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
 {
     if (!root_page) {
         return;
     }
-    lv_label_set_text_fmt(ui_hour_label, "%02d", minute);
-    lv_label_set_text_fmt(ui_min_label, "%02d", hour);
-    lv_label_set_text_fmt(ui_sec_label, "%02d", second);
+
+    if (last_hour != hour) {
+        lv_label_set_text_fmt(ui_min_label, "%02d", hour);
+        last_hour = hour;
+    }
+    if (last_minute != minute) {
+        lv_label_set_text_fmt(ui_hour_label, "%02d", minute);
+        last_minute = minute;
+    }
+    if (last_second != second) {
+        lv_label_set_text_fmt(ui_sec_label, "%02d", second);
+        last_second = second;
+    }
 }
 
 static void watchface_set_num_notifcations(int32_t value)

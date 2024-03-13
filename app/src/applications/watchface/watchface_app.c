@@ -46,6 +46,8 @@
 LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 
 #define MAX_WATCHFACES  5
+#define NORMAL_TIME_UPDATE_INTERVAL   K_MSEC(1000)
+#define SMOOTH_TIME_UPDATE_INTERVAL   K_MSEC(50)
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
@@ -77,6 +79,7 @@ ZBUS_LISTENER_DEFINE(watchface_activity_state_event, zbus_activity_event_callbac
 
 typedef enum work_type {
     UPDATE_CLOCK,
+    UPDATE_VALUES,
     OPEN_WATCHFACE,
     UPDATE_SLOW_VALUES
 } work_type_t;
@@ -100,6 +103,7 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 };
 
 static delayed_work_item_t clock_work =     { .type = UPDATE_CLOCK };
+static delayed_work_item_t update_work =      { .type = UPDATE_VALUES };
 static delayed_work_item_t date_work =      { .type = UPDATE_SLOW_VALUES };
 
 static delayed_work_item_t general_work_item;
@@ -124,19 +128,14 @@ static watchface_app_evt_listener watchface_evt_cb;
 
 static int watchface_app_init(void)
 {
-    int err;
     k_work_init_delayable(&general_work_item.work, general_work);
     k_work_init_delayable(&clock_work.work, general_work);
+    k_work_init_delayable(&update_work.work, general_work);
     k_work_init_delayable(&date_work.work, general_work);
     running = false;
     is_suspended = false;
-
-    err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
-    if (err == 0) {
-        LOG_ERR("Failed loading watchface settings");
-    }
-
     current_watchface = 0;
+
     return 0;
 }
 
@@ -150,6 +149,10 @@ void watchface_app_register_ui(watchface_ui_api_t *ui_api)
 void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb)
 {
     __ASSERT(num_watchfaces > 0, "Must enable at least one watchface.");
+    int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
+    if (err == 0) {
+        LOG_ERR("Failed loading watchface settings");
+    }
     watchface_evt_cb = evt_cb;
     general_work_item.type = OPEN_WATCHFACE;
     __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
@@ -205,23 +208,29 @@ static void general_work(struct k_work *item)
             refresh_ui();
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
-            __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL clock_work");
+            __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
+            __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL date_work");
             general_work_item.type = UPDATE_SLOW_VALUES;
             __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
             break;
         }
-        case UPDATE_CLOCK: {
-            struct tm *time = zsw_clock_get_time();
-            LOG_INF("%d, %d, %d\n", time->tm_hour, time->tm_min, time->tm_sec);
-            watchfaces[current_watchface]->set_time(time->tm_hour, time->tm_min, time->tm_sec);
-
+        case UPDATE_VALUES: {
             check_notifications();
 
             // Realtime update of steps
             if (zsw_imu_fetch_num_steps(&steps) == 0) {
                 watchfaces[current_watchface]->set_step(steps);
             }
-            __ASSERT(0 <= k_work_schedule(&clock_work.work, K_SECONDS(1)), "FAIL clock_work");
+            __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
+            break;
+        }
+        case UPDATE_CLOCK: {
+            zsw_timeval_t time;
+            zsw_clock_get_time(&time);
+            watchfaces[current_watchface]->set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec);
+
+            __ASSERT(0 <= k_work_schedule(&clock_work.work,
+                                          watchface_settings.smooth_second_hand ? SMOOTH_TIME_UPDATE_INTERVAL : NORMAL_TIME_UPDATE_INTERVAL), "FAIL clock_work");
             break;
         }
         case UPDATE_SLOW_VALUES: {
@@ -230,13 +239,14 @@ static void general_work(struct k_work *item)
             float humidity = 0.0;
             float iaq = 0.0;
             float co2 = 0.0;
-            struct tm *time = zsw_clock_get_time();
+            zsw_timeval_t time;
+            zsw_clock_get_time(&time);
 
             zsw_environment_sensor_get(&temperature, &humidity, &pressure);
             zsw_environment_sensor_get_co2(&co2);
             zsw_environment_sensor_get_iaq(&iaq);
 
-            watchfaces[current_watchface]->set_date(time->tm_wday, time->tm_mday);
+            watchfaces[current_watchface]->set_date(time.tm.tm_wday, time.tm.tm_mday);
 
             zsw_pressure_sensor_get_pressure(&pressure);
             watchfaces[current_watchface]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure, iaq, co2);

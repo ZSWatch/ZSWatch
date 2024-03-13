@@ -35,6 +35,7 @@ static void on_clear_storage_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_restart_screen_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
+static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
 static void ble_pairing_work_handler(struct k_work *work);
 static void display_restart_work_handler(struct k_work *work);
@@ -63,6 +64,7 @@ static setting_app_t settings_app = {
     .watchface = {
         .animations_on = false,
         .default_index = 0,
+        .smooth_second_hand = false
     },
 };
 
@@ -218,7 +220,18 @@ static lv_settings_item_t ui_page_items[] = {
                 .inital_val = &settings_app.watchface.animations_on,
             }
         }
-    }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_SETTINGS,
+        .change_callback = on_watchface_tick_interval_changed,
+        .item = {
+            .sw = {
+                .name = "Smooth watchface second hand",
+                .inital_val = &settings_app.watchface.smooth_second_hand,
+            }
+        }
+    },
 };
 
 static lv_settings_page_t settings_menu[] = {
@@ -374,6 +387,12 @@ static void on_restart_screen_changed(lv_setting_value_t value, bool final)
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final)
 {
     settings_app.watchface.animations_on = value.item.sw;
+    settings_save_one(ZSW_SETTINGS_WATCHFACE, &settings_app.watchface, sizeof(settings_app.watchface));
+}
+
+static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.watchface.smooth_second_hand = value.item.sw;
     settings_save_one(ZSW_SETTINGS_WATCHFACE, &settings_app.watchface, sizeof(settings_app.watchface));
 }
 

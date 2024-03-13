@@ -51,14 +51,14 @@ void zsw_clock_init(uint64_t start_time_seconds, char *timezone)
     zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
 }
 
-struct tm *zsw_clock_get_time(void)
+void zsw_clock_get_time(zsw_timeval_t *ztm)
 {
     struct timeval tv;
     struct tm *tm;
     gettimeofday(&tv, NULL);
     tm = localtime(&tv.tv_sec);
-
-    return tm;
+    memcpy(ztm, tm, sizeof(struct tm));
+    ztm->tv_usec = tv.tv_usec;
 }
 
 time_t zsw_clock_get_time_unix(void)

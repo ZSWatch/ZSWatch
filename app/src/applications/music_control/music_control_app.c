@@ -108,8 +108,9 @@ static void handle_update_ui(struct k_work *item)
 
 static void timer_callback(lv_timer_t *timer)
 {
-    struct tm *time = zsw_clock_get_time();
-    music_control_ui_set_time(time->tm_hour, time->tm_min, time->tm_sec);
+    zsw_timeval_t time;
+    zsw_clock_get_time(&time);
+    music_control_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
     if (playing) {
         progress_seconds++;
         music_control_ui_set_track_progress((((float)progress_seconds / (float)last_music_info.duration)) * 100);

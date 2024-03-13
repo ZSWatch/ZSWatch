@@ -20,6 +20,11 @@
 #include <inttypes.h>
 #include <time.h>
 
+typedef struct {
+    struct tm   tm;
+    uint32_t    tv_usec;
+} zsw_timeval_t;
+
 void zsw_clock_init(uint64_t start_time_seconds, char *timezone);
-struct tm *zsw_clock_get_time(void);
+void zsw_clock_get_time(zsw_timeval_t *ztm);
 time_t zsw_clock_get_time_unix(void);

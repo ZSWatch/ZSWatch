@@ -146,7 +146,7 @@ static void watchface_set_step(int32_t value)
 {
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
+static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
 {
     int hour_minute_offset;
 
@@ -162,6 +162,8 @@ static void watchface_set_time(int32_t hour, int32_t minute, int32_t second)
     last_second = second * (3600 / 60);
     lv_img_set_angle(ui_hour_img, last_hour);
     lv_img_set_angle(ui_min_img, last_minute);
+
+    last_second += lv_map(usec, 0, 999999, 0, 3600 / 60);
     lv_img_set_angle(ui_second_img, last_second);
 }
 
