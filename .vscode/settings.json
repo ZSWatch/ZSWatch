@@ -16,4 +16,5 @@
     "terminal.integrated.env.linux": {
         "GTK_PATH": ""
     },
+    "search.useIgnoreFiles": false
 }
