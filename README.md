@@ -1,6 +1,6 @@
-
 ![ZSWatch_gh_banner](https://github.com/jakkra/ZSWatch/assets/4318648/dc3849d7-4618-47a4-8efe-8a909a47fd20)
 
+<div align="center">
 
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![discord](https://img.shields.io/badge/chat-discord-blue?logo=discord&logoColor=white)](https://discord.gg/8XfNBmDfbY)
