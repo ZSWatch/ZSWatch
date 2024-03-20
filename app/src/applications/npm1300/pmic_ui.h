@@ -12,3 +12,5 @@ void pmic_ui_remove(void);
 void pmic_ui_set_current_measurement(int value);
 
 void pmic_ui_add_measurement(int percent, int voltage, int charging, int state, int temperature);
+
+void pmic_ui_update(int ttf, int tte, int status, int error, int charging);

@@ -40,14 +40,14 @@ static application_t app = {
 
 static void pmic_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    struct battery_sample_event* sample;
+    struct battery_sample_event *sample;
     pmic_ui_show(root);
 
     for (int i = 0; i < CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX; i++) {
         if (battery_samples[(next_battery_sample_index + i) % CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].timestamp !=
             0) {
             sample = &battery_samples[(next_battery_sample_index + i) %
-                                                        CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].sample;
+                                      CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].sample;
             pmic_ui_add_measurement(sample->percent, sample->mV, sample->is_charging, sample->status, sample->temperature);
         }
     }
@@ -80,6 +80,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
                 (int)(k_uptime_get() - battery_samples[previous_sample_index].timestamp));
     }
     pmic_ui_add_measurement(event->percent, event->mV, event->is_charging, event->status, event->temperature);
+    pmic_ui_update(event->tte, event->ttf, event->status, event->error, event->is_charging);
 }
 
 static int pmic_app_add(void)
