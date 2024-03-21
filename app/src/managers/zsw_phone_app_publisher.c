@@ -75,10 +75,12 @@ static void zbus_chg_state_data_callback(const struct zbus_channel *chan)
     int batt_mv;
     int batt_percent;
 
+    /*
     rc = zsw_battery_manager_sample_battery(&batt_mv, &batt_percent);
     if (rc == 0) {
         send_battery_state_update(batt_mv, batt_percent, event->is_charging);
     }
+    */
 }
 
 static void connected(struct bt_conn *conn, uint8_t err)

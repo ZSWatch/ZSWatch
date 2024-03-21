@@ -17,10 +17,11 @@
 #include <events/zsw_periodic_event.h>
 #include <events/battery_event.h>
 #include "nrf_fuel_gauge.h"
+#include "zsw_pmic.h"
 
 LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_DBG);
 
-#define ZSW_NOT_WORN_STATIONARY_CURRENT 0.0005 // 50uA. TODO remeasure this value
+#define ZSW_NOT_WORN_STATIONARY_CURRENT 0.0005 // 50uA. TODO remeasure this value and make Kconfig
 
 typedef enum {
     CHG_STATUS_BATTERYDETECTED = 1, // Battery is connected
@@ -34,7 +35,7 @@ typedef enum {
 } npm1300_chg_status_t;
 
 static void zbus_activity_event_callback(const struct zbus_channel *chan);
-static void zbus_periodic_slow_1s_callback(const struct zbus_channel *chan);
+static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan);
 static int read_sensors(const struct device *charger, float *voltage, float *current, float *temp, int *status,
                         int *error);
 
@@ -42,8 +43,8 @@ ZBUS_CHAN_DECLARE(activity_state_data_chan);
 ZBUS_LISTENER_DEFINE(pmic_activity_state_event_lis, zbus_activity_event_callback);
 ZBUS_CHAN_ADD_OBS(activity_state_data_chan, pmic_activity_state_event_lis, 1);
 
-ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
-ZBUS_LISTENER_DEFINE(zsw_pmic_slow_lis, zbus_periodic_slow_1s_callback);
+ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
+ZBUS_LISTENER_DEFINE(zsw_pmic_slow_lis, zbus_periodic_slow_10s_callback);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
@@ -91,45 +92,16 @@ static bool is_charging_from_status(int status)
            (status & CHG_STATUS_TRICKLECHARGE);
 }
 
-static void zbus_periodic_slow_1s_callback(const struct zbus_channel *chan)
+static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan)
 {
     int ret;
-    int status;
-    int error;
-    float voltage;
-    float current;
-    float temp;
-    float soc;
-    float tte;
-    float ttf;
-    float delta;
     struct battery_sample_event evt;
 
-    ret = read_sensors(charger, &voltage, &current, &temp, &status, &error);
+    ret = zsw_pmic_get_full_state(&evt);
     if (ret < 0) {
         LOG_ERR("Error: Could not read from charger device\n");
         return;
     }
-
-    delta = (float) k_uptime_delta(&ref_time) / 1000.f;
-
-    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
-    tte = nrf_fuel_gauge_tte_get();
-    ttf = nrf_fuel_gauge_ttf_get(-max_charge_current, -term_charge_current);
-
-    LOG_DBG("V: %.3f, I: %.3f, T: %.2f, ", voltage, current, temp);
-    LOG_DBG("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", soc, tte, ttf);
-    LOG_DBG("Status: %d, Error: %d\n", status, error);
-
-    evt.mV = voltage * 1000;
-    evt.percent = soc;
-    evt.avg_current = current;
-    evt.temperature = temp;
-    evt.tte = tte;
-    evt.ttf = ttf;
-    evt.status = status;
-    evt.error = error;
-    evt.is_charging = is_charging_from_status(status);
 
     zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
 }
@@ -207,6 +179,48 @@ static void event_callback(const struct device *dev, struct gpio_callback *cb, u
     }
 }
 
+int zsw_pmic_get_full_state(struct battery_sample_event *sample)
+{
+    int ret;
+    int status;
+    int error;
+    float voltage;
+    float current;
+    float temp;
+    float soc;
+    float tte;
+    float ttf;
+    float delta;
+
+    ret = read_sensors(charger, &voltage, &current, &temp, &status, &error);
+    if (ret < 0) {
+        LOG_ERR("Error: Could not read from charger device\n");
+        return ret;
+    }
+
+    delta = (float) k_uptime_delta(&ref_time) / 1000.f;
+
+    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
+    tte = nrf_fuel_gauge_tte_get();
+    ttf = nrf_fuel_gauge_ttf_get(-max_charge_current, -term_charge_current);
+
+    LOG_DBG("V: %.3f, I: %.3f, T: %.2f, ", voltage, current, temp);
+    LOG_DBG("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", soc, tte, ttf);
+    LOG_DBG("Status: %d, Error: %d\n", status, error);
+
+    sample->mV = voltage * 1000;
+    sample->percent = soc;
+    sample->avg_current = current;
+    sample->temperature = temp;
+    sample->tte = tte;
+    sample->ttf = ttf;
+    sample->status = status;
+    sample->error = error;
+    sample->is_charging = is_charging_from_status(status);
+
+    return ret;
+}
+
 static int zsw_pmic_init(void)
 {
     if (!device_is_ready(charger)) {
@@ -229,7 +243,7 @@ static int zsw_pmic_init(void)
 
     mfd_npm1300_add_callback(pmic, &event_cb);
 
-    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_pmic_slow_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pmic_slow_lis);
     return 0;
 }
 
