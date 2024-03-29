@@ -63,3 +63,7 @@ void zsw_app_manager_exit_app(void);
  *  @param index
 */
 void zsw_app_manager_set_index(int index);
+
+/** @brief Get number of registrated applications
+*/
+int zsw_app_manager_get_num_apps(void);

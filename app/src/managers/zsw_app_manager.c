@@ -348,6 +348,11 @@ void zsw_app_manager_set_index(int index)
     }
 }
 
+int zsw_app_manager_get_num_apps(void)
+{
+    return num_apps;
+}
+
 static int application_manager_init(void)
 {
     memset(apps, 0, sizeof(apps));
