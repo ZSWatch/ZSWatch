@@ -234,6 +234,11 @@ int zsw_filesytem_get_num_rawfs_files(void)
     return file_table.num_files;
 }
 
+int zsw_filesytem_get_total_size(void)
+{
+    return file_table.total_length;
+}
+
 static int zsw_decoder_init(void)
 {
     int rc;

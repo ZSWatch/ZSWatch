@@ -5,6 +5,7 @@
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "filesystem/zsw_filesystem.h"
 
 static void about_app_start(lv_obj_t *root, lv_group_t *group);
 static void about_app_stop(void);
@@ -24,7 +25,13 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group)
     char sdk_version[50];
     char build_time[50];
     char fs_stats[50];
-    snprintf(fs_stats, sizeof(fs_stats), "%d Files (X MB / %d MB)", NUM_RAW_FS_FILES, 16);
+
+#if CONFIG_ZSWATCH_PCB_REV > 3
+    snprintf(fs_stats, sizeof(fs_stats), "%d Files (%.2f MB)", zsw_filesytem_get_num_rawfs_files(),
+             zsw_filesytem_get_total_size() / 1000000.0);
+#else
+    snprintf(fs_stats, sizeof(fs_stats), "%d Files", NUM_RAW_FS_FILES);
+#endif
     snprintf(build_time, sizeof(build_time), "%s %s", __DATE__, __TIME__);
     snprintf(sdk_version, sizeof(sdk_version), "NCS: %s - Zephyr: %s", BANNER_VERSION, KERNEL_VERSION_STRING);
     snprintf(version, sizeof(version), "v%s-%s", APP_VERSION_STRING, STRINGIFY(APP_BUILD_VERSION));

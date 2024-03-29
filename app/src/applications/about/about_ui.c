@@ -66,7 +66,7 @@ void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_ve
     lv_obj_set_style_text_font(ui_compile_time, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_filesystem_stats = lv_label_create(root_page);
-    lv_obj_set_width(ui_filesystem_stats, 175);
+    lv_obj_set_width(ui_filesystem_stats, 200);
     lv_obj_set_height(ui_filesystem_stats, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_filesystem_stats, 0);
     lv_obj_set_y(ui_filesystem_stats, 10);
