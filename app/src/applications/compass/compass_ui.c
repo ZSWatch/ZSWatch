@@ -3,7 +3,6 @@
 
 static lv_obj_t *root_page = NULL;
 
-static lv_obj_t *compass_panel;
 static lv_obj_t *compass_img;
 static lv_obj_t *compass_label;
 
@@ -16,20 +15,12 @@ static void calibrate_button_event_cb(lv_event_t *e)
     }
 }
 
-static void create_ui(lv_obj_t *parent)
+static void create_ui(lv_obj_t *compass_panel)
 {
     lv_obj_t *cal_btn;
     lv_obj_t *cal_btn_label;
 
     LV_IMG_DECLARE(cardinal_point)
-    compass_panel = lv_obj_create(parent);
-    lv_obj_set_width(compass_panel, 240);
-    lv_obj_set_height(compass_panel, 240);
-    lv_obj_set_align(compass_panel, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(compass_panel, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_radius(compass_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(compass_panel, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(compass_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     cal_btn = lv_btn_create(compass_panel);
     lv_obj_set_style_pad_all(cal_btn, 3, LV_PART_MAIN);
@@ -69,6 +60,7 @@ void compass_ui_show(lv_obj_t *root, on_start_calibraion_cb_t start_cal_cb)
     // Make root container fill the screen
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     start_cal = start_cal_cb;
 

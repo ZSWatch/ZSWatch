@@ -19,7 +19,7 @@
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 
-#include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui.h"
 #include "managers/zsw_app_manager.h"
 
 LOG_MODULE_REGISTER(APP_MANAGER, LOG_LEVEL_INF);
@@ -189,6 +189,7 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_obj_center(cont);
     lv_obj_set_style_border_side(cont, LV_BORDER_SIDE_NONE, 0);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, LV_PART_MAIN);
 
     lv_img_header_t header;
     lv_img_decoder_get_info(icon, &header);
@@ -229,6 +230,7 @@ static void draw_application_picker(void)
     lv_style_set_flex_main_place(&style, LV_FLEX_ALIGN_START);
     lv_style_set_layout(&style, LV_LAYOUT_FLEX);
 
+    lv_style_set_bg_opa(&style, LV_OPA_TRANSP);
     lv_obj_set_scrollbar_mode(lv_scr_act(), LV_SCROLLBAR_MODE_OFF);
 
     assert(grid == NULL);

@@ -23,6 +23,7 @@ void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
     // then LVGL automatically makes the page scrollable and shows a scroll bar.
     // Does not loog very good on the round display.
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     /* Create field for the question */
     question_lb = lv_label_create(root_page);

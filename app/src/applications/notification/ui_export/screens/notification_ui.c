@@ -1,6 +1,7 @@
 #include <time.h>
 
 #include "../notification_ui.h"
+#include "ui/zsw_ui.h"
 
 LV_FONT_DECLARE(lv_font_montserrat_14_full)
 
@@ -124,7 +125,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_height(ui_Panel, 100);
     lv_obj_set_align(ui_Panel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_Panel, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_set_style_bg_color(ui_Panel, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Panel, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_side(ui_Panel, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_add_event_cb(ui_Panel, notification_on_clicked_callback, LV_EVENT_LONG_PRESSED, (void *)not->id);
@@ -202,9 +203,9 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_style_text_color(ui_LabelBody, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_LabelBody, &lv_font_montserrat_14_full, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_LabelBody, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_LabelBody, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_LabelBody, lv_color_hex(0x444444), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(ui_LabelBody, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_LabelBody, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_LabelBody, 0, LV_PART_MAIN | LV_STATE_DEFAULT);

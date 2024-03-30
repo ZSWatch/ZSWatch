@@ -21,6 +21,7 @@ void battery_ui_show(lv_obj_t *root, int max_samples)
     // then LVGL automatically makes the page scrollable and shows a scroll bar.
     // Does not loog very good on the round display.
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     chart = lv_chart_create(root_page);
     lv_obj_set_size(chart, 150, 150);

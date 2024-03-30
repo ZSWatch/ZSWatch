@@ -41,7 +41,9 @@ static void compass_app_start(lv_obj_t *root, lv_group_t *group)
 
 static void compass_app_stop(void)
 {
-    lv_timer_del(refresh_timer);
+    if (refresh_timer) {
+        lv_timer_del(refresh_timer);
+    }
     compass_ui_remove();
     zsw_magnetometer_stop_calibration();
     zsw_sensor_fusion_deinit();

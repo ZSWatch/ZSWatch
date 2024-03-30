@@ -151,7 +151,8 @@ static void btn_event_cb(lv_event_t *e)
     }
 }
 
-void lv_settings_create(lv_settings_page_t *pages, uint8_t num_pages, const char *title, lv_group_t *input_group,
+void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_pages, const char *title,
+                        lv_group_t *input_group,
                         on_close_cb_t close_cb)
 {
     lv_obj_t *label;
@@ -174,12 +175,13 @@ void lv_settings_create(lv_settings_page_t *pages, uint8_t num_pages, const char
     close_callback = close_cb;
 
     // Draw menu screen
-    _menu = lv_menu_create(lv_scr_act());
+    _menu = lv_menu_create(root);
     lv_menu_set_mode_root_back_btn(_menu, LV_MENU_ROOT_BACK_BTN_ENABLED);
     lv_obj_add_event_cb(_menu, close_button_pressed, LV_EVENT_CLICKED, _menu);
     lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_pad_top(_menu, 25, LV_PART_MAIN);
     lv_obj_set_style_pad_left(_menu, 20, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(_menu, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_center(_menu);
 
     // Main page

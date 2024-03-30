@@ -112,6 +112,7 @@ void sensors_summary_ui_show(lv_obj_t *root, on_ui_close_cb_t close_cb, on_refer
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
     // Make root container fill the screen
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     create_ui(root_page);
 }

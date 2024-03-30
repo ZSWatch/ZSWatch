@@ -203,6 +203,7 @@ static void run_init_work(struct k_work *item)
 
     // Not to self, PWM consumes like 250uA...
     // Need to disable also when screen is off.
+    lv_obj_set_style_bg_color(lv_scr_act(), zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);
     print_retention_ram();

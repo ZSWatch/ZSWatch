@@ -25,6 +25,7 @@ void fusion_ui_show(lv_obj_t *root, on_close_cb_t close_cb)
     root_page = lv_obj_create(root);
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_size(root_page, 240, 240);
     lv_obj_center(root_page);
     lv_style_init(&style_indic_red);

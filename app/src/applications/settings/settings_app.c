@@ -265,7 +265,7 @@ static void ble_pairing_work_handler(struct k_work *work)
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    lv_settings_create(settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
+    lv_settings_create(root, settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
 }
 
 static void settings_app_stop(void)

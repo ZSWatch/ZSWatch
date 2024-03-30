@@ -17,7 +17,7 @@
 
 #include <lvgl.h>
 
-#include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
 
 #ifdef __ZEPHYR__
@@ -95,9 +95,9 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
     lv_obj_set_size(root_page, 240, 240);
     lv_obj_align(root_page, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_digital_watchface = root_page;
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x331c2a), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_img_src(ui_digital_watchface, global_watchface_bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_clear_flag(ui_digital_watchface, LV_OBJ_FLAG_SCROLLABLE);

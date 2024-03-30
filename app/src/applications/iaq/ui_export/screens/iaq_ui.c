@@ -19,7 +19,7 @@ void iaq_app_ui_show(lv_obj_t *p_parent)
 
     lv_obj_clear_flag(ui_root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(ui_root_page, lv_color_hex(0x0061FF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_root_page, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_Panel1 = lv_obj_create(ui_root_page);
     lv_obj_set_width(ui_Panel1, 75);

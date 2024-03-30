@@ -24,6 +24,8 @@ void template_ui_show(lv_obj_t *root, on_ui_increment_cb_t close_cb)
     // then LVGL automatically makes the page scrollable and shows a scroll bar.
     // Does not loog very good on the round display.
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
+    // Optional, keep default background from theme
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // Add a button so we can easily close the application
     float_btn = lv_btn_create(root_page);

@@ -81,7 +81,8 @@ typedef struct lv_settings_page {
  * `lv_settings_menu_item_t root_item = {.name = "Settings", .event_cb = root_event_cb};`
  * @return the created settings button
  */
-void lv_settings_create(lv_settings_page_t *pages, uint8_t num_pages, const char *title, lv_group_t *input_group,
+void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_pages, const char *title,
+                        lv_group_t *input_group,
                         on_close_cb_t close_cb);
 
 void settings_ui_remove(void);

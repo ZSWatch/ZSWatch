@@ -28,8 +28,7 @@ void zds_ui_show(lv_obj_t *root)
     // then LVGL automatically makes the page scrollable and shows a scroll bar.
     // Does not loog very good on the round display.
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
-
-    lv_obj_set_style_bg_color(root_page, lv_color_hex(0x49936E), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     img = lv_img_create(root_page);
     lv_img_set_src(img, ZSW_LV_IMG_USE(zephyr_project));

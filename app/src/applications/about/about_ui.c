@@ -1,5 +1,5 @@
 #include "about_ui.h"
-#include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui.h"
 
 static lv_obj_t *root_page = NULL;
 
@@ -19,18 +19,16 @@ void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_ve
     assert(root_page == NULL);
 
     root_page = lv_obj_create(root);
+    lv_obj_remove_style_all(root_page);
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
 
-    root_page = lv_obj_create(root);
-    lv_obj_remove_style_all(root_page);
     lv_obj_set_width(root_page, lv_pct(100));
     lv_obj_set_height(root_page, lv_pct(100));
     lv_obj_set_align(root_page, LV_ALIGN_CENTER);
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(root_page, lv_color_hex(0x30343F), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(root_page, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_logo_img = lv_img_create(root_page);
 #ifdef CONFIG_BOARD_NATIVE_POSIX

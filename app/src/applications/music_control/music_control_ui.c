@@ -131,6 +131,7 @@ void music_control_ui_show(lv_obj_t *root, on_music_control_ui_event_cb_t evt_cb
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     create_progress_arc(root_page);
 

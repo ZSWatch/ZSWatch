@@ -20,3 +20,28 @@
 #include "utils/zsw_ui_utils.h"
 #include "popup/zsw_popup_window.h"
 #include "notification/zsw_popup_notifcation.h"
+
+static inline lv_color_t zsw_color_red(void)
+{
+    return lv_color_make(0xff, 0xba, 0xaf);
+}
+
+static inline lv_color_t zsw_color_blue(void)
+{
+    return lv_color_make(0x9e, 0xc8, 0xf6);
+}
+
+static inline lv_color_t zsw_color_gray(void)
+{
+    return lv_color_make(0x49, 0x50, 0x60);
+}
+
+static inline lv_color_t zsw_color_dark_gray(void)
+{
+    return lv_color_make(0x30, 0x34, 0x3f);
+}
+
+static inline lv_color_t zsw_color_bg(void)
+{
+    return zsw_color_dark_gray();
+}
