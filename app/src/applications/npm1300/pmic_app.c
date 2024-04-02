@@ -46,7 +46,7 @@ static battery_storage_t battery_context = {0};
 static uint64_t last_battery_sample_time = 0;
 
 static application_t app = {
-    .name = "nPM1300",
+    .name = "Battery",
     .icon = &(battery_app_icon),
     .start_func = pmic_app_start,
     .stop_func = pmic_app_stop
