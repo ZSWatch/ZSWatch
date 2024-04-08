@@ -126,8 +126,18 @@ void pmic_ui_add_measurement(int percent, int voltage)
 void pmic_ui_update(int ttf, int tte, int status, int error, int charging)
 {
     if (root_page) {
-        lv_label_set_text_fmt(ui_charging_label_ttf, "%d", ttf);
-        lv_label_set_text_fmt(ui_charging_label_tte, "%d", tte);
+        if (ttf == 0) {
+            lv_label_set_text(ui_charging_label_ttf, "-");
+        } else {
+            lv_label_set_text_fmt(ui_charging_label_ttf, "%d", ttf);
+        }
+
+        if (tte == 0) {
+            lv_label_set_text(ui_charging_label_tte, "-");
+        } else {
+            lv_label_set_text_fmt(ui_charging_label_tte, "%d", tte);
+        }
+
         lv_label_set_text_fmt(ui_charging_label_status, "%d", status);
         lv_label_set_text_fmt(ui_charging_label_error, "%d", error);
         lv_label_set_text(ui_charging_label_state, charging ? "Charging" : "-");
@@ -388,7 +398,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label18, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label18, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label18, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_charging_label18, "TTF");
+    lv_label_set_text(ui_charging_label18, "Full in");
     lv_obj_set_style_text_color(ui_charging_label18, lv_color_hex(0x493838), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label18, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -396,7 +406,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label10, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label10, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label10, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_charging_label10, "TTE");
+    lv_label_set_text(ui_charging_label10, "Empty in");
     lv_obj_set_style_text_color(ui_charging_label10, lv_color_hex(0x493838), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label10, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -517,7 +527,7 @@ void ui_Screen3_screen_init(lv_obj_t *ui_Screen3)
     lv_obj_set_flex_align(ui_Container1, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(ui_Container1, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_Container1, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_Container1, lv_color_hex(0xD35D5D), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Container1, lv_color_hex(0x495060), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Container1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_Container1, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_Container1, 20, LV_PART_MAIN | LV_STATE_DEFAULT);

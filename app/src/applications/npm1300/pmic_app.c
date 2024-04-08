@@ -65,7 +65,7 @@ static void pmic_app_start(lv_obj_t *root, lv_group_t *group)
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
         LOG_WRN("Success");
-        pmic_ui_update(initial_sample.tte, initial_sample.ttf, initial_sample.status, initial_sample.error,
+        pmic_ui_update(initial_sample.ttf, initial_sample.tte, initial_sample.status, initial_sample.error,
                        initial_sample.is_charging);
         pmic_ui_add_measurement(initial_sample.percent, initial_sample.mV);
     }
@@ -104,7 +104,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
         last_battery_sample_time = k_uptime_get();
         pmic_ui_add_measurement(event->percent, event->mV);
     }
-    pmic_ui_update(event->tte, event->ttf, event->status, event->error, event->is_charging);
+    pmic_ui_update(event->ttf, event->tte, event->status, event->error, event->is_charging);
 }
 
 static void on_battery_hist_clear_cb(void)
