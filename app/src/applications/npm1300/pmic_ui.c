@@ -123,19 +123,31 @@ void pmic_ui_add_measurement(int percent, int voltage)
     }
 }
 
+static void seconds_to_day_hour_min(int seconds, int *days, int *hours, int *minutes)
+{
+    *days = seconds / (24 * 3600);
+    seconds = seconds % (24 * 3600);
+    *hours = seconds / 3600;
+    seconds = seconds % 3600;
+    *minutes = seconds / 60;
+}
+
 void pmic_ui_update(int ttf, int tte, int status, int error, int charging)
 {
+    int days, hours, minutes;
+
     if (root_page) {
+        seconds_to_day_hour_min(ttf, &days, &hours, &minutes);
         if (ttf == 0) {
             lv_label_set_text(ui_charging_label_ttf, "-");
         } else {
-            lv_label_set_text_fmt(ui_charging_label_ttf, "%d", ttf);
+            lv_label_set_text_fmt(ui_charging_label_ttf, "%dd %dh %dm", days, hours, minutes);
         }
-
+        seconds_to_day_hour_min(tte, &days, &hours, &minutes);
         if (tte == 0) {
             lv_label_set_text(ui_charging_label_tte, "-");
         } else {
-            lv_label_set_text_fmt(ui_charging_label_tte, "%d", tte);
+            lv_label_set_text_fmt(ui_charging_label_tte, "%dd %dh %dm", days, hours, minutes);
         }
 
         lv_label_set_text_fmt(ui_charging_label_status, "%d", status);
@@ -359,7 +371,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
 
     ui_Container9 = lv_obj_create(ui_root2);
     lv_obj_remove_style_all(ui_Container9);
-    lv_obj_set_width(ui_Container9, lv_pct(80));
+    lv_obj_set_width(ui_Container9, lv_pct(90));
     lv_obj_set_height(ui_Container9, LV_SIZE_CONTENT);    /// 50
     lv_obj_set_align(ui_Container9, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_Container9, LV_FLEX_FLOW_ROW);
@@ -455,6 +467,8 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label_ttf, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label_ttf, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label_ttf, LV_ALIGN_CENTER);
+
+    lv_obj_set_style_text_align(ui_charging_label_ttf, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_text(ui_charging_label_ttf, "12m");
     lv_obj_set_style_text_color(ui_charging_label_ttf, lv_color_hex(0xFFD100), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label_ttf, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -463,6 +477,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label_tte, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label_tte, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label_tte, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_align(ui_charging_label_tte, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_text(ui_charging_label_tte, "2h");
     lv_obj_set_style_text_color(ui_charging_label_tte, lv_color_hex(0xFFD100), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label_tte, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -471,6 +486,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label_status, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label_status, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label_status, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_align(ui_charging_label_status, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_text(ui_charging_label_status, "8");
     lv_obj_set_style_text_color(ui_charging_label_status, lv_color_hex(0xFFD100), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label_status, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -479,6 +495,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_width(ui_charging_label_error, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_charging_label_error, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_charging_label_error, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_align(ui_charging_label_error, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_text(ui_charging_label_error, "0");
     lv_obj_set_style_text_color(ui_charging_label_error, lv_color_hex(0xFFD100), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_charging_label_error, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
