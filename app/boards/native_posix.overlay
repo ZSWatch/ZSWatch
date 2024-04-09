@@ -20,15 +20,6 @@
 };
 
 / {
-    longpress: longpress {
-        input = <&keypad>;
-        compatible = "zephyr,input-longpress";
-        input-codes = <INPUT_KEY_KP0>;
-        short-codes = <INPUT_KEY_3>;
-        long-codes = <INPUT_KEY_Y>;
-        long-delay-ms = <10000>;
-    };
-
 	keypad: keypad {
         compatible = "gpio-keys";
         key1: key1 {
@@ -44,7 +35,7 @@
         key3: key3 {
             label = "bottom-right";
             gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
-            zephyr,code = <INPUT_KEY_KP0>;
+            zephyr,code = <INPUT_KEY_3>;
         };
         key4: key4 {
             label = "top-left";
