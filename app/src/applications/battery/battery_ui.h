@@ -1,14 +1,15 @@
 #pragma once
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <lvgl.h>
 
-typedef void(*on_ui_increment_cb_t)(void);
+typedef void(*on_clear_history)(void);
 
-void battery_ui_show(lv_obj_t *root, int max_samples);
+void battery_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_samples, bool include_pmic_ui);
 
 void battery_ui_remove(void);
 
-void battery_ui_set_current_measurement(int value);
+void battery_ui_add_measurement(int percent, int voltage);
 
-void battery_ui_add_measurement(int value);
+void battery_ui_update(int ttf, int tte, int status, int error, int charging);
