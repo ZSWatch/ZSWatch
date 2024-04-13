@@ -15,12 +15,29 @@
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/zbus/zbus.h>
 
-#include "battery.h"
+#include "events/battery_event.h"
 
 LOG_MODULE_REGISTER(BATTERY, LOG_LEVEL_WRN);
 
 #define VBATT DT_PATH(vbatt)
+
+#define BATTERY_SAMPLE_INTETRVAL_MINUTES    5
+
+struct battery_level_point {
+    /** Remaining life at #lvl_mV. */
+    uint16_t lvl_pptt;
+
+    /** Battery voltage at #lvl_pptt remaining life. */
+    uint16_t lvl_mV;
+};
+
+static void handle_battery_sample_timeout(struct k_work *item);
+
+K_WORK_DELAYABLE_DEFINE(battery_sample_work, handle_battery_sample_timeout);
+
+ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
 #if DT_IO_CHANNELS_INPUT(VBATT)
 /* This board uses a divider that reduces max voltage to
@@ -135,7 +152,7 @@ static int battery_setup(void)
     return rc;
 }
 
-int battery_measure_enable(bool enable)
+static int battery_measure_enable(bool enable)
 {
     int rc = -ENOENT;
 
@@ -150,7 +167,7 @@ int battery_measure_enable(bool enable)
     return rc;
 }
 
-int battery_sample(void)
+static int battery_sample(void)
 {
     int rc = -ENOENT;
 
@@ -184,8 +201,8 @@ int battery_sample(void)
     return rc;
 }
 
-unsigned int battery_level_pptt(unsigned int batt_mV,
-                                const struct battery_level_point *curve)
+static unsigned int battery_level_pptt(unsigned int batt_mV,
+                                       const struct battery_level_point *curve)
 {
     const struct battery_level_point *pb = curve;
 
@@ -216,19 +233,78 @@ SYS_INIT(battery_setup, APPLICATION, CONFIG_ZSW_DRIVER_INIT_PRIORITY);
 
 #else
 
-int battery_measure_enable(bool enable)
+static int battery_measure_enable(bool enable)
 {
     return 0;
 }
 
-int battery_sample(void)
+static int battery_sample(void)
 {
     return 4000;
 }
 
-unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve)
+static unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve)
 {
     return 10000;
 }
 
 #endif // VBATT
+
+/** A discharge curve specific to the power source. */
+static const struct battery_level_point levels[] = {
+    /*
+    Battery supervisor cuts power at 3500mA so treat that as 0%
+    This is very basic and the percentage will not be exact.
+    */
+    { 10000, 4150 },
+    { 0, 3500 },
+};
+
+static int get_battery_status(int *mV, int *percent)
+{
+    unsigned int batt_pptt;
+    int rc = battery_measure_enable(true);
+    if (rc != 0) {
+        LOG_ERR("Failed initialize battery measurement: %d\n", rc);
+        return -1;
+    }
+    // From https://github.com/zephyrproject-rtos/zephyr/blob/main/samples/boards/nrf/battery/src/main.c
+    *mV = battery_sample();
+
+    if (*mV < 0) {
+        LOG_ERR("Failed to read battery voltage: %d\n", *mV);
+        return -1;
+    }
+
+    batt_pptt = battery_level_pptt(*mV, levels);
+
+    LOG_DBG("%d mV; %u pptt\n", *mV, batt_pptt);
+    *percent = batt_pptt / 100;
+
+    rc = battery_measure_enable(false);
+    if (rc != 0) {
+        LOG_ERR("Failed disable battery measurement: %d\n", rc);
+        return -1;
+    }
+    return 0;
+}
+
+static void handle_battery_sample_timeout(struct k_work *item)
+{
+    int rc;
+    struct battery_sample_event evt;
+
+    rc = get_battery_status(&evt.mV, &evt.percent);
+    if (rc == 0) {
+        zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(5));
+    }
+    k_work_schedule(&battery_sample_work, K_MINUTES(BATTERY_SAMPLE_INTETRVAL_MINUTES));
+}
+
+static int battery_init(void)
+{
+    k_work_schedule(&battery_sample_work, K_SECONDS(1));
+    return 0;
+}
+
+SYS_INIT(battery_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

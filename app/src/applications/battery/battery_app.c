@@ -3,7 +3,6 @@
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
 
-#include "battery/battery.h"
 #include "battery/battery_ui.h"
 #include "events/battery_event.h"
 #include "managers/zsw_app_manager.h"
@@ -39,23 +38,15 @@ static int next_battery_sample_index;
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    int rc;
-    int batt_mv;
+    struct battery_sample_event last_sample;
 
-    rc = battery_measure_enable(true);
-    if (rc != 0) {
-        LOG_ERR("Failed initialize battery measurement: %d\n", rc);
-    }
-
-    batt_mv = battery_sample();
-
-    rc = battery_measure_enable(false);
-    if (rc != 0) {
-        LOG_ERR("Failed disable battery measurement: %d\n", rc);
+    if (!zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
+        LOG_ERR("Failed to read battery sample data");
+        return;
     }
 
     battery_ui_show(root, get_num_samples() + 1);
-    battery_ui_set_current_measurement(batt_mv);
+    battery_ui_set_current_measurement(last_sample.mV);
     for (int i = 0; i < CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX; i++) {
         if (battery_samples[(next_battery_sample_index + i) % CONFIG_DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX].timestamp !=
             0) {

@@ -4,7 +4,6 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
 
-#include "battery/battery.h"
 #include "battery/battery_ui.h"
 #include "events/battery_event.h"
 #include "managers/zsw_app_manager.h"
@@ -64,7 +63,6 @@ static void pmic_app_start(lv_obj_t *root, lv_group_t *group)
     }
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
-        LOG_WRN("Success");
         pmic_ui_update(initial_sample.ttf, initial_sample.tte, initial_sample.status, initial_sample.error,
                        initial_sample.is_charging);
         pmic_ui_add_measurement(initial_sample.percent, initial_sample.mV);
@@ -88,7 +86,7 @@ static void add_battery_sample(const struct battery_sample_event *event)
         battery_context.first_sample_index = (battery_context.first_sample_index + 1) % MAX_SAMPLES;
         battery_context.num_samples = MAX_SAMPLES;
     }
-    LOG_WRN("%d, %d, %d", battery_context.first_sample_index, battery_context.num_samples, next_battery_sample_index);
+    LOG_DBG("%d, %d, %d", battery_context.first_sample_index, battery_context.num_samples, next_battery_sample_index);
 }
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
@@ -125,9 +123,9 @@ static int battery_load_state(const char *p_key, size_t len,
     }
 
     int num_bytes_read = read_cb(p_cb_arg, &battery_context, len);
-    LOG_WRN("Read %d bytes", num_bytes_read);
+    LOG_DBG("Read %d bytes", num_bytes_read);
 
-    LOG_ERR("Number samples: %d", battery_context.num_samples);
+    LOG_DBG("Number samples: %d", battery_context.num_samples);
 
     if (num_bytes_read == 0) {
         LOG_ERR("Currupt battery settings data");
@@ -145,8 +143,6 @@ static int pmic_app_add(void)
 {
     zsw_app_manager_add_application(&app);
 
-    LOG_WRN("Number samples B4: %d, %d", battery_context.first_sample_index, battery_context.num_samples);
-
     if (settings_subsys_init()) {
         LOG_ERR("Error during settings_subsys_init!");
         return -EFAULT;
@@ -161,7 +157,6 @@ static int pmic_app_add(void)
         LOG_ERR("Error during settings_delete!");
     }
 
-    LOG_WRN("Number samples After: %d, %d", battery_context.first_sample_index, battery_context.num_samples);
     return 0;
 }
 

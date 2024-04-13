@@ -1,4 +1,3 @@
-#include "chg_event.h"
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
 #include <events/periodic_event.h>

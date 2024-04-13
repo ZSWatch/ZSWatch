@@ -32,7 +32,6 @@
 
 #include "watchface_app.h"
 #include "zsw_settings.h"
-#include "events/chg_event.h"
 #include "events/accel_event.h"
 #include "events/battery_event.h"
 #include "events/activity_event.h"
@@ -40,7 +39,6 @@
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_environment_sensor.h"
 #include "sensors/zsw_pressure_sensor.h"
-#include "managers/zsw_battery_manager.h"
 #include "managers/zsw_notification_manager.h"
 
 LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
@@ -51,7 +49,6 @@ LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
-static void zbus_chg_state_data_callback(const struct zbus_channel *chan);
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void zbus_activity_event_callback(const struct zbus_channel *chan);
 static int settings_load_handler(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg, void *param);
@@ -61,9 +58,6 @@ ZBUS_LISTENER_DEFINE(watchface_ble_comm_lis, zbus_ble_comm_data_callback);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_LISTENER_DEFINE(watchface_accel_lis, zbus_accel_data_callback);
-
-ZBUS_CHAN_DECLARE(chg_state_data_chan);
-ZBUS_LISTENER_DEFINE(watchface_chg_event, zbus_chg_state_data_callback);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(watchface_battery_event, zbus_battery_sample_data_callback);
@@ -113,7 +107,6 @@ static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
 static ble_comm_cb_data_t last_data_update;
 static ble_comm_weather_t last_weather_data;
 static struct battery_sample_event last_batt_evt = {.percent = 100, .mV = 4300};
-static struct chg_state_event last_chg_evt;
 
 static bool running;
 static bool is_connected;
@@ -321,16 +314,6 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         if (event->data.type == ZSW_IMU_EVT_TYPE_STEP) {
             watchfaces[current_watchface]->set_step(event->data.data.step.count);
         }
-    }
-}
-
-static void zbus_chg_state_data_callback(const struct zbus_channel *chan)
-{
-    const struct chg_state_event *event = zbus_chan_const_msg(chan);
-    memcpy(&last_chg_evt, event, sizeof(struct chg_state_event));
-
-    if (running && !is_suspended) {
-        // TODO Show some nice animation or similar
     }
 }
 

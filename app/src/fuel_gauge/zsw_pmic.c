@@ -19,7 +19,7 @@
 #include "nrf_fuel_gauge.h"
 #include "zsw_pmic.h"
 
-LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_WRN);
 
 #define ZSW_NOT_WORN_STATIONARY_CURRENT 0.0005 // 50uA. TODO remeasure this value and make Kconfig
 
@@ -223,6 +223,8 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 
 static int zsw_pmic_init(void)
 {
+    static struct gpio_callback event_cb;
+
     if (!device_is_ready(charger)) {
         LOG_ERR("Charger device not ready.\n");
         return 0;
@@ -234,8 +236,6 @@ static int zsw_pmic_init(void)
     }
 
     LOG_DBG("PMIC device ok\n");
-
-    static struct gpio_callback event_cb;
 
     gpio_init_callback(&event_cb, event_callback,
                        BIT(NPM1300_EVENT_CHG_COMPLETED) | BIT(NPM1300_EVENT_VBUS_DETECTED) | BIT(NPM1300_EVENT_VBUS_REMOVED) | BIT(

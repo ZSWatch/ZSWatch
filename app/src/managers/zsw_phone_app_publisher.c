@@ -24,23 +24,16 @@
 #include <zephyr/bluetooth/services/bas.h>
 
 #include "ble/ble_comm.h"
-#include "battery/battery.h"
-#include "events/chg_event.h"
 #include "events/battery_event.h"
-#include "managers/zsw_battery_manager.h"
 
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
-static void zbus_chg_state_data_callback(const struct zbus_channel *chan);
 
 static void handle_delayed_send_status(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_battery_sample_data_callback);
-
-ZBUS_CHAN_DECLARE(chg_state_data_chan);
-ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_chg_event, zbus_chg_state_data_callback);
 
 K_WORK_DELAYABLE_DEFINE(delayed_send_status_work, handle_delayed_send_status);
 
@@ -68,21 +61,6 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
     send_battery_state_update(event->mV, event->percent, false);
 }
 
-static void zbus_chg_state_data_callback(const struct zbus_channel *chan)
-{
-    struct chg_state_event *event = zbus_chan_msg(chan);
-    int rc;
-    int batt_mv;
-    int batt_percent;
-
-    /*
-    rc = zsw_battery_manager_sample_battery(&batt_mv, &batt_percent);
-    if (rc == 0) {
-        send_battery_state_update(batt_mv, batt_percent, event->is_charging);
-    }
-    */
-}
-
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     // Due to MTU not yet exchanged when this callback is called
@@ -94,14 +72,10 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 static void handle_delayed_send_status(struct k_work *item)
 {
-    int rc;
-    int batt_mv;
-    int batt_percent;
+    struct battery_sample_event last_sample;
 
-    // When new connection, send latest data to phone.
-    rc = zsw_battery_manager_sample_battery(&batt_mv, &batt_percent);
-    if (rc == 0) {
-        send_battery_state_update(batt_mv, batt_percent, false);
+    if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
+        send_battery_state_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
     }
 }
 

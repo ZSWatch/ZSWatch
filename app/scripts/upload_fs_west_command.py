@@ -41,7 +41,7 @@ class UploadFsWestCommand(WestCommand):
     def do_run(self, args, unknown_args):
         log.inf("Creating image")
         img_size = 2 * 1024 * 1024
-        block_size = 65536
+        block_size = 4096
         read_size = 1024
         prog_size = 512
         name_max = 255

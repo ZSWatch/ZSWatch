@@ -9,8 +9,6 @@ void pmic_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_sample
 
 void pmic_ui_remove(void);
 
-void pmic_ui_set_current_measurement(int value);
-
 void pmic_ui_add_measurement(int percent, int voltage);
 
 void pmic_ui_update(int ttf, int tte, int status, int error, int charging);

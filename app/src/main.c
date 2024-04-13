@@ -38,7 +38,6 @@
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
 #include "ble/ble_aoa.h"
-#include "battery/battery.h"
 #include "events/accel_event.h"
 #include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
