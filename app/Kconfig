@@ -6,7 +6,7 @@ menu "ZSWatch"
     config ZSWATCH_PCB_REV
         int
     prompt "ZSWatch PCB revision"
-    default 3
+    default 5
 
     menu "Applications"
         config APPLICATIONS_USE_2048
