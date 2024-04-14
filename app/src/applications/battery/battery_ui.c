@@ -1,8 +1,9 @@
 #include <battery/battery_ui.h>
 #include "battery_ui.h"
 #include <lvgl.h>
+#include "ui/utils/zsw_ui_utils.h"
 
-LV_IMG_DECLARE(ui_img_nrf_icon_png);
+ZSW_LV_IMG_DECLARE(ui_img_nrf_icon_png);
 
 // Common
 static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);
@@ -314,7 +315,7 @@ void ui_Screen1_screen_init(lv_obj_t *ui_Screen1)
 
     if (pmic_ui_enabled) {
         ui_nrf_icon = lv_img_create(ui_root1);
-        lv_img_set_src(ui_nrf_icon, &ui_img_nrf_icon_png);
+        lv_img_set_src(ui_nrf_icon, "S:ui_img_nrf_icon_png.bin");
         lv_obj_set_width(ui_nrf_icon, LV_SIZE_CONTENT);   /// 24
         lv_obj_set_height(ui_nrf_icon, LV_SIZE_CONTENT);    /// 21
         lv_obj_set_x(ui_nrf_icon, -30);
@@ -374,7 +375,7 @@ void ui_Screen2_screen_init(lv_obj_t *ui_Screen2)
     lv_obj_set_style_text_opa(ui_Label4, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_nrf_icon1 = lv_img_create(ui_root2);
-    lv_img_set_src(ui_nrf_icon1, &ui_img_nrf_icon_png);
+    lv_img_set_src(ui_nrf_icon1, "S:ui_img_nrf_icon_png.bin");
     lv_obj_set_width(ui_nrf_icon1, LV_SIZE_CONTENT);   /// 24
     lv_obj_set_height(ui_nrf_icon1, LV_SIZE_CONTENT);    /// 21
     lv_obj_set_x(ui_nrf_icon1, -30);
@@ -549,7 +550,7 @@ void ui_Screen3_screen_init(lv_obj_t *ui_Screen3)
     lv_obj_set_style_text_opa(ui_Label6, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_nrf_icon2 = lv_img_create(ui_root3);
-    lv_img_set_src(ui_nrf_icon2, &ui_img_nrf_icon_png);
+    lv_img_set_src(ui_nrf_icon2, "S:ui_img_nrf_icon_png.bin");
     lv_obj_set_width(ui_nrf_icon2, LV_SIZE_CONTENT);   /// 24
     lv_obj_set_height(ui_nrf_icon2, LV_SIZE_CONTENT);    /// 21
     lv_obj_set_x(ui_nrf_icon2, -30);

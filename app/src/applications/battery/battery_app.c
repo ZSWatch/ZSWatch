@@ -67,7 +67,7 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
         battery_ui_update(initial_sample.ttf, initial_sample.tte, initial_sample.status, initial_sample.error,
-                          initial_sample.is_charging);
+                       initial_sample.is_charging);
         battery_ui_add_measurement(initial_sample.percent, initial_sample.mV);
     }
 }
