@@ -132,14 +132,14 @@ static void run_input_work(struct k_work *item)
 
     switch (container->event.code) {
         // Button event
-        // Always allow force restart.
         case (INPUT_KEY_Y): {
+#ifdef CONFIG_MENU_ENABLE_SYSTEM_RESET
             LOG_INF("Force restart");
 
             retained.off_count += 1;
             zsw_retained_ram_update();
             sys_reboot(SYS_REBOOT_COLD);
-
+#endif
             break;
         }
         // Button event

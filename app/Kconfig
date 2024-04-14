@@ -237,6 +237,13 @@ menu "ZSWatch"
         endif
     endmenu
 
+    menu "Misc"
+        config MENU_ENABLE_SYSTEM_RESET
+            bool
+        prompt "Enable a system reset via button 3"
+        default n
+    endmenu
+
     menu "Custom drivers"
         rsource "drivers/Kconfig"
     endmenu
