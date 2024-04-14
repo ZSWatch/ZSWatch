@@ -105,6 +105,12 @@ menu "ZSWatch"
     endmenu
 
     menu "Default configuration"
+        menu "ZSWatch Init Priorities"
+            config DEFAULT_CONFIGURATION_DRIVER_INIT_PRIORITY
+                int
+                default 85
+        endmenu
+
         menu "Sensors Summary"
             depends on APPLICATIONS_USE_SENSORS_SUMMARY
 
@@ -229,12 +235,6 @@ menu "ZSWatch"
             help
                 "If RTT logging is enabled"
         endif
-    endmenu
-
-    menu "ZSWatch Init Priorities"
-    config ZSW_DRIVER_INIT_PRIORITY
-        int
-        default 85
     endmenu
 
     menu "Custom drivers"

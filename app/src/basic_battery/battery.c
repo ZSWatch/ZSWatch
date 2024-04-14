@@ -229,7 +229,7 @@ static unsigned int battery_level_pptt(unsigned int batt_mV,
               / (pa->lvl_mV - pb->lvl_mV));
 }
 
-SYS_INIT(battery_setup, APPLICATION, CONFIG_ZSW_DRIVER_INIT_PRIORITY);
+SYS_INIT(battery_setup, APPLICATION, CONFIG_DEFAULT_CONFIGURATION_DRIVER_INIT_PRIORITY);
 
 #else
 
