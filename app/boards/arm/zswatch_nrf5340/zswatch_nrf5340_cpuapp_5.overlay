@@ -77,9 +77,15 @@
     nfct-pins-as-gpios;
 };
 
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
 / {
 	chosen {
 		nordic,pm-ext-flash = &s25fs256s;
+		zephyr,console = &cdc_acm_uart0;
 	};
 
 	aliases {
