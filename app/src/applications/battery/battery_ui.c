@@ -1,9 +1,6 @@
 #include <battery/battery_ui.h>
 #include "battery_ui.h"
 #include <lvgl.h>
-#include "ui/utils/zsw_ui_utils.h"
-
-ZSW_LV_IMG_DECLARE(ui_img_nrf_icon_png);
 
 // Common
 static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);

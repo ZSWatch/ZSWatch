@@ -423,7 +423,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_label_set_text(ui_date_label, "");
     lv_obj_set_style_text_color(ui_date_label, lv_color_hex(0xFF8600), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_date_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_notifications = lv_obj_create(ui_top_panel);
     lv_obj_set_width(ui_notifications, LV_SIZE_CONTENT);
