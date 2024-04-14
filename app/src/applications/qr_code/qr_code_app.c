@@ -10,11 +10,11 @@
 static void qr_code_app_start(lv_obj_t *root, lv_group_t *group);
 static void qr_code_app_stop(void);
 
-LV_IMG_DECLARE(qr_code_icon);
+ZSW_LV_IMG_DECLARE(qr_code_icon);
 
 static application_t app = {
     .name = "QR Code",
-    .icon = &qr_code_icon,
+    .icon = ZSW_LV_IMG_USE(qr_code_icon),
     .start_func = qr_code_app_start,
     .stop_func = qr_code_app_stop
 };

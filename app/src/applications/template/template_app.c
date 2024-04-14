@@ -4,6 +4,7 @@
 
 #include "template_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(template_app, CONFIG_ZSW_TEMPLATE_APP_LOG_LEVEL);
 
@@ -15,11 +16,11 @@ static void on_incrementation(void);
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
 
-LV_IMG_DECLARE(templates);
+ZSW_LV_IMG_DECLARE(templates);
 
 static application_t app = {
     .name = "Template",
-    .icon = &templates,
+    .icon = ZSW_LV_IMG_USE(templates),
     .start_func = template_app_start,
     .stop_func = template_app_stop
 };

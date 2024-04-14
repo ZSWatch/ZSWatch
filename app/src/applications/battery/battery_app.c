@@ -39,14 +39,14 @@ ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
 ZBUS_CHAN_ADD_OBS(battery_sample_data_chan, battery_app_battery_event, 1);
 
-LV_IMG_DECLARE(battery_app_icon);
+ZSW_LV_IMG_DECLARE(battery_app_icon);
 
 static battery_storage_t battery_context = {0};
 static uint64_t last_battery_sample_time = 0;
 
 static application_t app = {
     .name = "Battery",
-    .icon = &(battery_app_icon),
+    .icon = ZSW_LV_IMG_USE(battery_app_icon),
     .start_func = battery_app_start,
     .stop_func = battery_app_stop
 };
@@ -67,7 +67,7 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
         battery_ui_update(initial_sample.ttf, initial_sample.tte, initial_sample.status, initial_sample.error,
-                       initial_sample.is_charging);
+                          initial_sample.is_charging);
         battery_ui_add_measurement(initial_sample.percent, initial_sample.mV);
     }
 }

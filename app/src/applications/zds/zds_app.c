@@ -5,6 +5,7 @@
 
 #include "events/accel_event.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
 static void zds_app_start(lv_obj_t *root, lv_group_t *group);
@@ -15,11 +16,11 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_LISTENER_DEFINE_WITH_ENABLE(zds_app_accel_lis, zbus_accel_data_callback, false);
 
-LV_IMG_DECLARE(zephyr_icon_round);
+ZSW_LV_IMG_DECLARE(zephyr_icon_round);
 
 static application_t app = {
     .name = "ZDS App",
-    .icon = &zephyr_icon_round,
+    .icon = ZSW_LV_IMG_USE(zephyr_icon_round),
     .start_func = zds_app_start,
     .stop_func = zds_app_stop
 };
