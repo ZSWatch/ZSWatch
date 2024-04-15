@@ -259,9 +259,9 @@
 };
 
 / {
-    sram@2007FEFF {
+    sram@2007DFFF {
         compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2007FEFF 0x100>;
+        reg = <0x2007DFFF 0x2000>;
         zephyr,memory-region = "RetainedMem";
         status = "okay";
 
@@ -271,20 +271,28 @@
             #address-cells = <1>;
             #size-cells = <1>;
 
-            retention0: retention@0 {
+            retention_coredump: retention@0 {
                 compatible = "zephyr,retention";
                 status = "okay";
-                reg = <0x0 0xFB>;
+                reg = <0x0 0x1F00>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+
+            retention0: retention@1F00 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1F00 0xFB>;
                 prefix = [04 fa];
                 checksum = <1>;
             };
             // Last byte in RAM is for boot mode.
             // Du to debugger only supports writing 4 bytes at a time
             // we need to leave a 3 byte gap between the two retention areas.
-            retention1: retention@FF {
+            retention1: retention@1FFF {
                 compatible = "zephyr,retention";
                 status = "okay";
-                reg = <0xFF 0x1>;
+                reg = <0x1FFF 0x1>;
             };
         };
     };
@@ -299,5 +307,5 @@
 * The last 256 bytes of SRAM0 are used for retention memory.
 */
 &sram0 {
-    reg = <0x20000000 0x7FEFF>;
+    reg = <0x20000000 0x7DFFF>;
 };
