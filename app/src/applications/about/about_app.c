@@ -2,6 +2,7 @@
 #include <zephyr/init.h>
 #include "app_version.h"
 #include <version.h>
+#include <ncs_version.h>
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"

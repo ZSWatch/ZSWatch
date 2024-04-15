@@ -55,7 +55,7 @@ jobs:
           mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.hex
 
           # Only one copy of Net Core image needed, it's the same for all builds
-          mv ${{ matrix.board }}_${{ matrix.built_type }}/hci_rpmsg/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
+          mv ${{ matrix.board }}_${{ matrix.built_type }}/hci_ipc/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
 
       - name: Build native_posix
         if: ${{ matrix.board == 'native_posix' }}
