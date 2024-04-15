@@ -8,10 +8,24 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/debug/coredump.h>
+#include <zephyr/fs/fs.h>
 
 LOG_MODULE_REGISTER(zsw_coredump, LOG_LEVEL_DBG);
 
+/**
+ * Those are picked from coredump_internal.h in zephyr.
+ * Save the coredump it in the same format.
+ * Allows to use the coredump uart command to process the coredump file.
+ */
+#define COREDUMP_BEGIN_STR  "BEGIN#\r\n"
+#define COREDUMP_END_STR    "END#\r\n"
+#define COREDUMP_ERROR_STR  "ERROR CANNOT DUMP#\r\n"
+#define COREDUMP_PREFIX_STR "#CD:"
+
+#define COREDUMP_LINE_OVERHEAD (sizeof(COREDUMP_PREFIX_STR) + sizeof("\r\n") + 1)
+
 #define MAX_FILENAME_LEN 32
+#define FILE_CHUNK_LENGTH 256
 
 struct crash_info_header {
     uint32_t crash_line;
@@ -33,7 +47,6 @@ static int write_crash_header(struct crash_info_header *header)
 
 static void clear_stored_dump(void)
 {
-    int ret;
     struct crash_info_header header;
     if (read_crash_header(&header) == 0) {
         header.length = 0;
@@ -41,6 +54,86 @@ static void clear_stored_dump(void)
     } else {
         retention_clear(retention_area);
     }
+}
+
+static int write_coredump_to_filesystem(void)
+{
+    int err;
+    int len;
+    int out_index;
+    struct fs_file_t file;
+    struct coredump_cmd_copy_arg args;
+    const char *path = "/lvgl_lfs/coredump.txt";
+    char file_write_chunk[FILE_CHUNK_LENGTH] = {0};
+    uint8_t coredump[FILE_CHUNK_LENGTH / 2 - COREDUMP_LINE_OVERHEAD] = {0};
+
+    fs_unlink(path); // For now only handle one file and delete it always
+
+    fs_file_t_init(&file);
+    err = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
+    if (err) {
+        LOG_ERR("Failed to open %s (%d)", path, err);
+        return err;
+    }
+
+    err = fs_seek(&file, 0, FS_SEEK_SET);
+    if (err) {
+        LOG_ERR("Failed to seek %s (%d)", path, err);
+        err = fs_close(&file);
+        return err;
+    }
+
+    args.buffer = coredump;
+    args.offset = 0;
+    args.length = sizeof(coredump);
+
+    err = fs_write(&file, COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR, strlen(COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR));
+    while (err >= 0 && (len = coredump_cmd(COREDUMP_CMD_COPY_STORED_DUMP, &args)) != 0) {
+        __ASSERT(len <= sizeof(coredump), "Invalid coredump read length");
+        args.offset += len;
+        strncpy(file_write_chunk, COREDUMP_PREFIX_STR, sizeof(file_write_chunk));
+        out_index = strlen(COREDUMP_PREFIX_STR);
+
+        // Below code comes from zephyr/subsys/debug/coredump/coredump_backend_logging.c
+        // Function coredump_logging_backend_buffer_output
+        // Needed to output the coredump in a text represented format to the filesystem
+        while (len > 0) {
+            if (hex2char(args.buffer[out_index / 2 + out_index % 2] >> 4, &file_write_chunk[out_index]) < 0) {
+                err = -EINVAL;
+                break;
+            }
+            out_index++;
+
+            if (hex2char(args.buffer[out_index / 2 + out_index % 2] & 0xf, &file_write_chunk[out_index]) < 0) {
+                err = -EINVAL;
+                break;
+            }
+            out_index++;
+            len--;
+            __ASSERT(out_index < FILE_CHUNK_LENGTH, "Invalid coredump length");
+        }
+        out_index += snprintf(&file_write_chunk[out_index], FILE_CHUNK_LENGTH - out_index, "\r\n");
+        err = fs_write(&file, file_write_chunk, out_index);
+        if (err < 0) {
+            LOG_ERR("Failed to write coredump: %d", err);
+            break;
+        }
+        out_index = 0;
+        memset(coredump, 0, sizeof(coredump));
+    }
+    if (err == 0) {
+        fs_write(&file, COREDUMP_PREFIX_STR COREDUMP_END_STR, strlen(COREDUMP_PREFIX_STR COREDUMP_END_STR));
+    }
+
+    fs_close(&file);
+
+    if (err < 0) {
+        err = fs_unlink(path);
+    }
+
+    coredump_cmd(COREDUMP_CMD_INVALIDATE_STORED_DUMP, &args);
+
+    return err;
 }
 
 static void coredump_logging_backend_start(void)
@@ -175,7 +268,10 @@ static int coredump_init(void)
         } else {
             LOG_DBG("No assert found");
         }
-        // TODO Write to Filesystem
+
+        if (header.length > 0) {
+            write_coredump_to_filesystem();
+        }
     } else {
         retention_clear(retention_area);
     }
