@@ -1,0 +1,37 @@
+From bfb4794c367bc47444a63203bb9ea0882502ab11 Mon Sep 17 00:00:00 2001
+From: Jamie McCrae <jamie.mccrae@nordicsemi.no>
+Date: Thu, 14 Dec 2023 13:24:48 +0000
+Subject: [PATCH] retention: Increase read size variables to 16-bit
+
+Increases 2 variables to be 16-bits instead of 8-bits to allow
+for target read sizes, this would only be an issue if someone
+changed the default retention block size from the default value
+of 16 to a value over 256
+
+Signed-off-by: Jamie McCrae <jamie.mccrae@nordicsemi.no>
+---
+ subsys/retention/retention.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/subsys/retention/retention.c b/subsys/retention/retention.c
+index c95df2e2c787a5..a61f8df6b4d8a3 100644
+--- a/subsys/retention/retention.c
++++ b/subsys/retention/retention.c
+@@ -96,7 +96,7 @@ static int retention_checksum(const struct device *dev, uint32_t *output)
+ 		*output = 0;
+ 
+ 		while (pos < end) {
+-			uint8_t read_size = MIN((end - pos), sizeof(buffer));
++			uint16_t read_size = MIN((end - pos), sizeof(buffer));
+ 
+ 			rc = retained_mem_read(config->parent, pos, buffer, read_size);
+ 
+@@ -188,7 +188,7 @@ int retention_is_valid(const struct device *dev)
+ 		off_t pos = 0;
+ 
+ 		while (pos < config->prefix_len) {
+-			uint8_t read_size = MIN((config->prefix_len - pos), sizeof(buffer));
++			uint16_t read_size = MIN((config->prefix_len - pos), sizeof(buffer));
+ 
+ 			rc = retained_mem_read(config->parent, (config->offset + pos), buffer,
+ 					       read_size);
