@@ -35,6 +35,46 @@ struct crash_info_header {
 
 static const struct device *retention_area = DEVICE_DT_GET(DT_NODELABEL(retention_coredump));
 
+int zsw_coredump_to_log(void)
+{
+    int err;
+    int count = INT_MAX;
+    struct fs_file_t file;
+    const char *path = "/lvgl_lfs/coredump.txt";
+
+    fs_file_t_init(&file);
+    err = fs_open(&file, path, FS_O_READ);
+    if (err) {
+        LOG_ERR("Failed to open %s (%d)", path, err);
+        return err;
+    }
+
+    err = fs_seek(&file, 0, FS_SEEK_SET);
+    if (err) {
+        LOG_ERR("Failed to seek %s (%d)", path, err);
+        err = fs_close(&file);
+        return err;
+    }
+
+    while (count > 0) {
+        ssize_t read;
+        uint8_t buf[FILE_CHUNK_LENGTH + 1];
+
+        read = fs_read(&file, buf, MIN(count, sizeof(buf)));
+        if (read <= 0) {
+            break;
+        }
+
+        buf[read] = '\0';
+
+        LOG_PRINTK("%s", buf);
+
+        count -= read;
+    }
+
+    return 0;
+}
+
 static int read_crash_header(struct crash_info_header *header)
 {
     return retention_read(retention_area, 0, (uint8_t *)header, sizeof(struct crash_info_header));
