@@ -34,6 +34,7 @@ static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
 static void on_dump_coredump_changed(lv_setting_value_t value, bool final);
+static void on_cause_coredump_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_restart_screen_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
@@ -188,17 +189,6 @@ static lv_settings_item_t other_page_items[] = {
         }
     },
     {
-        .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_DOWNLOAD,
-        .change_callback = on_dump_coredump_changed,
-        .item = {
-            .btn = {
-                .name = "Dump coredump over log",
-                .text = LV_SYMBOL_FILE
-            }
-        }
-    },
-    {
         .type = LV_SETTINGS_TYPE_SWITCH,
         .icon = LV_SYMBOL_AUDIO,
         .change_callback = on_display_vib_press_changed,
@@ -247,6 +237,31 @@ static lv_settings_item_t ui_page_items[] = {
     },
 };
 
+static lv_settings_item_t coredump_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_DOWNLOAD,
+        .change_callback = on_dump_coredump_changed,
+        .item = {
+            .btn = {
+                .name = "Dump coredump over log",
+                .text = LV_SYMBOL_FILE
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_EJECT,
+        .change_callback = on_cause_coredump_changed,
+        .item = {
+            .btn = {
+                .name = "Create a coredump (by crashing)",
+                .text = LV_SYMBOL_FILE
+            }
+        }
+    },
+};
+
 static lv_settings_page_t settings_menu[] = {
     {
         .name = "Display",
@@ -268,6 +283,11 @@ static lv_settings_page_t settings_menu[] = {
         .num_items = ARRAY_SIZE(other_page_items),
         .items = other_page_items
     },
+    {
+        .name = "Coredump",
+        .num_items = ARRAY_SIZE(coredump_page_items),
+        .items = coredump_page_items
+    }
 };
 
 static void ble_pairing_work_handler(struct k_work *work)
@@ -357,6 +377,16 @@ static void on_dump_coredump_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
         zsw_coredump_to_log();
+    }
+}
+
+static void on_cause_coredump_changed(lv_setting_value_t value, bool final)
+{
+    if (final) {
+        volatile int *i;
+        i = (volatile int *) 0x0;
+        *i = 1;
+        ((void (*)())i)();
     }
 }
 

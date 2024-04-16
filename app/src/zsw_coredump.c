@@ -283,7 +283,7 @@ struct coredump_backend_api coredump_backend_other = {
 void assert_post_action(const char *file, unsigned int line)
 {
     const char *fileName;
-    struct crash_info_header header;
+    struct crash_info_header header = {0};
 
     fileName = file;
 
@@ -291,7 +291,7 @@ void assert_post_action(const char *file, unsigned int line)
         // Copy end of filename as it's more relevant than the path to the file.
         fileName += strlen(file) - MAX_FILENAME_LEN;
     }
-    strncpy(header.crash_file, fileName, MAX_FILENAME_LEN);
+    strncpy(header.crash_file, fileName, MAX_FILENAME_LEN - 1);
     header.crash_line = line;
     write_crash_header(&header);
 

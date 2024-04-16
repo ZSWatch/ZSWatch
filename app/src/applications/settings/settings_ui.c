@@ -178,11 +178,11 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     _menu = lv_menu_create(root);
     lv_menu_set_mode_root_back_btn(_menu, LV_MENU_ROOT_BACK_BTN_ENABLED);
     lv_obj_add_event_cb(_menu, close_button_pressed, LV_EVENT_CLICKED, _menu);
-    lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(90));
+    lv_obj_set_pos(_menu, 0, 0);
     lv_obj_set_style_pad_top(_menu, 25, LV_PART_MAIN);
     lv_obj_set_style_pad_left(_menu, 20, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(_menu, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_center(_menu);
 
     // Main page
     _mainPage = lv_menu_page_create(_menu, NULL);
