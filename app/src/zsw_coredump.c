@@ -1,3 +1,5 @@
+#include <zsw_coredump.h>
+#ifndef CONFIG_BOARD_NATIVE_POSIX
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
@@ -38,7 +40,6 @@ static const struct device *retention_area = DEVICE_DT_GET(DT_NODELABEL(retentio
 int zsw_coredump_to_log(void)
 {
     int err;
-    int count = INT_MAX;
     struct fs_file_t file;
     const char *path = "/lvgl_lfs/coredump.txt";
 
@@ -56,11 +57,11 @@ int zsw_coredump_to_log(void)
         return err;
     }
 
-    while (count > 0) {
+    uint8_t buf[FILE_CHUNK_LENGTH + 1];
+    while (true) {
         ssize_t read;
-        uint8_t buf[FILE_CHUNK_LENGTH + 1];
 
-        read = fs_read(&file, buf, MIN(count, sizeof(buf)));
+        read = fs_read(&file, buf, FILE_CHUNK_LENGTH);
         if (read <= 0) {
             break;
         }
@@ -68,8 +69,6 @@ int zsw_coredump_to_log(void)
         buf[read] = '\0';
 
         LOG_PRINTK("%s", buf);
-
-        count -= read;
     }
 
     return 0;
@@ -100,6 +99,7 @@ static int write_coredump_to_filesystem(void)
 {
     int err;
     int len;
+    int i;
     int out_index;
     struct fs_file_t file;
     struct coredump_cmd_copy_arg args;
@@ -133,23 +133,24 @@ static int write_coredump_to_filesystem(void)
         args.offset += len;
         strncpy(file_write_chunk, COREDUMP_PREFIX_STR, sizeof(file_write_chunk));
         out_index = strlen(COREDUMP_PREFIX_STR);
-
+        i = 0;
         // Below code comes from zephyr/subsys/debug/coredump/coredump_backend_logging.c
         // Function coredump_logging_backend_buffer_output
         // Needed to output the coredump in a text represented format to the filesystem
         while (len > 0) {
-            if (hex2char(args.buffer[out_index / 2 + out_index % 2] >> 4, &file_write_chunk[out_index]) < 0) {
+            if (hex2char(args.buffer[i] >> 4, &file_write_chunk[out_index]) < 0) {
                 err = -EINVAL;
                 break;
             }
             out_index++;
 
-            if (hex2char(args.buffer[out_index / 2 + out_index % 2] & 0xf, &file_write_chunk[out_index]) < 0) {
+            if (hex2char(args.buffer[i] & 0xf, &file_write_chunk[out_index]) < 0) {
                 err = -EINVAL;
                 break;
             }
             out_index++;
             len--;
+            i++;
             __ASSERT(out_index < FILE_CHUNK_LENGTH, "Invalid coredump length");
         }
         out_index += snprintf(&file_write_chunk[out_index], FILE_CHUNK_LENGTH - out_index, "\r\n");
@@ -161,7 +162,7 @@ static int write_coredump_to_filesystem(void)
         out_index = 0;
         memset(coredump, 0, sizeof(coredump));
     }
-    if (err == 0) {
+    if (err >= 0) {
         fs_write(&file, COREDUMP_PREFIX_STR COREDUMP_END_STR, strlen(COREDUMP_PREFIX_STR COREDUMP_END_STR));
     }
 
@@ -320,3 +321,9 @@ static int coredump_init(void)
 }
 
 SYS_INIT(coredump_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#else
+int zsw_coredump_to_log(void)
+{
+    return 0;
+}
+#endif

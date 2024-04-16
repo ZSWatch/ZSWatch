@@ -9,3 +9,8 @@ west-commands:
       - name: format
         class: FormatCodeWestCommand
         help: Format the code
+  - file: scripts/coredump_west_command.py
+    commands:
+      - name: coredump
+        class: CoredumpWestCommand
+        help: Analyze a coredump
