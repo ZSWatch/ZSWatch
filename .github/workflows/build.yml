@@ -51,8 +51,10 @@ jobs:
         run: |
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf"
           mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}.hex
+          mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}.elf
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_rotated -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay"
           mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.hex
+          mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.elf
 
           # Only one copy of Net Core image needed, it's the same for all builds
           mv ${{ matrix.board }}_${{ matrix.built_type }}/hci_ipc/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
