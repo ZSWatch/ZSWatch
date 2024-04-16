@@ -1,0 +1,13 @@
+diff --git a/drivers/display/display_sdl_bottom.c b/drivers/display/display_sdl_bottom.c
+index a7ad1929f4..6ce5f99e8d 100644
+--- a/drivers/display/display_sdl_bottom.c
++++ b/drivers/display/display_sdl_bottom.c
+@@ -22,7 +22,7 @@ int sdl_display_init_bottom(uint16_t height, uint16_t width,
+ 		return -1;
+ 	}
+ 
+-	*renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_ACCELERATED);
++	*renderer = SDL_CreateRenderer(*window, -1, SDL_RENDERER_SOFTWARE);
+ 	if (*renderer == NULL) {
+ 		nsi_print_warning("Failed to create SDL renderer: %s",
+ 				SDL_GetError());
