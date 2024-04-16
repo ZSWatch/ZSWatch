@@ -5,7 +5,9 @@
     ],
     "nrf-connect.boardRoots": [
         "${workspaceFolder}/app",
-        "${workspaceFolder}\\app"
+        "${workspaceFolder}\\app",
+        "${workspaceFolder}/zephyr/boards",
+        "${workspaceFolder}\\zephyr\\boards",
     ],
     "nrf-connect.debugging.bindings": {
         "${workspaceFolder}/app/build": "Launch build"
