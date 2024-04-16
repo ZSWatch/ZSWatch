@@ -1,5 +1,5 @@
 #include <zsw_coredump.h>
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#if !defined(CONFIG_BOARD_NATIVE_POSIX) && defined(CONFIG_FILE_SYSTEM)
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
