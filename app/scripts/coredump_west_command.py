@@ -2,9 +2,11 @@ from west.commands import WestCommand
 from west import log
 import sys
 import os
+import time
 from pathlib import Path
 from west.configuration import config
 import subprocess
+import pylink
 
 THIS_ZEPHYR = Path(__file__).parent.parent.parent / "zephyr"
 ZEPHYR_BASE = Path(os.environ.get("ZEPHYR_BASE", THIS_ZEPHYR))
@@ -29,8 +31,8 @@ class CoredumpWestCommand(WestCommand):
             "--coredump_file",
             type=str,
             default="",
-            required=True,
-            help="The coredump text file to analyse.",
+            required=False,
+            help="The coredump text file to analyse, of not provided logs will be retreived over Debugger and RTT.",
         )
 
         parser.add_argument(
@@ -63,6 +65,7 @@ class CoredumpWestCommand(WestCommand):
         log.inf("Running coredump analyzis")
         toolchain_path = ""
         elf_file = ""
+        coredump_file = ""
 
         if (args.build_dir == "" and args.elf == "") or (
             args.build_dir != "" and args.elf != ""
@@ -93,8 +96,17 @@ class CoredumpWestCommand(WestCommand):
             log.err("Elf file not found", elf_file)
             sys.exit(1)
 
+        if args.coredump_file == "":
+            coredump_file = self.extract_coredump_over_rtt()
+            print("Coredump extracted, saving to coredump_rtt.txt")
+            with open("coredump_rtt.txt", "w") as f:
+                f.write(coredump_file)
+                coredump_file = "coredump_rtt.txt"
+        else:
+            coredump_file = args.coredump_file
+
         coredump_bin_file_path = f"{ZEPHYR_BASE.parent.absolute()}/coredump.bin"
-        self.convert_coredump_to_bin(args.coredump_file, coredump_bin_file_path)
+        self.convert_coredump_to_bin(coredump_file, coredump_bin_file_path)
         proc = self.create_gdb_server(coredump_bin_file_path, elf_file)
         self.gdb_get_bt(gdb_path, elf_file, coredump_bin_file_path)
         proc.terminate()
@@ -146,3 +158,52 @@ class CoredumpWestCommand(WestCommand):
             for line in f:
                 if "ZEPHYR_SDK_INSTALL_DIR:INTERNAL=" in line:
                     return line.split("=")[1].strip()
+
+    def extract_coredump_over_rtt(self, target_device="nRF5340_XXAA"):
+        coredump_content = ""
+        found_start = False
+
+        cb_start = "#CD:BEGIN#"
+        cb_end = "#CD:END#"
+
+        jlink = pylink.JLink()
+        print("Connecting to JLink...")
+        jlink.open()
+        print("Connecting to %s..." % target_device)
+        jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+        jlink.connect(target_device)
+        jlink.rtt_start(None)
+        print("This only works for ZSWatch debug builds with RTT as log backend")
+        print("Connected, go to settings -> other -> Dump coredump over log")
+
+        while jlink.connected():
+            read_bytes = jlink.rtt_read(0, 1024)
+            if read_bytes and read_bytes != "":
+                data = "".join(map(chr, read_bytes))
+                print(data)
+                start_index = data.find(cb_start)
+                end_index = data.find(cb_end)
+
+                if start_index != -1 and end_index != -1:
+                    print("Full coredump in same buffer")
+                    coredump_content += data[start_index:(end_index + len(cb_end))]
+                    break
+                elif start_index >= 0:
+                    print("Found start")
+                    coredump_content = data[start_index:]
+                    found_start = True
+                elif found_start and end_index >= 0:
+                    print("Done got both start and end")
+                    coredump_content += data[:(end_index + len(cb_end))]
+                    break
+                elif found_start and end_index == -1:
+                    print("Found start but not end yet, fill content")
+                    coredump_content += data
+                elif not found_start and not end_index == -1:
+                    print("Found end before start, skipping")
+                    coredump_content = ""
+                    found_start = False
+
+            time.sleep(0.1)
+
+        return coredump_content
