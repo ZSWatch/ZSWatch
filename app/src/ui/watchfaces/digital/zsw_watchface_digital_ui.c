@@ -522,13 +522,13 @@ static void watchface_remove(void)
     root_page = NULL;
 }
 
-static void watchface_set_battery_percent(int32_t percent, int32_t value)
+static void watchface_set_battery_percent(int32_t percent, int32_t battery)
 {
     if (!root_page) {
         return;
     }
     lv_arc_set_value(ui_battery_arc, percent);
-    lv_label_set_text_fmt(ui_battery_percent_label, "%d", value);
+    lv_label_set_text_fmt(ui_battery_percent_label, "%d", battery);
 }
 
 static void watchface_set_hrm(int32_t bpm, int32_t oxygen)

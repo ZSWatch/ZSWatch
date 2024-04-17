@@ -133,7 +133,7 @@ static void watchface_remove(void)
     root_page = NULL;
 }
 
-static void watchface_set_battery_percent(int32_t percent, int32_t value)
+static void watchface_set_battery_percent(int32_t percent, int32_t battery)
 {
 }
 
