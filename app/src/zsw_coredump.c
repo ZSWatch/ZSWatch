@@ -5,12 +5,14 @@
 #include <zephyr/logging/log.h>
 #include <zsw_retained_ram_storage.h>
 #include <stdlib.h>
+#include <time.h>
 #include <zephyr/device.h>
 #include <zephyr/retention/retention.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/debug/coredump.h>
 #include <zephyr/fs/fs.h>
+#include <zsw_clock.h>
 
 LOG_MODULE_REGISTER(zsw_coredump, LOG_LEVEL_DBG);
 
@@ -95,18 +97,20 @@ static void clear_stored_dump(void)
     }
 }
 
-static int write_coredump_to_filesystem(void)
+static int write_coredump_to_filesystem(struct crash_info_header *header)
 {
     int err;
     int len;
     int i;
     int out_index;
+    zsw_timeval_t ztm;
     struct fs_file_t file;
     struct coredump_cmd_copy_arg args;
     const char *path = "/lvgl_lfs/coredump.txt";
     char file_write_chunk[FILE_CHUNK_LENGTH] = {0};
     uint8_t coredump[FILE_CHUNK_LENGTH / 2 - COREDUMP_LINE_OVERHEAD] = {0};
 
+    zsw_clock_get_time(&ztm);
     fs_unlink(path); // For now only handle one file and delete it always
 
     fs_file_t_init(&file);
@@ -128,6 +132,14 @@ static int write_coredump_to_filesystem(void)
     args.length = sizeof(coredump);
 
     err = fs_write(&file, COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR, strlen(COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR));
+
+    // Write timestamp and if it was an assert, the file and line of it.
+    len = snprintf(file_write_chunk, sizeof(file_write_chunk), "Crash at %d:%d %d/%d\r\n",
+             ztm.tm.tm_hour, ztm.tm.tm_min, ztm.tm.tm_mday, ztm.tm.tm_mon + 1);
+    err = fs_write(&file, file_write_chunk, len);
+    len = snprintf(file_write_chunk, sizeof(file_write_chunk), "File: %s Line: %d\r\n", header->crash_file, header->crash_line);
+    err = fs_write(&file, file_write_chunk, len);
+
     while (err >= 0 && (len = coredump_cmd(COREDUMP_CMD_COPY_STORED_DUMP, &args)) != 0) {
         __ASSERT(len <= sizeof(coredump), "Invalid coredump read length");
         args.offset += len;
@@ -311,7 +323,7 @@ static int coredump_init(void)
         }
 
         if (header.length > 0) {
-            write_coredump_to_filesystem();
+            write_coredump_to_filesystem(&header);
         }
     } else {
         retention_clear(retention_area);

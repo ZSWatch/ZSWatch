@@ -20,6 +20,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <zephyr/kernel.h>
+#include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,20 +37,6 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
-
-void zsw_clock_init(uint64_t start_time_seconds, char *timezone)
-{
-    struct timespec tspec;
-    tspec.tv_sec = start_time_seconds;
-    tspec.tv_nsec = 0;
-    clock_settime(CLOCK_REALTIME, &tspec);
-    if (timezone && strlen(timezone) > 0) {
-        setenv("TZ", timezone, 1);
-        tzset();
-    }
-
-    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
-}
 
 void zsw_clock_get_time(zsw_timeval_t *ztm)
 {
@@ -74,3 +61,21 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
     retained.current_time_seconds = zsw_clock_get_time_unix();
     zsw_retained_ram_update();
 }
+
+static int zsw_clock_init(void)
+{
+    struct timespec tspec;
+    tspec.tv_sec = retained.current_time_seconds;
+    tspec.tv_nsec = 0;
+    clock_settime(CLOCK_REALTIME, &tspec);
+    if (strlen(retained.timezone) > 0) {
+        setenv("TZ", retained.timezone, 1);
+        tzset();
+    }
+
+    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
+
+    return 0;
+}
+
+SYS_INIT(zsw_clock_init, APPLICATION, 2);

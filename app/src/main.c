@@ -213,7 +213,6 @@ static void run_init_work(struct k_work *item)
     zsw_pressure_sensor_init();
     zsw_light_sensor_init();
     zsw_environment_sensor_init();
-    zsw_clock_init(retained.current_time_seconds, retained.timezone);
 
     INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback);
 

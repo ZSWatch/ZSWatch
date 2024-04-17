@@ -117,4 +117,4 @@ static int zsw_timer_init(void)
     return 0;
 }
 
-SYS_INIT(zsw_timer_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+SYS_INIT(zsw_timer_init, APPLICATION, 1);
