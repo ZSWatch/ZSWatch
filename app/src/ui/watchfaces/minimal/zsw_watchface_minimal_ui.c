@@ -145,7 +145,7 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
 {
 }
 
-static void watchface_set_num_notifcations(int32_t value)
+static void watchface_set_num_notifcations(int32_t number)
 {
 }
 

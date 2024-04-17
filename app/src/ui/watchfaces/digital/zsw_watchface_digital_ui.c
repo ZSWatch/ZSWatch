@@ -547,18 +547,18 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
     lv_label_set_text_fmt(ui_step_arc_label, "%d", steps);
 }
 
-static void watchface_set_num_notifcations(int32_t value)
+static void watchface_set_num_notifcations(int32_t number)
 {
     if (!root_page) {
         return;
     }
 
-    if (value == last_num_not) {
+    if (number == last_num_not) {
         return;
     }
 
-    if (value > 0) {
-        lv_label_set_text_fmt(ui_notification_count_label, "%d", value);
+    if (number > 0) {
+        lv_label_set_text_fmt(ui_notification_count_label, "%d", number);
         lv_obj_clear_flag(ui_notification_icon, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(ui_notification_icon, LV_OBJ_FLAG_HIDDEN);

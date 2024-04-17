@@ -349,17 +349,17 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
     lv_obj_align_to(step_label, step_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-static void watchface_set_num_notifcations(int32_t value)
+static void watchface_set_num_notifcations(int32_t number)
 {
     char not_text_buf[2]; // 0-9 and \0
 
-    if (value == last_num_not) {
+    if (number == last_num_not) {
         return;
     }
 
-    if (value > 0) {
-        if (value < 10) {
-            snprintf(not_text_buf, 2, "%d", value);
+    if (number > 0) {
+        if (number < 10) {
+            snprintf(not_text_buf, 2, "%d", number);
         } else {
             snprintf(not_text_buf, 2, "*");
         }
