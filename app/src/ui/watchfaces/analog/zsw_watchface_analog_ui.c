@@ -349,36 +349,6 @@ static void watchface_set_step(int32_t value)
     lv_obj_align_to(step_label, step_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
-{
-    if (!root_page) {
-        return;
-    }
-    // Hour hand is split into 60 steps, use minutes to progress the hour
-    // hand between full hours.
-    int hour_offset;
-    hour = hour % 12;
-    hour_offset = hour * 5;
-    hour_offset += minute / 10;
-    if (hour_offset >= 60) {
-        hour_offset = 60;
-    }
-    if (minute != last_minute) {
-        last_minute = minute;
-        lv_meter_set_indicator_end_value(clock_meter, indic_min, minute);
-    }
-    if (hour_offset != last_hour) {
-        last_hour = hour_offset;
-        lv_meter_set_indicator_end_value(clock_meter, indic_hour, hour_offset);
-    }
-#ifdef USE_SECOND_HAND
-    if (second != last_second) {
-        last_second = second;
-        lv_img_set_angle(second_img, second * 60 + 2700);
-    }
-#endif
-}
-
 static void watchface_set_num_notifcations(int32_t value)
 {
     char not_text_buf[2]; // 0-9 and \0
@@ -428,8 +398,10 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
     lv_obj_set_style_img_recolor(weather_icon, icon_color, 0);
 }
 
-static void watchface_set_date(int day_of_week, int date, int day, int month, int year, int weekday)
+static void watchface_set_datetime(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour,
+                                   int32_t minute, int32_t second, uint32_t usec)
 {
+    int hour_offset;
     char buf[10];
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 
@@ -437,6 +409,29 @@ static void watchface_set_date(int day_of_week, int date, int day, int month, in
     lv_label_set_text(day_label, buf);
     snprintf(buf, sizeof(buf), "%d", date);
     lv_label_set_text(date_label, buf);
+
+    // Hour hand is split into 60 steps, use minutes to progress the hour
+    // hand between full hours.
+    hour = hour % 12;
+    hour_offset = hour * 5;
+    hour_offset += minute / 10;
+    if (hour_offset >= 60) {
+        hour_offset = 60;
+    }
+    if (minute != last_minute) {
+        last_minute = minute;
+        lv_meter_set_indicator_end_value(clock_meter, indic_min, minute);
+    }
+    if (hour_offset != last_hour) {
+        last_hour = hour_offset;
+        lv_meter_set_indicator_end_value(clock_meter, indic_hour, hour_offset);
+    }
+#ifdef USE_SECOND_HAND
+    if (second != last_second) {
+        last_second = second;
+        lv_img_set_angle(second_img, second * 60 + 2700);
+    }
+#endif
 }
 
 static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
@@ -462,11 +457,10 @@ static watchface_ui_api_t ui_api = {
     .set_battery_percent = watchface_set_battery_percent,
     .set_hrm = watchface_set_hrm,
     .set_step = watchface_set_step,
-    .set_time = watchface_set_time,
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
-    .set_date = watchface_set_date,
+    .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
 };

@@ -60,7 +60,7 @@ static lv_obj_t *ui_bt_icon;
 static lv_obj_t *ui_weather_temperature_label;
 static lv_obj_t *ui_weather_icon;
 
-LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
+ZSW_LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
 ZSW_LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
 ZSW_LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
 ZSW_LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
@@ -77,6 +77,8 @@ static int last_hour = -1;
 static int last_minute = -1;
 static int last_second = -1;
 static int last_num_not = -1;
+static int last_date = -1;
+static int last_day_of_week = -1;
 
 static watchface_app_evt_listener ui_evt_cb;
 
@@ -545,26 +547,6 @@ static void watchface_set_step(int32_t value)
     lv_label_set_text_fmt(ui_step_arc_label, "%d", value);
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
-{
-    if (!root_page) {
-        return;
-    }
-
-    if (last_hour != hour) {
-        lv_label_set_text_fmt(ui_min_label, "%02d", hour);
-        last_hour = hour;
-    }
-    if (last_minute != minute) {
-        lv_label_set_text_fmt(ui_hour_label, "%02d", minute);
-        last_minute = minute;
-    }
-    if (last_second != second) {
-        lv_label_set_text_fmt(ui_sec_label, "%02d", second);
-        last_second = second;
-    }
-}
-
 static void watchface_set_num_notifcations(int32_t value)
 {
     if (!root_page) {
@@ -612,15 +594,34 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
     lv_obj_set_style_img_recolor(ui_weather_icon, icon_color, 0);
 }
 
-static void watchface_set_date(int day_of_week, int date, int day, int month, int year, int weekday)
+static void watchface_set_datetime(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour,
+                                   int32_t minute, int32_t second, uint32_t usec)
 {
     if (!root_page) {
         return;
     }
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 
-    lv_label_set_text_fmt(ui_day_label, "%s", days[day_of_week]);
-    lv_label_set_text_fmt(ui_date_label, "%d", date);
+    if (last_date != date) {
+        lv_label_set_text_fmt(ui_date_label, "%d", date);
+        last_date = date;
+    }
+    if (last_day_of_week != day_of_week) {
+        lv_label_set_text_fmt(ui_day_label, "%s", days[day_of_week]);
+        last_day_of_week = day_of_week;
+    }
+    if (last_hour != hour) {
+        lv_label_set_text_fmt(ui_min_label, "%02d", hour);
+        last_hour = hour;
+    }
+    if (last_minute != minute) {
+        lv_label_set_text_fmt(ui_hour_label, "%02d", minute);
+        last_minute = minute;
+    }
+    if (last_second != second) {
+        lv_label_set_text_fmt(ui_sec_label, "%02d", second);
+        last_second = second;
+    }
 }
 
 #ifdef CONFIG_EXTERNAL_USE_BOSCH_BSEC
@@ -691,6 +692,8 @@ static void watchface_ui_invalidate_cached(void)
     last_minute = -1;
     last_num_not = -1;
     last_second = -1;
+    last_date = -1;
+    last_day_of_week = -1;
 }
 
 static void arc_event_pressed(lv_event_t *e)
@@ -708,11 +711,10 @@ static watchface_ui_api_t ui_api = {
     .set_battery_percent = watchface_set_battery_percent,
     .set_hrm = watchface_set_hrm,
     .set_step = watchface_set_step,
-    .set_time = watchface_set_time,
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
-    .set_date = watchface_set_date,
+    .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
 };

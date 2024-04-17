@@ -220,7 +220,11 @@ static void general_work(struct k_work *item)
         case UPDATE_CLOCK: {
             zsw_timeval_t time;
             zsw_clock_get_time(&time);
-            watchfaces[current_watchface]->set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec);
+
+            if (watchfaces[current_watchface]->set_datetime) {
+                watchfaces[current_watchface]->set_datetime(time.tm.tm_wday, time.tm.tm_mday, time.tm.tm_mday, time.tm.tm_mon,
+                                                            time.tm.tm_year, time.tm.tm_wday, time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec);
+            }
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work,
                                           watchface_settings.smooth_second_hand ? SMOOTH_TIME_UPDATE_INTERVAL : NORMAL_TIME_UPDATE_INTERVAL), "FAIL clock_work");
@@ -238,11 +242,6 @@ static void general_work(struct k_work *item)
             zsw_environment_sensor_get(&temperature, &humidity, &pressure);
             zsw_environment_sensor_get_co2(&co2);
             zsw_environment_sensor_get_iaq(&iaq);
-
-            if(watchfaces[current_watchface]->set_date)
-            {
-                watchfaces[current_watchface]->set_date(time.tm.tm_wday, time.tm.tm_mday, time.tm.tm_mday, time.tm.tm_mon, time.tm.tm_year, time.tm.tm_wday);
-            }
 
             zsw_pressure_sensor_get_pressure(&pressure);
             watchfaces[current_watchface]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure, iaq, co2);

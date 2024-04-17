@@ -145,27 +145,6 @@ static void watchface_set_step(int32_t value)
 {
 }
 
-static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uint32_t usec)
-{
-    int hour_minute_offset;
-
-    if (!root_page) {
-        return;
-    }
-
-    hour = hour % 12;
-    // Move hour hand with greater resolution than 12.
-    hour_minute_offset = (int)((minute / 60.0) * (3600 / 12.0));
-    last_hour = hour_minute_offset + hour * (3600 / 12);
-    last_minute = minute * (3600 / 60);
-    last_second = second * (3600 / 60);
-    lv_img_set_angle(ui_hour_img, last_hour);
-    lv_img_set_angle(ui_min_img, last_minute);
-
-    last_second += lv_map(usec, 0, 999999, 0, 3600 / 60);
-    lv_img_set_angle(ui_second_img, last_second);
-}
-
 static void watchface_set_num_notifcations(int32_t value)
 {
 }
@@ -178,14 +157,29 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
 {
 }
 
-static void watchface_set_date(int day_of_week, int date, int day, int month, int year, int weekday)
+static void watchface_set_datetime(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour,
+                                   int32_t minute, int32_t second, uint32_t usec)
 {
+    int hour_minute_offset;
+
     if (!root_page) {
         return;
     }
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 
     lv_label_set_text_fmt(ui_day_data_label, "%s %d", days[day_of_week], date);
+
+    hour = hour % 12;
+    // Move hour hand with greater resolution than 12.
+    hour_minute_offset = (int)((minute / 60.0) * (3600 / 12.0));
+    last_hour = hour_minute_offset + hour * (3600 / 12);
+    last_minute = minute * (3600 / 60);
+    last_second = second * (3600 / 60);
+    lv_img_set_angle(ui_hour_img, last_hour);
+    lv_img_set_angle(ui_min_img, last_minute);
+
+    last_second += lv_map(usec, 0, 999999, 0, 3600 / 60);
+    lv_img_set_angle(ui_second_img, last_second);
 }
 
 static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
@@ -206,11 +200,10 @@ static watchface_ui_api_t ui_api = {
     .set_battery_percent = watchface_set_battery_percent,
     .set_hrm = watchface_set_hrm,
     .set_step = watchface_set_step,
-    .set_time = watchface_set_time,
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
-    .set_date = watchface_set_date,
+    .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
 };

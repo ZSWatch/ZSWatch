@@ -38,11 +38,11 @@ typedef struct watchface_ui_api_t {
     void (*set_battery_percent)(int32_t percent, int32_t value);
     void (*set_hrm)(int32_t value);
     void (*set_step)(int32_t value);
-    void (*set_time)(int32_t hour, int32_t minute, int32_t second, uint32_t usec);
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t value);
     void (*set_weather)(int8_t temperature, int weather_code);
-    void (*set_date)(int day_of_week, int date, int day, int month, int year, int weekday);
+    void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
+                         int32_t second, uint32_t usec);
     void (*set_watch_env_sensors)(int temperature, int humidity, int pressure, float iaq, float co2);
     void (*ui_invalidate_cached)(void);
 } watchface_ui_api_t;
