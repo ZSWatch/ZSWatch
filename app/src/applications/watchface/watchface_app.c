@@ -182,7 +182,8 @@ static void refresh_ui(void)
         watchfaces[current_watchface]->set_weather(last_weather_data.temperature_c, last_weather_data.weather_code);
     }
     if (zsw_imu_fetch_num_steps(&steps) == 0) {
-        watchfaces[current_watchface]->set_step(steps);
+        // TODO: Add calculation for distance and kcal
+        watchfaces[current_watchface]->set_step(steps, 0, 0);
     }
 }
 
@@ -212,7 +213,8 @@ static void general_work(struct k_work *item)
 
             // Realtime update of steps
             if (zsw_imu_fetch_num_steps(&steps) == 0) {
-                watchfaces[current_watchface]->set_step(steps);
+                // TODO: Add calculation for distance and kcal
+                watchfaces[current_watchface]->set_step(steps, 0, 0);
             }
             __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
             break;
@@ -314,7 +316,8 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
     if (running && !is_suspended) {
         const struct accel_event *event = zbus_chan_const_msg(chan);
         if (event->data.type == ZSW_IMU_EVT_TYPE_STEP) {
-            watchfaces[current_watchface]->set_step(event->data.data.step.count);
+            // TODO: Add calculation for distance and kcal
+            watchfaces[current_watchface]->set_step(event->data.data.step.count, 0, 0);
         }
     }
 }

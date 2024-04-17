@@ -141,7 +141,7 @@ static void watchface_set_hrm(int32_t value)
 {
 }
 
-static void watchface_set_step(int32_t value)
+static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
 {
 }
 

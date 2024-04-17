@@ -538,13 +538,13 @@ static void watchface_set_hrm(int32_t value)
     }
 }
 
-static void watchface_set_step(int32_t value)
+static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
 {
     if (!root_page) {
         return;
     }
-    lv_arc_set_value(ui_step_arc, value);
-    lv_label_set_text_fmt(ui_step_arc_label, "%d", value);
+    lv_arc_set_value(ui_step_arc, steps);
+    lv_label_set_text_fmt(ui_step_arc_label, "%d", steps);
 }
 
 static void watchface_set_num_notifcations(int32_t value)

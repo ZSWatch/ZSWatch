@@ -336,15 +336,15 @@ static void watchface_set_hrm(int32_t value)
     lv_obj_align_to(hrm_label, hrm_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-static void watchface_set_step(int32_t value)
+static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
 {
     if (!root_page) {
         return;
     }
     char buf[6];
     memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf), "%d", value);
-    lv_arc_set_value(step_arc, value);
+    snprintf(buf, sizeof(buf), "%d", steps);
+    lv_arc_set_value(step_arc, steps);
     lv_label_set_text(step_label, buf);
     lv_obj_align_to(step_label, step_arc, LV_ALIGN_CENTER, 0, -9);
 }
