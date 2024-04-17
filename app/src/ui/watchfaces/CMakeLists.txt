@@ -11,8 +11,8 @@ endmacro()
 
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Add all folders (applications) in this folder.
-message("Applications")
+# Add all watchfaces in this folder.
+message("Watchfaces")
 FOREACH(subdir ${SUBDIRS})
     add_subdirectory(${subdir})
     include_directories(${subdir})

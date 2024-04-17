@@ -88,6 +88,11 @@ menu "ZSWatch"
             prompt "Add minimal watchface"
             default y
 
+        config WATCHFACE_NEW
+            bool
+            prompt "Add new watchface"
+            default y
+
         choice WATCHFACE_BACKGROUND_IMG
             bool
             prompt "Select which watchface background imgage to use. Not all watchfaces supports this."
