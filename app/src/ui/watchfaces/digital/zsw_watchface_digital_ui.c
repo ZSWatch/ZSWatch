@@ -531,7 +531,7 @@ static void watchface_set_battery_percent(int32_t percent, int32_t value)
     lv_label_set_text_fmt(ui_battery_percent_label, "%d", value);
 }
 
-static void watchface_set_hrm(int32_t value)
+static void watchface_set_hrm(int32_t bpm, int32_t oxygen)
 {
     if (!root_page) {
         return;

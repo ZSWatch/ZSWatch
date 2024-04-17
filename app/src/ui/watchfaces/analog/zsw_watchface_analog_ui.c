@@ -323,15 +323,15 @@ static void watchface_set_battery_percent(int32_t percent, int32_t value)
     lv_obj_align_to(battery_label, battery_arc, LV_ALIGN_CENTER, 0, -9);
 }
 
-static void watchface_set_hrm(int32_t value)
+static void watchface_set_hrm(int32_t bpm, int32_t oxygen)
 {
     if (!root_page) {
         return;
     }
     char buf[5];
     memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf), "%d", value);
-    lv_arc_set_value(hrm_arc, value);
+    snprintf(buf, sizeof(buf), "%d", bpm);
+    lv_arc_set_value(hrm_arc, bpm);
     lv_label_set_text(hrm_label, buf);
     lv_obj_align_to(hrm_label, hrm_arc, LV_ALIGN_CENTER, 0, -9);
 }

@@ -36,7 +36,7 @@ typedef struct watchface_ui_api_t {
     void (*show)(watchface_app_evt_listener, zsw_settings_watchface_t *settings);
     void (*remove)(void);
     void (*set_battery_percent)(int32_t percent, int32_t value);
-    void (*set_hrm)(int32_t value);
+    void (*set_hrm)(int32_t bpm, int32_t oxygen);
     void (*set_step)(int32_t steps, int32_t distance, int32_t kcal);
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t value);
