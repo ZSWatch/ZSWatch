@@ -25,59 +25,19 @@
 LOG_MODULE_REGISTER(watchface_digital, LOG_LEVEL_WRN);
 #endif
 
+#include "748_2_dial/748_2_dial.h"
+
 static void watchface_ui_invalidate_cached(void);
 static void arc_event_pressed(lv_event_t *e);
 
 static lv_obj_t *root_page = NULL;
-static lv_obj_t *ui_digital_watchface;
-static lv_obj_t *ui_iaq_or_pressure_arc;
-#ifdef CONFIG_EXTERNAL_USE_BOSCH_BSEC
-static lv_obj_t *ui_co2_arc;
-static lv_obj_t *ui_iaq_co2_text_image;
-#else
-static lv_obj_t *ui_pressure_image;
-#endif
-static lv_obj_t *ui_humidity_arc;
-static lv_obj_t *ui_humidity_icon;
-static lv_obj_t *ui_watch_temperature_label;
-static lv_obj_t *ui_time;
-static lv_obj_t *ui_min_label;
-static lv_obj_t *ui_colon_label;
-static lv_obj_t *ui_hour_label;
-static lv_obj_t *ui_sec_label;
-static lv_obj_t *ui_battery_arc;
-static lv_obj_t *ui_battery_arc_icon;
-static lv_obj_t *ui_battery_percent_label;
-static lv_obj_t *ui_step_arc;
-static lv_obj_t *ui_step_arc_icon;
-static lv_obj_t *ui_step_arc_label;
-static lv_obj_t *ui_top_panel;
-static lv_obj_t *ui_day_label;
-static lv_obj_t *ui_date_label;
-static lv_obj_t *ui_notifications;
-static lv_obj_t *ui_notification_icon;
-static lv_obj_t *ui_notification_count_label;
-static lv_obj_t *ui_bt_icon;
-static lv_obj_t *ui_weather_temperature_label;
-static lv_obj_t *ui_weather_icon;
-
-LV_IMG_DECLARE(ui_img_iaq_co2_text);    // assets/air_quality.png
-ZSW_LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
-ZSW_LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
-ZSW_LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
-ZSW_LV_IMG_DECLARE(ui_img_running_png);    // assets/running.png
-ZSW_LV_IMG_DECLARE(ui_img_chat_png);    // assets/chat.png
-ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
-
-LV_FONT_DECLARE(ui_font_aliean_47);
-LV_FONT_DECLARE(ui_font_aliean_25);
 
 // Remember last values as if no change then
 // no reason to waste resourses and redraw
-static int last_hour = -1;
-static int last_minute = -1;
-static int last_second = -1;
-static int last_num_not = -1;
+static int last_weekday = -1;
+static int last_day = -1;
+static int last_month = -1;
+static int last_year = -1;
 
 static watchface_app_evt_listener ui_evt_cb;
 
@@ -124,6 +84,8 @@ static void watchface_set_time(int32_t hour, int32_t minute, int32_t second, uin
     if (!root_page) {
         return;
     }
+
+    update_time_748_2_dial(second, minute, hour, true, true, last_day, last_month, last_year, last_weekday);
 }
 
 static void watchface_set_num_notifcations(int32_t value)
@@ -147,11 +109,23 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
     }
 }
 
-static void watchface_set_date(int day_of_week, int date)
+static void watchface_set_shortdate(int day_of_week, int date)
 {
     if (!root_page) {
         return;
     }
+}
+
+static void watchface_set_fulldate(int day, int month, int year, int weekday)
+{
+    if (!root_page) {
+        return;
+    }
+
+    last_day = day;
+    last_month = month;
+    last_year = year;
+    last_weekday = weekday;
 }
 
 static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
@@ -163,16 +137,10 @@ static void watchface_set_watch_env_sensors(int temperature, int humidity, int p
 
 static void watchface_ui_invalidate_cached(void)
 {
-
 }
 
 static void arc_event_pressed(lv_event_t *e)
 {
-    if (lv_event_get_target(e) == ui_battery_arc) {
-        ui_evt_cb(WATCHFACE_APP_EVT_CLICK_BATT);
-    } else if (lv_event_get_target(e) == ui_step_arc) {
-        ui_evt_cb(WATCHFACE_APP_EVT_CLICK_STEP);
-    }
 }
 
 static watchface_ui_api_t ui_api = {
@@ -185,7 +153,8 @@ static watchface_ui_api_t ui_api = {
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
-    .set_date = watchface_set_date,
+    .set_shortdate = watchface_set_shortdate,
+    .set_fulldate = watchface_set_fulldate,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
 };

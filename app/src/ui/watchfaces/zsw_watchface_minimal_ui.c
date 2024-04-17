@@ -179,7 +179,7 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
 {
 }
 
-static void watchface_set_date(int day_of_week, int date)
+static void watchface_set_shortdate(int day_of_week, int date)
 {
     if (!root_page) {
         return;
@@ -211,7 +211,7 @@ static watchface_ui_api_t ui_api = {
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
-    .set_date = watchface_set_date,
+    .set_shortdate = watchface_set_shortdate,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
 };

@@ -239,7 +239,15 @@ static void general_work(struct k_work *item)
             zsw_environment_sensor_get_co2(&co2);
             zsw_environment_sensor_get_iaq(&iaq);
 
-            watchfaces[current_watchface]->set_date(time.tm.tm_wday, time.tm.tm_mday);
+            if(watchfaces[current_watchface]->set_shortdate)
+            {
+                watchfaces[current_watchface]->set_shortdate(time.tm.tm_wday, time.tm.tm_mday);
+            }
+
+            if(watchfaces[current_watchface]->set_fulldate)
+            {
+                watchfaces[current_watchface]->set_fulldate(time.tm.tm_mday, time.tm.tm_mon, time.tm.tm_year, time.tm.tm_wday);
+            }
 
             zsw_pressure_sensor_get_pressure(&pressure);
             watchfaces[current_watchface]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure, iaq, co2);

@@ -42,7 +42,8 @@ typedef struct watchface_ui_api_t {
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t value);
     void (*set_weather)(int8_t temperature, int weather_code);
-    void (*set_date)(int day_of_week, int date);
+    void (*set_shortdate)(int day_of_week, int date);
+    void (*set_fulldate)(int day, int month, int year, int weekday);
     void (*set_watch_env_sensors)(int temperature, int humidity, int pressure, float iaq, float co2);
     void (*ui_invalidate_cached)(void);
 } watchface_ui_api_t;
