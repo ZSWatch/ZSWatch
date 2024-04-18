@@ -10,6 +10,7 @@
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_app_manager.h"
 #include "ble/ble_comm.h"
+#include "zsw_coredump.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(info_app, LOG_LEVEL_DBG);
@@ -64,8 +65,12 @@ static void info_app_start(lv_obj_t *root, lv_group_t *group)
     bt_addr_le_t local_addr;
     char addr[BT_ADDR_LE_STR_LEN];
     size_t addr_count = 1;
+    zsw_coredump_sumary_t summary;
+    int num_read_dumps;
 
-    info_ui_show(root, on_reset_pressed);
+    zsw_coredump_get_summary(&summary, 1, &num_read_dumps);
+
+    info_ui_show(root, on_reset_pressed, &summary, num_read_dumps);
     info_ui_set_uptime_sec(k_uptime_get() / 1000);
     info_ui_set_total_uptime_sec(retained.uptime_sum / 1000);
     info_ui_set_wakeup_time_sec(retained.wakeup_time / 1000, (retained.wakeup_time / (double)retained.uptime_sum) * 100);

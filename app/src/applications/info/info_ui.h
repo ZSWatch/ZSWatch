@@ -2,10 +2,11 @@
 
 #include <inttypes.h>
 #include <lvgl.h>
+#include <zsw_coredump.h>
 
 typedef void(*on_reset_ui_event_cb_t)(void);
 
-void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb);
+void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb, zsw_coredump_sumary_t *coredumps, int num_coredumps);
 
 void info_ui_remove(void);
 

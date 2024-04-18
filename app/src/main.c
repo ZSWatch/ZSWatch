@@ -58,6 +58,7 @@
 #include "ble/ble_ams.h"
 #include "ble/ble_ancs.h"
 #include "ble/ble_cts.h"
+#include <zsw_coredump.h>
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
@@ -200,8 +201,7 @@ static void run_init_work(struct k_work *item)
 {
     lv_indev_t *touch_indev;
 
-    // Not to self, PWM consumes like 250uA...
-    // Need to disable also when screen is off.
+    zsw_coredump_init();
     lv_obj_set_style_bg_color(lv_scr_act(), zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);
@@ -442,11 +442,6 @@ static void handle_screen_gesture(lv_dir_t event_code)
         lv_indev_wait_release(lv_indev_get_act());
     } else if (zsw_notification_popup_is_shown()) {
         zsw_notification_popup_remove();
-    } else if (watch_state == APPLICATION_MANAGER_STATE && event_code == LV_DIR_RIGHT) {
-#ifdef CONFIG_BOARD_NATIVE_POSIX
-        // Until there is a better way to go back without access to buttons.
-        zsw_app_manager_exit_app();
-#endif
     }
 }
 

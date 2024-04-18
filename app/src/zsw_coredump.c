@@ -1,7 +1,6 @@
 #include <zsw_coredump.h>
 #if !defined(CONFIG_BOARD_NATIVE_POSIX) && defined(CONFIG_FILE_SYSTEM)
 #include <zephyr/kernel.h>
-#include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 #include <zsw_retained_ram_storage.h>
 #include <stdlib.h>
@@ -28,12 +27,11 @@ LOG_MODULE_REGISTER(zsw_coredump, LOG_LEVEL_DBG);
 
 #define COREDUMP_LINE_OVERHEAD (sizeof(COREDUMP_PREFIX_STR) + sizeof("\r\n") + 1)
 
-#define MAX_FILENAME_LEN 32
 #define FILE_CHUNK_LENGTH 256
 
 struct crash_info_header {
     uint32_t crash_line;
-    uint8_t crash_file[MAX_FILENAME_LEN];
+    uint8_t crash_file[ZSW_COREDUMP_MAX_FILENAME_LEN + 1];
     uint32_t length;
 };
 
@@ -60,6 +58,8 @@ int zsw_coredump_to_log(void)
     }
 
     uint8_t buf[FILE_CHUNK_LENGTH + 1];
+    // Skip the internal file header
+    fs_read(&file, buf, sizeof(zsw_coredump_sumary_t));
     while (true) {
         ssize_t read;
 
@@ -74,6 +74,55 @@ int zsw_coredump_to_log(void)
     }
 
     return 0;
+}
+
+void zsw_coredump_erase(int index)
+{
+    // TODO Handle when multiple coredumps are saved
+    const char *path = "/lvgl_lfs/coredump.txt";
+    fs_unlink(path);
+
+    retention_clear(retention_area);
+}
+
+int zsw_coredump_get_summary(zsw_coredump_sumary_t *summary, int max_dumps, int *num_dumps)
+{
+    int err;
+    struct fs_file_t file;
+    const char *path = "/lvgl_lfs/coredump.txt";
+    uint8_t buf[FILE_CHUNK_LENGTH + 1];
+    ssize_t read;
+
+    *num_dumps = 0;
+
+    fs_file_t_init(&file);
+    err = fs_open(&file, path, FS_O_READ);
+    if (err) {
+        LOG_ERR("Failed to open %s (%d)", path, err);
+        return err;
+    }
+
+    err = fs_seek(&file, 0, FS_SEEK_SET);
+    if (err) {
+        LOG_ERR("Failed to seek %s (%d)", path, err);
+        err = fs_close(&file);
+        return err;
+    }
+
+    read = fs_read(&file, buf, sizeof(zsw_coredump_sumary_t));
+    if (read <= 0) {
+        return -ENODATA;
+    }
+
+    if (read == sizeof(zsw_coredump_sumary_t)) {
+        memcpy(summary, buf, sizeof(zsw_coredump_sumary_t));
+        *num_dumps = 1; // TODO allow string more than one coredump
+        err = 0;
+    }
+
+    fs_close(&file);
+
+    return err;
 }
 
 static int read_crash_header(struct crash_info_header *header)
@@ -106,6 +155,7 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
     zsw_timeval_t ztm;
     struct fs_file_t file;
     struct coredump_cmd_copy_arg args;
+    zsw_coredump_sumary_t cb_summary = {0};
     const char *path = "/lvgl_lfs/coredump.txt";
     char file_write_chunk[FILE_CHUNK_LENGTH] = {0};
     uint8_t coredump[FILE_CHUNK_LENGTH / 2 - COREDUMP_LINE_OVERHEAD] = {0};
@@ -131,14 +181,27 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
     args.offset = 0;
     args.length = sizeof(coredump);
 
+    // Write binary file header for easier parsing internally when viewing coredumps on the watch
+    memcpy(cb_summary.file, header->crash_file, sizeof(cb_summary.file) - 1);
+    snprintf(cb_summary.datetime, sizeof(cb_summary.datetime) - 1, "%02d:%02d %02d/%02d", ztm.tm.tm_hour, ztm.tm.tm_min,
+             ztm.tm.tm_mday, ztm.tm.tm_mon + 1);
+    cb_summary.line = header->crash_line;
+
+    err = fs_write(&file, &cb_summary, sizeof(zsw_coredump_sumary_t));
+    if (err < 0) {
+        LOG_ERR("Failed to write coredump summary binary: %d", err);
+    }
+
     err = fs_write(&file, COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR, strlen(COREDUMP_PREFIX_STR COREDUMP_BEGIN_STR));
 
     // Write timestamp and if it was an assert, the file and line of it.
-    len = snprintf(file_write_chunk, sizeof(file_write_chunk), "Crash at %d:%d %d/%d\r\n",
-             ztm.tm.tm_hour, ztm.tm.tm_min, ztm.tm.tm_mday, ztm.tm.tm_mon + 1);
+    len = snprintf(file_write_chunk, sizeof(file_write_chunk), "\r\nASSERT:%d:%d %d/%d\r\nFILE:%s\r\nLINE:%d\r\n",
+                   ztm.tm.tm_hour, ztm.tm.tm_min, ztm.tm.tm_mday, ztm.tm.tm_mon + 1, header->crash_file,
+                   header->crash_line);
     err = fs_write(&file, file_write_chunk, len);
-    len = snprintf(file_write_chunk, sizeof(file_write_chunk), "File: %s Line: %d\r\n", header->crash_file, header->crash_line);
-    err = fs_write(&file, file_write_chunk, len);
+    if (err < 0) {
+        LOG_ERR("Failed to write coredump summary: %d", err);
+    }
 
     while (err >= 0 && (len = coredump_cmd(COREDUMP_CMD_COPY_STORED_DUMP, &args)) != 0) {
         __ASSERT(len <= sizeof(coredump), "Invalid coredump read length");
@@ -214,7 +277,6 @@ static void coredump_logging_backend_buffer_output(uint8_t *buf, size_t buflen)
     }
 
     ret = retention_write(retention_area, sizeof(struct crash_info_header) + header.length, buf, buflen);
-    LOG_DBG("Writing at offset %d length %d", sizeof(struct crash_info_header) + header.length, buflen);
     if (ret != 0) {
         LOG_ERR("Failed to write coredump: %d", ret);
     }
@@ -299,11 +361,11 @@ void assert_post_action(const char *file, unsigned int line)
 
     fileName = file;
 
-    if (strlen(file) > MAX_FILENAME_LEN) {
+    if (strlen(file) > ZSW_COREDUMP_MAX_FILENAME_LEN) {
         // Copy end of filename as it's more relevant than the path to the file.
-        fileName += strlen(file) - MAX_FILENAME_LEN;
+        fileName += strlen(file) - ZSW_COREDUMP_MAX_FILENAME_LEN;
     }
-    strncpy(header.crash_file, fileName, MAX_FILENAME_LEN - 1);
+    strncpy(header.crash_file, fileName, ZSW_COREDUMP_MAX_FILENAME_LEN);
     header.crash_line = line;
     write_crash_header(&header);
 
@@ -311,7 +373,7 @@ void assert_post_action(const char *file, unsigned int line)
     sys_reboot(SYS_REBOOT_COLD);
 }
 
-static int coredump_init(void)
+int zsw_coredump_init(void)
 {
     if (retention_is_valid(retention_area)) {
         struct crash_info_header header;
@@ -332,10 +394,26 @@ static int coredump_init(void)
     return 0;
 }
 
-SYS_INIT(coredump_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 #else
+
+int zsw_coredump_init(void)
+{
+    return 0;
+}
+
 int zsw_coredump_to_log(void)
 {
+    return 0;
+}
+
+void zsw_coredump_erase(int index)
+{
+    return;
+}
+
+int zsw_coredump_get_summary(zsw_coredump_sumary_t *summary, int max_dumps, int *num_dumps)
+{
+    *num_dumps = 0;
     return 0;
 }
 #endif
