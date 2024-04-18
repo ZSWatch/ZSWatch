@@ -157,7 +157,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_height(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_pos(ui_iaq_co2_text_image, -80, -70);
     lv_obj_set_align(ui_iaq_co2_text_image, LV_ALIGN_CENTER);
-    lv_img_set_src(ui_iaq_co2_text_image, &ui_img_iaq_co2_text);
+    lv_img_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_iaq_co2_text));
     lv_img_set_angle(ui_iaq_co2_text_image, 300);
     lv_obj_add_flag(ui_iaq_co2_text_image, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(ui_iaq_co2_text_image,
