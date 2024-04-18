@@ -1,2 +1,5 @@
-FILE(GLOB image_sources *.c)
-target_sources(app PRIVATE ${image_sources})
+FILE(GLOB app_sources *.c)
+target_sources(app PRIVATE ${app_sources})
+
+add_subdirectory(assets_watchfaces)
+add_subdirectory(fonts)

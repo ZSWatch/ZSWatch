@@ -40,7 +40,6 @@ add_subdirectory(src/managers)
 add_subdirectory(src/drivers)
 add_subdirectory(src/ble)
 add_subdirectory(src/images)
-add_subdirectory(src/images/fonts)
 
 include_directories(src/)
 include_directories(src/ui)
