@@ -399,7 +399,7 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
 }
 
 static void watchface_set_datetime(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour,
-                                   int32_t minute, int32_t second, uint32_t usec)
+                                   int32_t minute, int32_t second, uint32_t usec, bool am, bool mode)
 {
     int hour_offset;
     char buf[10];

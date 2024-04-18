@@ -224,8 +224,9 @@ static void general_work(struct k_work *item)
             zsw_clock_get_time(&time);
 
             if (watchfaces[current_watchface]->set_datetime) {
+                // TODO: Add support for AM and 12/24 h mode
                 watchfaces[current_watchface]->set_datetime(time.tm.tm_wday, time.tm.tm_mday, time.tm.tm_mday, time.tm.tm_mon,
-                                                            time.tm.tm_year, time.tm.tm_wday, time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec);
+                                                            time.tm.tm_year, time.tm.tm_wday, time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec, false, false);
             }
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work,
