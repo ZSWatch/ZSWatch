@@ -2,8 +2,8 @@ import os
 import argparse
 from struct import *
 
-MAX_FILE_NAME = 32
-FILE_TABLE_MAX_LEN = 4096
+MAX_FILE_NAME = 40
+FILE_TABLE_MAX_LEN = 25000
 """
 magic_number:uint32
 header_len:uint32
@@ -74,6 +74,7 @@ def create_custom_raw_fs_image(img_filename, source_dir, block_size=4096):
     with open(img_filename, "wb") as f:
         f.write(real_header)
         f.write(files_image)
+        f.write(bytearray(4096)) # TODO: Workaround due to a bug that last few bytes are not received on target.
 
 
 if __name__ == "__main__":

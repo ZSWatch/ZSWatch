@@ -9,8 +9,8 @@ littlefs_storage:
 lvgl_raw_partition:
   address: 0x200000
   region: external_flash
-  size: 0x200000
+  size: 0x800000
 settings_storage:
-  address: 0x400000
+  address: 0xA00000
   size: 0x100000
   region: external_flash

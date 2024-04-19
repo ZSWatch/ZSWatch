@@ -135,6 +135,7 @@ def load_data(jlink, file, partition):
 
             end_ms = round(time.time() * 1000)
             print("Time taken:", end_ms - start_ms, "ms")
+            print("Sent", num_sent, "bytes")
             print(
                 "Took",
                 end_ms - start_ms,
