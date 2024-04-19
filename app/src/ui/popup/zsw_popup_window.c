@@ -41,6 +41,7 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
     lv_obj_set_scrollbar_mode(lv_layer_top(), LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_scrollbar_mode(mbox, LV_SCROLLBAR_MODE_OFF);
     lv_obj_t *close_btn = lv_msgbox_get_close_btn(mbox);
+    lv_obj_remove_event_cb(close_btn, NULL);
     lv_obj_add_event_cb(close_btn, on_popup_close_button_pressed, LV_EVENT_CLICKED, NULL);
     lv_obj_add_event_cb(mbox, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
     lv_obj_center(mbox);
@@ -92,8 +93,7 @@ static void on_popup_button_pressed(lv_event_t *e)
 
 static void on_popup_close_button_pressed(lv_event_t *e)
 {
-    lv_timer_del(auto_close_timer);
-    mbox = NULL;
+    zsw_popup_remove();
     if (on_close_cb) {
         on_close_cb(false);
     }
