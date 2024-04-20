@@ -154,7 +154,9 @@ def load_data(jlink, file, partition):
         raise
 
 
-def rtt_run_flush_loader(target_device, file, partition, read_data_only=False):
+def rtt_run_flush_loader(
+    target_device, file, partition, jlink_speed="auto", read_data_only=False
+):
     """Creates connection to target via RTT and either writes a file or reads from flash.
 
     Args:
@@ -173,7 +175,10 @@ def rtt_run_flush_loader(target_device, file, partition, read_data_only=False):
     jlink.open()
     print("Connecting to %s..." % target_device)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-    jlink.connect(target_device)
+
+    if jlink_speed != "auto" and jlink_speed != "adaptive":
+        jlink_speed = int(jlink_speed)
+    jlink.connect(target_device, speed=jlink_speed)
     print("Connected, send RTT_FLASH_LOAD_BOOT_MODE to RAM_ADDR...")
     jlink.reset(0, False)
     jlink.memory_write32(RAM_ADDR, [RTT_FLASH_LOAD_BOOT_MODE])
@@ -259,9 +264,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--serial", type=int, help="Serial number of ZSWatch attached debugger"
     )
+    parser.add_argument(
+        "--speed",
+        help="JLink speed (int): connection speed in kHz, one of {5-12000, 'auto', 'adaptive'}",
+        default="auto",
+        required=False,
+    )
 
     args = parser.parse_args()
 
     sys.exit(
-        rtt_run_flush_loader(args.target_cpu, args.file, args.partition, args.read_data)
+        rtt_run_flush_loader(
+            args.target_cpu, args.file, args.partition, args.speed, args.read_data
+        )
     )

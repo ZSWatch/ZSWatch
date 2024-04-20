@@ -36,6 +36,9 @@ class UploadFsWestCommand(WestCommand):
             type=str,
             help="Label of partition in DTS to write to. Leave blank to use auto guess name.",
         )
+        parser.add_argument(
+        "--speed", help="JLink speed (int): connection speed in kHz, one of {5-12000, 'auto', 'adaptive'}", default='auto', required=False
+    )
         return parser
 
     def do_run(self, args, unknown_args):
@@ -78,5 +81,5 @@ class UploadFsWestCommand(WestCommand):
                 )
         log.inf("Uploading image")
         sys.exit(
-            rtt_run_flush_loader("nRF5340_XXAA", filename, partition, args.read_file)
+            rtt_run_flush_loader("nRF5340_XXAA", filename, partition, args.speed, args.read_file)
         )
