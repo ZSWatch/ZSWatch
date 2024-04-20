@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/sys/crc.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/logging/log.h>
@@ -53,6 +54,7 @@ struct flash_partition_search_user_data {
 struct rtt_rx_data_header {
     uint32_t    magic;
     uint32_t    address;
+    uint32_t    crc;
 };
 
 // Names must match partition manager and dts
@@ -179,6 +181,7 @@ static void rtt_load_flash_thread(void *partition_id_param, void *, void *)
     uint8_t partition_id = (uint8_t)((uint32_t)partition_id_param);
     uint32_t len_to_read;
     uint32_t last_activity_ms = k_uptime_get_32();
+    uint32_t crc;
 
     ret = flash_area_open(partition_id, &flash_area);
 
@@ -225,6 +228,11 @@ static void rtt_load_flash_thread(void *partition_id_param, void *, void *)
             if (ret != 0) {
                 printk("loader_write_flash failed: %dn", ret);
                 break;
+            }
+
+            crc = crc32_ieee(data_buf + sizeof(struct rtt_rx_data_header), DATA_BUFFER_SIZE - sizeof(struct rtt_rx_data_header));
+            if (crc != header->crc) {
+                LOG_ERR("CRC mismatch, try lowering JLink RTT speed");
             }
             block_index++;
             buffer_index = 0;

@@ -3,6 +3,7 @@ import argparse
 import sys
 import time
 import os
+from binascii import crc32
 from struct import *
 
 from threading import Thread
@@ -103,7 +104,10 @@ def load_data(jlink, file, partition):
                         list(
                             bytearray(
                                 pack(
-                                    "<II", RTT_HEADER_MAGIC, block_number * buffer_size
+                                    "<III",
+                                    RTT_HEADER_MAGIC,
+                                    block_number * buffer_size,
+                                    crc32(bytearray(chunk[chunk_index:])),
                                 )
                             )
                         )
