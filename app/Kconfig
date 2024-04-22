@@ -224,10 +224,16 @@ menu "ZSWatch"
     endmenu
 
     menu "Misc"
-        config MENU_ENABLE_SYSTEM_RESET
+        config MISC_ENABLE_SYSTEM_RESET
             bool
         prompt "Enable a system reset via button 3"
         default n
+
+        config MISC_HISTORY_MAX_LENGTH
+            int
+        range 10 65535
+        prompt "The maximum history length in samples"
+        default 672
     endmenu
 
     menu "Custom drivers"

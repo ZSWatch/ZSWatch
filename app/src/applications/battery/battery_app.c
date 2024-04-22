@@ -10,6 +10,7 @@
 #include "ui/utils/zsw_ui_utils.h"
 #include "fuel_gauge/zsw_pmic.h"
 #include "battery_ui.h"
+#include "zsw_history.h"
 
 LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
 
@@ -24,24 +25,13 @@ static void battery_app_stop(void);
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void on_battery_hist_clear_cb(void);
 
-typedef struct battery_sample_t {
-    uint8_t mv_with_decimals; // Calced by: 3.65V - 2 => 1.65 => 165
-    uint8_t percent;
-} battery_sample_t;
-
-typedef struct battery_storage_t {
-    uint16_t first_sample_index;
-    uint16_t num_samples;
-    battery_sample_t samples[MAX_SAMPLES];
-} battery_storage_t;
-
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
 ZBUS_CHAN_ADD_OBS(battery_sample_data_chan, battery_app_battery_event, 1);
 
 ZSW_LV_IMG_DECLARE(battery_app_icon);
 
-static battery_storage_t battery_context = {0};
+static zsw_history_t battery_context = {0};
 static uint64_t last_battery_sample_time = 0;
 
 static application_t app = {
@@ -53,16 +43,19 @@ static application_t app = {
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    battery_sample_t *sample;
+    zsw_battery_sample_t sample;
     struct battery_sample_event initial_sample;
 #if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
     battery_ui_show(root, on_battery_hist_clear_cb, battery_context.num_samples + 1, true);
 #else
     battery_ui_show(root, on_battery_hist_clear_cb, battery_context.num_samples + 1, false);
 #endif
+
+    zsw_history_init(&battery_context);
+
     for (int i = 0; i < battery_context.num_samples; i++) {
-        sample = &battery_context.samples[(battery_context.first_sample_index + i) % MAX_SAMPLES];
-        battery_ui_add_measurement(sample->percent, (sample->mv_with_decimals * 10) + 2000);
+        zsw_history_get(&battery_context, (void*)&sample, i);
+        battery_ui_add_measurement(sample.percent, (sample.mv_with_decimals * 10) + 2000);
     }
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
@@ -79,17 +72,11 @@ static void battery_app_stop(void)
 
 static void add_battery_sample(const struct battery_sample_event *event)
 {
-    int next_battery_sample_index = (battery_context.first_sample_index + battery_context.num_samples) % MAX_SAMPLES;
-    battery_context.samples[next_battery_sample_index].mv_with_decimals = ((event->mV - 2000) / 1000) * 100 + ((
-                                                                              event->mV / 10) % 100);
-    battery_context.samples[next_battery_sample_index].percent = event->percent;
+    zsw_battery_sample_t sample;
+    sample.mv_with_decimals = ((event->mV - 2000) / 1000) * 100 + ((event->mV / 10) % 100);
+    sample.percent = event->percent;
 
-    battery_context.num_samples++;
-    if (battery_context.num_samples > MAX_SAMPLES) {
-        battery_context.first_sample_index = (battery_context.first_sample_index + 1) % MAX_SAMPLES;
-        battery_context.num_samples = MAX_SAMPLES;
-    }
-    LOG_DBG("%d, %d, %d", battery_context.first_sample_index, battery_context.num_samples, next_battery_sample_index);
+    zsw_history_add(&battery_context, &sample);
 }
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
@@ -98,7 +85,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 
     if ((k_uptime_get() - last_battery_sample_time) >= SAMPLE_INTERVAL) {
         add_battery_sample(event);
-        int ret = settings_save_one(SETTING_BATTERY_HIST, &battery_context, sizeof(battery_storage_t));
+        int ret = settings_save_one(SETTING_BATTERY_HIST, &battery_context, sizeof(zsw_history_t));
         if (ret) {
             LOG_ERR("Error during saving of battery_context.samples %d", ret);
         }
@@ -121,7 +108,7 @@ static int battery_load_state(const char *p_key, size_t len,
 {
     ARG_UNUSED(p_key);
 
-    if (len != sizeof(battery_storage_t)) {
+    if (len != sizeof(zsw_history_t)) {
         return -EINVAL;
     }
 
@@ -132,7 +119,7 @@ static int battery_load_state(const char *p_key, size_t len,
 
     if (num_bytes_read == 0) {
         LOG_ERR("Currupt battery settings data");
-    } else if (num_bytes_read != sizeof(battery_storage_t)) {
+    } else if (num_bytes_read != sizeof(zsw_history_t)) {
         LOG_WRN("No battery settings data read");
         return -ENODATA;
     }
