@@ -31,6 +31,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ZSWatchFW)
 
 add_subdirectory(drivers)
+add_subdirectory(src/history)
 add_subdirectory(src/applications)
 add_subdirectory(src/ui/watchfaces)
 add_subdirectory(src/sensors)

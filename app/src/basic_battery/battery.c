@@ -16,14 +16,13 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/random/random.h>
 
 #include "events/battery_event.h"
 
-LOG_MODULE_REGISTER(BATTERY, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(BATTERY, CONFIG_ZSW_BATTERY_LOG_LEVEL);
 
 #define VBATT DT_PATH(vbatt)
-
-#define BATTERY_SAMPLE_INTETRVAL_MINUTES    5
 
 struct battery_level_point {
     /** Remaining life at #lvl_mV. */
@@ -33,6 +32,16 @@ struct battery_level_point {
     uint16_t lvl_mV;
 };
 
+/** A discharge curve specific to the power source. */
+static const struct battery_level_point levels[] = {
+    /*
+    Battery supervisor cuts power at 3500mA so treat that as 0%
+    This is very basic and the percentage will not be exact.
+    */
+    { 10000, 4150 },
+    { 0, 3500 },
+};
+
 static void handle_battery_sample_timeout(struct k_work *item);
 
 K_WORK_DELAYABLE_DEFINE(battery_sample_work, handle_battery_sample_timeout);
@@ -40,6 +49,9 @@ K_WORK_DELAYABLE_DEFINE(battery_sample_work, handle_battery_sample_timeout);
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
 #if DT_IO_CHANNELS_INPUT(VBATT)
+
+#define BATTERY_SAMPLE_INTETRVAL_MINUTES    5
+
 /* This board uses a divider that reduces max voltage to
  * reference voltage (600 mV).
  */
@@ -189,11 +201,11 @@ static int battery_sample(void)
             if (dcp->output_ohm != 0) {
                 rc = val * (uint64_t)dcp->full_ohm
                      / dcp->output_ohm;
-                LOG_INF("raw %u ~ %u mV => %d mV\n",
+                LOG_INF("raw %u ~ %u mV => %d mV",
                         ddp->raw, val, rc);
             } else {
                 rc = val;
-                LOG_INF("raw %u ~ %u mV\n", ddp->raw, val);
+                LOG_INF("raw %u ~ %u mV", ddp->raw, val);
             }
         }
     }
@@ -233,6 +245,8 @@ SYS_INIT(battery_setup, APPLICATION, CONFIG_DEFAULT_CONFIGURATION_DRIVER_INIT_PR
 
 #else
 
+#define BATTERY_SAMPLE_INTETRVAL_MINUTES    1
+
 static int battery_measure_enable(bool enable)
 {
     return 0;
@@ -240,50 +254,45 @@ static int battery_measure_enable(bool enable)
 
 static int battery_sample(void)
 {
-    return 4000;
+#ifdef CONFIG_ARCH_POSIX
+    return (sys_rand32_get() % (levels[0].lvl_mV - levels[1].lvl_mV)) + levels[1].lvl_mV;
+#else
+    // No random driver for nRF53DK available. So we return 0.
+    return 0;
+#endif
 }
 
 static unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve)
 {
-    return 10000;
+    return ((float)batt_mV / levels[0].lvl_mV) * levels[0].lvl_pptt;
 }
 
 #endif // VBATT
-
-/** A discharge curve specific to the power source. */
-static const struct battery_level_point levels[] = {
-    /*
-    Battery supervisor cuts power at 3500mA so treat that as 0%
-    This is very basic and the percentage will not be exact.
-    */
-    { 10000, 4150 },
-    { 0, 3500 },
-};
 
 static int get_battery_status(int *mV, int *percent)
 {
     unsigned int batt_pptt;
     int rc = battery_measure_enable(true);
     if (rc != 0) {
-        LOG_ERR("Failed initialize battery measurement: %d\n", rc);
+        LOG_ERR("Failed initialize battery measurement: %d", rc);
         return -1;
     }
     // From https://github.com/zephyrproject-rtos/zephyr/blob/main/samples/boards/nrf/battery/src/main.c
     *mV = battery_sample();
 
     if (*mV < 0) {
-        LOG_ERR("Failed to read battery voltage: %d\n", *mV);
+        LOG_ERR("Failed to read battery voltage: %d", *mV);
         return -1;
     }
 
     batt_pptt = battery_level_pptt(*mV, levels);
 
-    LOG_DBG("%d mV; %u pptt\n", *mV, batt_pptt);
+    LOG_DBG("%d mV; %u pptt", *mV, batt_pptt);
     *percent = batt_pptt / 100;
 
     rc = battery_measure_enable(false);
     if (rc != 0) {
-        LOG_ERR("Failed disable battery measurement: %d\n", rc);
+        LOG_ERR("Failed disable battery measurement: %d", rc);
         return -1;
     }
     return 0;

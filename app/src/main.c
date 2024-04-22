@@ -137,7 +137,7 @@ static void run_input_work(struct k_work *item)
     switch (container->event.code) {
         // Button event
         case (INPUT_KEY_Y): {
-#ifdef CONFIG_MENU_ENABLE_SYSTEM_RESET
+#ifdef CONFIG_MISC_ENABLE_SYSTEM_RESET
             LOG_INF("Force restart");
 
             retained.off_count += 1;

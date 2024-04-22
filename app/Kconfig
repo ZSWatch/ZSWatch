@@ -19,11 +19,6 @@ menu "ZSWatch"
         prompt "Activate the application 'Accelerometer'"
         default y
 
-        config APPLICATIONS_USE_BATTERY
-            bool
-        prompt "Activate the application 'Battery'"
-        default y
-
         config APPLICATIONS_USE_COMPASS
             bool
         prompt "Activate the application 'Compass'"
@@ -70,6 +65,7 @@ menu "ZSWatch"
             bool
         prompt "Activate the application 'PPT remote'"
         default n
+
     endmenu
 
     menu "Watchface"
@@ -224,10 +220,16 @@ menu "ZSWatch"
     endmenu
 
     menu "Misc"
-        config MENU_ENABLE_SYSTEM_RESET
+        config MISC_ENABLE_SYSTEM_RESET
             bool
         prompt "Enable a system reset via button 3"
         default n
+
+        config MISC_HISTORY_MAX_LENGTH
+            int
+        range 10 65535
+        prompt "The maximum history length in samples"
+        default 672
     endmenu
 
     menu "Custom drivers"
@@ -239,6 +241,8 @@ menu "ZSWatch"
         module-str = ZSW_APP
         source "subsys/logging/Kconfig.template.log_config"
 
+        rsource "src/basic_battery/Kconfig"
+        rsource "src/history/Kconfig"
         rsource "src/sensors/Kconfig"
         rsource "src/sensor_fusion/Kconfig"
         rsource "src/ble/Kconfig"

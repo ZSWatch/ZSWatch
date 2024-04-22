@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <lvgl.h>
 
+#define BATTERY_APP_SAMPLE_INTERVAL_MIN         1
+
 typedef void(*on_clear_history)(void);
 
 void battery_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_samples, bool include_pmic_ui);
