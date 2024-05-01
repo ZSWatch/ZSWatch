@@ -428,7 +428,6 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.vibration_on_click, sizeof(settings_app.vibration_on_click));
-        settings_app.vibration_on_click = settings_app.vibration_on_click;
         if (rc >= 0) {
             return 0;
         }
@@ -440,7 +439,6 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.display_always_on, sizeof(settings_app.display_always_on));
-        settings_app.display_always_on = settings_app.display_always_on;
         if (rc >= 0) {
             return 0;
         }
@@ -452,7 +450,6 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.ble_aoa_enabled, sizeof(settings_app.ble_aoa_enabled));
-        settings_app.ble_aoa_enabled = settings_app.ble_aoa_enabled;
         if (rc >= 0) {
             return 0;
         }
@@ -464,7 +461,6 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.ble_aoa_tx_interval, sizeof(settings_app.ble_aoa_tx_interval));
-        settings_app.ble_aoa_tx_interval = settings_app.ble_aoa_tx_interval;
         if (rc >= 0) {
             return 0;
         }
