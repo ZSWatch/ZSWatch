@@ -17,6 +17,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/pm/device.h>
 #include <zephyr/zbus/zbus.h>
 #include <lvgl.h>
 #include <zephyr/logging/log.h>
