@@ -134,20 +134,6 @@ menu "ZSWatch"
             default 30
         endmenu
 
-        menu "Battery"
-            depends on APPLICATIONS_USE_BATTERY
-
-            config DEFAULT_CONFIGURATION_BATTERY_NUM_SAMPLES_MAX
-                int
-            prompt "Maximum number of samples"
-            default 100
-
-            config DEFAULT_CONFIGURATION_BATTERY_SAMPLE_INTERVAL_MINUTES
-                int
-            prompt "Battery sample interval in minutes"
-            default 30
-        endmenu
-
         menu "Power Management"
             config POWER_MANAGEMENT_IDLE_TIMEOUT_SECONDS
                 int
