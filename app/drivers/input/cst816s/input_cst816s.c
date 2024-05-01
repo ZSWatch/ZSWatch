@@ -304,18 +304,13 @@ static int cst816s_init(const struct device *dev)
 #ifdef CONFIG_PM_DEVICE
 static int cst816s_pm_action(const struct device *dev, enum pm_device_action action)
 {
-	const struct cst816s_config *config = dev->config;
 	int status = 0;
 
 	LOG_DBG("Status: %u", action);
 
 	switch (action) {
 		case PM_DEVICE_ACTION_SUSPEND: {
-			LOG_DBG("State changed to suspended");
-			if (device_is_ready(config->rst_gpio.port)) {
-				status = gpio_pin_set_dt(&config->rst_gpio, 1);
-			}
-
+			// Suspend/Resume only used to handle re-init after powered off.
 			break;
 		}
 		case PM_DEVICE_ACTION_RESUME: {

@@ -41,6 +41,7 @@
 #include "events/accel_event.h"
 #include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
+#include "drivers/zsw_buzzer.h"
 #include "sensors/zsw_magnetometer.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "sensors/zsw_light_sensor.h"
