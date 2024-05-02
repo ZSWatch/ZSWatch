@@ -245,6 +245,7 @@ menu "ZSWatch"
         module-str = ZSW_APP
         source "subsys/logging/Kconfig.template.log_config"
 
+        rsource "src/history/Kconfig"
         rsource "src/sensors/Kconfig"
         rsource "src/sensor_fusion/Kconfig"
         rsource "src/ble/Kconfig"
