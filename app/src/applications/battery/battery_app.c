@@ -84,7 +84,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
         sample.mv_with_decimals = ((event->mV - 2000) / 1000) * 100 + ((event->mV / 10) % 100);
         sample.percent = event->percent;
 
-        if(zsw_history_save(&battery_context, &sample, SETTING_BATTERY_HIST)) {
+        if (zsw_history_save(&battery_context, &sample, SETTING_BATTERY_HIST)) {
             LOG_ERR("Error during saving of battery samples!");
         }
 
