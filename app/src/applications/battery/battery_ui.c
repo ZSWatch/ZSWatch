@@ -238,7 +238,7 @@ void ui_Screen1_screen_init(lv_obj_t *ui_Screen1)
         lv_obj_set_x(ui_Label2, 20);
         lv_label_set_text(ui_Label2, "nPM1300");
     } else {
-        lv_label_set_text(ui_Label2, "Battery (15 min)");
+        lv_label_set_text_fmt(ui_Label2, "Battery (%d min)", BATTERY_APP_SAMPLE_INTERVAL_MIN);
     }
     lv_obj_set_style_text_color(ui_Label2, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Label2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
