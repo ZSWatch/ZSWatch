@@ -160,17 +160,38 @@ void watchface_app_stop(void)
     watchfaces[current_watchface]->remove();
 }
 
-void watchface_change(void)
+void watchface_change(int index)
 {
     if (num_watchfaces == 1) {
         return;
     }
 
-    watchfaces[current_watchface]->remove();
-    current_watchface = (current_watchface + 1) % num_watchfaces;
+    if ((index < 0) || (index >= num_watchfaces)) {
+        return;
+    }
 
-    general_work_item.type = OPEN_WATCHFACE;
-    __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
+    watchfaces[current_watchface]->remove();
+    current_watchface = index;
+
+    if (running) {
+        general_work_item.type = OPEN_WATCHFACE;
+        __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
+    }
+}
+
+int watchface_app_get_num_faces(void)
+{
+    return num_watchfaces;
+
+}
+
+const lv_img_dsc_t *watchface_app_get_face_info(int index)
+{
+    if (index >= num_watchfaces) {
+        return NULL;
+    }
+
+    return watchfaces[index]->get_preview_img();
 }
 
 static void refresh_ui(void)

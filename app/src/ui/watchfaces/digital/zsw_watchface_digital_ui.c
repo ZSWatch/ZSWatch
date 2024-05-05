@@ -71,6 +71,8 @@ ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
 LV_FONT_DECLARE(ui_font_aliean_47);
 LV_FONT_DECLARE(ui_font_aliean_25);
 
+ZSW_LV_IMG_DECLARE(digital_watchface_preview)
+
 // Remember last values as if no change then
 // no reason to waste resourses and redraw
 static int last_hour = -1;
@@ -696,6 +698,11 @@ static void watchface_ui_invalidate_cached(void)
     last_day_of_week = -1;
 }
 
+static const void *watchface_get_preview_img(void)
+{
+    return ZSW_LV_IMG_USE(digital_watchface_preview);
+}
+
 static void arc_event_pressed(lv_event_t *e)
 {
     if (lv_event_get_target(e) == ui_battery_arc) {
@@ -717,6 +724,7 @@ static watchface_ui_api_t ui_api = {
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
+    .get_preview_img = watchface_get_preview_img,
 };
 
 static int watchface_init(void)

@@ -45,9 +45,13 @@ typedef struct watchface_ui_api_t {
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int temperature, int humidity, int pressure, float iaq, float co2);
     void (*ui_invalidate_cached)(void);
+    const void *(*get_preview_img)(void);
 } watchface_ui_api_t;
 
 void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb);
 void watchface_app_stop(void);
-void watchface_change(void);
+void watchface_change(int index);
 void watchface_app_register_ui(watchface_ui_api_t *ui);
+
+int watchface_app_get_num_faces(void);
+const lv_img_dsc_t *watchface_app_get_face_info(int index);

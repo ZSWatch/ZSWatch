@@ -31,6 +31,8 @@ LV_IMG_DECLARE(hour_minimal);
 LV_IMG_DECLARE(minute_minimal);
 LV_IMG_DECLARE(second_minimal);
 
+ZSW_LV_IMG_DECLARE(minimal_watchface_preview)
+
 static lv_obj_t *root_page;
 static lv_obj_t *ui_minimal_watchface;
 static lv_obj_t *ui_hour_img;
@@ -194,6 +196,11 @@ static void watchface_ui_invalidate_cached(void)
     last_second = -1;
 }
 
+static const void *watchface_get_preview_img(void)
+{
+    return ZSW_LV_IMG_USE(minimal_watchface_preview);
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -206,6 +213,7 @@ static watchface_ui_api_t ui_api = {
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
+    .get_preview_img = watchface_get_preview_img,
 };
 
 static int watchface_init(void)

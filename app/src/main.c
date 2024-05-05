@@ -426,7 +426,7 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 break;
             }
             case LV_DIR_RIGHT: {
-                watchface_change();
+                open_application_manager_page("Watchface Picker");
                 break;
             }
             case LV_DIR_TOP: {
