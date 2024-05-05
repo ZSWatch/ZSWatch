@@ -51,6 +51,7 @@ typedef struct watchface_ui_api_t {
 void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb);
 void watchface_app_stop(void);
 void watchface_change(int index);
+int watchface_app_get_current_face(void);
 void watchface_app_register_ui(watchface_ui_api_t *ui);
 
 int watchface_app_get_num_faces(void);

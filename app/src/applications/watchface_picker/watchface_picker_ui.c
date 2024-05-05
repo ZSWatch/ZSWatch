@@ -81,6 +81,13 @@ void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_
     lv_obj_set_style_pad_column(ui_faceSelect, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
+void watchface_picker_ui_set_selected(int index)
+{
+    if (index < lv_obj_get_child_cnt(ui_faceSelect)) {
+        lv_obj_scroll_to_view(lv_obj_get_child(ui_faceSelect, index), LV_ANIM_ON);
+    }
+}
+
 void watchface_picker_ui_remove(void)
 {
     lv_obj_del(ui_faceSelect);

@@ -188,6 +188,11 @@ void watchface_change(int index)
     }
 }
 
+int watchface_app_get_current_face(void)
+{
+    return watchface_settings.watchface_index;
+}
+
 int watchface_app_get_num_faces(void)
 {
     return num_watchfaces;

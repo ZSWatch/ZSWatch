@@ -33,6 +33,8 @@ static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group)
     for (int i = 0; i < watchface_app_get_num_faces(); i++) {
         watchface_picker_ui_add_watchface(watchface_app_get_face_info(i), i);
     }
+
+    watchface_picker_ui_set_selected(watchface_app_get_current_face());
 }
 
 static void watchface_picker_app_stop(void)
