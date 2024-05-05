@@ -15,44 +15,44 @@
 static char key_data[ZSW_HISTORY_MAX_KEY_LENGTH + 8];
 static char key_header[ZSW_HISTORY_MAX_KEY_LENGTH + 8];
 
-//LOG_MODULE_REGISTER(zsw_history, CONFIG_ZSW_HISTORY_LOG_LEVEL);
-LOG_MODULE_REGISTER(zsw_history, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_history, CONFIG_ZSW_HISTORY_LOG_LEVEL);
 
-static int zsw_history_load_cb(const char *p_key, size_t len, settings_read_cb read_cb, void *p_cb_arg, void *p_param)
+static int zsw_history_load_header_cb(const char *p_key, size_t len, settings_read_cb read_cb, void *p_cb_arg,
+                                      void *p_param)
 {
-    const char *next;
     zsw_history_t *history;
+    uint32_t num_bytes_header;
 
     history = (zsw_history_t *)p_param;
 
-    // Fill the "param" object with the header data when the header is requested with a key of type xx_header
-    if (settings_name_steq(p_key, ZSW_HISTORY_HEADER_EXTENSION, &next) && !next) {
-        uint32_t num_bytes_header;
+    num_bytes_header = read_cb(p_cb_arg, history, sizeof(zsw_history_t));
+    LOG_DBG("Read %u header bytes", num_bytes_header);
 
-        num_bytes_header = read_cb(p_cb_arg, history, sizeof(zsw_history_t));
-        LOG_DBG("Read %u header bytes", num_bytes_header);
-
-        if ((num_bytes_header == 0) || (num_bytes_header != sizeof(zsw_history_t))) {
-            LOG_ERR("Invalid header!");
-            return -EFAULT;
-        }
-
-        LOG_DBG("   Number of samples: %d", history->num);
-        LOG_DBG("   Sample size: %d", history->sample_size);
+    if ((num_bytes_header == 0) || (num_bytes_header != sizeof(zsw_history_t))) {
+        LOG_ERR("Invalid header!");
+        return -EFAULT;
     }
-    // Fill the "param" object with the header data when the header is requested with a key of type xx_data
-    else if (settings_name_steq(p_key, ZSW_HISTORY_DATA_EXTENSION, &next) && !next) {
-        uint32_t num_bytes_data;
 
-        num_bytes_data = read_cb(p_cb_arg, history->samples, history->num * history->sample_size);
-        LOG_DBG("Read %u data bytes", num_bytes_data);
+    LOG_DBG("   Number of samples: %d", history->num);
+    LOG_DBG("   Sample size: %d", history->sample_size);
 
-        if ((num_bytes_data == 0) || (num_bytes_data != (history->num * history->sample_size))) {
-            LOG_ERR("Invalid data!");
-            return -EFAULT;
-        }
-    } else {
-        return -EINVAL;
+    return 0;
+}
+
+static int zsw_history_load_data_cb(const char *p_key, size_t len, settings_read_cb read_cb, void *p_cb_arg,
+                                    void *p_param)
+{
+    zsw_history_t *history;
+    uint32_t num_bytes_data;
+
+    history = (zsw_history_t *)p_param;
+
+    num_bytes_data = read_cb(p_cb_arg, history->samples, len);
+    LOG_DBG("Read %u data bytes", num_bytes_data);
+
+    if ((num_bytes_data == 0) || (num_bytes_data != len) || (num_bytes_data != (history->sample_size * history->num))) {
+        LOG_ERR("Invalid data!");
+        return -EFAULT;
     }
 
     return 0;
@@ -127,8 +127,8 @@ int zsw_history_load(zsw_history_t *p_history)
     __ASSERT((p_history != NULL) &&
              (strlen(p_history->key) <= ZSW_HISTORY_MAX_KEY_LENGTH), "Invalid parameters for zsw_history_load");
 
-    sprintf(key_header, "%s_%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
-    error = settings_load_subtree_direct(key_header, zsw_history_load_cb, p_history);
+    sprintf(key_header, "%s/%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
+    error = settings_load_subtree_direct(key_header, zsw_history_load_header_cb, p_history);
     LOG_DBG("Load header with key %s", key_header);
     LOG_DBG("   Num: %u", p_history->num);
     LOG_DBG("   Sample size: %u", p_history->sample_size);
@@ -138,21 +138,21 @@ int zsw_history_load(zsw_history_t *p_history)
         return -EFAULT;
     }
 
-    sprintf(key_data, "%s_%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
-    error = settings_load_subtree_direct(key_data, zsw_history_load_cb, p_history);
+    sprintf(key_data, "%s/%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
+    error = settings_load_subtree_direct(key_data, zsw_history_load_data_cb, p_history);
     LOG_DBG("Load data with key %s", key_data);
     if (error) {
         LOG_ERR("Error during data loading! Error: %i", error);
         return -EFAULT;
     }
-    /*
-        error = settings_delete(key_header);
-        LOG_DBG("Delete header with key %s", key_header);
-        if (error) {
-            LOG_ERR("Error during settings delete! Error: %i", error);
-            return -EFAULT;
-        }
-    */
+
+    error = settings_delete(key_header);
+    LOG_DBG("Delete header with key %s", key_header);
+    if (error) {
+        LOG_ERR("Error during settings delete! Error: %i", error);
+        return -EFAULT;
+    }
+
     return 0;
 }
 
@@ -166,7 +166,7 @@ int zsw_history_save(zsw_history_t *p_history, const void *p_sample)
     zsw_history_add(p_history, p_sample);
 
     // First: Store the header
-    sprintf(key_header, "%s_%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
+    sprintf(key_header, "%s/%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
     LOG_DBG("Storing header with key %s", key_header);
     error = settings_save_one(key_header, p_history, sizeof(zsw_history_t));
     if (error) {
@@ -175,7 +175,7 @@ int zsw_history_save(zsw_history_t *p_history, const void *p_sample)
     }
 
     // Second: Save the data
-    sprintf(key_data, "%s_%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
+    sprintf(key_data, "%s/%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
     error = settings_save_one(key_data, p_history->samples, p_history->num * p_history->sample_size);
     if (error) {
         LOG_ERR("Error during saving of history data! Error: %i", error);

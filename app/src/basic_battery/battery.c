@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(BATTERY, LOG_LEVEL_WRN);
 
 #define VBATT DT_PATH(vbatt)
 
-#define BATTERY_SAMPLE_INTETRVAL_MINUTES    5
+#define BATTERY_SAMPLE_INTETRVAL_MINUTES    30
 
 struct battery_level_point {
     /** Remaining life at #lvl_mV. */

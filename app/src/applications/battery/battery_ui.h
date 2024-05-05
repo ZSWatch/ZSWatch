@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <lvgl.h>
 
-#define BATTERY_APP_SAMPLE_INTERVAL_MIN         15
+#define BATTERY_APP_SAMPLE_INTERVAL_MIN         1
 
 typedef void(*on_clear_history)(void);
 

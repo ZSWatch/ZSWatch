@@ -83,7 +83,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
         sample.mv_with_decimals = ((event->mV - 2000) / 1000) * 100 + ((event->mV / 10) % 100);
         sample.percent = event->percent;
 
-        if (zsw_history_save(&battery_context, &sample, SETTING_BATTERY_HIST)) {
+        if (zsw_history_save(&battery_context, &sample)) {
             LOG_ERR("Error during saving of battery samples!");
         }
 
@@ -110,8 +110,9 @@ static int battery_app_add(void)
         return -EFAULT;
     }
 
-    zsw_history_init(&battery_context, MAX_SAMPLES, sizeof(zsw_battery_sample_t), samples);
-    if (zsw_history_load(&battery_context, SETTING_BATTERY_HIST)) {
+    zsw_history_init(&battery_context, MAX_SAMPLES, sizeof(zsw_battery_sample_t), samples, SETTING_BATTERY_HIST);
+
+    if (zsw_history_load(&battery_context)) {
         LOG_ERR("Error during settings_load_subtree!");
         return -EFAULT;
     }
