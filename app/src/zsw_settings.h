@@ -26,7 +26,7 @@ typedef int32_t zsw_settings_ble_aoa_int_t;
 
 typedef struct {
     bool animations_on;
-    uint8_t default_index;
+    uint8_t watchface_index;
     bool smooth_second_hand;
 } zsw_settings_watchface_t;
 #define ZSW_SETTINGS_KEY_WATCHFACE "watchface"

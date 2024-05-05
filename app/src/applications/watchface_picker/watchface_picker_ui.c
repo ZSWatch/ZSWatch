@@ -13,7 +13,6 @@ void on_watchface_selected(lv_event_t *e)
     int index = (int)lv_event_get_user_data(e);
 
     if (event_code == LV_EVENT_CLICKED) {
-        printk("Selected watchface %d\n", index);
         watchface_selected_cb(index);
     }
 }

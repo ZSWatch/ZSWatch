@@ -63,7 +63,7 @@ static setting_app_t settings_app = {
     .ble_aoa_tx_interval = 100,
     .watchface = {
         .animations_on = false,
-        .default_index = 0,
+        .watchface_index = 0,
         .smooth_second_hand = false
     },
 };

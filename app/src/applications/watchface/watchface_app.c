@@ -114,7 +114,6 @@ static bool is_suspended;
 
 static watchface_ui_api_t *watchfaces[MAX_WATCHFACES];
 static uint8_t num_watchfaces;
-static uint8_t current_watchface;
 static zsw_settings_watchface_t watchface_settings;
 
 static watchface_app_evt_listener watchface_evt_cb;
@@ -127,7 +126,6 @@ static int watchface_app_init(void)
     k_work_init_delayable(&date_work.work, general_work);
     running = false;
     is_suspended = false;
-    current_watchface = 0;
 
     return 0;
 }
@@ -143,7 +141,7 @@ void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb)
 {
     __ASSERT(num_watchfaces > 0, "Must enable at least one watchface.");
     int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
-    if (err == 0) {
+    if (err != 0) {
         LOG_ERR("Failed loading watchface settings");
     }
     watchface_evt_cb = evt_cb;
@@ -157,7 +155,7 @@ void watchface_app_stop(void)
     is_suspended = false;
     k_work_cancel_delayable_sync(&clock_work.work, &canel_work_sync);
     k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
-    watchfaces[current_watchface]->remove();
+    watchfaces[watchface_settings.watchface_index]->remove();
 }
 
 void watchface_change(int index)
@@ -170,9 +168,20 @@ void watchface_change(int index)
         return;
     }
 
-    watchfaces[current_watchface]->remove();
-    current_watchface = index;
+    watchfaces[watchface_settings.watchface_index]->remove();
 
+    // Make sure we have the latest settings
+    int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
+    if (err != 0) {
+        LOG_ERR("Failed loading watchface settings");
+    }
+
+    watchface_settings.watchface_index = index;
+
+    err = settings_save_one(ZSW_SETTINGS_WATCHFACE, &watchface_settings, sizeof(watchface_settings));
+    if (err != 0) {
+        LOG_ERR("Failed saving watchface settings");
+    }
     if (running) {
         general_work_item.type = OPEN_WATCHFACE;
         __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
@@ -197,14 +206,15 @@ const lv_img_dsc_t *watchface_app_get_face_info(int index)
 static void refresh_ui(void)
 {
     uint32_t steps;
-    watchfaces[current_watchface]->set_ble_connected(is_connected);
-    watchfaces[current_watchface]->set_battery_percent(last_batt_evt.percent, last_batt_evt.mV);
+    watchfaces[watchface_settings.watchface_index]->set_ble_connected(is_connected);
+    watchfaces[watchface_settings.watchface_index]->set_battery_percent(last_batt_evt.percent, last_batt_evt.mV);
     if (strlen(last_weather_data.report_text) > 0) {
-        watchfaces[current_watchface]->set_weather(last_weather_data.temperature_c, last_weather_data.weather_code);
+        watchfaces[watchface_settings.watchface_index]->set_weather(last_weather_data.temperature_c,
+                                                                    last_weather_data.weather_code);
     }
     if (zsw_imu_fetch_num_steps(&steps) == 0) {
         // TODO: Add calculation for distance and kcal
-        watchfaces[current_watchface]->set_step(steps, 0, 0);
+        watchfaces[watchface_settings.watchface_index]->set_step(steps, 0, 0);
     }
 }
 
@@ -219,7 +229,10 @@ static void general_work(struct k_work *item)
         case OPEN_WATCHFACE: {
             running = true;
             is_suspended = false;
-            watchfaces[current_watchface]->show(watchface_evt_cb, &watchface_settings);
+            if (watchface_settings.watchface_index >= num_watchfaces) {
+                watchface_settings.watchface_index = 0;
+            }
+            watchfaces[watchface_settings.watchface_index]->show(watchface_evt_cb, &watchface_settings);
             refresh_ui();
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
@@ -235,7 +248,7 @@ static void general_work(struct k_work *item)
             // Realtime update of steps
             if (zsw_imu_fetch_num_steps(&steps) == 0) {
                 // TODO: Add calculation for distance and kcal
-                watchfaces[current_watchface]->set_step(steps, 0, 0);
+                watchfaces[watchface_settings.watchface_index]->set_step(steps, 0, 0);
             }
             __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
             break;
@@ -244,10 +257,11 @@ static void general_work(struct k_work *item)
             zsw_timeval_t time;
             zsw_clock_get_time(&time);
 
-            if (watchfaces[current_watchface]->set_datetime) {
+            if (watchfaces[watchface_settings.watchface_index]->set_datetime) {
                 // TODO: Add support for AM and 12/24 h mode
-                watchfaces[current_watchface]->set_datetime(time.tm.tm_wday, time.tm.tm_mday, time.tm.tm_mday, time.tm.tm_mon,
-                                                            time.tm.tm_year, time.tm.tm_wday, time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec, false, false);
+                watchfaces[watchface_settings.watchface_index]->set_datetime(time.tm.tm_wday, time.tm.tm_mday, time.tm.tm_mday,
+                                                                             time.tm.tm_mon,
+                                                                             time.tm.tm_year, time.tm.tm_wday, time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec, time.tv_usec, false, false);
             }
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work,
@@ -268,7 +282,9 @@ static void general_work(struct k_work *item)
             zsw_environment_sensor_get_iaq(&iaq);
 
             zsw_pressure_sensor_get_pressure(&pressure);
-            watchfaces[current_watchface]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure, iaq, co2);
+            watchfaces[watchface_settings.watchface_index]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure,
+                                                                                  iaq,
+                                                                                  co2);
 
             __ASSERT(0 <= k_work_schedule(&date_work.work, SLOW_UPDATE_INTERVAL), "FAIL date_work");
         }
@@ -278,7 +294,7 @@ static void general_work(struct k_work *item)
 static void check_notifications(void)
 {
     uint32_t num_unread = zsw_notification_manager_get_num();
-    watchfaces[current_watchface]->set_num_notifcations(num_unread);
+    watchfaces[watchface_settings.watchface_index]->set_num_notifcations(num_unread);
 }
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -291,7 +307,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
         LOG_ERR("Connection failed (err %u)", err);
         return;
     }
-    watchfaces[current_watchface]->set_ble_connected(true);
+    watchfaces[watchface_settings.watchface_index]->set_ble_connected(true);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -300,7 +316,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     if (!running | is_suspended) {
         return;
     }
-    watchfaces[current_watchface]->set_ble_connected(false);
+    watchfaces[watchface_settings.watchface_index]->set_ble_connected(false);
 }
 
 static void update_ui_from_event(struct k_work *item)
@@ -312,8 +328,8 @@ static void update_ui_from_event(struct k_work *item)
                     last_data_update.data.weather.weather_code,
                     last_data_update.data.weather.wind,
                     last_data_update.data.weather.wind_direction);
-            watchfaces[current_watchface]->set_weather(last_data_update.data.weather.temperature_c,
-                                                       last_data_update.data.weather.weather_code);
+            watchfaces[watchface_settings.watchface_index]->set_weather(last_data_update.data.weather.temperature_c,
+                                                                        last_data_update.data.weather.weather_code);
         } else if (last_data_update.type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
         }
@@ -339,7 +355,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         const struct accel_event *event = zbus_chan_const_msg(chan);
         if (event->data.type == ZSW_IMU_EVT_TYPE_STEP) {
             // TODO: Add calculation for distance and kcal
-            watchfaces[current_watchface]->set_step(event->data.data.step.count, 0, 0);
+            watchfaces[watchface_settings.watchface_index]->set_step(event->data.data.step.count, 0, 0);
         }
     }
 }
@@ -350,7 +366,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
     memcpy(&last_batt_evt, event, sizeof(struct battery_sample_event));
 
     if (running && !is_suspended) {
-        watchfaces[current_watchface]->set_battery_percent(event->percent, event->mV);
+        watchfaces[watchface_settings.watchface_index]->set_battery_percent(event->percent, event->mV);
     }
 }
 
@@ -364,7 +380,7 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
             k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
         } else if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
             is_suspended = false;
-            watchfaces[current_watchface]->ui_invalidate_cached();
+            watchfaces[watchface_settings.watchface_index]->ui_invalidate_cached();
             refresh_ui();
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL clock_work");
