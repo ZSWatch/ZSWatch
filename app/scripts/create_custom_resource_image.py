@@ -2,7 +2,7 @@ import os
 import argparse
 from struct import *
 
-MAX_FILE_NAME = 40
+MAX_FILE_NAME = 32
 FILE_TABLE_MAX_LEN = 25000
 """
 magic_number:uint32

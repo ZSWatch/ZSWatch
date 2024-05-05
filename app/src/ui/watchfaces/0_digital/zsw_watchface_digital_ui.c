@@ -71,8 +71,6 @@ ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
 LV_FONT_DECLARE(ui_font_aliean_47);
 LV_FONT_DECLARE(ui_font_aliean_25);
 
-ZSW_LV_IMG_DECLARE(digital_watchface_preview)
-
 // Remember last values as if no change then
 // no reason to waste resourses and redraw
 static int last_hour = -1;
@@ -700,7 +698,7 @@ static void watchface_ui_invalidate_cached(void)
 
 static const void *watchface_get_preview_img(void)
 {
-    return ZSW_LV_IMG_USE(digital_watchface_preview);
+    return "S:digital_watchface_preview.bin";
 }
 
 static void arc_event_pressed(lv_event_t *e)
