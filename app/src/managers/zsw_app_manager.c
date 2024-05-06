@@ -111,12 +111,22 @@ static void async_app_close(lv_timer_t *timer)
 {
     if (current_app < num_apps) {
         LOG_DBG("Stop %d", current_app);
-        apps[current_app]->stop_func();
+        bool app_start_pending = async_app_start_timer != NULL;
+        // If an app is already scheduled to start,
+        // then stop it and skip calling the apps stop_func.
+        if (app_start_pending) {
+            lv_timer_del(async_app_start_timer);
+            async_app_start_timer = NULL;
+        } else {
+            apps[current_app]->stop_func();
+        }
         current_app = INVALID_APP_ID;
         if (app_launch_only) {
             zsw_app_manager_delete();
             close_cb_func();
-        } else {
+        } else if (!app_start_pending) {
+            // Check if an app was pending to start, then the application_picker was
+            // not yet deleted, hence we don't redraw it.
             draw_application_picker();
         }
     } else {
