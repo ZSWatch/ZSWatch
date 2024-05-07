@@ -13,8 +13,8 @@
 #include "battery_ui.h"
 
 #define SETTING_BATTERY_HIST    "battery/hist"
-#define SAMPLE_INTERVAL_MS      (BATTERY_APP_SAMPLE_INTERVAL_MIN * 60 * 1000)
-#define MAX_SAMPLES             (7 * 24 * (60 / BATTERY_APP_SAMPLE_INTERVAL_MIN)) // 7 days of 15 minute samples
+#define SAMPLE_INTERVAL_MS      (CONFIG_APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES * 60 * 1000)
+#define MAX_SAMPLES             (7 * 24 * (60 / CONFIG_APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES)) // 7 days of 15 minute samples
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group);
 static void battery_app_stop(void);

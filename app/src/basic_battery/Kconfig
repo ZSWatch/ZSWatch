@@ -1,0 +1,3 @@
+module = ZSW_BATTERY
+module-str = ZSW_BATTERY
+source "subsys/logging/Kconfig.template.log_config"

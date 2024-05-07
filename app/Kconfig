@@ -70,6 +70,14 @@ menu "ZSWatch"
             bool
         prompt "Activate the application 'PPT remote'"
         default n
+
+        menu "Battery"
+        depends on APPLICATIONS_USE_BATTERY
+            config APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES
+                int
+            prompt "Sample time for the battery app in minutes"
+            default 15
+        endmenu
     endmenu
 
     menu "Watchface"
@@ -245,6 +253,7 @@ menu "ZSWatch"
         module-str = ZSW_APP
         source "subsys/logging/Kconfig.template.log_config"
 
+        rsource "src/basic_battery/Kconfig"
         rsource "src/history/Kconfig"
         rsource "src/sensors/Kconfig"
         rsource "src/sensor_fusion/Kconfig"
