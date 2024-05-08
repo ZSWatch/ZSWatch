@@ -21,7 +21,7 @@
 #include <time.h>
 
 typedef struct {
-    struct tm   tm;
+    struct tm   tm;                 /**< Modified time object with 1900 added to the year and the month increased by one. */
     uint32_t    tv_usec;
 } zsw_timeval_t;
 

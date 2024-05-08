@@ -184,7 +184,7 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
     // Write binary file header for easier parsing internally when viewing coredumps on the watch
     memcpy(cb_summary.file, header->crash_file, sizeof(cb_summary.file) - 1);
     snprintf(cb_summary.datetime, sizeof(cb_summary.datetime) - 1, "%02d:%02d %02d/%02d", ztm.tm.tm_hour, ztm.tm.tm_min,
-             ztm.tm.tm_mday, ztm.tm.tm_mon + 1);
+             ztm.tm.tm_mday, ztm.tm.tm_mon);
     cb_summary.line = header->crash_line;
 
     err = fs_write(&file, &cb_summary, sizeof(zsw_coredump_sumary_t));
@@ -196,7 +196,7 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
 
     // Write timestamp and if it was an assert, the file and line of it.
     len = snprintf(file_write_chunk, sizeof(file_write_chunk), "\r\nASSERT:%d:%d %d/%d\r\nFILE:%s\r\nLINE:%d\r\n",
-                   ztm.tm.tm_hour, ztm.tm.tm_min, ztm.tm.tm_mday, ztm.tm.tm_mon + 1, header->crash_file,
+                   ztm.tm.tm_hour, ztm.tm.tm_min, ztm.tm.tm_mday, ztm.tm.tm_mon, header->crash_file,
                    header->crash_line);
     err = fs_write(&file, file_write_chunk, len);
     if (err < 0) {
