@@ -329,10 +329,10 @@ static void watchface_79_2_dial_set_battery_percent(int32_t percent, int32_t bat
         return;
     }
 
-    lv_img_set_src(face_79_2_dial_10_58512, face_79_2_dial_5_58512_group[(battery / 1) % 10]);
-    lv_img_set_src(face_79_2_dial_11_58512, face_79_2_dial_5_58512_group[(battery / 10) % 10]);
-    lv_img_set_src(face_79_2_dial_12_58512, face_79_2_dial_5_58512_group[(battery / 100) % 10]);
-    if (battery < 100) {
+    lv_img_set_src(face_79_2_dial_10_58512, face_79_2_dial_5_58512_group[(percent / 1) % 10]);
+    lv_img_set_src(face_79_2_dial_11_58512, face_79_2_dial_5_58512_group[(percent / 10) % 10]);
+    lv_img_set_src(face_79_2_dial_12_58512, face_79_2_dial_5_58512_group[(percent / 100) % 10]);
+    if (percent < 100) {
         lv_obj_add_flag(face_79_2_dial_12_58512, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(face_79_2_dial_12_58512, LV_OBJ_FLAG_HIDDEN);
