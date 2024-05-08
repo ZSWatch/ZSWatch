@@ -20,3 +20,4 @@ FOREACH(subdir ${SUBDIRS})
 ENDFOREACH()
 
 target_sources(app PRIVATE ${app_sources})
+target_sources(app PRIVATE zsw_ui_notification_area.c)

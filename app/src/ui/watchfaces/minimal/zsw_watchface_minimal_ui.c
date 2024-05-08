@@ -22,6 +22,7 @@
 
 #include "ui/utils/zsw_ui_utils.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_minimal, LOG_LEVEL_WRN);
 
@@ -30,6 +31,8 @@ static void watchface_ui_invalidate_cached(void);
 LV_IMG_DECLARE(hour_minimal);
 LV_IMG_DECLARE(minute_minimal);
 LV_IMG_DECLARE(second_minimal);
+
+static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
 static lv_obj_t *root_page;
 static lv_obj_t *ui_minimal_watchface;
@@ -122,6 +125,9 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
         lv_obj_set_y(img, 90);
     }
 #endif
+
+    zsw_ui_notifications_area = zsw_ui_notification_area_add(ui_minimal_watchface);
+    lv_obj_set_pos(zsw_ui_notifications_area->ui_notifications_container, 0, 90);
 }
 
 static void watchface_remove(void)
@@ -147,10 +153,20 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
 
 static void watchface_set_num_notifcations(int32_t number)
 {
+    if (!root_page) {
+        return;
+    }
+
+    zsw_ui_notification_area_num_notifications(zsw_ui_notifications_area, number);
 }
 
 static void watchface_set_ble_connected(bool connected)
 {
+    if (!root_page) {
+        return;
+    }
+
+    zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
 static void watchface_set_weather(int8_t temperature, int weather_code)

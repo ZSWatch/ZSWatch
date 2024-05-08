@@ -21,6 +21,7 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_digital, LOG_LEVEL_WRN);
 
@@ -53,10 +54,7 @@ static lv_obj_t *ui_step_arc_label;
 static lv_obj_t *ui_top_panel;
 static lv_obj_t *ui_day_label;
 static lv_obj_t *ui_date_label;
-static lv_obj_t *ui_notifications;
-static lv_obj_t *ui_notification_icon;
-static lv_obj_t *ui_notification_count_label;
-static lv_obj_t *ui_bt_icon;
+static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 static lv_obj_t *ui_weather_temperature_label;
 static lv_obj_t *ui_weather_icon;
 
@@ -76,7 +74,6 @@ LV_FONT_DECLARE(ui_font_aliean_25);
 static int last_hour = -1;
 static int last_minute = -1;
 static int last_second = -1;
-static int last_num_not = -1;
 static int last_date = -1;
 static int last_day_of_week = -1;
 
@@ -426,48 +423,7 @@ static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watch
     lv_obj_set_style_text_opa(ui_date_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_notifications = lv_obj_create(ui_top_panel);
-    lv_obj_set_width(ui_notifications, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_notifications, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_notifications, LV_ALIGN_CENTER);
-    lv_obj_set_flex_flow(ui_notifications, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(ui_notifications, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_clear_flag(ui_notifications, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(ui_notifications, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_notifications, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui_notifications, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_notification_icon = lv_img_create(ui_notifications);
-    lv_img_set_src(ui_notification_icon, ZSW_LV_IMG_USE(ui_img_chat_png));
-    lv_obj_set_width(ui_notification_icon, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_notification_icon, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_notification_icon, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_notification_icon, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(ui_notification_icon, LV_OBJ_FLAG_HIDDEN);
-
-    ui_notification_count_label = lv_label_create(ui_notification_icon);
-    lv_obj_set_width(ui_notification_count_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_notification_count_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_notification_count_label, -3);
-    lv_obj_set_y(ui_notification_count_label, -3);
-    lv_obj_set_align(ui_notification_count_label, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_notification_count_label, "");
-    lv_obj_set_style_text_font(ui_notification_count_label, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_bt_icon = lv_img_create(ui_notifications);
-    lv_img_set_src(ui_bt_icon, ZSW_LV_IMG_USE(ui_img_bluetooth_png));
-    lv_obj_set_width(ui_bt_icon, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_bt_icon, LV_SIZE_CONTENT);
-    lv_obj_set_align(ui_bt_icon, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_bt_icon, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(ui_bt_icon, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_img_recolor(ui_bt_icon, lv_color_hex(0x0082FC), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_img_recolor_opa(ui_bt_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    zsw_ui_notifications_area = zsw_ui_notification_area_add(ui_top_panel);
 
     ui_weather_temperature_label = lv_label_create(ui_digital_watchface);
     lv_obj_set_width(ui_weather_temperature_label, LV_SIZE_CONTENT);
@@ -552,17 +508,7 @@ static void watchface_set_num_notifcations(int32_t number)
     if (!root_page) {
         return;
     }
-
-    if (number == last_num_not) {
-        return;
-    }
-
-    if (number > 0) {
-        lv_label_set_text_fmt(ui_notification_count_label, "%d", number);
-        lv_obj_clear_flag(ui_notification_icon, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(ui_notification_icon, LV_OBJ_FLAG_HIDDEN);
-    }
+    zsw_ui_notification_area_num_notifications(zsw_ui_notifications_area, number);
 }
 
 static void watchface_set_ble_connected(bool connected)
@@ -571,11 +517,7 @@ static void watchface_set_ble_connected(bool connected)
         return;
     }
 
-    if (connected) {
-        lv_obj_clear_flag(ui_bt_icon, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(ui_bt_icon, LV_OBJ_FLAG_HIDDEN);
-    }
+    zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
 static void watchface_set_weather(int8_t temperature, int weather_code)
@@ -690,7 +632,6 @@ static void watchface_ui_invalidate_cached(void)
 {
     last_hour = -1;
     last_minute = -1;
-    last_num_not = -1;
     last_second = -1;
     last_date = -1;
     last_day_of_week = -1;

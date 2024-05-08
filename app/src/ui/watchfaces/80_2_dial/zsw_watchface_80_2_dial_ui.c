@@ -12,12 +12,18 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_80_2_dial, LOG_LEVEL_WRN);
+
+#define USE_HR          0
+#define USE_SLEEP       0
+#define USE_DISTANCE    0
 
 static lv_obj_t *face_80_2_dial;
 static lv_obj_t *face_80_2_dial = NULL;
 static watchface_app_evt_listener ui_80_2_dial_evt_cb;
+static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
 static int last_date = -1;
 static int last_day = -1;
@@ -42,24 +48,28 @@ static lv_obj_t *face_80_2_dial_7_85197;
 static lv_obj_t *face_80_2_dial_8_85197;
 static lv_obj_t *face_80_2_dial_9_85197;
 static lv_obj_t *face_80_2_dial_10_85197;
+#if USE_SLEEP
 static lv_obj_t *face_80_2_dial_12_94522;
 static lv_obj_t *face_80_2_dial_14_89131;
 static lv_obj_t *face_80_2_dial_16_89866;
 static lv_obj_t *face_80_2_dial_17_85197;
 static lv_obj_t *face_80_2_dial_18_85197;
 static lv_obj_t *face_80_2_dial_19_85197;
+#endif
+#if USE_DISTANCE
 static lv_obj_t *face_80_2_dial_20_85197;
 static lv_obj_t *face_80_2_dial_21_89292;
 static lv_obj_t *face_80_2_dial_22_89272;
 static lv_obj_t *face_80_2_dial_23_85197;
 static lv_obj_t *face_80_2_dial_24_85197;
 static lv_obj_t *face_80_2_dial_25_85197;
+#endif
+#if USE_HR
 static lv_obj_t *face_80_2_dial_26_88651;
 static lv_obj_t *face_80_2_dial_27_85197;
 static lv_obj_t *face_80_2_dial_28_85197;
 static lv_obj_t *face_80_2_dial_29_85197;
-static lv_obj_t *face_80_2_dial_31_2056;
-static lv_obj_t *face_80_2_dial_33_92190;
+#endif
 static lv_obj_t *face_80_2_dial_35_113802;
 static lv_obj_t *face_80_2_dial_36_96224;
 static lv_obj_t *face_80_2_dial_37_96394;
@@ -198,18 +208,6 @@ const void *face_80_2_dial_30_1344_group[] = {
     ZSW_LV_IMG_USE(face_80_2_dial_30_1344_0),
     ZSW_LV_IMG_USE(face_80_2_dial_30_1344_1),
 };
-const void *face_80_2_dial_31_2056_group[] = {
-    ZSW_LV_IMG_USE(face_80_2_dial_31_2056_0),
-    ZSW_LV_IMG_USE(face_80_2_dial_31_2056_1),
-};
-const void *face_80_2_dial_32_91516_group[] = {
-    ZSW_LV_IMG_USE(face_80_2_dial_32_91516_0),
-    ZSW_LV_IMG_USE(face_80_2_dial_32_91516_1),
-};
-const void *face_80_2_dial_33_92190_group[] = {
-    ZSW_LV_IMG_USE(face_80_2_dial_33_92190_0),
-    ZSW_LV_IMG_USE(face_80_2_dial_33_92190_1),
-};
 const void *face_80_2_dial_34_106838_group[] = {
     ZSW_LV_IMG_USE(face_80_2_dial_34_106838_0),
     ZSW_LV_IMG_USE(face_80_2_dial_34_106838_1),
@@ -318,19 +316,6 @@ static void watchface_80_2_dial_set_datetime(int day_of_week, int date, int day,
     if (!face_80_2_dial) {
         return;
     }
-
-    if (mode) {
-        lv_obj_add_flag(face_80_2_dial_31_2056, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_clear_flag(face_80_2_dial_31_2056, LV_OBJ_FLAG_HIDDEN);
-    }
-    lv_img_set_src(face_80_2_dial_31_2056, face_80_2_dial_31_2056_group[(am ? 0 : 1) % 2]);
-    if (mode) {
-        lv_obj_add_flag(face_80_2_dial_33_92190, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_clear_flag(face_80_2_dial_33_92190, LV_OBJ_FLAG_HIDDEN);
-    }
-    lv_img_set_src(face_80_2_dial_33_92190, face_80_2_dial_33_92190_group[(am ? 0 : 1) % 2]);
 
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
         last_weekday = setPlaceValue(last_weekday, 1, getPlaceValue(weekday, 1));
@@ -449,7 +434,7 @@ static void watchface_80_2_dial_set_step(int32_t steps, int32_t distance, int32_
         last_kcal = setPlaceValue(last_kcal, 4, getPlaceValue(kcal, 4));
         lv_img_set_src(face_80_2_dial_10_85197, face_80_2_dial_2_85197_group[(kcal / 1000) % 10]);
     }
-
+#if USE_DISTANCE
     if (getPlaceValue(last_distance, 1) != getPlaceValue(distance, 1)) {
         last_distance = setPlaceValue(last_distance, 1, getPlaceValue(distance, 1));
         lv_img_set_src(face_80_2_dial_23_85197, face_80_2_dial_2_85197_group[(distance / 1) % 10]);
@@ -464,7 +449,7 @@ static void watchface_80_2_dial_set_step(int32_t steps, int32_t distance, int32_
         last_distance = setPlaceValue(last_distance, 3, getPlaceValue(distance, 3));
         lv_img_set_src(face_80_2_dial_25_85197, face_80_2_dial_2_85197_group[(distance / 100) % 10]);
     }
-
+#endif
 }
 
 static void watchface_80_2_dial_set_hrm(int32_t bpm, int32_t oxygen)
@@ -472,11 +457,11 @@ static void watchface_80_2_dial_set_hrm(int32_t bpm, int32_t oxygen)
     if (!face_80_2_dial) {
         return;
     }
-
+#if USE_HR
     lv_img_set_src(face_80_2_dial_27_85197, face_80_2_dial_2_85197_group[(bpm / 1) % 10]);
     lv_img_set_src(face_80_2_dial_28_85197, face_80_2_dial_2_85197_group[(bpm / 10) % 10]);
     lv_img_set_src(face_80_2_dial_29_85197, face_80_2_dial_2_85197_group[(bpm / 100) % 10]);
-
+#endif
 }
 
 static void watchface_80_2_dial_set_weather(int8_t temp, int icon)
@@ -502,6 +487,7 @@ static void watchface_80_2_dial_set_ble_connected(bool connected)
         return;
     }
 
+    zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
 static void watchface_80_2_dial_set_battery_percent(int32_t percent, int32_t battery)
@@ -518,6 +504,7 @@ static void watchface_80_2_dial_set_num_notifcations(int32_t number)
         return;
     }
 
+    zsw_ui_notification_area_num_notifications(zsw_ui_notifications_area, number);
 }
 
 static void watchface_80_2_dial_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
@@ -650,6 +637,7 @@ void watchface_80_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_add_flag(face_80_2_dial_10_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_10_85197, LV_OBJ_FLAG_SCROLLABLE);
 
+#if USE_SLEEP
     face_80_2_dial_12_94522 = lv_img_create(face_80_2_dial);
     lv_img_set_src(face_80_2_dial_12_94522, ZSW_LV_IMG_USE(face_80_2_dial_12_94522_0));
     lv_obj_set_width(face_80_2_dial_12_94522, LV_SIZE_CONTENT);
@@ -712,7 +700,9 @@ void watchface_80_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_set_y(face_80_2_dial_20_85197, 178);
     lv_obj_add_flag(face_80_2_dial_20_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_20_85197, LV_OBJ_FLAG_SCROLLABLE);
+#endif
 
+#if USE_DISTANCE
     face_80_2_dial_21_89292 = lv_img_create(face_80_2_dial);
     lv_img_set_src(face_80_2_dial_21_89292, ZSW_LV_IMG_USE(face_80_2_dial_21_89292_0));
     lv_obj_set_width(face_80_2_dial_21_89292, LV_SIZE_CONTENT);
@@ -757,7 +747,9 @@ void watchface_80_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_set_y(face_80_2_dial_25_85197, 197);
     lv_obj_add_flag(face_80_2_dial_25_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_25_85197, LV_OBJ_FLAG_SCROLLABLE);
+#endif
 
+#if USE_HR
     face_80_2_dial_26_88651 = lv_img_create(face_80_2_dial);
     lv_img_set_src(face_80_2_dial_26_88651, ZSW_LV_IMG_USE(face_80_2_dial_26_88651_0));
     lv_obj_set_width(face_80_2_dial_26_88651, LV_SIZE_CONTENT);
@@ -793,24 +785,7 @@ void watchface_80_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_set_y(face_80_2_dial_29_85197, 217);
     lv_obj_add_flag(face_80_2_dial_29_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_29_85197, LV_OBJ_FLAG_SCROLLABLE);
-
-    face_80_2_dial_31_2056 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_31_2056, ZSW_LV_IMG_USE(face_80_2_dial_31_2056_0));
-    lv_obj_set_width(face_80_2_dial_31_2056, LV_SIZE_CONTENT);
-    lv_obj_set_height(face_80_2_dial_31_2056, LV_SIZE_CONTENT);
-    lv_obj_set_x(face_80_2_dial_31_2056, 44);
-    lv_obj_set_y(face_80_2_dial_31_2056, 141);
-    lv_obj_add_flag(face_80_2_dial_31_2056, LV_OBJ_FLAG_ADV_HITTEST);
-    lv_obj_clear_flag(face_80_2_dial_31_2056, LV_OBJ_FLAG_SCROLLABLE);
-
-    face_80_2_dial_33_92190 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_33_92190, ZSW_LV_IMG_USE(face_80_2_dial_33_92190_0));
-    lv_obj_set_width(face_80_2_dial_33_92190, LV_SIZE_CONTENT);
-    lv_obj_set_height(face_80_2_dial_33_92190, LV_SIZE_CONTENT);
-    lv_obj_set_x(face_80_2_dial_33_92190, 77);
-    lv_obj_set_y(face_80_2_dial_33_92190, 141);
-    lv_obj_add_flag(face_80_2_dial_33_92190, LV_OBJ_FLAG_ADV_HITTEST);
-    lv_obj_clear_flag(face_80_2_dial_33_92190, LV_OBJ_FLAG_SCROLLABLE);
+#endif
 
     face_80_2_dial_35_113802 = lv_img_create(face_80_2_dial);
     lv_img_set_src(face_80_2_dial_35_113802, ZSW_LV_IMG_USE(face_80_2_dial_35_113802_0));
@@ -1001,6 +976,8 @@ void watchface_80_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_add_flag(face_80_2_dial_58_84569, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_58_84569, LV_OBJ_FLAG_SCROLLABLE);
 
+    zsw_ui_notifications_area = zsw_ui_notification_area_add(face_80_2_dial);
+    lv_obj_set_pos(zsw_ui_notifications_area->ui_notifications_container, -45, 35);
 }
 
 static watchface_ui_api_t ui_api = {

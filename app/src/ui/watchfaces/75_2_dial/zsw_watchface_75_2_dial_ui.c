@@ -12,12 +12,14 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_75_2_dial, LOG_LEVEL_WRN);
 
 static lv_obj_t *face_75_2_dial;
 static lv_obj_t *face_75_2_dial = NULL;
 static watchface_app_evt_listener ui_75_2_dial_evt_cb;
+static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
 static int last_date = -1;
 static int last_day = -1;
@@ -178,6 +180,7 @@ static void watchface_75_2_dial_set_ble_connected(bool connected)
         return;
     }
 
+    zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
 static void watchface_75_2_dial_set_battery_percent(int32_t percent, int32_t battery)
@@ -194,6 +197,7 @@ static void watchface_75_2_dial_set_num_notifcations(int32_t number)
         return;
     }
 
+    zsw_ui_notification_area_num_notifications(zsw_ui_notifications_area, number);
 }
 
 static void watchface_75_2_dial_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
@@ -275,6 +279,8 @@ void watchface_75_2_dial_show(watchface_app_evt_listener evt_cb, zsw_settings_wa
     lv_obj_clear_flag(face_75_2_dial_35_138999, LV_OBJ_FLAG_SCROLLABLE);
     lv_img_set_pivot(face_75_2_dial_35_138999, 5, 108);
 
+    zsw_ui_notifications_area = zsw_ui_notification_area_add(face_75_2_dial);
+    lv_obj_set_pos(zsw_ui_notifications_area->ui_notifications_container, 0, 70);
 }
 
 static watchface_ui_api_t ui_api = {
