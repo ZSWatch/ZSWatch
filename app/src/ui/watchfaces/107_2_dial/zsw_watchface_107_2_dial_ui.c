@@ -188,24 +188,24 @@ static void watchface_107_2_dial_set_datetime(int day_of_week, int date, int day
         return;
     }
 
-    if (getPlaceValue(last_month, 1) != getPlaceValue(month, 1)) {
-        last_month = setPlaceValue(last_month, 1, getPlaceValue(month, 1));
-        lv_img_set_src(face_107_2_dial_2_58391, face_107_2_dial_2_58391_group[(month / 1) % 10]);
-    }
-
-    if (getPlaceValue(last_month, 2) != getPlaceValue(month, 2)) {
-        last_month = setPlaceValue(last_month, 2, getPlaceValue(month, 2));
-        lv_img_set_src(face_107_2_dial_3_58391, face_107_2_dial_2_58391_group[(month / 10) % 10]);
-    }
-
     if (getPlaceValue(last_day, 1) != getPlaceValue(day, 1)) {
         last_day = setPlaceValue(last_day, 1, getPlaceValue(day, 1));
-        lv_img_set_src(face_107_2_dial_4_58391, face_107_2_dial_2_58391_group[(day / 1) % 10]);
+        lv_img_set_src(face_107_2_dial_2_58391, face_107_2_dial_2_58391_group[(day / 1) % 10]);
     }
 
     if (getPlaceValue(last_day, 2) != getPlaceValue(day, 2)) {
         last_day = setPlaceValue(last_day, 2, getPlaceValue(day, 2));
-        lv_img_set_src(face_107_2_dial_5_58391, face_107_2_dial_2_58391_group[(day / 10) % 10]);
+        lv_img_set_src(face_107_2_dial_3_58391, face_107_2_dial_2_58391_group[(day / 10) % 10]);
+    }
+
+    if (getPlaceValue(last_month, 1) != getPlaceValue(month, 1)) {
+        last_month = setPlaceValue(last_month, 1, getPlaceValue(month, 1));
+        lv_img_set_src(face_107_2_dial_4_58391, face_107_2_dial_2_58391_group[(month / 1) % 10]);
+    }
+
+    if (getPlaceValue(last_month, 2) != getPlaceValue(month, 2)) {
+        last_month = setPlaceValue(last_month, 2, getPlaceValue(month, 2));
+        lv_img_set_src(face_107_2_dial_5_58391, face_107_2_dial_2_58391_group[(month / 10) % 10]);
     }
 
     if (getPlaceValue(last_hour, 1) != getPlaceValue(hour, 1)) {

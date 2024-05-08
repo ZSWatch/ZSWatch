@@ -45,6 +45,13 @@ void zsw_clock_get_time(zsw_timeval_t *ztm)
     gettimeofday(&tv, NULL);
     tm = localtime(&tv.tv_sec);
     memcpy(ztm, tm, sizeof(struct tm));
+
+    // Add one to the month because we want to count from December instead of January
+    ztm->tm.tm_mon += 1;
+
+    // Add 1900 to the year because we want to count from 0
+    ztm->tm.tm_year += 1900;
+
     ztm->tv_usec = tv.tv_usec;
 }
 
