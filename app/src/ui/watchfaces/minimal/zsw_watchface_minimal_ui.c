@@ -228,6 +228,7 @@ static watchface_ui_api_t ui_api = {
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .get_preview_img = watchface_get_preview_img,
+    .name = "Analog Minimal",
 };
 
 static int watchface_init(void)

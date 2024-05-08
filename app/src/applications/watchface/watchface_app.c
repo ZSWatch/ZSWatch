@@ -199,13 +199,16 @@ int watchface_app_get_num_faces(void)
 
 }
 
-const lv_img_dsc_t *watchface_app_get_face_info(int index)
+int watchface_app_get_face_info(int index, const lv_img_dsc_t **preview,  const char **name)
 {
     if (index >= num_watchfaces) {
-        return NULL;
+        return -EEXIST;
     }
 
-    return watchfaces[index]->get_preview_img();
+    *name = watchfaces[index]->name;
+    *preview = watchfaces[index]->get_preview_img();
+
+    return 0;
 }
 
 static void refresh_ui(void)

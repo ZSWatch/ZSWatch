@@ -451,6 +451,11 @@ static void watchface_ui_invalidate_cached(void)
 #endif
 }
 
+static const void *watchface_get_preview_img(void)
+{
+    return "";
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -463,6 +468,8 @@ static watchface_ui_api_t ui_api = {
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
+    .get_preview_img = watchface_get_preview_img,
+    .name = "Analog",
 };
 
 static int watchface_init(void)

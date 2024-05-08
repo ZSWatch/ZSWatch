@@ -17,7 +17,7 @@ void on_watchface_selected(lv_event_t *e)
     }
 }
 
-void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, int index)
+void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name, int index)
 {
     lv_obj_t *ui_faceItem = lv_obj_create(ui_faceSelect);
     lv_obj_set_width( ui_faceItem, 160);
@@ -50,7 +50,7 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, int index)
     lv_obj_set_height( ui_faceLabel, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_align( ui_faceLabel, LV_ALIGN_BOTTOM_MID );
     lv_label_set_long_mode(ui_faceLabel, LV_LABEL_LONG_DOT);
-    lv_label_set_text_fmt(ui_faceLabel, "#%02d", index);
+    lv_label_set_text(ui_faceLabel, name);
     lv_obj_set_style_text_align(ui_faceLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_faceLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

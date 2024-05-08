@@ -444,6 +444,7 @@ static watchface_ui_api_t ui_api = {
     .set_watch_env_sensors = watchface_107_2_dial_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_107_2_dial_invalidate_cached,
     .get_preview_img = watchface_107_2_dial_get_preview_img,
+    .name = "Tetris"
 };
 
 static int watchface_107_2_dial_init(void)

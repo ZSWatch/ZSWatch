@@ -568,6 +568,7 @@ static watchface_ui_api_t ui_api = {
     .set_watch_env_sensors = watchface_79_2_dial_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_79_2_dial_invalidate_cached,
     .get_preview_img = watchface_79_2_dial_get_preview_img,
+    .name = "Digital Rough"
 };
 
 static int watchface_79_2_dial_init(void)
