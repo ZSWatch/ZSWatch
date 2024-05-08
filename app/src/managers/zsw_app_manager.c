@@ -45,6 +45,7 @@ static lv_obj_t *grid;
 static uint8_t last_index;
 static bool app_launch_only;
 static lv_timer_t *async_app_start_timer;
+static lv_timer_t *async_app_close_timer;
 
 static void delete_application_picker(void)
 {
@@ -134,6 +135,7 @@ static void async_app_close(lv_timer_t *timer)
         zsw_app_manager_delete();
         close_cb_func();
     }
+    async_app_close_timer = NULL;
 }
 
 static void async_app_manager_close(lv_timer_t *timer)
@@ -335,8 +337,11 @@ void zsw_app_manager_add_application(application_t *app)
 
 void zsw_app_manager_exit_app(void)
 {
-    lv_timer_t *timer = lv_timer_create(async_app_close, 500,  NULL);
-    lv_timer_set_repeat_count(timer, 1);
+    if (async_app_close_timer != NULL) {
+        return;
+    }
+    async_app_close_timer = lv_timer_create(async_app_close, 500,  NULL);
+    lv_timer_set_repeat_count(async_app_close_timer, 1);
 }
 
 void zsw_app_manager_app_close_request(application_t *app)

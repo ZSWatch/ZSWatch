@@ -155,6 +155,7 @@ void watchface_app_stop(void)
     is_suspended = false;
     k_work_cancel_delayable_sync(&clock_work.work, &canel_work_sync);
     k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
+    k_work_cancel_delayable_sync(&general_work_item.work, &canel_work_sync);
     watchfaces[watchface_settings.watchface_index]->remove();
 }
 
