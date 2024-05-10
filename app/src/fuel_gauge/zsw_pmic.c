@@ -159,6 +159,14 @@ static int fuel_gauge_init(const struct device *charger)
 
     ref_time = k_uptime_get();
 
+    struct battery_sample_event evt;
+    ret = zsw_pmic_get_full_state(&evt);
+    if (ret == 0) {
+        zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
+    } else {
+        LOG_ERR("Error: Could not publish inital battery data.\n");
+    }
+
     return 0;
 }
 
