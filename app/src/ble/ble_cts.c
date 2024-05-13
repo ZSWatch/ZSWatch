@@ -209,6 +209,8 @@ static void discover_gattp(struct bt_conn *conn)
     int err = bt_gatt_dm_start(conn, BT_UUID_CTS, &discover_cb, NULL);
     if (err) {
 
+        current_conn = conn;
+
         // Only one DM discovery can happen at a time, AMS may be running, so queue it
         if (err == -EALREADY) {
             k_work_schedule(&cts_discover_retry, K_MSEC(500));

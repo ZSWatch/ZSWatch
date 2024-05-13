@@ -26,3 +26,5 @@ void sensors_summary_ui_set_light(float light);
 void sensors_summary_ui_set_iaq(float iaq);
 
 void sensors_summary_ui_set_co2(float co2);
+
+void sensors_summary_ui_set_heart_rate(int heart_rate);

@@ -11,6 +11,8 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
+#include "ble/ble_hrs_central.h"
+
 static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group);
 static void sensors_summary_app_stop(void);
 static void on_close_sensors_summary(void);
@@ -66,12 +68,14 @@ static void timer_callback(lv_timer_t *timer)
     float light = -1.0;
     float iaq = -1.0;
     float co2 = -1.0;
+    uint16_t heart_rate = 0xFFFFUL;
 
     zsw_environment_sensor_get(&temperature, &humidity, &pressure);
     zsw_environment_sensor_get_iaq(&iaq);
     zsw_environment_sensor_get_co2(&co2);
     zsw_pressure_sensor_get_pressure(&pressure);
     zsw_light_sensor_get_light(&light);
+    ble_hrs_central_get_measurement(&heart_rate);
 
     sensors_summary_ui_set_pressure(pressure);
     sensors_summary_ui_set_temp(temperature);
@@ -80,6 +84,7 @@ static void timer_callback(lv_timer_t *timer)
     sensors_summary_ui_set_co2(co2);
     sensors_summary_ui_set_light(light);
     sensors_summary_ui_set_rel_height(get_relative_height_m(relative_pressure, pressure, temperature));
+    sensors_summary_ui_set_heart_rate((int)heart_rate);
 }
 
 static void on_close_sensors_summary(void)
