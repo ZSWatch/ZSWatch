@@ -229,6 +229,7 @@ static void create_coredump_page_ui(lv_obj_t *parent, zsw_coredump_sumary_t *cor
     lv_obj_set_x(ui_coredump_info_field, -46);
     lv_obj_set_y(ui_coredump_info_field, -34);
     lv_obj_set_align(ui_coredump_info_field, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_coredump_info_field, "");
 
     ui_Container2 = lv_obj_create(parent);
     lv_obj_remove_style_all(ui_Container2);
