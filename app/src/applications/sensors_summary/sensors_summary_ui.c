@@ -16,6 +16,7 @@ static lv_obj_t *rel_height_label;
 static lv_obj_t *iaq_label;
 static lv_obj_t *light_label;
 static lv_obj_t *co2_label;
+static lv_obj_t *heart_rate_label;
 
 static void event_set_reference_button(lv_event_t *e)
 {
@@ -97,6 +98,14 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_align(co2_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(co2_label, "CO2:");
 
+    heart_rate_label = lv_label_create(parent);
+    lv_obj_set_width(heart_rate_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(heart_rate_label, LV_SIZE_CONTENT);
+    lv_obj_set_x(heart_rate_label, 30);
+    lv_obj_set_y(heart_rate_label, 55);
+    lv_obj_set_align(heart_rate_label, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(heart_rate_label, "Heart Rate: --");
+
     lv_obj_add_event_cb(set_ref_btn, event_set_reference_button, LV_EVENT_CLICKED, NULL);
 }
 
@@ -156,4 +165,13 @@ void sensors_summary_ui_set_iaq(float iaq)
 void sensors_summary_ui_set_co2(float co2)
 {
     lv_label_set_text_fmt(co2_label, "CO2:\t%.2f ppm", co2);
+}
+
+void sensors_summary_ui_set_heart_rate(int heart_rate)
+{
+    if (0xFFFF != heart_rate) {
+        lv_label_set_text_fmt(heart_rate_label, "Heart Rate:\t%d ppm", heart_rate);
+    } else {
+        lv_label_set_text_fmt(heart_rate_label, "Heart Rate: --");
+    }
 }

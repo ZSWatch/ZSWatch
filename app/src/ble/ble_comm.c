@@ -28,9 +28,11 @@
 
 #include "ui/zsw_ui.h"
 #include "gadgetbridge/ble_gadgetbridge.h"
+#include "ble_comm_central.h"
 
 #include <bluetooth/services/ams_client.h>
 #include <bluetooth/services/ancs_client.h>
+
 
 LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -296,33 +298,37 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
 
-    if (err) {
-        LOG_ERR("Connection failed (err %u)", err);
-        return;
-    }
-    current_conn = bt_conn_ref(conn);
-    max_send_len = 20;
-
-    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-    LOG_INF("Connected %s", addr);
-    request_mtu_exchange();
-    struct bt_conn_info info;
-    bt_conn_get_info(conn, &info);
-    LOG_INF("Interval: %d, latency: %d, timeout: %d", info.le.interval, info.le.latency, info.le.timeout);
-
-    // Right after a new connection we want short connection interval
-    // to let the peer discover services etc. quickly.
-    // After some time assume the peer is done and change to longer intervals
-    // to save power.
-    k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
-
-    if (pairing_enabled) {
-        int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
-        if (rc != 0) {
-            LOG_ERR("Failed to set security: %d", rc);
-            bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+    if (is_central_connection(conn)) {
+        ble_comm_central_connected(conn, err);
+    } else {
+        if (err) {
+            LOG_ERR("Connection failed (err %u)", err);
+            return;
         }
-    }
+        current_conn = bt_conn_ref(conn);
+        max_send_len = 20;
+
+        bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+        LOG_INF("Connected %s", addr);
+        request_mtu_exchange();
+        struct bt_conn_info info;
+        bt_conn_get_info(conn, &info);
+        LOG_INF("Interval: %d, latency: %d, timeout: %d", info.le.interval, info.le.latency, info.le.timeout);
+
+        // Right after a new connection we want short connection interval
+        // to let the peer discover services etc. quickly.
+        // After some time assume the peer is done and change to longer intervals
+        // to save power.
+        k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
+
+        if (pairing_enabled) {
+            int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
+            if (rc != 0) {
+                LOG_ERR("Failed to set security: %d", rc);
+                bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+            }
+         }
+     }
 }
 
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -333,11 +339,15 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 
     LOG_INF("Disconnected: %s (reason %u)", addr, reason);
 
-    if (current_conn) {
-        k_work_cancel_delayable(&conn_interval_slow_work);
-        bt_conn_unref(current_conn);
-        current_conn = NULL;
-    }
+    if (is_central_connection(conn)) {
+        ble_comm_central_disconnected(conn, reason);
+    } else {
+        if (current_conn) {
+            k_work_cancel_delayable(&conn_interval_slow_work);
+            bt_conn_unref(current_conn);
+            current_conn = NULL;
+        }
+     }
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
