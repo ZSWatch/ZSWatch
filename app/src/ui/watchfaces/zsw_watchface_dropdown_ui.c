@@ -18,8 +18,8 @@ static lv_obj_t *ui_up_bg_Panel;
 static lv_obj_t *ui_music_info_label;
 static lv_obj_t *ui_music_button;
 static lv_obj_t *ui_music_label;
-static lv_obj_t *ui_restart_button;
-static lv_obj_t *ui_restart_label;
+static lv_obj_t *ui_flashlight_button;
+static lv_obj_t *ui_flashlight_label;
 static lv_obj_t *ui_shutdown_button;
 static lv_obj_t *ui_shutdown_label;
 static lv_obj_t *ui_settings_button;
@@ -71,9 +71,9 @@ void ui_event_button(lv_event_t *e)
 {
     lv_obj_t *button = e->current_target;
     if (e->code == LV_EVENT_CLICKED) {
-        if (button == ui_restart_button)
+        if (button == ui_flashlight_button)
             evt_cb((watchface_app_evt_t) {
-            WATCHFACE_APP_EVENT_RESTART
+            WATCHFACE_APP_EVENT_OPEN_APP, .data.app = WATCHFACE_APP_EVT_CLICK_FLASHLIGHT
         });
         else if (button == ui_music_button) {
             evt_cb((watchface_app_evt_t) {
@@ -171,21 +171,21 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_style_text_opa(ui_music_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_music_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_restart_button = lv_btn_create(ui_down_bg_panel);
-    lv_obj_set_width(ui_restart_button, 50);
-    lv_obj_set_height(ui_restart_button, 50);
-    lv_obj_set_x(ui_restart_button, 20);
-    lv_obj_set_y(ui_restart_button, 95);
-    lv_obj_clear_flag(ui_restart_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    ui_flashlight_button = lv_btn_create(ui_down_bg_panel);
+    lv_obj_set_width(ui_flashlight_button, 50);
+    lv_obj_set_height(ui_flashlight_button, 50);
+    lv_obj_set_x(ui_flashlight_button, 20);
+    lv_obj_set_y(ui_flashlight_button, 95);
+    lv_obj_clear_flag(ui_flashlight_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
-    ui_restart_label = lv_label_create(ui_restart_button);
-    lv_obj_set_width(ui_restart_label, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_restart_label, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_align(ui_restart_label, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_restart_label, LV_SYMBOL_REFRESH);
-    lv_obj_set_style_text_color(ui_restart_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_restart_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_restart_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_flashlight_label = lv_label_create(ui_flashlight_button);
+    lv_obj_set_width(ui_flashlight_label, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_flashlight_label, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_flashlight_label, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_flashlight_label, LV_SYMBOL_CHARGE);
+    lv_obj_set_style_text_color(ui_flashlight_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_flashlight_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_flashlight_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_shutdown_button = lv_btn_create(ui_down_bg_panel);
     lv_obj_set_width(ui_shutdown_button, 50);
@@ -267,7 +267,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_style_border_opa(ui_dropdown_bg_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_music_button, ui_event_button, LV_EVENT_ALL, NULL);
-    lv_obj_add_event_cb(ui_restart_button, ui_event_button, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_flashlight_button, ui_event_button, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_shutdown_button, ui_event_button, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_settings_button, ui_event_button, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_bri_slider, ui_event_light_slider, LV_EVENT_ALL, NULL);

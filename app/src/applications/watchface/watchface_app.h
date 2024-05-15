@@ -36,7 +36,8 @@ typedef enum watchface_app_evt_open_app_t {
     WATCHFACE_APP_EVT_CLICK_STEP,
     WATCHFACE_APP_EVT_CLICK_WEATHER,
     WATCHFACE_APP_EVT_CLICK_MUSIC,
-    WATCHFACE_APP_EVT_CLICK_SETTINGS
+    WATCHFACE_APP_EVT_CLICK_SETTINGS,
+    WATCHFACE_APP_EVT_CLICK_FLASHLIGHT
 } watchface_app_evt_open_app_t;
 
 typedef struct watchface_app_evt_t {

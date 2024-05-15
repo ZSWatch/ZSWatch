@@ -523,6 +523,9 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                     case WATCHFACE_APP_EVT_CLICK_SETTINGS:
                         open_application_manager_page("Settings");
                         break;
+                    case WATCHFACE_APP_EVT_CLICK_FLASHLIGHT:
+                        open_application_manager_page("Flashlight");
+                        break;
                     default:
                         break;
                 }
