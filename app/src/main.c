@@ -108,6 +108,8 @@ static lv_indev_drv_t enc_drv;
 static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 
+static lv_obj_t *root_screen;
+
 static bool pending_not_open;
 static bool is_buttons_for_lvgl = false;
 
@@ -203,8 +205,10 @@ static void run_init_work(struct k_work *item)
 {
     lv_indev_t *touch_indev;
 
+    root_screen = lv_scr_act();
+
     zsw_coredump_init();
-    lv_obj_set_style_bg_color(lv_scr_act(), zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(root_screen, zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);
     print_retention_ram();
@@ -243,9 +247,9 @@ static void run_init_work(struct k_work *item)
 
     watch_state = WATCHFACE_STATE;
 
-    lv_obj_add_event_cb(lv_scr_act(), on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
+    lv_obj_add_event_cb(root_screen, on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
 
-    watchface_app_start(input_group, on_watchface_app_event_callback);
+    watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
 
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (NUM_RAW_FS_FILES != zsw_filesytem_get_num_rawfs_files()) {
@@ -357,7 +361,7 @@ static void open_application_manager_page(void *app_name)
     watchface_app_stop();
     is_buttons_for_lvgl = true;
     watch_state = APPLICATION_MANAGER_STATE;
-    zsw_app_manager_show(on_application_manager_close, lv_scr_act(), input_group, (char *)app_name);
+    zsw_app_manager_show(on_application_manager_close, root_screen, input_group, (char *)app_name);
 }
 
 static void close_popup_notification(lv_timer_t *timer)
@@ -393,7 +397,7 @@ static void on_application_manager_close(void)
 {
     zsw_app_manager_delete();
     watch_state = WATCHFACE_STATE;
-    watchface_app_start(input_group, on_watchface_app_event_callback);
+    watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
     lv_async_call(async_turn_off_buttons_allocation, NULL);
 }
 
@@ -431,11 +435,10 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 break;
             }
             case LV_DIR_TOP: {
-                open_application_manager_page("Settings");
+                open_application_manager_page(NULL);
                 break;
             }
             case LV_DIR_BOTTOM: {
-                open_application_manager_page(NULL);
                 break;
             }
             default:
@@ -504,15 +507,34 @@ static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *da
 static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 {
     if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
-        switch (evt) {
-            case WATCHFACE_APP_EVT_CLICK_BATT:
-                open_application_manager_page("Battery");
+        switch (evt.type) {
+            case WATCHFACE_APP_EVENT_OPEN_APP:
+                switch (evt.data.app) {
+                    case WATCHFACE_APP_EVT_CLICK_BATT:
+                        open_application_manager_page("Battery");
+                        break;
+                    case WATCHFACE_APP_EVT_CLICK_STEP:
+                        break;
+                    case WATCHFACE_APP_EVT_CLICK_WEATHER:
+                        break;
+                    case WATCHFACE_APP_EVT_CLICK_MUSIC:
+                        open_application_manager_page("Music");
+                        break;
+                    case WATCHFACE_APP_EVT_CLICK_SETTINGS:
+                        open_application_manager_page("Settings");
+                        break;
+                    default:
+                        break;
+                }
                 break;
-            case WATCHFACE_APP_EVT_CLICK_STEP:
+            case WATCHFACE_APP_EVENT_SET_BRIGHTNESS:
+                zsw_display_control_set_brightness(evt.data.brightness);
                 break;
-            case WATCHFACE_APP_EVT_CLICK_WEATHER:
+            case WATCHFACE_APP_EVENT_RESTART:
+                sys_reboot(SYS_REBOOT_COLD);
                 break;
-            default:
+            case WATCHFACE_APP_EVENT_SHUTDOWN:
+                // TODO enter nPM1300 ship mode or hibernate
                 break;
         }
     }
@@ -572,7 +594,7 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
                     zsw_app_manager_set_index(0);
                     is_buttons_for_lvgl = false;
                     watch_state = WATCHFACE_STATE;
-                    watchface_app_start(input_group, on_watchface_app_event_callback);
+                    watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
                 }
             } else {
                 // TODO: Can we rework it with triggering input events?

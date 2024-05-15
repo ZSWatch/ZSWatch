@@ -40,6 +40,7 @@
 #include "sensors/zsw_environment_sensor.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "managers/zsw_notification_manager.h"
+#include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
 LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 
@@ -106,11 +107,13 @@ static struct k_work_sync canel_work_sync;
 static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
 static ble_comm_cb_data_t last_data_update;
 static ble_comm_weather_t last_weather_data;
+static ble_comm_music_info_t last_music_info;
 static struct battery_sample_event last_batt_evt = {.percent = 100, .mV = 4300};
 
 static bool running;
 static bool is_connected;
 static bool is_suspended;
+static lv_obj_t *watchface_root_screen;
 
 static watchface_ui_api_t *watchfaces[MAX_WATCHFACES];
 static uint8_t num_watchfaces;
@@ -137,13 +140,19 @@ void watchface_app_register_ui(watchface_ui_api_t *ui_api)
     num_watchfaces++;
 }
 
-void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb)
+void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app_evt_listener evt_cb)
 {
     __ASSERT(num_watchfaces > 0, "Must enable at least one watchface.");
     int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler, &watchface_settings);
     if (err != 0) {
         LOG_ERR("Failed loading watchface settings");
     }
+
+    if (watchface_settings.watchface_index >= num_watchfaces) {
+        watchface_settings.watchface_index = 0;
+    }
+
+    watchface_root_screen = root_screen;
     watchface_evt_cb = evt_cb;
     general_work_item.type = OPEN_WATCHFACE;
     __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
@@ -157,6 +166,7 @@ void watchface_app_stop(void)
     k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
     k_work_cancel_delayable_sync(&general_work_item.work, &canel_work_sync);
     watchfaces[watchface_settings.watchface_index]->remove();
+    zsw_watchface_dropdown_ui_remove();
 }
 
 void watchface_change(int index)
@@ -238,11 +248,13 @@ static void general_work(struct k_work *item)
         case OPEN_WATCHFACE: {
             running = true;
             is_suspended = false;
-            if (watchface_settings.watchface_index >= num_watchfaces) {
-                watchface_settings.watchface_index = 0;
-            }
-            watchfaces[watchface_settings.watchface_index]->show(watchface_evt_cb, &watchface_settings);
+            // Dropdown
+            watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
             refresh_ui();
+            zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb);
+            if (strlen(last_music_info.track_name) > 0) {
+                zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
+            }
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
@@ -341,6 +353,9 @@ static void update_ui_from_event(struct k_work *item)
                                                                         last_data_update.data.weather.weather_code);
         } else if (last_data_update.type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
+        } else if (last_data_update.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
+            zsw_watchface_dropdown_ui_set_music_info(last_data_update.data.music_info.track_name,
+                                                     last_data_update.data.music_info.artist);
         }
         return;
     }
@@ -352,7 +367,13 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
     // TODO getting this callback again before workqueue has ran will
     // cause previous to be lost.
     memcpy(&last_data_update, &event->data, sizeof(ble_comm_cb_data_t));
-    memcpy(&last_weather_data, &last_data_update.data.weather, sizeof(last_data_update.data.weather));
+    if (event->data.type == BLE_COMM_DATA_TYPE_WEATHER) {
+        memcpy(&last_weather_data, &last_data_update.data.weather, sizeof(last_data_update.data.weather));
+    }
+    if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
+        memcpy(&last_music_info, &last_data_update.data.music_info, sizeof(last_data_update.data.music_info));
+        printk("Got music info: %s %s\n", last_music_info.track_name, last_music_info.artist);
+    }
     if (running && !is_suspended) {
         k_work_submit(&update_ui_work);
     }

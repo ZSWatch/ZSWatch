@@ -48,11 +48,11 @@ static int last_minute = -1;
 static int last_second = -1;
 static int last_num_not = -1;
 
-static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
+static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ARG_UNUSED(evt_cb);
-    lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
-    root_page = lv_obj_create(lv_scr_act());
+    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+    root_page = lv_obj_create(parent);
     watchface_ui_invalidate_cached();
 
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);

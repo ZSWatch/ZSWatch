@@ -24,16 +24,33 @@
 // UI need to be initialized after watchface_app
 #define WATCHFACE_UI_INIT_PRIO 99
 
-typedef enum watchface_app_evt_t {
+typedef enum watchface_app_evt_type_t {
+    WATCHFACE_APP_EVENT_OPEN_APP,
+    WATCHFACE_APP_EVENT_SET_BRIGHTNESS,
+    WATCHFACE_APP_EVENT_RESTART,
+    WATCHFACE_APP_EVENT_SHUTDOWN,
+} watchface_app_evt_type_t;
+
+typedef enum watchface_app_evt_open_app_t {
     WATCHFACE_APP_EVT_CLICK_BATT,
     WATCHFACE_APP_EVT_CLICK_STEP,
     WATCHFACE_APP_EVT_CLICK_WEATHER,
+    WATCHFACE_APP_EVT_CLICK_MUSIC,
+    WATCHFACE_APP_EVT_CLICK_SETTINGS
+} watchface_app_evt_open_app_t;
+
+typedef struct watchface_app_evt_t {
+    watchface_app_evt_type_t type;
+    union watchface_app_evt_data_t {
+        watchface_app_evt_open_app_t app;
+        uint16_t brightness;
+    } data;
 } watchface_app_evt_t;
 
 typedef void(*watchface_app_evt_listener)(watchface_app_evt_t);
 
 typedef struct watchface_ui_api_t {
-    void (*show)(watchface_app_evt_listener, zsw_settings_watchface_t *settings);
+    void (*show)(lv_obj_t *root_screen, watchface_app_evt_listener, zsw_settings_watchface_t *settings);
     void (*remove)(void);
     void (*set_battery_percent)(int32_t percent, int32_t battery);
     void (*set_hrm)(int32_t bpm, int32_t oxygen);
@@ -49,7 +66,7 @@ typedef struct watchface_ui_api_t {
     const char *name;
 } watchface_ui_api_t;
 
-void watchface_app_start(lv_group_t *group, watchface_app_evt_listener evt_cb);
+void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app_evt_listener evt_cb);
 void watchface_app_stop(void);
 void watchface_change(int index);
 int watchface_app_get_current_face(void);

@@ -463,12 +463,12 @@ static void watchface_goog_set_watch_env_sensors(int temperature, int humidity, 
 
 }
 
-void watchface_goog_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
+void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ui_goog_evt_cb = evt_cb;
 
-    lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
-    face_goog = lv_obj_create(lv_scr_act());
+    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+    face_goog = lv_obj_create(parent);
     watchface_goog_invalidate_cached();
 
     lv_obj_clear_flag(face_goog, LV_OBJ_FLAG_SCROLLABLE);

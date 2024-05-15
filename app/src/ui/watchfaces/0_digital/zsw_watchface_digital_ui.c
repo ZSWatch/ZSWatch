@@ -79,11 +79,11 @@ static int last_day_of_week = -1;
 
 static watchface_app_evt_listener ui_evt_cb;
 
-static void watchface_show(watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
+static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
     ui_evt_cb = evt_cb;
-    lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
-    root_page = lv_obj_create(lv_scr_act());
+    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+    root_page = lv_obj_create(parent);
     watchface_ui_invalidate_cached();
 
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
@@ -644,10 +644,13 @@ static const void *watchface_get_preview_img(void)
 
 static void arc_event_pressed(lv_event_t *e)
 {
+    watchface_app_evt_t evt = {.type = WATCHFACE_APP_EVENT_OPEN_APP};
     if (lv_event_get_target(e) == ui_battery_arc) {
-        ui_evt_cb(WATCHFACE_APP_EVT_CLICK_BATT);
+        evt.data.app = WATCHFACE_APP_EVT_CLICK_BATT;
+        ui_evt_cb(evt);
     } else if (lv_event_get_target(e) == ui_step_arc) {
-        ui_evt_cb(WATCHFACE_APP_EVT_CLICK_STEP);
+        evt.data.app = WATCHFACE_APP_EVT_CLICK_STEP;
+        ui_evt_cb(evt);
     }
 }
 
