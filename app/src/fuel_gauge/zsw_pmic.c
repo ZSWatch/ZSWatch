@@ -225,6 +225,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     sample->status = status;
     sample->error = error;
     sample->is_charging = is_charging_from_status(status);
+    sample->pmic_data_valid = true;
 
     return ret;
 }

@@ -38,3 +38,5 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
 const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src);
 
 const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src);
+
+void zsw_ui_utils_seconds_to_day_hour_min(int seconds, int *days, int *hours, int *minutes);

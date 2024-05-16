@@ -444,7 +444,7 @@ static void watchface_goog_set_battery_percent(int32_t percent, int32_t battery)
     } else {
         lv_obj_clear_flag(face_goog_18_59114, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_img_set_src(face_goog_20_61728, face_goog_20_61728_group[(percent / (int)(100 / 7.0) % 7)]);
+    lv_img_set_src(face_goog_20_61728, face_goog_20_61728_group[lv_map(percent, 0, 100, 0, 6)]);
 }
 
 static void watchface_goog_set_num_notifcations(int32_t number)

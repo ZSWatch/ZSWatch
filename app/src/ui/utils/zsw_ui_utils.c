@@ -166,3 +166,12 @@ const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src)
             return "Unknown";
     }
 }
+
+void zsw_ui_utils_seconds_to_day_hour_min(int seconds, int *days, int *hours, int *minutes)
+{
+    *days = seconds / (24 * 3600);
+    seconds = seconds % (24 * 3600);
+    *hours = seconds / 3600;
+    seconds = seconds % 3600;
+    *minutes = seconds / 60;
+}

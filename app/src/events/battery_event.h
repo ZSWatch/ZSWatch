@@ -13,4 +13,5 @@ struct battery_sample_event {
     int status;
     int error;
     bool is_charging;
+    bool pmic_data_valid;
 };

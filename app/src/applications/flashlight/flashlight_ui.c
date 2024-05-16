@@ -25,7 +25,6 @@ void flashlight_ui_show(lv_obj_t *root)
     lv_obj_set_width(root_page, lv_pct(100));
     lv_obj_set_height(root_page, lv_pct(100));
     lv_obj_set_align(root_page, LV_ALIGN_CENTER);
-    //lv_obj_clear_flag(root_page, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(root_page, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(root_page, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
 

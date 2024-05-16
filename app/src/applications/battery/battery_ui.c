@@ -1,5 +1,6 @@
 #include <battery/battery_ui.h>
 #include "battery_ui.h"
+#include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
 
 // Common
@@ -129,27 +130,18 @@ void battery_ui_add_measurement(int percent, int voltage)
     }
 }
 
-static void seconds_to_day_hour_min(int seconds, int *days, int *hours, int *minutes)
-{
-    *days = seconds / (24 * 3600);
-    seconds = seconds % (24 * 3600);
-    *hours = seconds / 3600;
-    seconds = seconds % 3600;
-    *minutes = seconds / 60;
-}
-
 void battery_ui_update(int ttf, int tte, int status, int error, int charging)
 {
     int days, hours, minutes;
 
     if (root_page && pmic_ui_enabled) {
-        seconds_to_day_hour_min(ttf, &days, &hours, &minutes);
+        zsw_ui_utils_seconds_to_day_hour_min(ttf, &days, &hours, &minutes);
         if (ttf == 0) {
             lv_label_set_text(ui_charging_label_ttf, "-");
         } else {
             lv_label_set_text_fmt(ui_charging_label_ttf, "%dd %dh %dm", days, hours, minutes);
         }
-        seconds_to_day_hour_min(tte, &days, &hours, &minutes);
+        zsw_ui_utils_seconds_to_day_hour_min(tte, &days, &hours, &minutes);
         if (tte == 0) {
             lv_label_set_text(ui_charging_label_tte, "-");
         } else {

@@ -227,6 +227,8 @@ static void refresh_ui(void)
     uint32_t steps;
     watchfaces[watchface_settings.watchface_index]->set_ble_connected(is_connected);
     watchfaces[watchface_settings.watchface_index]->set_battery_percent(last_batt_evt.percent, last_batt_evt.mV);
+    zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, last_batt_evt.is_charging, last_batt_evt.tte,
+                                               last_batt_evt.ttf);
     if (strlen(last_weather_data.report_text) > 0) {
         watchfaces[watchface_settings.watchface_index]->set_weather(last_weather_data.temperature_c,
                                                                     last_weather_data.weather_code);
@@ -234,6 +236,9 @@ static void refresh_ui(void)
     if (zsw_imu_fetch_num_steps(&steps) == 0) {
         // TODO: Add calculation for distance and kcal
         watchfaces[watchface_settings.watchface_index]->set_step(steps, 0, 0);
+    }
+    if (strlen(last_music_info.track_name) > 0) {
+        zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
     }
 }
 
@@ -250,11 +255,8 @@ static void general_work(struct k_work *item)
             is_suspended = false;
             // Dropdown
             watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
-            refresh_ui();
             zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb);
-            if (strlen(last_music_info.track_name) > 0) {
-                zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
-            }
+            refresh_ui();
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
@@ -372,7 +374,6 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
     }
     if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
         memcpy(&last_music_info, &last_data_update.data.music_info, sizeof(last_data_update.data.music_info));
-        printk("Got music info: %s %s\n", last_music_info.track_name, last_music_info.artist);
     }
     if (running && !is_suspended) {
         k_work_submit(&update_ui_work);
@@ -397,6 +398,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 
     if (running && !is_suspended) {
         watchfaces[watchface_settings.watchface_index]->set_battery_percent(event->percent, event->mV);
+        zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, event->is_charging, event->tte, event->ttf);
     }
 }
 
