@@ -532,6 +532,10 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                 break;
             case WATCHFACE_APP_EVENT_SET_BRIGHTNESS:
                 zsw_display_control_set_brightness(evt.data.brightness);
+                zsw_settings_brightness_t brightness = evt.data.brightness;
+                if (evt.data.store_brightness) {
+                    settings_save_one(ZSW_SETTINGS_BRIGHTNESS, &brightness, sizeof(brightness));
+                }
                 break;
             case WATCHFACE_APP_EVENT_RESTART:
                 sys_reboot(SYS_REBOOT_COLD);

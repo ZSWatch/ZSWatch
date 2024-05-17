@@ -1,6 +1,5 @@
 #include "zsw_ui.h"
 #include "lvgl.h"
-#include "drivers/zsw_display_control.h"
 #include "applications/watchface/watchface_app.h"
 
 static lv_obj_t *ui_down_bg_panel;
@@ -55,10 +54,11 @@ static const void *face_goog_battery[] = {
 void ui_event_light_slider(lv_event_t *e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
-    if (event_code == LV_EVENT_VALUE_CHANGED) {
+    if ((event_code == LV_EVENT_VALUE_CHANGED) || (event_code == LV_EVENT_RELEASED)) {
         ui_light_slider_value = lv_slider_get_value(ui_bri_slider);
         evt_cb((watchface_app_evt_t) {
-            WATCHFACE_APP_EVENT_SET_BRIGHTNESS, .data.brightness = ui_light_slider_value
+            WATCHFACE_APP_EVENT_SET_BRIGHTNESS, .data.brightness = ui_light_slider_value,
+                                                .data.store_brightness = event_code == LV_EVENT_RELEASED
         });
     }
 }
@@ -124,12 +124,13 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
 }
 
 void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
-                                   watchface_app_evt_listener callback /*, TODO input starting state of buttons and sliders */)
+                                   watchface_app_evt_listener callback, int brightness)
 {
     __ASSERT(dropdown_root == NULL, "dropdown_root is not NULL");
 
     evt_cb = callback;
     dropdown_root = root_page;
+    ui_light_slider_value = brightness;
 
     ui_down_bg_panel = lv_obj_create(root_page);
     lv_obj_set_width(ui_down_bg_panel, 240);

@@ -44,7 +44,10 @@ typedef struct watchface_app_evt_t {
     watchface_app_evt_type_t type;
     union watchface_app_evt_data_t {
         watchface_app_evt_open_app_t app;
-        uint16_t brightness;
+        struct {
+            uint16_t brightness;
+            bool store_brightness;
+        };
     } data;
 } watchface_app_evt_t;
 

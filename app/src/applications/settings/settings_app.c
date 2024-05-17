@@ -265,6 +265,7 @@ static void ble_pairing_work_handler(struct k_work *work)
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
+    settings_load_subtree(ZSW_SETTINGS_PATH); // Update any values that may have changed outside of the settings app.
     lv_settings_create(root, settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
 }
 
