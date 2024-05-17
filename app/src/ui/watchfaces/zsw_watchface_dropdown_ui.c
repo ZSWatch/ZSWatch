@@ -173,7 +173,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_height(ui_music_button, 50);
     lv_obj_set_x(ui_music_button, 20);
     lv_obj_set_y(ui_music_button, 35);
-    lv_obj_clear_flag(ui_music_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_music_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
     lv_obj_set_style_radius(ui_music_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_music_label = lv_label_create(ui_music_button);
@@ -190,7 +190,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_height(ui_flashlight_button, 50);
     lv_obj_set_x(ui_flashlight_button, 20);
     lv_obj_set_y(ui_flashlight_button, 95);
-    lv_obj_clear_flag(ui_flashlight_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_flashlight_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
     lv_obj_set_style_radius(ui_flashlight_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_flashlight_label = lv_label_create(ui_flashlight_button);
@@ -208,7 +208,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_shutdown_button, 5);
     lv_obj_set_y(ui_shutdown_button, 95);
     lv_obj_set_align(ui_shutdown_button, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_shutdown_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_shutdown_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
     lv_obj_set_style_radius(ui_shutdown_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_shutdown_label = lv_label_create(ui_shutdown_button);
@@ -226,7 +226,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_settings_button, 5);
     lv_obj_set_y(ui_settings_button, 35);
     lv_obj_set_align(ui_settings_button, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_settings_button, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_settings_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
     lv_obj_set_style_radius(ui_settings_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_settings_label = lv_label_create(ui_settings_button);
@@ -253,8 +253,6 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_style_bg_opa(ui_bri_slider, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_set_style_radius(ui_bri_slider, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_bri_slider, lv_color_hex(0x3264C8), LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_bri_slider, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
     lv_obj_set_style_bg_color(ui_bri_slider, lv_color_hex(0x000000), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_bri_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
