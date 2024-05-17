@@ -15,7 +15,7 @@ static lv_obj_t *ui_shutdown_label;
 static lv_obj_t *ui_settings_button;
 static lv_obj_t *ui_settings_label;
 static lv_obj_t *ui_bri_slider;
-static lv_obj_t *ui_LightLabel;
+static lv_obj_t *ui_light_label;
 static lv_obj_t *ui_dropdown_bg_panel;
 static lv_obj_t *ui_battery_state;
 static lv_obj_t *ui_battery_charge_state;
@@ -41,6 +41,7 @@ ZSW_LV_IMG_DECLARE(face_goog_20_61728_4);
 ZSW_LV_IMG_DECLARE(face_goog_20_61728_5);
 ZSW_LV_IMG_DECLARE(face_goog_20_61728_6);
 
+// Battery icons from the pixel watchface
 static const void *face_goog_battery[] = {
     ZSW_LV_IMG_USE(face_goog_20_61728_0),
     ZSW_LV_IMG_USE(face_goog_20_61728_1),
@@ -137,7 +138,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_y(ui_down_bg_panel, -10);
     lv_obj_set_align(ui_down_bg_panel, LV_ALIGN_TOP_MID);
     lv_obj_clear_flag(ui_down_bg_panel, LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_CHAIN |
-                      LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+                      LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(ui_down_bg_panel, LV_DIR_VER);
     lv_obj_set_style_bg_color(ui_down_bg_panel, lv_color_hex(0x323232), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_down_bg_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -154,7 +155,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_up_bg_Panel, 0);
     lv_obj_set_y(ui_up_bg_Panel, -10);
     lv_obj_set_align(ui_up_bg_Panel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_up_bg_Panel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_up_bg_Panel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(ui_up_bg_Panel, lv_color_hex(0x30343F), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_up_bg_Panel, 200, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -173,12 +174,12 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_height(ui_music_button, 50);
     lv_obj_set_x(ui_music_button, 20);
     lv_obj_set_y(ui_music_button, 35);
-    lv_obj_clear_flag(ui_music_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
+    lv_obj_clear_flag(ui_music_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_set_style_radius(ui_music_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_music_label = lv_label_create(ui_music_button);
-    lv_obj_set_width(ui_music_label, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_music_label, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_music_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_music_label, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_music_label, LV_ALIGN_CENTER);
     lv_label_set_text(ui_music_label, LV_SYMBOL_AUDIO);
     lv_obj_set_style_text_color(ui_music_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -190,12 +191,12 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_height(ui_flashlight_button, 50);
     lv_obj_set_x(ui_flashlight_button, 20);
     lv_obj_set_y(ui_flashlight_button, 95);
-    lv_obj_clear_flag(ui_flashlight_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
+    lv_obj_clear_flag(ui_flashlight_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_set_style_radius(ui_flashlight_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_flashlight_label = lv_label_create(ui_flashlight_button);
-    lv_obj_set_width(ui_flashlight_label, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_flashlight_label, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_flashlight_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_flashlight_label, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_flashlight_label, LV_ALIGN_CENTER);
     lv_label_set_text(ui_flashlight_label, LV_SYMBOL_CHARGE);
     lv_obj_set_style_text_color(ui_flashlight_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -208,12 +209,12 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_shutdown_button, 5);
     lv_obj_set_y(ui_shutdown_button, 95);
     lv_obj_set_align(ui_shutdown_button, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_shutdown_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
+    lv_obj_clear_flag(ui_shutdown_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_set_style_radius(ui_shutdown_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_shutdown_label = lv_label_create(ui_shutdown_button);
-    lv_obj_set_width(ui_shutdown_label, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_shutdown_label, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_shutdown_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_shutdown_label, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_shutdown_label, LV_ALIGN_CENTER);
     lv_label_set_text(ui_shutdown_label, LV_SYMBOL_POWER);
     lv_obj_set_style_text_color(ui_shutdown_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -226,12 +227,12 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_settings_button, 5);
     lv_obj_set_y(ui_settings_button, 35);
     lv_obj_set_align(ui_settings_button, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_settings_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);      /// Flags
+    lv_obj_clear_flag(ui_settings_button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);
     lv_obj_set_style_radius(ui_settings_button, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_settings_label = lv_label_create(ui_settings_button);
-    lv_obj_set_width(ui_settings_label, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_settings_label, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_width(ui_settings_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_settings_label, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_settings_label, LV_ALIGN_CENTER);
     lv_label_set_text(ui_settings_label, LV_SYMBOL_SETTINGS);
     lv_obj_set_style_text_color(ui_settings_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -256,15 +257,15 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
 
     lv_obj_set_style_bg_color(ui_bri_slider, lv_color_hex(0x000000), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_bri_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
-    lv_obj_clear_flag(ui_bri_slider, LV_OBJ_FLAG_GESTURE_BUBBLE);      /// Flags
+    lv_obj_clear_flag(ui_bri_slider, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
-    ui_LightLabel = lv_img_create(ui_bri_slider);
-    lv_obj_set_width(ui_LightLabel, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_LightLabel, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_LightLabel, 0);
-    lv_obj_set_y(ui_LightLabel, 30);
-    lv_obj_set_align(ui_LightLabel, LV_ALIGN_CENTER);
-    lv_img_set_src(ui_LightLabel, ZSW_LV_IMG_USE(brightness_adjust_icon));
+    ui_light_label = lv_img_create(ui_bri_slider);
+    lv_obj_set_width(ui_light_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_light_label, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_light_label, 0);
+    lv_obj_set_y(ui_light_label, 30);
+    lv_obj_set_align(ui_light_label, LV_ALIGN_CENTER);
+    lv_img_set_src(ui_light_label, ZSW_LV_IMG_USE(brightness_adjust_icon));
 
     ui_dropdown_bg_panel = lv_obj_create(ui_down_bg_panel);
     lv_obj_set_width(ui_dropdown_bg_panel, 240);
@@ -272,7 +273,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_dropdown_bg_panel, 0);
     lv_obj_set_y(ui_dropdown_bg_panel, 150);
     lv_obj_set_align(ui_dropdown_bg_panel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_dropdown_bg_panel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_clear_flag(ui_dropdown_bg_panel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(ui_dropdown_bg_panel, lv_color_hex(0x323232), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_dropdown_bg_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_dropdown_bg_panel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
