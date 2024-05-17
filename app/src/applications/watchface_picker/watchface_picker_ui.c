@@ -24,14 +24,9 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_obj_set_height( ui_faceItem, 180);
     lv_obj_set_align( ui_faceItem, LV_ALIGN_CENTER );
     lv_obj_clear_flag( ui_faceItem, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
-    lv_obj_set_style_radius(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_faceItem, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT );
-    lv_obj_set_style_bg_opa(ui_faceItem, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_faceItem, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_color(ui_faceItem, lv_color_hex(0x142ABC), LV_PART_MAIN | LV_STATE_DEFAULT );
-    lv_obj_set_style_outline_opa(ui_faceItem, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_width(ui_faceItem, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_pad(ui_faceItem, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_pad(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_faceItem, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -56,6 +51,18 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
 
     lv_obj_add_event_cb(ui_faceItem, on_watchface_selected, LV_EVENT_ALL, (void *)index);
 
+    lv_obj_t *ui_face_outline = lv_obj_create(ui_faceItem);
+    lv_obj_set_width(ui_face_outline, 160);
+    lv_obj_set_height(ui_face_outline, 160);
+    lv_obj_clear_flag(ui_face_outline, LV_OBJ_FLAG_CLICKABLE);    /// Flags
+    lv_obj_set_align( ui_faceItem, LV_ALIGN_CENTER );
+    lv_obj_set_style_bg_opa(ui_face_outline, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_face_outline, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_face_outline, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_color(ui_face_outline, lv_color_hex(0xFFBAAF), LV_PART_MAIN | LV_STATE_DEFAULT );
+    lv_obj_set_style_outline_opa(ui_face_outline, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_width(ui_face_outline, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_pad(ui_face_outline, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_cb)
