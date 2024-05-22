@@ -90,6 +90,7 @@ typedef struct ble_comm_remote_control {
 typedef struct ble_comm_http_response {
     char err[MAX_HTTP_FIELD_LENGTH + 1];
     char response[MAX_HTTP_FIELD_LENGTH + 1];
+    int id;
 } ble_comm_http_response_t;
 
 typedef struct ble_comm_cb_data {

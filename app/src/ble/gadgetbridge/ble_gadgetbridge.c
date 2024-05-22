@@ -519,21 +519,35 @@ static int parse_httpstate(char *data, int len)
 
     cb.type = BLE_COMM_DATA_TYPE_HTTP;
 
+    temp_value = extract_value_str("\"id\":", data, &temp_len);
+    if (temp_value) {
+        errno = 0;
+        char *end_data;
+        cb.data.http_response.id  = strtol(temp_value, &end_data, 10);
+        if (temp_value == end_data || errno != 0) {
+            LOG_WRN("Failed parsing http request id");
+            cb.data.http_response.id = -1;
+        }
+    } else {
+        cb.data.http_response.id = -1;
+    }
+
     // {"t":"http","err":"Internet access not enabled in this Gadgetbridge build"}
     temp_value = extract_value_str("\"err\":", data, &temp_len);
 
     if (temp_value != NULL) {
         LOG_ERR("HTTP err: %s", temp_value);
-        memcpy(cb.data.http_response.err, temp_value, strlen(cb.data.http_response.err));
-        return -1;
+        memcpy(cb.data.http_response.err, temp_value, temp_len);
+        send_ble_data_event(&cb);
+    } else {
+        temp_value = extract_value_str("\"resp\":", data, &temp_len);
+        if (temp_value) {
+            LOG_DBG("HTTP response: %s", temp_value);
+            memcpy(cb.data.http_response.response, temp_value,
+                   (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
+            send_ble_data_event(&cb);
+        }
     }
-
-    temp_value = extract_value_str("\"resp\":", data, &temp_len);
-    LOG_DBG("HTTP response: %s", temp_value);
-    memcpy(cb.data.http_response.response, temp_value,
-           (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
-
-    send_ble_data_event(&cb);
 
     return 0;
 }
