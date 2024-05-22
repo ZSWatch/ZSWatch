@@ -33,7 +33,7 @@ static const struct device *const apds9306 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
-    float light;
+    float light = 0.0;
 
     if (zsw_light_sensor_get_light(&light)) {
         return;

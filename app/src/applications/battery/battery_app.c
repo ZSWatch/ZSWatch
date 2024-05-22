@@ -14,7 +14,7 @@
 
 #define SETTING_BATTERY_HIST    "battery/hist"
 #define SAMPLE_INTERVAL_MS      (CONFIG_APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES * 60 * 1000)
-#define MAX_SAMPLES             (7 * 24 * (60 / CONFIG_APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES)) // 7 days of 15 minute samples
+#define MAX_SAMPLES             (7 * 24 * (60 / CONFIG_APPLICATIONS_BATTERY_SAMPLE_INTERVAL_MINUTES))
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group);
 static void battery_app_stop(void);
@@ -52,12 +52,12 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
     struct battery_sample_event initial_sample;
 
 #if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
-    battery_ui_show(root, on_battery_hist_clear_cb, battery_context.num + 1, true);
+    battery_ui_show(root, on_battery_hist_clear_cb, zsw_history_samples(&battery_context) + 1, true);
 #else
-    battery_ui_show(root, on_battery_hist_clear_cb, battery_context.num + 1, false);
+    battery_ui_show(root, on_battery_hist_clear_cb, zsw_history_samples(&battery_context) + 1, false);
 #endif
 
-    for (int i = 0; i < battery_context.num; i++) {
+    for (int i = 0; i < zsw_history_samples(&battery_context); i++) {
         zsw_history_get(&battery_context, &sample, i);
         battery_ui_add_measurement(sample.percent, (sample.mv_with_decimals * 10) + 2000);
     }

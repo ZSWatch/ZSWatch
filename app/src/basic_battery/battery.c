@@ -221,7 +221,7 @@ static unsigned int battery_level_pptt(unsigned int batt_mV,
     }
     /* Go down to the last point at or below the measured voltage. */
     while ((pb->lvl_pptt > 0)
-            && (batt_mV < pb->lvl_mV)) {
+           && (batt_mV < pb->lvl_mV)) {
         ++pb;
     }
     if (batt_mV < pb->lvl_mV) {
@@ -249,7 +249,12 @@ static int battery_measure_enable(bool enable)
 
 static int battery_sample(void)
 {
+#ifdef CONFIG_ARCH_POSIX
     return (sys_rand32_get() % (levels[0].lvl_mV - levels[1].lvl_mV)) + levels[1].lvl_mV;
+#else
+    // No random driver for nRF53DK available. So we return 0.
+    return 0;
+#endif
 }
 
 static unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve)

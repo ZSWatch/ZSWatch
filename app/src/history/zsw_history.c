@@ -33,7 +33,7 @@ static int zsw_history_load_header_cb(const char *p_key, size_t len, settings_re
         return -EFAULT;
     }
 
-    LOG_DBG("   Number of samples: %d", history->num);
+    LOG_DBG("   Number of samples: %d", history->write_index);
     LOG_DBG("   Sample size: %d", history->sample_size);
 
     return 0;
@@ -50,7 +50,8 @@ static int zsw_history_load_data_cb(const char *p_key, size_t len, settings_read
     num_bytes_data = read_cb(p_cb_arg, history->samples, len);
     LOG_DBG("Read %u data bytes", num_bytes_data);
 
-    if ((num_bytes_data == 0) || (num_bytes_data != len) || (num_bytes_data != (history->sample_size * history->num))) {
+    if ((num_bytes_data == 0) || (num_bytes_data != len) ||
+        (num_bytes_data != (history->max_samples * history->sample_size))) {
         LOG_ERR("Invalid data!");
         return -EFAULT;
     }
@@ -58,18 +59,19 @@ static int zsw_history_load_data_cb(const char *p_key, size_t len, settings_read
     return 0;
 }
 
-int zsw_history_init(zsw_history_t *p_history, uint32_t length, uint8_t sample_size, void *p_samples, const char *p_key)
+int zsw_history_init(zsw_history_t *p_history, uint32_t max_samples, uint8_t sample_size, void *p_samples,
+                     const char *p_key)
 {
     int32_t error;
 
     __ASSERT((p_history != NULL) && (p_samples != NULL) && (p_key != NULL), "Invalid parameters for zsw_history_init");
 
     p_history->write_index = 0;
-    p_history->num = length;
+    p_history->max_samples = max_samples;
     p_history->sample_size = sample_size;
     p_history->samples = p_samples;
 
-    memset(p_samples, 0, length * sample_size);
+    memset(p_samples, 0, max_samples * sample_size);
     strcpy(p_history->key, p_key);
 
     error = settings_subsys_init();
@@ -81,12 +83,33 @@ int zsw_history_init(zsw_history_t *p_history, uint32_t length, uint8_t sample_s
     return 0;
 }
 
-void zsw_history_del(zsw_history_t *p_history)
+int zsw_history_del(zsw_history_t *p_history)
 {
+    int32_t error;
+
     __ASSERT(p_history == NULL, "Invalid parameter for zsw_history_del");
 
-    memset(p_history->samples, 0, p_history->num * p_history->sample_size);
+    memset(p_history->samples, 0, p_history->max_samples * p_history->sample_size);
     p_history->write_index = 0;
+    p_history->max_samples = 0;
+
+    // First: Delete the header
+    sprintf(key_header, "%s/%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
+    error = settings_delete(key_header);
+    if (error) {
+        LOG_ERR("Error during erasing the header! Error: %i", error);
+        return -EFAULT;
+    }
+
+    // Second: Delete the data
+    sprintf(key_data, "%s/%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
+    error = settings_delete(key_data);
+    if (error) {
+        LOG_ERR("Error during erasing the data! Error: %i", error);
+        return -EFAULT;
+    }
+
+    return 0;
 }
 
 void zsw_history_add(zsw_history_t *p_history, const void *p_sample)
@@ -101,7 +124,7 @@ void zsw_history_add(zsw_history_t *p_history, const void *p_sample)
     LOG_DBG("Add sample with size %d at index %d", p_history->sample_size, p_history->write_index);
     memcpy(start, p_sample, p_history->sample_size);
 
-    if (p_history->write_index < (p_history->num - 1)) {
+    if (p_history->write_index < (p_history->max_samples - 1)) {
         p_history->write_index++;
     } else {
         p_history->write_index = 0;
@@ -130,7 +153,7 @@ int zsw_history_load(zsw_history_t *p_history)
     sprintf(key_header, "%s/%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
     error = settings_load_subtree_direct(key_header, zsw_history_load_header_cb, p_history);
     LOG_DBG("Load header with key %s", key_header);
-    LOG_DBG("   Num: %u", p_history->num);
+    LOG_DBG("   Num: %u", p_history->max_samples);
     LOG_DBG("   Sample size: %u", p_history->sample_size);
     LOG_DBG("   Write index: %u", p_history->write_index);
     if (error) {
@@ -146,13 +169,6 @@ int zsw_history_load(zsw_history_t *p_history)
         return -EFAULT;
     }
 
-    error = settings_delete(key_header);
-    LOG_DBG("Delete header with key %s", key_header);
-    if (error) {
-        LOG_ERR("Error during settings delete! Error: %i", error);
-        return -EFAULT;
-    }
-
     return 0;
 }
 
@@ -162,8 +178,6 @@ int zsw_history_save(zsw_history_t *p_history, const void *p_sample)
 
     __ASSERT((p_history != NULL) && (p_sample != NULL) &&
              (strlen(p_history->key) <= ZSW_HISTORY_MAX_KEY_LENGTH), "Invalid parameters for zsw_history_save");
-
-    zsw_history_add(p_history, p_sample);
 
     // First: Store the header
     sprintf(key_header, "%s/%s", p_history->key, ZSW_HISTORY_HEADER_EXTENSION);
@@ -176,11 +190,18 @@ int zsw_history_save(zsw_history_t *p_history, const void *p_sample)
 
     // Second: Save the data
     sprintf(key_data, "%s/%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
-    error = settings_save_one(key_data, p_history->samples, p_history->num * p_history->sample_size);
+    error = settings_save_one(key_data, p_history->samples, p_history->write_index * p_history->sample_size);
     if (error) {
         LOG_ERR("Error during saving of history data! Error: %i", error);
         return -EFAULT;
     }
 
     return 0;
+}
+
+int zsw_history_samples(zsw_history_t *p_history)
+{
+    __ASSERT(p_history != NULL, "Invalid parameters for zsw_history_samples");
+
+    return p_history->write_index;
 }
