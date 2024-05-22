@@ -31,6 +31,7 @@ static uint16_t parsed_data_index = 0;
 static uint8_t receive_buf[MAX_GB_PACKET_LENGTH];
 
 static void music_control_event_callback(const struct zbus_channel *chan);
+static void parse_time_zone(char *offset);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
@@ -73,7 +74,7 @@ static void music_control_event_callback(const struct zbus_channel *chan)
     }
 }
 
-void parse_time(char *start_time)
+static void parse_time(char *start_time)
 {
     char *end_time;
     ble_comm_cb_data_t cb;
@@ -99,7 +100,7 @@ void parse_time(char *start_time)
     }
 }
 
-void parse_time_zone(char *offset)
+static void parse_time_zone(char *offset)
 {
     char *end_timezone;
     ble_comm_cb_data_t cb;
@@ -119,7 +120,7 @@ void parse_time_zone(char *offset)
     }
 }
 
-char *extract_value_str(char *key, char *data, int *value_len)
+static char *extract_value_str(char *key, char *data, int *value_len)
 {
     bool base64 = false;
     char *start;
@@ -162,7 +163,7 @@ char *extract_value_str(char *key, char *data, int *value_len)
     return start;
 }
 
-uint32_t extract_value_uint32(char *key, char *data)
+static uint32_t extract_value_uint32(char *key, char *data)
 {
     char *start;
     char *str = strstr(data, key);
@@ -182,7 +183,7 @@ uint32_t extract_value_uint32(char *key, char *data)
     return id;
 }
 
-int32_t extract_value_int32(char *key, char *data)
+static int32_t extract_value_int32(char *key, char *data)
 {
     char *start;
     char *str = strstr(data, key);
@@ -202,7 +203,7 @@ int32_t extract_value_int32(char *key, char *data)
     return id;
 }
 
-void convert_to_encoded_text(char *data, int len, char *out_data, int out_buf_len)
+static void convert_to_encoded_text(char *data, int len, char *out_data, int out_buf_len)
 {
     int i = 0, j = 0;
     // https://www.utf8-chartable.de/
@@ -537,7 +538,7 @@ static int parse_httpstate(char *data, int len)
     return 0;
 }
 
-int parse_data(char *data, int len)
+static int parse_data(char *data, int len)
 {
     int type_len;
     char *type;
@@ -580,7 +581,7 @@ int parse_data(char *data, int len)
     return 0;
 }
 
-void parse_remote_control(char *data, int len)
+static void parse_remote_control(char *data, int len)
 {
     int button;
     ble_comm_cb_data_t cb;
