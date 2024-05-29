@@ -24,7 +24,7 @@
 
 LOG_MODULE_REGISTER(APP_MANAGER, LOG_LEVEL_INF);
 
-#define MAX_APPS        15
+#define MAX_APPS        20
 #define INVALID_APP_ID  0xFF
 
 static void draw_application_picker(void);

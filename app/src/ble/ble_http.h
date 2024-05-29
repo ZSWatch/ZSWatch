@@ -13,9 +13,9 @@ typedef enum {
  * This callback function is invoked when an HTTP GET request has been completed.
  *
  * @param status    The status of the HTTP GET request.
- * @param response  The response data in JSON format. The cJSON object parameter will be deleted automatically after the callback function returns.
+ * @param response  The response data.
  */
-typedef void (*ble_http_callback)(ble_http_status_code_t status, cJSON *response);
+typedef void (*ble_http_callback)(ble_http_status_code_t status, char *response);
 
 /**
  * @brief Sends an HTTP GET request to the specified URL.

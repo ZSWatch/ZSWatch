@@ -65,19 +65,8 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
                     i++;
                 }
             }
-            fixed_rsp[j - 1] = '\0'; // Remove the last " as it belongs not to the JSON
-            cJSON *gb_rsp = cJSON_Parse(fixed_rsp);
-            if (gb_rsp == NULL) {
-                LOG_ERR("Failed to parse JSON rsp data from GB");
-            } else {
-                cJSON *results = cJSON_GetObjectItem(gb_rsp, "results");
-                if (cJSON_GetArraySize(results) == 1) {
-                    ble_http_cb(BLE_HTTP_STATUS_OK, cJSON_GetArrayItem(results, 0));
-                } else {
-                    LOG_ERR("Unexpected number of results: %d, expected 1", cJSON_GetArraySize(results));
-                }
-            }
-            cJSON_Delete(gb_rsp);
+            fixed_rsp[j - 1] = '\0'; // Remove the last " as it belongs not to the data
+            ble_http_cb(BLE_HTTP_STATUS_OK, fixed_rsp);
             k_free(fixed_rsp);
         }
     }

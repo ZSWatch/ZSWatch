@@ -56,6 +56,29 @@ ZSW_LV_IMG_DECLARE(youtube_logo);
 ZSW_LV_IMG_DECLARE(sms_icon);
 ZSW_LV_IMG_DECLARE(google_calendar_icon);
 
+ZSW_LV_IMG_DECLARE(clear);
+ZSW_LV_IMG_DECLARE(dense_drizzle);
+ZSW_LV_IMG_DECLARE(dense_freezing_drizzle);
+ZSW_LV_IMG_DECLARE(fog);
+ZSW_LV_IMG_DECLARE(heavy_freezing_rain);
+ZSW_LV_IMG_DECLARE(heavy_rain);
+ZSW_LV_IMG_DECLARE(heavy_snowfall);
+ZSW_LV_IMG_DECLARE(light_drizzle);
+ZSW_LV_IMG_DECLARE(light_freezing_drizzle);
+ZSW_LV_IMG_DECLARE(light_freezing_rain);
+ZSW_LV_IMG_DECLARE(light_rain);
+ZSW_LV_IMG_DECLARE(moderate_drizzle);
+ZSW_LV_IMG_DECLARE(moderate_rain);
+ZSW_LV_IMG_DECLARE(moderate_snowfall);
+ZSW_LV_IMG_DECLARE(mostly_clear);
+ZSW_LV_IMG_DECLARE(overcast);
+ZSW_LV_IMG_DECLARE(partly_cloudy1);
+ZSW_LV_IMG_DECLARE(rime_fog);
+ZSW_LV_IMG_DECLARE(slight_snowfall);
+ZSW_LV_IMG_DECLARE(snowflake);
+ZSW_LV_IMG_DECLARE(thunderstorm_with_hail);
+ZSW_LV_IMG_DECLARE(thunderstorm);
+
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color)
 {
     int code_group = code / 100;
@@ -105,6 +128,183 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
             return &unknown;
         }
     }
+}
+
+const void *zsw_ui_utils_icon_from_wmo_weather_code(int code, lv_color_t *color, char **text)
+{
+    printk("WMO Code: %d\n", code);
+    switch (code) {
+        case 0: {
+            *color = lv_color_hex(0xF1F1F1);
+            *text = "Clear";
+            return ZSW_LV_IMG_USE(clear);
+            break;
+        }
+        case 1: {
+            *color = lv_color_hex(0xE2E2E2);
+            *text = "Mostly Clear";
+            return ZSW_LV_IMG_USE(mostly_clear);
+            break;
+        }
+        case 2: {
+            *color = lv_color_hex(0xC6C6C6);
+            *text = "Partly Cloudy";
+            return ZSW_LV_IMG_USE(partly_cloudy1);
+            break;
+        }
+        case 3: {
+            *color = lv_color_hex(0xABABAB);
+            *text = "Overcast";
+            return ZSW_LV_IMG_USE(overcast);
+            break;
+        }
+        case 45: {
+            *color = lv_color_hex(0xA4ACBA);
+            *text = "Fog";
+            return ZSW_LV_IMG_USE(fog);
+            break;
+        }
+        case 48: {
+            *color = lv_color_hex(0x8891A4);
+            *text = "Icy Fog";
+            return ZSW_LV_IMG_USE(rime_fog);
+            break;
+        }
+        case 51: {
+            *color = lv_color_hex(0x3DECEB);
+            *text = "Light Drizzle";
+            return ZSW_LV_IMG_USE(light_drizzle);
+            break;
+        }
+        case 53: {
+            *color = lv_color_hex(0x0CCECE);
+            *text = "Drizzle";
+            return ZSW_LV_IMG_USE(moderate_drizzle);
+            break;
+        }
+        case 55: {
+            *color = lv_color_hex(0x0AB1B1);
+            *text = "Heavy Drizzle";
+            return ZSW_LV_IMG_USE(dense_drizzle);
+            break;
+        }
+        case 80: {
+            *color = lv_color_hex(0x9BCCFD);
+            *text = "Light Showers";
+            return ZSW_LV_IMG_USE(light_rain);
+            break;
+        }
+        case 81: {
+            *color = lv_color_hex(0x51B4FF);
+            *text = "Showers";
+            return ZSW_LV_IMG_USE(moderate_rain);
+            break;
+        }
+        case 82: {
+            *color = lv_color_hex(0x029AE8);
+            *text = "Heavy Showers";
+            return ZSW_LV_IMG_USE(heavy_rain);
+            break;
+        }
+        case 61: {
+            *color = lv_color_hex(0xBFC3FA);
+            *text = "Light Rain";
+            return ZSW_LV_IMG_USE(light_rain);
+            break;
+        }
+        case 63: {
+            *color = lv_color_hex(0x9CA7FA);
+            *text = "Rain";
+            return ZSW_LV_IMG_USE(moderate_rain);
+            break;
+        }
+        case 65: {
+            *color = lv_color_hex(0x748BF8);
+            *text = "Heavy Rain";
+            return ZSW_LV_IMG_USE(heavy_rain);
+            break;
+        }
+        case 56: {
+            *color = lv_color_hex(0xD3BFE8);
+            *text = "Light Freezing Drizzle";
+            return ZSW_LV_IMG_USE(light_freezing_drizzle);
+            break;
+        }
+        case 57: {
+            *color = lv_color_hex(0xA780D4);
+            *text = "Freezing Drizzle";
+            return ZSW_LV_IMG_USE(dense_freezing_drizzle);
+            break;
+        }
+        case 66: {
+            *color = lv_color_hex(0xCAC1EE);
+            *text = "Light Freezing Rain";
+            return ZSW_LV_IMG_USE(light_freezing_rain);
+            break;
+        }
+        case 67: {
+            *color = lv_color_hex(0x9486E1);
+            *text = "Freezing Rain";
+            return ZSW_LV_IMG_USE(heavy_freezing_rain);
+            break;
+        }
+        case 71: {
+            *color = lv_color_hex(0xF9B1D8);
+            *text = "Light Snow";
+            return ZSW_LV_IMG_USE(slight_snowfall);
+            break;
+        }
+        case 73: {
+            *color = lv_color_hex(0xF983C7);
+            *text = "Snow";
+            return ZSW_LV_IMG_USE(moderate_snowfall);
+            break;
+        }
+        case 75: {
+            *color = lv_color_hex(0xF748B7);
+            *text = "Heavy Snow";
+            return ZSW_LV_IMG_USE(heavy_snowfall);
+            break;
+        }
+        case 77: {
+            *color = lv_color_hex(0xE7B6EE);
+            *text = "Snow Grains";
+            return ZSW_LV_IMG_USE(snowflake);
+            break;
+        }
+        case 85: {
+            *color = lv_color_hex(0xE7B6EE);
+            *text = "Light Snow Showers";
+            return ZSW_LV_IMG_USE(slight_snowfall);
+            break;
+        }
+        case 86: {
+            *color = lv_color_hex(0xCD68E0);
+            *text = "Snow Showers";
+            return ZSW_LV_IMG_USE(heavy_snowfall);
+            break;
+
+            case 95: {
+                *color = lv_color_hex(0x525F7A);
+                *text = "Thunderstorm";
+                return ZSW_LV_IMG_USE(thunderstorm);
+                break;
+            }
+            case 96: {
+                *color = lv_color_hex(0x3D475C);
+                *text = "Light T-storm w/ Hail";
+                return ZSW_LV_IMG_USE(thunderstorm_with_hail);
+                break;
+            }
+            case 99: {
+                *color = lv_color_hex(0x2A3140);
+                *text = "T-storm w/ Hail";
+                return ZSW_LV_IMG_USE(thunderstorm_with_hail);
+                break;
+            }
+        }
+    }
+    return NULL;
 }
 
 const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)

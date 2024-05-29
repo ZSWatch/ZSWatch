@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
+#include <cJSON.h>
 
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
@@ -552,6 +553,42 @@ static int parse_httpstate(char *data, int len)
     return 0;
 }
 
+static int parse_gps_data(char *data, int len)
+{
+    //{"t":"gps","lat":55.6135542,"lon":12.9747185,"alt":41.900001525878906,"speed":0.1458607256412506,"time":1717002933835,"satellites":0,"hdop":16.215999603271484,"externalSource":true,"gpsSource":"network"}
+    ble_comm_cb_data_t cb;
+    memset(&cb, 0, sizeof(cb));
+
+    cb.type = BLE_COMM_DATA_TYPE_GPS;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        return -EINVAL;
+    }
+
+    cJSON *lat = cJSON_GetObjectItem(root, "lat");
+    cJSON *lon = cJSON_GetObjectItem(root, "lon");
+    cJSON *alt = cJSON_GetObjectItem(root, "alt");
+    cJSON *speed = cJSON_GetObjectItem(root, "speed");
+    cJSON *time = cJSON_GetObjectItem(root, "time");
+    cJSON *satellites = cJSON_GetObjectItem(root, "satellites");
+    cJSON *hdop = cJSON_GetObjectItem(root, "hdop");
+
+    cb.data.gps.lat = lat != NULL ? lat->valuedouble : -1;
+    cb.data.gps.lon = lon != NULL ? lon->valuedouble : -1;
+    cb.data.gps.alt = alt != NULL ? alt->valuedouble : -1;
+    cb.data.gps.speed = speed != NULL ? speed->valuedouble : -1;
+    cb.data.gps.time = time != NULL ? time->valuedouble : -1;
+    cb.data.gps.satellites = satellites != NULL ? satellites->valueint : -1;
+    cb.data.gps.hdop = hdop != NULL ? hdop->valuedouble : -1;
+
+    cJSON_Delete(root);
+
+    send_ble_data_event(&cb);
+
+    return 0;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -590,6 +627,10 @@ static int parse_data(char *data, int len)
 
     if (strlen("http") == type_len && strncmp(type, "http", type_len) == 0) {
         return parse_httpstate(data, len);
+    }
+
+    if (strlen("gps") == type_len && strncmp(type, "gps", type_len) == 0) {
+        return parse_gps_data(data, len);
     }
 
     return 0;

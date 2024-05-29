@@ -253,6 +253,15 @@ int ble_comm_get_mtu(void)
     return bt_gatt_get_mtu(current_conn);
 }
 
+int ble_comm_request_gps_status(bool enable)
+{
+    char gps_status[50];
+    int len = snprintf(gps_status, sizeof(gps_status), "{\"t\":\"gps_power\", \"status\":%s} \n",
+                       enable ? "true" : "false");
+    printk("Sending: %s", gps_status);
+    return ble_comm_send(gps_status, len);
+}
+
 static void update_conn_interval_slow_handler(struct k_work *item)
 {
     LOG_DBG("Change to long connection interval");
