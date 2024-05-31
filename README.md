@@ -22,9 +22,9 @@ Smartwatch built from scratch, both hardware and software. Built on the [Zephyrâ
 
 <kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd><br/>
 
-**Synced remote control over BLE**
+**UI and features**
 
-[https://user-images.githubusercontent.com/64562059/234390129-321d4f35-cb4b-45e8-89d9-20ae292f34fc.mp4](https://github.com/jakkra/ZSWatch/assets/4318648/8d0f40c2-d519-4db1-8634-b43caa502cbe)
+https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682
 
 <p align="center" >
   <a href="https://www.youtube.com/watch?v=MmCzV0jV9hs"><img width="55%" src=".github/images/presentation.png" ></a>
@@ -64,7 +64,6 @@ If you are interested in a kit, or want to get notified when the missing parts a
   - [Android phone communication](#android-phone-communication)
   - [iOS device communication](#ios-device-communication)
 - [PCB](#pcb)
-- [ZSWatch v1 in action (Note old, not updated for latest HW and SW).](#zswatch-v1-in-action-note-old-not-updated-for-latest-hw-and-sw)
 - [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
 - [Writing apps for the Application Manager](#writing-apps-for-the-application-manager)
 - [Other tools](#other-tools)
@@ -126,30 +125,19 @@ See more at https://github.com/jakkra/ZSWatch-Dock
 There are almost endless of posiblities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
 
 ## Watchfaces
-Alternative watch faces can be chosen by selecting one or many of the appropriate Kconfig. <br>
-Swiping left to right will change the watchface.
-for something else, and can then be disabled.
 
-`CONFIG_WATCHFACE_ANALOG=n`<br>
-`CONFIG_WATCHFACE_DIGITAL=y`<br>
-`CONFIG_WATCHFACE_MINIMAL=y`<br>
-
-
-To select watchface background see below config in prj.conf:
-
-`CONFIG_WATCHFACE_BACKGROUND_SPACE=y`<br>
-`CONFIG_WATCHFACE_BACKGROUND_FLOWER=n`<br>
-`CONFIG_WATCHFACE_BACKGROUND_PLANET=n`<br>
-`CONFIG_WATCHFACE_BACKGROUND_NONE=n`<br>
-
-<p float="center">
-<img src=".github/images/watchfaces.png" width="99%"/>
-</p>
+https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d
 
 ## Smartphone communication
 
 ### Android phone communication
 Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
+
+**Demo of doing HTTP requests over BLE through Gadgetbridge.**
+
+
+https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82
+
 
 #### Pairing
 - In the watch go to Settings -> Bluetooth -> Enable pairing
@@ -158,6 +146,7 @@ Fortunately there is a great Android app called [GadgetBridge](https://codeberg.
 
 ### iOS device communication
 Apple exposes [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html)... The ZSWatch communicates straight to the iOS with no extra Apps.
+
 
 #### Pairing
 - In the watch go to Settings -> Bluetooth -> Enable pairing
@@ -175,16 +164,6 @@ More info here: https://github.com/jakkra/ZSWatch-HW
 <img src=".github/images/front_pcb_render.png" width="43%" object-fit="cover"/>
 <img src=".github/images/back_pcb_render.png" width="40%" object-fit="cover"/>
 </p>
-
-## ZSWatch v1 in action (Note old, not updated for latest HW and SW).
-|*Music control*|*Accelerometer for step count and tap detection*|
-|---|---|
-|  <img src=".github/images/music.gif" object-fit="cover" /> |  <img src=".github/images/accel.gif" object-fit="cover" /> |
-|*Notifications from phone (Gmail here)*|*Settings*|
-|  <img src=".github/images/notifications.gif" object-fit="cover" />    |  <img src=".github/images/settings.gif" object-fit="cover"/> |
-
-
-https://github.com/jakkra/ZSWatch/assets/4318648/8d8ec724-8145-4a30-b241-e69a8c2853bf
 
 ## Environment, Compiling and running the code
 See [GETTING_STARTED.md](GETTING_STARTED.md)
