@@ -44,14 +44,20 @@ static on_app_manager_cb_fn close_cb_func;
 static lv_obj_t *grid;
 static uint8_t last_index;
 static bool app_launch_only;
+static bool is_deleting_app_picker;
 static lv_timer_t *async_app_start_timer;
 static lv_timer_t *async_app_close_timer;
 
 static void delete_application_picker(void)
 {
     if (grid != NULL) {
+        // When deleting the grid, we get callbacks for each row being deleted.
+        // Because LVGL will refocus one a new row when one is deleted.
+        // This causes the wrong last opened app index to be changed.
+        is_deleting_app_picker = true;
         lv_obj_del(grid);
         grid = NULL;
+        is_deleting_app_picker = false;
     }
 }
 
@@ -59,7 +65,7 @@ static void row_focused(lv_event_t *e)
 {
     lv_obj_t *row = lv_event_get_target(e);
     int app_id = (int)lv_event_get_user_data(e);
-    if (row && lv_obj_get_child_cnt(row) > 0) {
+    if (row && lv_obj_get_child_cnt(row) > 0 && !is_deleting_app_picker) {
         // Don't show close button as last focused row
         if (apps[app_id]->private_list_index != num_visible_apps - 1) {
             last_index = app_id;
