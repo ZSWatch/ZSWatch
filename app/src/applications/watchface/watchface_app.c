@@ -108,7 +108,7 @@ static delayed_work_item_t general_work_item;
 static struct k_work_sync canel_work_sync;
 
 static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
-static ble_comm_cb_data_t last_data_update;
+static ble_comm_data_type_t last_data_update_type;
 static ble_comm_weather_t last_weather_data;
 static ble_comm_music_info_t last_music_info;
 static struct battery_sample_event last_batt_evt = {.percent = 100, .mV = 4300};
@@ -354,19 +354,18 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 static void update_ui_from_event(struct k_work *item)
 {
     if (running && !is_suspended) {
-        if (last_data_update.type == BLE_COMM_DATA_TYPE_WEATHER) {
-            LOG_DBG("Weather: %s t: %d hum: %d code: %d wind: %d dir: %d", last_data_update.data.weather.report_text,
-                    last_data_update.data.weather.temperature_c, last_data_update.data.weather.humidity,
-                    last_data_update.data.weather.weather_code,
-                    last_data_update.data.weather.wind,
-                    last_data_update.data.weather.wind_direction);
-            watchfaces[watchface_settings.watchface_index]->set_weather(last_data_update.data.weather.temperature_c,
-                                                                        last_data_update.data.weather.weather_code);
-        } else if (last_data_update.type == BLE_COMM_DATA_TYPE_SET_TIME) {
+        if (last_data_update_type == BLE_COMM_DATA_TYPE_WEATHER) {
+            LOG_DBG("Weather: %s t: %d hum: %d code: %d wind: %d dir: %d", last_weather_data.report_text,
+                    last_weather_data.temperature_c, last_weather_data.humidity,
+                    last_weather_data.weather_code,
+                    last_weather_data.wind,
+                    last_weather_data.wind_direction);
+            watchfaces[watchface_settings.watchface_index]->set_weather(last_weather_data.temperature_c,
+                                                                        last_weather_data.weather_code);
+        } else if (last_data_update_type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
-        } else if (last_data_update.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
-            zsw_watchface_dropdown_ui_set_music_info(last_data_update.data.music_info.track_name,
-                                                     last_data_update.data.music_info.artist);
+        } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
+            zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
         }
         return;
     }
@@ -375,14 +374,12 @@ static void update_ui_from_event(struct k_work *item)
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 {
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
-    // TODO getting this callback again before workqueue has ran will
-    // cause previous to be lost.
-    memcpy(&last_data_update, &event->data, sizeof(ble_comm_cb_data_t));
+    last_data_update_type = event->data.type;
     if (event->data.type == BLE_COMM_DATA_TYPE_WEATHER) {
-        memcpy(&last_weather_data, &last_data_update.data.weather, sizeof(last_data_update.data.weather));
+        memcpy(&last_weather_data, &event->data.data.weather, sizeof(event->data.data.weather));
     }
     if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
-        memcpy(&last_music_info, &last_data_update.data.music_info, sizeof(last_data_update.data.music_info));
+        memcpy(&last_music_info, &event->data.data.music_info, sizeof(event->data.data.music_info));
     }
     if (running && !is_suspended) {
         k_work_submit(&update_ui_work);
