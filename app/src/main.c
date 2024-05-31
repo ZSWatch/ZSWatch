@@ -297,6 +297,16 @@ int main(void)
     // it has the required amount of stack.
     k_work_submit(&init_work);
 
+    // Workaround due to https://github.com/zephyrproject-rtos/zephyr/issues/71410
+    // we need to run lv_task_handler from main thread and disable CONFIG_LV_Z_FLUSH_THREAD
+#ifdef CONFIG_BOARD_NATIVE_POSIX
+    int64_t next_update_in_ms;
+    while (true) {
+        next_update_in_ms = lv_task_handler();
+        k_msleep(next_update_in_ms);
+    }
+#endif
+
     return 0;
 }
 
