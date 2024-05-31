@@ -81,7 +81,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_x(ui_location, 0);
     lv_obj_set_y(ui_location, 25);
     lv_obj_set_align(ui_location, LV_ALIGN_TOP_MID);
-    lv_label_set_text(ui_location, "Location...");
+    lv_label_set_text(ui_location, "");
     lv_obj_set_style_text_font(ui_location, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_forecast_widget = lv_obj_create(ui_root_container);

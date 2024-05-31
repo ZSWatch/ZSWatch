@@ -258,7 +258,7 @@ int ble_comm_request_gps_status(bool enable)
     char gps_status[50];
     int len = snprintf(gps_status, sizeof(gps_status), "{\"t\":\"gps_power\", \"status\":%s} \n",
                        enable ? "true" : "false");
-    printk("Sending: %s", gps_status);
+    LOG_DBG("Request GPS: %s", gps_status);
     return ble_comm_send(gps_status, len);
 }
 

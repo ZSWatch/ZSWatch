@@ -78,6 +78,7 @@ int zsw_ble_http_get(char *url, ble_http_callback cb)
     char *request;
 
     if (request_pending) {
+        // TODO implement a queue for requests
         return -EBUSY;
     }
 

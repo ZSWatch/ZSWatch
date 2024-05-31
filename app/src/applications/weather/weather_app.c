@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/logging/log.h>
 #include "cJSON.h"
 
 #include "managers/zsw_app_manager.h"
@@ -9,6 +10,8 @@
 #include <ble/ble_http.h>
 #include "weather_ui.h"
 #include <zsw_clock.h>
+
+LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 
 #define HTTP_REQUEST_URL_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=wind_speed_10m,temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,rain_sum,precipitation_probability_max&wind_speed_unit=ms&timezone=auto&forecast_days=%d"
 
@@ -86,7 +89,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
         last_update_weather_time = k_uptime_get();
         ble_comm_request_gps_status(false);
     } else {
-        printk("HTTP request failed\n");
+        LOG_ERR("HTTP request failed\n");
     }
 }
 
@@ -95,6 +98,7 @@ static void fetch_weather_data(double lat, double lon)
     char weather_url[512];
     snprintf(weather_url, sizeof(weather_url), HTTP_REQUEST_URL_FMT, lat, lon, WEATHER_UI_NUM_FORECASTS);
     zsw_ble_http_get(weather_url, http_rsp_cb);
+    // TODO Handle if HTTP requests are not enabled or supported on phone.
 }
 
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
@@ -103,9 +107,9 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 
     if (event->data.type == BLE_COMM_DATA_TYPE_GPS) {
         last_update_gps_time = k_uptime_get();
-        printk("Got GPS data, fetch weather\n");
-        printk("Latitude: %f\n", event->data.data.gps.lat);
-        printk("Longitude: %f\n", event->data.data.gps.lon);
+        LOG_DBG("Got GPS data, fetch weather\n");
+        LOG_DBG("Latitude: %f\n", event->data.data.gps.lat);
+        LOG_DBG("Longitude: %f\n", event->data.data.gps.lon);
         last_lat = event->data.data.gps.lat;
         last_lon = event->data.data.gps.lon;
         fetch_weather_data(event->data.data.gps.lat, event->data.data.gps.lon);
@@ -115,8 +119,12 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 static void weather_app_start(lv_obj_t *root, lv_group_t *group)
 {
     if (last_update_gps_time == 0 || k_uptime_delta(&last_update_gps_time) > MAX_GPS_AGED_TIME_MS) {
-        printk("GPS data is too old, request GPS\n");
-        ble_comm_request_gps_status(true);
+        LOG_DBG("GPS data is too old, request GPS\n");
+        int res = ble_comm_request_gps_status(true);
+        if (res != 0) {
+            LOG_ERR("Failed to request GPS data\n");
+        }
+        // TODO Show GPS fetching in progress in app
     } else {
         fetch_weather_data(last_lat, last_lon);
     }
@@ -138,6 +146,8 @@ static void weather_app_stop(void)
 static int weather_app_add(void)
 {
     zsw_app_manager_add_application(&app);
+
+    // TODO Add periodic GPS and weather polling in backgrund.
 
     return 0;
 }

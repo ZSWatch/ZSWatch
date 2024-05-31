@@ -37,12 +37,9 @@ static void parse_time_zone(char *offset);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
 
-static void send_ble_data_event(ble_comm_cb_data_t *data)
+static void send_ble_data_event(struct ble_data_event *evt)
 {
-    struct ble_data_event evt;
-    memcpy(&evt.data, data, sizeof(ble_comm_cb_data_t));
-
-    zbus_chan_pub(&ble_comm_data_chan, &evt, K_MSEC(250));
+    zbus_chan_pub(&ble_comm_data_chan, evt, K_MSEC(250));
 }
 
 static void music_control_event_callback(const struct zbus_channel *chan)
@@ -78,15 +75,15 @@ static void music_control_event_callback(const struct zbus_channel *chan)
 static void parse_time(char *start_time)
 {
     char *end_time;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
     end_time = strstr(start_time, ")");
     if (end_time) {
         errno = 0;
-        cb.data.notify.id = strtol(start_time, &end_time, 10);
+        cb.data.data.notify.id = strtol(start_time, &end_time, 10);
         if (start_time != end_time && errno == 0) {
-            cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
+            cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
             send_ble_data_event(&cb);
         } else {
             LOG_WRN("Failed parsing time");
@@ -104,16 +101,16 @@ static void parse_time(char *start_time)
 static void parse_time_zone(char *offset)
 {
     char *end_timezone;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
     end_timezone = strstr(offset, ")");
     if (end_timezone) {
-        cb.data.time.tz_offset = strtof(offset, &end_timezone);
+        cb.data.data.time.tz_offset = strtof(offset, &end_timezone);
 
         if (offset != end_timezone) {
-            cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
-            LOG_DBG("set time offset: %.1f", cb.data.time.tz_offset);
+            cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
+            LOG_DBG("set time offset: %.1f", cb.data.data.time.tz_offset);
             send_ble_data_event(&cb);
         } else {
             LOG_WRN("Failed parsing time");
@@ -384,35 +381,35 @@ static void convert_to_encoded_text(char *data, int len, char *out_data, int out
 
 static int parse_notify(char *data, int len)
 {
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_NOTIFY;
-    cb.data.notify.id = extract_value_uint32("\"id\":", data);
-    cb.data.notify.src = extract_value_str("\"src\":", data, &cb.data.notify.src_len);
-    cb.data.notify.sender = extract_value_str("\"sender\":", data, &cb.data.notify.sender_len);
-    cb.data.notify.title = extract_value_str("\"title\":", data, &cb.data.notify.title_len);
-    cb.data.notify.subject = extract_value_str("\"subject\":", data, &cb.data.notify.subject_len);
-    cb.data.notify.body = extract_value_str("\"body\":", data, &cb.data.notify.body_len);
+    cb.data.type = BLE_COMM_DATA_TYPE_NOTIFY;
+    cb.data.data.notify.id = extract_value_uint32("\"id\":", data);
+    cb.data.data.notify.src = extract_value_str("\"src\":", data, &cb.data.data.notify.src_len);
+    cb.data.data.notify.sender = extract_value_str("\"sender\":", data, &cb.data.data.notify.sender_len);
+    cb.data.data.notify.title = extract_value_str("\"title\":", data, &cb.data.data.notify.title_len);
+    cb.data.data.notify.subject = extract_value_str("\"subject\":", data, &cb.data.data.notify.subject_len);
+    cb.data.data.notify.body = extract_value_str("\"body\":", data, &cb.data.data.notify.body_len);
 
     // Little hack since we know it's JSON, we can terminate all values in the data
     // which saves us some hassle and we can just pass all values null terminated
     // to the callback. Make sure to do it after finish parsing!
-    if (cb.data.notify.src) {
-        cb.data.notify.src[cb.data.notify.src_len] = '\0';
+    if (cb.data.data.notify.src) {
+        cb.data.data.notify.src[cb.data.data.notify.src_len] = '\0';
     }
-    if (cb.data.notify.sender) {
-        cb.data.notify.sender[cb.data.notify.sender_len] = '\0';
+    if (cb.data.data.notify.sender) {
+        cb.data.data.notify.sender[cb.data.data.notify.sender_len] = '\0';
     }
-    if (cb.data.notify.title) {
-        cb.data.notify.title[cb.data.notify.title_len] = '\0';
+    if (cb.data.data.notify.title) {
+        cb.data.data.notify.title[cb.data.data.notify.title_len] = '\0';
     }
 
-    if (cb.data.notify.subject) {
-        cb.data.notify.subject[cb.data.notify.subject_len] = '\0';
+    if (cb.data.data.notify.subject) {
+        cb.data.data.notify.subject[cb.data.data.notify.subject_len] = '\0';
     }
-    if (cb.data.notify.body) {
-        cb.data.notify.body[cb.data.notify.body_len] = '\0';
+    if (cb.data.data.notify.body) {
+        cb.data.data.notify.body[cb.data.data.notify.body_len] = '\0';
     }
 
     send_ble_data_event(&cb);
@@ -422,11 +419,11 @@ static int parse_notify(char *data, int len)
 
 static int parse_notify_delete(char *data, int len)
 {
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_NOTIFY_REMOVE;
-    cb.data.notify.id = extract_value_uint32("\"id\":", data);
+    cb.data.type = BLE_COMM_DATA_TYPE_NOTIFY_REMOVE;
+    cb.data.data.notify.id = extract_value_uint32("\"id\":", data);
 
     send_ble_data_event(&cb);
 
@@ -439,22 +436,22 @@ static int parse_weather(char *data, int len)
     int temp_len;
     char *temp_value;
     float temperature;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_WEATHER;
+    cb.data.type = BLE_COMM_DATA_TYPE_WEATHER;
     int32_t temperature_k = extract_value_uint32("\"temp\":", data);
-    cb.data.weather.humidity = extract_value_uint32("\"hum\":", data);
-    cb.data.weather.weather_code = extract_value_uint32("\"code\":", data);
-    cb.data.weather.wind = extract_value_uint32("\"wind\":", data);
-    cb.data.weather.wind_direction = extract_value_uint32("\"wdir\":", data);
+    cb.data.data.weather.humidity = extract_value_uint32("\"hum\":", data);
+    cb.data.data.weather.weather_code = extract_value_uint32("\"code\":", data);
+    cb.data.data.weather.wind = extract_value_uint32("\"wind\":", data);
+    cb.data.data.weather.wind_direction = extract_value_uint32("\"wdir\":", data);
     temp_value = extract_value_str("\"txt\":", data, &temp_len);
 
-    strncpy(cb.data.weather.report_text, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
+    strncpy(cb.data.data.weather.report_text, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
 
     // App sends temperature in Kelvin
     temperature = temperature_k - 273.15f;
-    cb.data.weather.temperature_c = (int8_t)roundf(temperature);
+    cb.data.data.weather.temperature_c = (int8_t)roundf(temperature);
 
     send_ble_data_event(&cb);
 
@@ -466,19 +463,19 @@ static int parse_musicinfo(char *data, int len)
     // {t:"musicinfo",artist:"Ava Max",album:"Heaven & Hell",track:"Sweet but Psycho",dur:187,c:-1,n:-1}
     char *temp_value;
     int temp_len;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
-    cb.data.music_info.duration = extract_value_int32("\"dur\":", data);
-    cb.data.music_info.track_count = extract_value_int32("\"c\":", data);
-    cb.data.music_info.track_num = extract_value_int32("\"n\":", data);
+    cb.data.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
+    cb.data.data.music_info.duration = extract_value_int32("\"dur\":", data);
+    cb.data.data.music_info.track_count = extract_value_int32("\"c\":", data);
+    cb.data.data.music_info.track_num = extract_value_int32("\"n\":", data);
     temp_value = extract_value_str("\"artist\":", data, &temp_len);
-    strncpy(cb.data.music_info.artist, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
+    strncpy(cb.data.data.music_info.artist, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
     temp_value = extract_value_str("\"album\":", data, &temp_len);
-    strncpy(cb.data.music_info.album, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
+    strncpy(cb.data.data.music_info.album, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
     temp_value = extract_value_str("\"track\":", data, &temp_len);
-    strncpy(cb.data.music_info.track_name, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
+    strncpy(cb.data.data.music_info.track_name, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
 
     send_ble_data_event(&cb);
 
@@ -490,19 +487,19 @@ static int parse_musicstate(char *data, int len)
     // {t:"musicinfo",artist:"Ava Max",album:"Heaven & Hell",track:"Sweet but Psycho",dur:187,c:-1,n:-1}
     char *temp_value;
     int temp_len;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
-    cb.data.music_state.position = extract_value_int32("\"position\":", data);
-    cb.data.music_state.shuffle = extract_value_int32("\"shuffle\":", data);
-    cb.data.music_state.repeat = extract_value_int32("\"repeat\":", data);
+    cb.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
+    cb.data.data.music_state.position = extract_value_int32("\"position\":", data);
+    cb.data.data.music_state.shuffle = extract_value_int32("\"shuffle\":", data);
+    cb.data.data.music_state.repeat = extract_value_int32("\"repeat\":", data);
 
     temp_value = extract_value_str("\"state\":", data, &temp_len);
     if (strncmp(temp_value, "play", temp_len) == 0) {
-        cb.data.music_state.playing = true;
+        cb.data.data.music_state.playing = true;
     } else {
-        cb.data.music_state.playing = false;
+        cb.data.data.music_state.playing = false;
     }
 
     send_ble_data_event(&cb);
@@ -515,22 +512,22 @@ static int parse_httpstate(char *data, int len)
     // {"t":"http","resp":"{\"response_code\":0,\"results\":[{\"type\":\"boolean\",\"difficulty\":\"easy\",\"category\":\"Geography\",\"question\":\"Hungary is the only country in the world beginning with H.\",\"correct_answer\":\"False\",\"incorrect_answers\":[\"True\"]}]}"}
     char *temp_value;
     int temp_len;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_HTTP;
+    cb.data.type = BLE_COMM_DATA_TYPE_HTTP;
 
     temp_value = extract_value_str("\"id\":", data, &temp_len);
     if (temp_value) {
         errno = 0;
         char *end_data;
-        cb.data.http_response.id  = strtol(temp_value, &end_data, 10);
+        cb.data.data.http_response.id  = strtol(temp_value, &end_data, 10);
         if (temp_value == end_data || errno != 0) {
             LOG_WRN("Failed parsing http request id");
-            cb.data.http_response.id = -1;
+            cb.data.data.http_response.id = -1;
         }
     } else {
-        cb.data.http_response.id = -1;
+        cb.data.data.http_response.id = -1;
     }
 
     // {"t":"http","err":"Internet access not enabled in this Gadgetbridge build"}
@@ -538,13 +535,13 @@ static int parse_httpstate(char *data, int len)
 
     if (temp_value != NULL) {
         LOG_ERR("HTTP err: %s", temp_value);
-        memcpy(cb.data.http_response.err, temp_value, temp_len);
+        memcpy(cb.data.data.http_response.err, temp_value, temp_len);
         send_ble_data_event(&cb);
     } else {
         temp_value = extract_value_str("\"resp\":", data, &temp_len);
         if (temp_value) {
             LOG_DBG("HTTP response: %s", temp_value);
-            memcpy(cb.data.http_response.response, temp_value,
+            memcpy(cb.data.data.http_response.response, temp_value,
                    (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
             send_ble_data_event(&cb);
         }
@@ -556,10 +553,10 @@ static int parse_httpstate(char *data, int len)
 static int parse_gps_data(char *data, int len)
 {
     //{"t":"gps","lat":55.6135542,"lon":12.9747185,"alt":41.900001525878906,"speed":0.1458607256412506,"time":1717002933835,"satellites":0,"hdop":16.215999603271484,"externalSource":true,"gpsSource":"network"}
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_GPS;
+    cb.data.type = BLE_COMM_DATA_TYPE_GPS;
 
     cJSON *root = cJSON_Parse(data);
     if (root == NULL) {
@@ -574,13 +571,13 @@ static int parse_gps_data(char *data, int len)
     cJSON *satellites = cJSON_GetObjectItem(root, "satellites");
     cJSON *hdop = cJSON_GetObjectItem(root, "hdop");
 
-    cb.data.gps.lat = lat != NULL ? lat->valuedouble : -1;
-    cb.data.gps.lon = lon != NULL ? lon->valuedouble : -1;
-    cb.data.gps.alt = alt != NULL ? alt->valuedouble : -1;
-    cb.data.gps.speed = speed != NULL ? speed->valuedouble : -1;
-    cb.data.gps.time = time != NULL ? time->valuedouble : -1;
-    cb.data.gps.satellites = satellites != NULL ? satellites->valueint : -1;
-    cb.data.gps.hdop = hdop != NULL ? hdop->valuedouble : -1;
+    cb.data.data.gps.lat = lat != NULL ? lat->valuedouble : -1;
+    cb.data.data.gps.lon = lon != NULL ? lon->valuedouble : -1;
+    cb.data.data.gps.alt = alt != NULL ? alt->valuedouble : -1;
+    cb.data.data.gps.speed = speed != NULL ? speed->valuedouble : -1;
+    cb.data.data.gps.time = time != NULL ? time->valuedouble : -1;
+    cb.data.data.gps.satellites = satellites != NULL ? satellites->valueint : -1;
+    cb.data.data.gps.hdop = hdop != NULL ? hdop->valuedouble : -1;
 
     cJSON_Delete(root);
 
@@ -639,7 +636,7 @@ static int parse_data(char *data, int len)
 static void parse_remote_control(char *data, int len)
 {
     int button;
-    ble_comm_cb_data_t cb;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
     button = atoi(data);
@@ -648,8 +645,8 @@ static void parse_remote_control(char *data, int len)
         return;
     }
 
-    cb.type = BLE_COMM_DATA_TYPE_REMOTE_CONTROL;
-    cb.data.remote_control.button = button;
+    cb.data.type = BLE_COMM_DATA_TYPE_REMOTE_CONTROL;
+    cb.data.data.remote_control.button = button;
 
     send_ble_data_event(&cb);
 }
