@@ -82,7 +82,7 @@ static void run_input_work(struct k_work *item);
 static void run_init_work(struct k_work *item);
 
 static void run_wdt_work(struct k_work *item);
-static void enable_bluetoth(void);
+static void enable_bluetooth(void);
 static void print_retention_ram(void);
 static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e);
@@ -213,7 +213,7 @@ static void run_init_work(struct k_work *item)
     zsw_display_control_sleep_ctrl(true);
     print_retention_ram();
     zsw_notification_manager_init();
-    enable_bluetoth();
+    enable_bluetooth();
     zsw_imu_init();
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
@@ -310,7 +310,7 @@ int main(void)
     return 0;
 }
 
-static void enable_bluetoth(void)
+static void enable_bluetooth(void)
 {
     int err;
 
