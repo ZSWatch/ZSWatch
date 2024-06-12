@@ -15,7 +15,7 @@
  */
 #include <stdbool.h>
 #include <stdint.h>
-#ifdef CONFIG_BT_EXT_ADV
+#ifdef CONFIG_BT_DF
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/direction.h>
