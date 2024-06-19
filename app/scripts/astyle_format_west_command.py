@@ -14,7 +14,7 @@ class FormatCodeWestCommand(WestCommand):
         super().__init__(
             "format",
             "Format the codebase",
-            """Use to format all .c and .h giles""",
+            """Use to format all .c and .h files""",
         )
 
     def do_add_parser(self, parser_adder):
