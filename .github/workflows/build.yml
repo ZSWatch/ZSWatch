@@ -66,7 +66,7 @@ jobs:
           west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
       
       - name : Upload Firmware
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.3.3
         with:
           name: ${{ matrix.board }}_${{ matrix.built_type }}
           path: |
