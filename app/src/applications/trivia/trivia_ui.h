@@ -21,3 +21,5 @@ void trivia_ui_update_question(uint8_t *buff);
 void trivia_ui_guess_feedback(bool correct);
 
 void trivia_ui_close_popup(void);
+
+void trivia_ui_not_supported(void);

@@ -1,5 +1,7 @@
 #include "trivia_ui.h"
 
+#define CLOSE_TXT "Close"
+
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *question_lb;
 static lv_obj_t *mbox;
@@ -72,11 +74,20 @@ void trivia_ui_close_popup(void)
 void trivia_ui_guess_feedback(bool correct)
 {
     char msg[sizeof("Your answer is correct!")];
-    static const char *btns[] = {"More", "Close", ""};
+    static const char *btns[] = {"More", CLOSE_TXT, ""};
 
     sprintf(msg, "Your answer is %s!", correct ? "Correct" : "Wrong");
 
     mbox = lv_msgbox_create(NULL, NULL, msg, btns, false);
+    lv_obj_add_event_cb(mbox, click_popup_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_center(mbox);
+}
+
+void trivia_ui_not_supported()
+{
+    static const char *btns[] = {CLOSE_TXT, NULL};
+
+    mbox = lv_msgbox_create(NULL, NULL, "Your phone does not support this app", btns, false);
     lv_obj_add_event_cb(mbox, click_popup_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_center(mbox);
 }
@@ -86,10 +97,10 @@ static void click_popup_event_cb(lv_event_t *e)
     lv_obj_t *obj = lv_event_get_current_target(e);
     trivia_button_t trivia_button;
 
-    if (lv_msgbox_get_active_btn(obj) == 0) {
-        trivia_button = PLAY_MORE_BUTTON;
-    } else {
+    if (strcmp(lv_msgbox_get_active_btn_text(obj), CLOSE_TXT) == 0) {
         trivia_button = CLOSE_BUTTON;
+    } else {
+        trivia_button = PLAY_MORE_BUTTON;
     }
 
     click_callback(trivia_button);

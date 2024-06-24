@@ -89,7 +89,10 @@ static void http_rsp_cb(ble_http_status_code_t status, cJSON *response)
 
 static void request_new_question()
 {
-    zsw_ble_http_get(HTTP_REQUEST_URL, http_rsp_cb);
+    /// @todo create a more generic error code that would cover when GadgetBridge doesn't allow HTTP over BLE, potentially a Systemwide pop-up
+    if (zsw_ble_http_get(HTTP_REQUEST_URL, http_rsp_cb) == -EINVAL) {
+        trivia_ui_not_supported();
+    }
 }
 
 static void on_button_click(trivia_button_t trivia_button)

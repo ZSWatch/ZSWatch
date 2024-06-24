@@ -25,7 +25,7 @@
 #include "ble/ble_cts.h"
 #include "events/ble_event.h"
 
-LOG_MODULE_REGISTER(ble_cts, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(ble_cts, CONFIG_ZSW_BLE_LOG_LEVEL);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 static struct bt_cts_client cts_c;
@@ -35,16 +35,16 @@ static bool has_cts;
 /* Local copy of the current connection. */
 static struct bt_conn *current_conn;
 
-static const char *day_of_week[] = { "Unknown",   "Monday",   "Tuesday",
-                                     "Wednesday", "Thursday", "Friday",
-                                     "Saturday",  "Sunday"
+static const char *day_of_week[] = {"Unknown", "Monday", "Tuesday",
+                                    "Wednesday", "Thursday", "Friday",
+                                    "Saturday", "Sunday"
                                    };
 
-static const char *month_of_year[] = { "Unknown",   "January", "February",
-                                       "March",     "April",   "May",
-                                       "June",      "July",    "August",
-                                       "September", "October", "November",
-                                       "December"
+static const char *month_of_year[] = {"Unknown", "January", "February",
+                                      "March", "April", "May",
+                                      "June", "July", "August",
+                                      "September", "October", "November",
+                                      "December"
                                      };
 
 static void read_current_time_cb(struct bt_cts_client *cts_c, struct bt_cts_current_time *current_time, int err);
@@ -83,7 +83,7 @@ static void current_time_print(struct bt_cts_current_time *current_time)
 
 void publish_time_event(struct bt_cts_current_time *current_time)
 {
-    struct ble_data_event evt_time_inf = { 0 };
+    struct ble_data_event evt_time_inf = {0};
 
     struct tm tm = {
         .tm_sec = current_time->exact_time_256.seconds,
