@@ -34,9 +34,9 @@
 
 LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-#define BLE_COMM_LONG_INT_MIN_MS                (400 / 1.25)
-#define BLE_COMM_LONG_INT_MAX_MS                (500 / 1.25)
-#define BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS     5000
+#define BLE_COMM_LONG_INT_MIN_MS (400 / 1.25)
+#define BLE_COMM_LONG_INT_MAX_MS (500 / 1.25)
+#define BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS 5000
 
 static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
@@ -44,11 +44,13 @@ static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t late
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_slow_handler(struct k_work *item);
 static void update_conn_interval_short_handler(struct k_work *item);
+static void remote_info_available(struct bt_conn *conn, struct bt_conn_remote_info *remote_info);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
-    .connected    = ble_connected,
+    .connected = ble_connected,
     .disconnected = ble_disconnected,
     .le_param_updated = param_updated,
+    .remote_info_available = remote_info_available,
 };
 
 static const struct bt_data ad[] = {
@@ -73,6 +75,7 @@ ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
 
 static struct bt_conn *current_conn;
+static struct bt_conn_remote_info conn_remote_info;
 static uint32_t max_send_len;
 
 static int pairing_enabled;
@@ -80,6 +83,12 @@ static int pairing_enabled;
 static struct ble_transport_cb ble_transport_callbacks = {
     .data_receive = bt_receive_cb,
 };
+
+static void remote_info_available(struct bt_conn *conn, struct bt_conn_remote_info *remote_info)
+{
+    memcpy(&conn_remote_info, remote_info, sizeof(struct bt_conn_remote_info));
+    LOG_DBG("Remote info available, manufacturer 0x%04x", conn_remote_info.manufacturer);
+}
 
 static void auth_cancel(struct bt_conn *conn)
 {
