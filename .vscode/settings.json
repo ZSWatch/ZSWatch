@@ -18,5 +18,8 @@
     "terminal.integrated.env.linux": {
         "GTK_PATH": ""
     },
-    "search.useIgnoreFiles": false
+    "search.useIgnoreFiles": false,
+    "[c]": {
+        "editor.defaultFormatter": "chiehyu.vscode-astyle"
+    }
 }
