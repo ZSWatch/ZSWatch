@@ -306,7 +306,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
     if (!err) {
-        LOG_INF("Security changed: %s level %u", addr, level);
+        LOG_DBG("Security changed: %s level %u", addr, level);
 
         if (bt_conn_get_security(conn) >= BT_SECURITY_L2) {
             discovery_flags = ATOMIC_INIT(0);
@@ -398,7 +398,7 @@ static void notif_attr_print(const struct bt_ancs_attr *attr)
 
 static int parse_notify(const struct bt_ancs_attr *attr)
 {
-    static struct ble_data_event evt = { 0 };
+    static struct ble_data_event evt = {0};
 
     switch (attr->attr_id) {
         case ATTR_ID_TITLE:

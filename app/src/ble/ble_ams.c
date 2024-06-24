@@ -93,7 +93,6 @@ static void music_control_event_callback(const struct zbus_channel *chan)
             // Nothing to do
             break;
     }
-
 }
 
 static void notify_rc_cb(struct bt_ams_client *ams_c,
@@ -170,7 +169,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
         msg_buff[notif->len] = '\0';
         LOG_DBG("AMS EU: %s %s", str_hex, msg_buff);
 
-        static struct ble_data_event evt_music_inf = { 0 };
+        static struct ble_data_event evt_music_inf = {0};
 
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_TRACK &&
             attr_val == BT_AMS_TRACK_ATTRIBUTE_ID_ARTIST) {
@@ -199,7 +198,7 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
         if (notif->ent_attr.entity == BT_AMS_ENTITY_ID_PLAYER &&
             attr_val == BT_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO) {
 
-            struct ble_data_event evt_music_state = { 0 };
+            struct ble_data_event evt_music_state = {0};
 
             evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
 
@@ -326,7 +325,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
                              enum bt_security_err err)
 {
     if (!err) {
-        LOG_INF("Security changed: level %u", level);
+        LOG_DBG("Security changed: level %u", level);
 
         if (bt_conn_get_security(conn) >= BT_SECURITY_L2) {
             discover_gattp(conn);
