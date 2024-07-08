@@ -27,8 +27,16 @@ if("nrf5340dk_nrf5340_cpuapp" STREQUAL "${BOARD}")
 endif()
 
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ZSWatchFW)
+
+# These are XIP related anomalies and aren't applicable for us and cause
+# throughput issues and QSPI issues on NCS 2.6.0
+zephyr_compile_definitions(
+  -DNRF53_ERRATA_43_ENABLE_WORKAROUND=0
+  -DNRF52_ERRATA_215_ENABLE_WORKAROUND=0
+)
 
 add_subdirectory(drivers)
 add_subdirectory(src/history)

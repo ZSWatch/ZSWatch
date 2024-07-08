@@ -105,12 +105,12 @@
 
 / {
 	chosen {
-		nordic,pm-ext-flash = &gd25lq128d;
+		nordic,pm-ext-flash = &mx25u51245g;
 		zephyr,console = &cdc_acm_uart0;
 	};
 
 	aliases {
-		spi-flash0 = &gd25lq128d;
+		spi-flash0 = &mx25u51245g;
 		buzzer-pwm = &buzzer_pwm;
 	};
 
@@ -286,12 +286,13 @@
 	pinctrl-0 = <&qspi_default>;
 	pinctrl-1 = <&qspi_sleep>;
 	pinctrl-names = "default", "sleep";
-	gd25lq128d: gd25lq128d@0 {
+	mx25u51245g: mx25u51245g@0 {
 		compatible = "nordic,qspi-nor";
 		reg = <0>;
 		sck-frequency = <96000000>;
-		jedec-id = [c8 60 18];
-		size = <DT_SIZE_M(16*8)>;
+		jedec-id = [c2 25 3a];
+		size = <DT_SIZE_M(64*8)>;
+		/*
 		has-dpd;
         // CS High to Power-Down Mode (tDP) - 3 us
         // Rev. S Table 26. AC Electrical Characteristic
@@ -299,10 +300,11 @@
         // CS High to Standby Mode without Electronic Signature Read (tRES1) 3 us
         // Rev. S Table 26. AC Electrical Characteristic
 		t-exit-dpd = <20000>;
+		*/
 		// Configure to actully use Quad SPI data.
-		writeoc = "pp4o";
+		writeoc = "pp4io";
 		readoc = "read4io";
-		quad-enable-requirements = "S2B1v1";
+		quad-enable-requirements = "S1B6";
 	};
 };
 
@@ -325,7 +327,7 @@
 
 /delete-node/ &storage_partition;
 
-&gd25lq128d {
+&mx25u51245g {
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;

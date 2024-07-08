@@ -6,7 +6,9 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/app/build/zephyr/zephyr.exe",
-            "args": ["--bt-dev=hci0"],
+            "args": [
+                "--bt-dev=hci0"
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "Disable BT",
