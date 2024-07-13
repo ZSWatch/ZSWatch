@@ -23,6 +23,9 @@ LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_WRN);
 
 #define ZSW_NOT_WORN_STATIONARY_CURRENT 0.0005 // 50uA. TODO remeasure this value and make Kconfig
 
+/* nPM1300 CHARGER.BCHGCHARGESTATUS.CONSTANTCURRENT register bitmask */
+#define NPM1300_CHG_STATUS_CC_MASK BIT_MASK(3)
+
 typedef enum {
     CHG_STATUS_BATTERYDETECTED = 1, // Battery is connected
     CHG_STATUS_COMPLETED = 2, // Charging completed (Battery Full)
@@ -54,6 +57,7 @@ static const struct device *charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_char
 static float max_charge_current;
 static float term_charge_current;
 static int64_t ref_time;
+static bool vbus_connected;
 
 static const struct battery_model battery_model = {
 #include "battery_model.inc"
@@ -142,7 +146,7 @@ static int read_sensors(const struct device *charger, float *voltage, float *cur
 static int fuel_gauge_init(const struct device *charger)
 {
     struct sensor_value value;
-    struct nrf_fuel_gauge_init_parameters parameters = { .model = &battery_model };
+    struct nrf_fuel_gauge_init_parameters parameters = { .model = &battery_model, .opt_params = NULL };
     int ret;
 
     ret = read_sensors(charger, &parameters.v0, &parameters.i0, &parameters.t0, NULL, NULL);
@@ -177,9 +181,11 @@ static void event_callback(const struct device *dev, struct gpio_callback *cb, u
         LOG_DBG("Charging completed\n");
     }
     if (BIT(NPM1300_EVENT_VBUS_DETECTED) & pins) {
+        vbus_connected = true;
         LOG_DBG("VBUS detected\n");
     }
     if (BIT(NPM1300_EVENT_VBUS_REMOVED) & pins) {
+        vbus_connected = false;
         LOG_DBG("VBUS removed\n");
     }
     if (BIT(NPM1300_EVENT_CHG_ERROR) & pins) {
@@ -199,6 +205,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     float tte;
     float ttf;
     float delta;
+    bool cc_charging;
 
     ret = read_sensors(charger, &voltage, &current, &temp, &status, &error);
     if (ret < 0) {
@@ -206,11 +213,13 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
         return ret;
     }
 
+    cc_charging = (status & NPM1300_CHG_STATUS_CC_MASK) != 0;
+
     delta = (float) k_uptime_delta(&ref_time) / 1000.f;
 
     soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
     tte = nrf_fuel_gauge_tte_get();
-    ttf = nrf_fuel_gauge_ttf_get(-max_charge_current, -term_charge_current);
+    ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
     LOG_DBG("V: %.3f, I: %.3f, T: %.2f, ", voltage, current, temp);
     LOG_DBG("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", soc, tte, ttf);
