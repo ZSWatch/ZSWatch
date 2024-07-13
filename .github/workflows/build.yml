@@ -1,8 +1,4 @@
-name: Build
-
-on:
-  push:
-  pull_request:
+on: [workflow_call]
 
 jobs:
   build:
@@ -26,7 +22,7 @@ jobs:
           wget https://sourceforge.net/projects/astyle/files/astyle/astyle%203.4/astyle-3.4.10.tar.bz2/download -O astyle.tar.bz2
           tar -xf astyle.tar.bz2
           cd astyle-3.4.10
-          mkdir as-gcc-exe
+          mkdir -p as-gcc-exe
           cd as-gcc-exe
           cmake ../
           make
@@ -38,7 +34,7 @@ jobs:
           west init -l app
           west config manifest.group-filter +bsec2
           west update -o=--depth=1 -n
-          mkdir fw_images
+          mkdir -p fw_images
       
       - name: Style
         working-directory: ZSWatch

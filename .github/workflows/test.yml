@@ -1,0 +1,51 @@
+on: [workflow_call]
+
+jobs:
+  test:
+    runs-on: self-hosted
+    container: 
+      image: ghcr.io/zephyrproject-rtos/zephyr-build:v0.26.2
+      volumes:
+        - /dev/bus/usb/:/dev/bus/usb
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        continue-on-error: true # JLink install will fail
+        run: |
+          if [ ! -f "`which JLinkExe`" ]; then
+            echo "Installing JLink tools..."
+            wget -q --post-data 'accept_license_agreement=accepted&non_emb_ctr=confirmed&submit=Download+software' https://www.segger.com/downloads/jlink/JLink_Linux_V796t_x86_64.deb
+            sudo apt -qq update
+            sudo apt -y install ./JLink_Linux_V796t_x86_64.deb &>/dev/null
+          fi
+
+          if [ ! -f "`which nrfjprog`" ]; then
+            echo "Installing Nordic command line tools..."
+            wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-24-2/nrf-command-line-tools_10.24.2_amd64.deb
+            sudo apt -y install ./nrf-command-line-tools_10.24.2_amd64.deb &>/dev/null
+            export PATH=$PATH:/opt
+          fi
+
+          python -m pip install --upgrade pip
+          pip install -r app/pytest/requirements.txt
+
+      - name: 'Download image'
+        uses: actions/download-artifact@v4
+        with:
+          name: zswatch_nrf5340_cpuapp@3_debug
+
+      - name: Display structure of downloaded files
+        run: ls
+
+      - name: Test with pytest
+        run: |
+          pip install pytest
+          pytest app/pytest/
