@@ -4,4 +4,16 @@
 
 int zsw_pmic_get_full_state(struct battery_sample_event *sample);
 
+/**
+ * @brief Powers down everything. Enter lowest power mode.
+ *
+ * This function is used to power down the PMIC and enter it's "ship mode".
+ * This consumes the least amount of power possible.
+ *
+ * To wakeup after this, the SW3 (Bottom right) needs to be held down for 10s.
+ *
+ * @return 0 if successful, otherwise an error code.
+ */
+int zsw_pmic_power_down(void);
+
 #endif /* __ZSW_PMIC__H__ */

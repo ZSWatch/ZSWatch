@@ -135,6 +135,8 @@ menu "ZSWatch"
                 int
             prompt "Idle timeout in seconds"
             default 20
+
+            rsource "src/fuel_gauge/Kconfig"
         endmenu
     endmenu
 

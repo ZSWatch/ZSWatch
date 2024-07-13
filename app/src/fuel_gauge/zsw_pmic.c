@@ -10,6 +10,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/mfd/npm1300.h>
+#include <zephyr/drivers/regulator.h>
 #include <zephyr/drivers/sensor/npm1300_charger.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
@@ -51,8 +52,9 @@ ZBUS_LISTENER_DEFINE(zsw_pmic_slow_lis, zbus_periodic_slow_10s_callback);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
-static const struct device *pmic = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_pmic));
-static const struct device *charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_charger));
+static const struct device *pmic = DEVICE_DT_GET(DT_NODELABEL(npm1300_pmic));
+static const struct device *charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_charger));
+static const struct device *regulators = DEVICE_DT_GET(DT_NODELABEL(npm1300_regulators));
 
 static float max_charge_current;
 static float term_charge_current;
@@ -96,6 +98,14 @@ static bool is_charging_from_status(int status)
            (status & CHG_STATUS_TRICKLECHARGE);
 }
 
+static void check_battery_voltage_cutoff(int mV)
+{
+    if (mV <= CONFIG_ZSW_PMIC_BATTERY_CUTOFF_VOLTAGE_MV) {
+        LOG_WRN("Battery voltage below cutoff, entering power down mode\n");
+        zsw_pmic_power_down();
+    }
+}
+
 static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan)
 {
     int ret;
@@ -108,6 +118,8 @@ static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan)
     }
 
     zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
+
+    check_battery_voltage_cutoff(evt.mV);
 }
 
 static int read_sensors(const struct device *charger, float *voltage, float *current, float *temp, int *status,
@@ -161,15 +173,9 @@ static int fuel_gauge_init(const struct device *charger)
 
     nrf_fuel_gauge_init(&parameters, NULL);
 
-    ref_time = k_uptime_get();
+    LOG_WRN("nRF Fuel Gauge version: %s", nrf_fuel_gauge_version);
 
-    struct battery_sample_event evt;
-    ret = zsw_pmic_get_full_state(&evt);
-    if (ret == 0) {
-        zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
-    } else {
-        LOG_ERR("Error: Could not publish inital battery data.\n");
-    }
+    ref_time = k_uptime_get();
 
     return 0;
 }
@@ -239,6 +245,14 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     return ret;
 }
 
+int zsw_pmic_power_down(void)
+{
+    if (vbus_connected) {
+        LOG_WRN("Can't enter power down/shipping mode while VBUS is connected");
+    }
+    return regulator_parent_ship_mode(regulators);
+}
+
 static int zsw_pmic_init(void)
 {
     static struct gpio_callback event_cb;
@@ -262,6 +276,17 @@ static int zsw_pmic_init(void)
     mfd_npm1300_add_callback(pmic, &event_cb);
 
     zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pmic_slow_lis);
+
+    struct battery_sample_event evt;
+    int ret = zsw_pmic_get_full_state(&evt);
+    if (ret == 0) {
+        zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
+    } else {
+        LOG_ERR("Error: Could not publish inital battery data.\n");
+    }
+
+    check_battery_voltage_cutoff(evt.mV);
+
     return 0;
 }
 

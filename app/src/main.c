@@ -60,6 +60,7 @@
 #include "ble/ble_ancs.h"
 #include "ble/ble_cts.h"
 #include <zsw_coredump.h>
+#include "fuel_gauge/zsw_pmic.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
@@ -551,7 +552,10 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                 sys_reboot(SYS_REBOOT_COLD);
                 break;
             case WATCHFACE_APP_EVENT_SHUTDOWN:
-                // TODO enter nPM1300 ship mode or hibernate
+                int ret = zsw_pmic_power_down();
+                if (ret) {
+                    LOG_ERR("Failed to power down the system");
+                }
                 break;
         }
     }

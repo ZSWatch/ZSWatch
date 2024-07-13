@@ -1,0 +1,7 @@
+
+config ZSW_PMIC_BATTERY_CUTOFF_VOLTAGE_MV
+	int "The voltage at which the system will be powered off. Running batteries as low as possible (until battery protection circuit triggers) will reduce the battery life."
+	depends on DT_HAS_NORDIC_NPM1300_ENABLED
+	default 3300
+	help
+	  Voltage in mV at which the system will be powered off.
