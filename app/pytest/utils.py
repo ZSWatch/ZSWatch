@@ -62,6 +62,7 @@ def flash():
             "nrf53",
             "--snr",
             SERIAL_NUMBER,
+            "--recover",
             "--reset",
             "--program",
             "./zswatch_nrf5340_CPUNET.hex",
