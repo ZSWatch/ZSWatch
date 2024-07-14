@@ -10,6 +10,7 @@ from threading import Thread
 
 RAM_ADDR = 0x2007FFFC
 RTT_FLASH_LOAD_BOOT_MODE = 0x0A0A0A0A
+RTT_FLASH_ERASE_EXTERNAL_FLASH = 0xFFFFFFFF
 RTT_HEADER_MAGIC = 0x0A0A0A0A
 
 
@@ -240,6 +241,25 @@ def rtt_run_flush_loader(
         jlink.close()
         pass
 
+def erase_external_flash(target_device, jlink_speed="auto"):
+    jlink = pylink.JLink()
+    print("Connecting to JLink...")
+    jlink.open()
+    print("Connecting to %s..." % target_device)
+    jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
+
+    if jlink_speed != "auto" and jlink_speed != "adaptive":
+        jlink_speed = int(jlink_speed)
+    jlink.connect(target_device, speed=jlink_speed)
+    print("Connected, send RTT_FLASH_ERASE_EXTERNAL_FLASH to RAM_ADDR...")
+    jlink.reset(0, False)
+    jlink.memory_write32(RAM_ADDR, [RTT_FLASH_ERASE_EXTERNAL_FLASH])
+    if jlink.memory_read32(RAM_ADDR, 1)[0] != RTT_FLASH_ERASE_EXTERNAL_FLASH:
+        print("Could not write to RAM_ADDR, exiting...")
+        sys.exit(1)
+    print("Done. Reset into flash loader mode...")
+    jlink.reset(0, False)
+    print("Done. Wait for watch ti reboot...")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Open RTT console.")

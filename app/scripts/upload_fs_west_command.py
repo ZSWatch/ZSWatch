@@ -1,7 +1,7 @@
 from west.commands import WestCommand
 from west import log
 from create_custom_resource_image import create_custom_raw_fs_image
-from rtt_flash_loader import rtt_run_flush_loader
+from rtt_flash_loader import rtt_run_flush_loader, erase_external_flash
 from create_littlefs_resouce_image import create_littlefs_fs_image
 import sys
 import os
@@ -19,6 +19,12 @@ class UploadFsWestCommand(WestCommand):
     def do_add_parser(self, parser_adder):
         parser = parser_adder.add_parser(
             self.name, help=self.help, description=self.description
+        )
+
+        parser.add_argument(
+            "--erase",
+            action="store_true",
+            help="Erase the external (Q)SPI Flash",
         )
 
         parser.add_argument(
@@ -42,6 +48,11 @@ class UploadFsWestCommand(WestCommand):
         return parser
 
     def do_run(self, args, unknown_args):
+        if args.erase:
+            sys.exit(
+                erase_external_flash("nRF5340_XXAA")
+            )
+            return
         log.inf("Creating image")
         img_size = 2 * 1024 * 1024
         block_size = 4096
