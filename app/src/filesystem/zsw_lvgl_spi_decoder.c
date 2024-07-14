@@ -20,6 +20,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/sys/util.h>
 #include <filesystem/zsw_filesystem.h>
 #include <lvgl.h>
 #include "lv_conf.h"
@@ -161,18 +162,44 @@ static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
     return errno_to_lv_fs_res(0);
 }
 
+static uint8_t fix_alignment_buffer[SPI_FLASH_SECTOR_SIZE];
 static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf, uint32_t btr,
                                 uint32_t *br)
 {
     int rc;
+    uint32_t extra_bytes_start;
+    uint32_t extra_bytes_end;
+    uint32_t orig_read_address, read_address;
     opened_file_t *open_file = (opened_file_t *)file;
 
-    rc = flash_area_read(flash_area, open_file->header->offset + open_file->index + file_table.header_length, buf, btr);
+    orig_read_address = open_file->header->offset + open_file->index + file_table.header_length;
+    read_address = ROUND_DOWN(orig_read_address, 4);
+
+    if ((read_address != orig_read_address) && btr < sizeof(fix_alignment_buffer)) {
+        extra_bytes_start = orig_read_address - read_address;
+    } else {
+        extra_bytes_start = 0;
+        read_address = orig_read_address;
+    }
+
+    if (!IS_ALIGNED(btr + extra_bytes_start, 4) && (ROUND_UP(btr + extra_bytes_start, 4) < SPI_FLASH_SECTOR_SIZE)) {
+        extra_bytes_end = ROUND_UP(btr + extra_bytes_start, 4) - (btr + extra_bytes_start);
+    } else {
+        extra_bytes_end = 0;
+    }
+
+    rc = flash_area_read(flash_area, read_address, extra_bytes_start ? fix_alignment_buffer : buf,
+                         btr + extra_bytes_start + extra_bytes_end);
     if (rc != 0) {
         printk("Flash read failed! %d\n", rc);
         *br = 0;
         return errno_to_lv_fs_res(rc);
     }
+
+    if (extra_bytes_start) {
+        memcpy(buf, fix_alignment_buffer + extra_bytes_start, btr);
+    }
+
     *br = btr;
     open_file->index += btr;
     return errno_to_lv_fs_res(0);
