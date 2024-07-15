@@ -244,13 +244,14 @@
 
 		npm1300_charger: charger {
 			compatible = "nordic,npm1300-charger";
-			term-microvolt = <4150000>;
+			term-microvolt = <4400000>;
 			term-warm-microvolt = <4000000>;
-			current-microamp = <150000>;
+			current-microamp = <200000>; // 0.2C CC (constant current) charge to 4.4V,
+			term-current-percent = <10>; // then 4.4V CV(constant voltage) charge till charge current decline to ≤ 0.02C
 			dischg-limit-microamp = <1000000>;
 			vbus-limit-microamp = <500000>;
-			thermistor-ohms = <10000>;
-			thermistor-beta = <3380>;
+			thermistor-ohms = <10000>; // Not used
+			thermistor-beta = <3380>; // Not used
 			charging-enable;
 		};
 		npm1300_buttons: buttons {

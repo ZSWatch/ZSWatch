@@ -552,10 +552,12 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                 sys_reboot(SYS_REBOOT_COLD);
                 break;
             case WATCHFACE_APP_EVENT_SHUTDOWN:
+#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
                 int ret = zsw_pmic_power_down();
                 if (ret) {
                     LOG_ERR("Failed to power down the system");
                 }
+#endif
                 break;
         }
     }
