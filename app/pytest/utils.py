@@ -42,10 +42,9 @@ def flash():
             "nrf53",
             "--snr",
             SERIAL_NUMBER,
-            "--recover",
             "--program",
             "./zswatch_nrf5340_cpuapp@3_debug.hex",
-            "--qspichiperase",
+            "--recover",
             "--verify",
         ],
         shell=False,
@@ -62,13 +61,12 @@ def flash():
             "nrf53",
             "--snr",
             SERIAL_NUMBER,
-            "--reset",
             "--program",
             "./zswatch_nrf5340_CPUNET.hex",
             "--coprocessor",
             "CP_NETWORK",
-            "--qspisectorerase",
             "--verify",
+            "--reset",
         ],
         shell=False,
         stderr=subprocess.STDOUT,
@@ -99,6 +97,7 @@ def read_rtt(target_device="nRF5340_XXAA", timeout_ms=10000):
         time.sleep(0.1)
 
     jlink.close()
+    print(read_data)
     log.debug(read_data)
 
     return read_data
