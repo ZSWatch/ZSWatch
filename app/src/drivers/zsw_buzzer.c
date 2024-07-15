@@ -134,7 +134,7 @@ struct note_duration_t beep_song[] = {
 };
 
 static const struct pwm_dt_spec buzzer_dt = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
-static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(regulator_buzzer_usb));
+static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(regulator_buzzer));
 
 K_TIMER_DEFINE(buzzer_timer, pattern_timer_timeout, NULL);
 
