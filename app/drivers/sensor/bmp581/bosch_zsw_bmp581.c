@@ -17,11 +17,11 @@
 #include <zephyr/sys/byteorder.h>
 
 #include "bmp5.h"
-#include "bosch_bmp581.h"
+#include "bosch_zsw_bmp581.h"
 
-#define DT_DRV_COMPAT                   bosch_bmp581
+#define DT_DRV_COMPAT                   bosch_zsw_bmp581
 
-LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_BOSCH_BMP581_LOG_LEVEL);
+LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_BOSCH_ZSW_BMP581_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "bmp581 driver enabled without any devices"

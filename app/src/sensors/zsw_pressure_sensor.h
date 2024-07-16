@@ -19,7 +19,7 @@
 
 #include <zephyr/drivers/sensor.h>
 
-#include "../../drivers/sensor/bmp581/bosch_bmp581.h"
+#include "../../drivers/sensor/bmp581/bosch_zsw_bmp581.h"
 
 int zsw_pressure_sensor_init(void);
 

@@ -104,7 +104,7 @@
     };
 
     bmp581: bmp581@47 {
-        compatible = "bosch,bmp581";
+        compatible = "bosch,zsw_bmp581";
         reg = <0x47>;
         status = "okay";
         int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;

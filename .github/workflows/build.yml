@@ -45,10 +45,10 @@ jobs:
         if: ${{ matrix.board != 'native_posix' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf"
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
           mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}.hex
           mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}.elf
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_rotated -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay"
+          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_rotated -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
           mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.hex
           mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.elf
 
