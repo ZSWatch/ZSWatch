@@ -34,7 +34,7 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group)
     snprintf(fs_stats, sizeof(fs_stats), "%d Files", NUM_RAW_FS_FILES);
 #endif
     snprintf(build_time, sizeof(build_time), "%s %s", __DATE__, __TIME__);
-    snprintf(sdk_version, sizeof(sdk_version), "NCS: %s - Zephyr: %s", BANNER_VERSION, KERNEL_VERSION_STRING);
+    snprintf(sdk_version, sizeof(sdk_version), "NCS: %s - Zephyr: %s", NCS_VERSION_STRING, KERNEL_VERSION_STRING);
     snprintf(version, sizeof(version), "v%s-%s", APP_VERSION_STRING, STRINGIFY(APP_BUILD_VERSION));
     about_ui_show(root, CONFIG_ZSWATCH_PCB_REV, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
 }

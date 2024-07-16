@@ -36,6 +36,7 @@ project(ZSWatchFW)
 zephyr_compile_definitions(
   -DNRF53_ERRATA_43_ENABLE_WORKAROUND=0
   -DNRF52_ERRATA_215_ENABLE_WORKAROUND=0
+  -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0 #Not allowing 128MHz CPU with QPSI at same time. We take the risk of this errata that may cause currupt QPSI data.
 )
 
 add_subdirectory(drivers)
@@ -96,3 +97,7 @@ file(GLOB ext_fs_files "src/images/binaries/S/*.*")
 list(LENGTH ext_fs_files num_ext_fs_files)
 add_compile_definitions(NUM_RAW_FS_FILES=${num_ext_fs_files})
 message("Number of external filesystem files:" ${num_ext_fs_files})
+
+# TODO fix all of them. New since NCS 2.7
+set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
+zephyr_compile_options(-Wno-double-promotion)

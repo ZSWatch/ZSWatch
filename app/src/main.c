@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/policy.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/logging/log.h>
@@ -221,6 +223,8 @@ static void run_init_work(struct k_work *item)
     zsw_light_sensor_init();
     zsw_environment_sensor_init();
 
+    // Need to enable the gpio-keys as they are suspended by default
+    pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(buttons)), PM_DEVICE_ACTION_RESUME);
     INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback);
 
     lv_indev_drv_init(&enc_drv);

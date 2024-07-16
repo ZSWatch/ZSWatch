@@ -4,18 +4,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig BMP581
+menuconfig ZSW_BMP581
     bool "Bosch BMP581 Sensor"
-    depends on DT_HAS_BOSCH_BMP581_ENABLED
+    depends on DT_HAS_BOSCH_ZSW_BMP581_ENABLED
     default y
     select I2C
     help
         Enable the driver for the BMP581 pressure sensor.
 
-if BMP581
+if ZSW_BMP581
 
-module = BOSCH_BMP581
-module-str = BOSCH_BMP581
+module = BOSCH_ZSW_BMP581
+module-str = BOSCH_ZSW_BMP581
 source "subsys/logging/Kconfig.template.log_config"
 
 endif
