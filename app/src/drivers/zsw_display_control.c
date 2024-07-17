@@ -58,7 +58,7 @@ K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 K_MUTEX_DEFINE(display_mutex);
 K_SEM_DEFINE(brightness_sem, 1, 1);
 
-static struct k_work_sync canel_work_sync;
+static struct k_work_sync cancel_work_sync;
 static display_state_t display_state;
 static bool first_render_since_poweron;
 static uint8_t last_brightness = 1;
@@ -118,7 +118,7 @@ int zsw_display_control_sleep_ctrl(bool on)
                 LOG_DBG("Put display to sleep");
                 // Cancel pending call to lv_task_handler
                 // Or let it finish if it's running.
-                k_work_cancel_delayable_sync(&lvgl_work, &canel_work_sync);
+                k_work_cancel_delayable_sync(&lvgl_work, &cancel_work_sync);
                 // Since actual flushing the data over SPI to the screen is done in a
                 // thread in the display driver, we need to give it some time to complete
                 // before we power off the display. If not the display will glitch.

@@ -105,7 +105,7 @@ static delayed_work_item_t update_work =      { .type = UPDATE_VALUES };
 static delayed_work_item_t date_work =      { .type = UPDATE_SLOW_VALUES };
 
 static delayed_work_item_t general_work_item;
-static struct k_work_sync canel_work_sync;
+static struct k_work_sync cancel_work_sync;
 
 static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
 static ble_comm_data_type_t last_data_update_type;
@@ -171,9 +171,9 @@ void watchface_app_stop(void)
 {
     running = false;
     is_suspended = false;
-    k_work_cancel_delayable_sync(&clock_work.work, &canel_work_sync);
-    k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
-    k_work_cancel_delayable_sync(&general_work_item.work, &canel_work_sync);
+    k_work_cancel_delayable_sync(&clock_work.work, &cancel_work_sync);
+    k_work_cancel_delayable_sync(&date_work.work, &cancel_work_sync);
+    k_work_cancel_delayable_sync(&general_work_item.work, &cancel_work_sync);
     watchfaces[watchface_settings.watchface_index]->remove();
     zsw_watchface_dropdown_ui_remove();
 }
@@ -414,8 +414,8 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
         const struct activity_state_event *event = zbus_chan_const_msg(chan);
         if (event->state == ZSW_ACTIVITY_STATE_INACTIVE) {
             is_suspended = true;
-            k_work_cancel_delayable_sync(&clock_work.work, &canel_work_sync);
-            k_work_cancel_delayable_sync(&date_work.work, &canel_work_sync);
+            k_work_cancel_delayable_sync(&clock_work.work, &cancel_work_sync);
+            k_work_cancel_delayable_sync(&date_work.work, &cancel_work_sync);
         } else if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
             is_suspended = false;
             watchfaces[watchface_settings.watchface_index]->ui_invalidate_cached();
