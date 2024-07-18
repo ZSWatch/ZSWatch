@@ -78,7 +78,8 @@ def flash():
 
 def read_rtt(target_device="nRF5340_XXAA", timeout_ms=10000):
     """Read Segger RTT output"""
-    jlink = pylink.JLink(level=logging.WARNING)
+    jlink = pylink.JLink()
+    logging.getLogger("pylink.jlink").setLevel(logging.WARNING)
     log.info("Connecting to JLink...")
     jlink.open(serial_no=SERIAL_NUMBER)
     log.info("Connecting to %s..." % target_device)
