@@ -21,12 +21,10 @@
 
 
 // struct to store assembled incoming data from chronos
-struct ChronosData
-{
+typedef struct chronos_data {
     int length;
     uint8_t data[DATA_SIZE];
-};
-ChronosData incomingData; // variable to store incoming data
+} chronos_data_t;
 
 void zsw_ble_chronos_input(const uint8_t *const data, uint16_t len);
 

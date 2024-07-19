@@ -26,6 +26,8 @@ static void music_control_event_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis_chronos, music_control_event_callback);
 
+static chronos_data_t incomingData; // variable to store incoming data
+
 static void send_ble_data_event(ble_comm_cb_data_t *data)
 {
     struct ble_data_event evt;
