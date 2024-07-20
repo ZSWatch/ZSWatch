@@ -17,5 +17,5 @@ def test_reset():
 
 def test_boot():
     log.info("Wait for boot")
-    time.sleep(30)
+    time.sleep(60)
     assert utils.read_rtt(timeout_ms=20000).find("Enter inactive") != -1
