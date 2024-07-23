@@ -245,6 +245,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     if (lv_slider_get_mode(ui_bri_slider) == LV_SLIDER_MODE_RANGE) {
         lv_slider_set_left_value(ui_bri_slider, 0, LV_ANIM_OFF);
     }
+    lv_slider_set_range(ui_bri_slider, 1, 100);
     lv_obj_set_width(ui_bri_slider, 50);
     lv_obj_set_height(ui_bri_slider, 110);
     lv_obj_set_x(ui_bri_slider, -10);
