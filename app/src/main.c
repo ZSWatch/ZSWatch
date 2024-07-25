@@ -287,6 +287,22 @@ static void run_wdt_work(struct k_work *item)
 
 int main(void)
 {
+    /*
+    while (1) {
+        struct i2c_msg msgs[1];
+        uint8_t dst;
+
+        for (uint8_t i = 0; i < 127; i++) {
+            msgs[0].buf = &dst;
+            msgs[0].len = 0U;
+            msgs[0].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
+            if (i2c_transfer(i2c, &msgs[0], 1, i) == 0) {
+                LOG_INF("Found device at 0x%X", i);
+            }
+        }
+
+        k_msleep(1000);
+    }*/
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (bootmode_check(ZSW_BOOT_MODE_RTT_FLASH_LOADER)) {
         LOG_WRN("SPI Flash Loader Boot Mode");
@@ -594,20 +610,16 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     switch (event->data.type) {
         case BLE_COMM_DATA_TYPE_SET_TIME: {
             if (event->data.data.time.seconds > 0) {
-                // TODO: Replace with set time
-                struct timespec tspec;
-                tspec.tv_sec = event->data.data.time.seconds;
-                tspec.tv_nsec = 0;
-
-                clock_settime(CLOCK_REALTIME, &tspec);
+                zsw_timeval_t ztm;
+                memcpy(&ztm.tm, localtime((const time_t *)&event->data.data.time.seconds), sizeof(ztm.tm));
+                zsw_clock_set_time(&ztm);
             }
 
             if (event->data.data.time.tz_offset != 0) {
                 char tz[sizeof("UTC+01")] = { '\0' };
                 char sign = (event->data.data.time.tz_offset < 0) ? '+' : '-';
                 snprintf(tz, sizeof(tz), "UTC%c%d", sign, MIN(abs(event->data.data.time.tz_offset), 99));
-                setenv("TZ", tz, 1);
-                tzset();
+                zsw_clock_set_timezone(tz);
             }
             break;
         }

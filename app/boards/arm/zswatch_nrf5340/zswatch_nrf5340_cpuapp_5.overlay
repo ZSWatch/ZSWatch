@@ -113,6 +113,7 @@
 	aliases {
 		spi-flash0 = &mx25u51245g;
 		buzzer-pwm = &buzzer_pwm;
+		rtc = &rv_8263_c8;
 	};
 
     longpress: longpress {

@@ -16,7 +16,7 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zsw_retained_ram_storage.h>
+#include "zsw_retained_ram_storage.h"
 #ifndef CONFIG_BOARD_NATIVE_POSIX
 #include <stdlib.h>
 #include <zephyr/device.h>
@@ -68,4 +68,3 @@ void zsw_retained_ram_reset(void)
 {
 }
 #endif
-

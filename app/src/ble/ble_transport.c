@@ -54,10 +54,11 @@ BT_GATT_SERVICE_DEFINE(nus_service,
                                               NULL, NULL, NULL),
                        BT_GATT_CCC(NULL,
 #if CONFIG_BLE_DISABLE_PAIRING_REQUIRED
-                                   BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+                                   BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
 #else
-                                   BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT),
+                                   BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT
 #endif
+                                  ),
                        BT_GATT_CHARACTERISTIC(BLE_TRANSPORT_UUID_RX,
                                               BT_GATT_CHRC_WRITE |
                                               BT_GATT_CHRC_WRITE_WITHOUT_RESP,

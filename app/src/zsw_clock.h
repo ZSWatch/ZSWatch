@@ -17,20 +17,37 @@
 
 #pragma once
 
+#include <zephyr/drivers/rtc.h>
+
 #include <inttypes.h>
 #include <time.h>
 
+#if CONFIG_RTC
 typedef void (*zsw_clock_on_update)(void);
+#endif
 
 typedef struct {
+#if CONFIG_RTC
+    struct rtc_time
+        tm;                 /**< Modified time object with 1900 added to the year and the month increased by one. */
+#else
     struct tm   tm;                 /**< Modified time object with 1900 added to the year and the month increased by one. */
+#endif
     uint32_t    tv_usec;
 } zsw_timeval_t;
 
-void zsw_clock_add_update(zsw_clock_on_update callback);
-
+/** @brief
+ *              NOTE: This function needs the time as seconds
+ *  @param ztm
+ */
 void zsw_clock_set_time(zsw_timeval_t *ztm);
 
+/** @brief
+ *  @param ztm
+ */
 void zsw_clock_get_time(zsw_timeval_t *ztm);
 
-time_t zsw_clock_get_time_unix(void);
+/** @brief
+ *  @param tz
+ */
+void zsw_clock_set_timezone(char *tz);

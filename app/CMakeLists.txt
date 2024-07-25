@@ -76,13 +76,7 @@ else()
     add_subdirectory(src/basic_battery)
 endif()
 
-# TODO
 target_sources(app PRIVATE src/zsw_clock.c)
-#if (CONFIG_RTC)
-#    target_sources(app PRIVATE src/zsw_rtc.c)
-#else()
-#endif()
-
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)
 target_sources(app PRIVATE src/zsw_retained_ram_storage.c)
