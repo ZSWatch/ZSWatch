@@ -20,14 +20,14 @@
 #include "managers/zsw_notification_manager.h"
 
 #if CONFIG_WATCHFACE_BACKGROUND_SPACE
-LV_IMG_DECLARE(space_blur_bg);
-const lv_img_dsc_t *global_watchface_bg_img = &space_blur_bg;
+ZSW_LV_IMG_DECLARE(space_blur_bg);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(space_blur_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_FLOWER
-LV_IMG_DECLARE(flower_watchface_bg);
-const lv_img_dsc_t *global_watchface_bg_img = &flower_watchface_bg;
+ZSW_LV_IMG_DECLARE(flower_watchface_bg);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(flower_watchface_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_PLANET
-LV_IMG_DECLARE(earth_blur_move);
-const lv_img_dsc_t *global_watchface_bg_img = &earth_blur_move;
+ZSW_LV_IMG_DECLARE(earth_blur_move);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(earth_blur_move);
 #else
 const lv_img_dsc_t *global_watchface_bg_img = NULL;
 #endif
