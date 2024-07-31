@@ -33,25 +33,39 @@ class UploadFsWestCommand(WestCommand):
             default="raw",
             help="raw or fs. fs to load littlefs image, raw to load custom binary",
         )
+
         parser.add_argument(
             "--read_file", type=str, help="If set dump flash to this filename"
         )
+
         parser.add_argument(
             "-p",
             "--partition",
             type=str,
             help="Label of partition in DTS to write to. Leave blank to use auto guess name.",
         )
+
         parser.add_argument(
-        "--speed", help="JLink speed (int): connection speed in kHz, one of {5-12000, 'auto', 'adaptive'}", default='auto', required=False
-    )
+            "--speed",
+            help="JLink speed (int): connection speed in kHz, one of {5-12000, 'auto', 'adaptive'}",
+            default="auto",
+            required=False,
+        )
+
+        parser.add_argument(
+            "-s",
+            "--serial_number",
+            type=str,
+            help="JLink serial number",
+            default=None,
+            required=False,
+        )
+
         return parser
 
     def do_run(self, args, unknown_args):
         if args.erase:
-            sys.exit(
-                erase_external_flash("nRF5340_XXAA")
-            )
+            sys.exit(erase_external_flash("nRF5340_XXAA"))
             return
         log.inf("Creating image")
         img_size = 2 * 1024 * 1024
@@ -92,5 +106,12 @@ class UploadFsWestCommand(WestCommand):
                 )
         log.inf("Uploading image")
         sys.exit(
-            rtt_run_flush_loader("nRF5340_XXAA", filename, partition, args.speed, args.read_file)
+            rtt_run_flush_loader(
+                "nRF5340_XXAA",
+                filename,
+                partition,
+                args.speed,
+                args.read_file,
+                args.serial_number,
+            )
         )

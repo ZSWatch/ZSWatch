@@ -157,7 +157,12 @@ def load_data(jlink, file, partition):
 
 
 def rtt_run_flush_loader(
-    target_device, file, partition, jlink_speed="auto", read_data_only=False
+    target_device,
+    file,
+    partition,
+    jlink_speed="auto",
+    read_data_only=False,
+    serial_number=None,
 ):
     """Creates connection to target via RTT and either writes a file or reads from flash.
 
@@ -165,6 +170,7 @@ def rtt_run_flush_loader(
       target_device (string): The target CPU to connect to.
       file (string): The binary file to write to target or dump target flash content in.
       read_data_only (bool): optional bool indication if flash should be read instead of written to.
+      serial_number (string): JLink serial number
 
     Returns:
       Always returns ``0`` or a JLinkException.
@@ -174,7 +180,7 @@ def rtt_run_flush_loader(
     """
     jlink = pylink.JLink()
     print("Connecting to JLink...")
-    jlink.open()
+    jlink.open(serial_no=serial_number)
     print("Connecting to %s..." % target_device)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
 
@@ -241,6 +247,7 @@ def rtt_run_flush_loader(
         jlink.close()
         pass
 
+
 def erase_external_flash(target_device, jlink_speed="auto"):
     jlink = pylink.JLink()
     print("Connecting to JLink...")
@@ -260,6 +267,7 @@ def erase_external_flash(target_device, jlink_speed="auto"):
     print("Done. Reset into flash loader mode...")
     jlink.reset(0, False)
     print("Done. Wait for watch ti reboot...")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Open RTT console.")
