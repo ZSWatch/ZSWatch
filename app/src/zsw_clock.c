@@ -120,6 +120,23 @@ static int zsw_clock_init(void)
         LOG_ERR("Device not ready!");
         return -EBUSY;
     }
+    struct rtc_time tm;
+
+    memset(&tm, 0, sizeof(struct rtc_time));
+    if (rtc_get_time(rtc, &tm) == -ENODATA) {
+        LOG_WRN("RTC has no valid time, setting to 0");
+        memset(&tm, 0, sizeof(struct rtc_time));
+#ifdef CONFIG_BOARD_NATIVE_POSIX
+        struct tm *tp;
+        time_t t;
+        t = time(NULL);
+        tp = localtime(&t);
+        t = mktime(tp);
+        rtc_set_time(rtc, (struct rtc_time *)tp);
+#else
+        rtc_set_time(rtc, &tm);
+#endif
+    }
 #else
     struct timespec tspec;
 
