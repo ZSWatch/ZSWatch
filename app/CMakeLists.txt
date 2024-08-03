@@ -92,6 +92,9 @@ target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_lvgl_spi_decoder.c)
 
+target_sources_ifdef(CONFIG_RTC_ALARM app PRIVATE src/zsw_alarm.c)
+
+
 if(DFU_BUILD)
     target_sources(app PRIVATE src/dfu.c)
 endif()
