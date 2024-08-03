@@ -19,10 +19,15 @@ typedef enum {
 } timer_state_t;
 
 typedef struct {
+    bool used;
     uint32_t timer_id;
+    uint32_t zsw_alarm_timer_id;
     uint32_t hour;
     uint32_t min;
     uint32_t sec;
+    uint32_t remaining_hour;
+    uint32_t remaining_min;
+    uint32_t remaining_sec;
     timer_state_t state;
 } timer_app_timer_t;
 

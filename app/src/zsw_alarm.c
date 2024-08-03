@@ -1,6 +1,5 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
-#include <zephyr/zbus/zbus.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/rtc.h>
 #include <stdio.h>
@@ -14,19 +13,17 @@ LOG_MODULE_REGISTER(zsw_alarm, LOG_LEVEL_DBG);
 
 #define RTC_ALARM_MASK_COMPARE_ALL (RTC_ALARM_TIME_MASK_SECOND | RTC_ALARM_TIME_MASK_MINUTE | RTC_ALARM_TIME_MASK_HOUR)
 
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 static int find_free_alarm_slot(void);
 static void start_earliest_alarm(void);
 static int find_earliest_alarm(void);
 static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, void *user_data);
 int compare(const void* rtc_time_a, const void* rtc_time_b);
-
-ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
-ZBUS_LISTENER_DEFINE(timer_app_slow_listener, zbus_periodic_slow_callback);
+static void copy_rtc_time_to_tm(struct rtc_time *rtc_time, struct tm *tm_time);
+static void copy_tm_to_rtc_time(struct tm *tm_time, struct rtc_time *rtc_time);
 
 static const struct device *rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
 
-static zsw_alarm_t alarms[MAX_ALARMS];
+static zsw_alarm_t alarms[ZSW_MAX_ALARMS];
 
 int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void* user_data)
 {
@@ -38,6 +35,7 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void* user_dat
 
     alarms[alarm_index].expiry_time = expiry_time;
     alarms[alarm_index].used = true;
+    alarms[alarm_index].enabled = true;
     alarms[alarm_index].cb = callback;
     alarms[alarm_index].user_data = user_data;
 
@@ -55,15 +53,7 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
     ret = rtc_get_time(rtc, &alarm_time);
     __ASSERT(ret == 0, "Failed to get current time");
 
-    tm_alarm_time.tm_year = alarm_time.tm_year;
-    tm_alarm_time.tm_mon = alarm_time.tm_mon;
-    tm_alarm_time.tm_mday = alarm_time.tm_mday;
-    tm_alarm_time.tm_hour = alarm_time.tm_hour;
-    tm_alarm_time.tm_min = alarm_time.tm_min;
-    tm_alarm_time.tm_sec = alarm_time.tm_sec;
-    tm_alarm_time.tm_isdst = alarm_time.tm_isdst;
-    tm_alarm_time.tm_wday = alarm_time.tm_wday;
-    tm_alarm_time.tm_yday = alarm_time.tm_yday;
+    copy_rtc_time_to_tm(&alarm_time, &tm_alarm_time);
 
     tm_alarm_time.tm_hour += hour;
     tm_alarm_time.tm_min += min;
@@ -76,15 +66,7 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
         return -EINVAL;
     }
 
-    alarm_time.tm_year = tm_alarm_time.tm_year;
-    alarm_time.tm_mon = tm_alarm_time.tm_mon;
-    alarm_time.tm_mday = tm_alarm_time.tm_mday;
-    alarm_time.tm_hour = tm_alarm_time.tm_hour;
-    alarm_time.tm_min = tm_alarm_time.tm_min;
-    alarm_time.tm_sec = tm_alarm_time.tm_sec;
-    alarm_time.tm_isdst = tm_alarm_time.tm_isdst;
-    alarm_time.tm_wday = tm_alarm_time.tm_wday;
-    alarm_time.tm_yday = tm_alarm_time.tm_yday;
+    copy_tm_to_rtc_time(&tm_alarm_time, &alarm_time);
 
     int alarm_index = find_free_alarm_slot();
 
@@ -94,6 +76,7 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
 
     alarms[alarm_index].expiry_time = alarm_time;
     alarms[alarm_index].used = true;
+    alarms[alarm_index].enabled = true;
     alarms[alarm_index].cb = callback;
     alarms[alarm_index].user_data = user_data;
 
@@ -102,16 +85,91 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
     return alarm_index;
 }
 
+int zsw_alarm_set_enabled(uint32_t alarm_id, bool enabled)
+{
+    if (alarm_id >= ZSW_MAX_ALARMS) {
+        return -EINVAL;
+    }
+
+    if (!alarms[alarm_id].used) {
+        return -EINVAL;
+    }
+
+    if (alarms[alarm_id].enabled == enabled) {
+        return 0;
+    }
+
+    alarms[alarm_id].enabled = enabled;
+
+    start_earliest_alarm();
+
+    return 0;
+}
+
+int zsw_alarm_get_enabled(uint32_t alarm_id, bool* enabled)
+{
+    if (alarm_id >= ZSW_MAX_ALARMS) {
+        return -EINVAL;
+    }
+
+    if (!alarms[alarm_id].used) {
+        return -EINVAL;
+    }
+
+    *enabled = alarms[alarm_id].enabled;
+
+    return 0;
+}
+
+int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t* hour, uint32_t* min, uint32_t* sec)
+{
+    if (alarm_id >= ZSW_MAX_ALARMS) {
+        return -EINVAL;
+    }
+
+    if (!alarms[alarm_id].used) {
+        return -EINVAL;
+    }
+
+    struct tm current_time_tm = {0};
+    struct tm alarm_time_tm = {0};
+    struct rtc_time current_time;
+
+    int ret = rtc_get_time(rtc, &current_time);
+    if (ret != 0) {
+        return ret;
+    }
+
+    copy_rtc_time_to_tm(&current_time, &current_time_tm);
+    copy_rtc_time_to_tm(&alarms[alarm_id].expiry_time, &alarm_time_tm);
+
+    time_t current_epoch = mktime(&current_time_tm);
+    time_t alarm_epoch = mktime(&alarm_time_tm);
+
+    int diffSecs = (int)difftime(alarm_epoch, current_epoch);
+    __ASSERT(diffSecs >= 0, "Alarm is in the past");
+
+    *hour = diffSecs / 3600;
+    *min = (diffSecs % 3600) / 60;
+    *sec = diffSecs % 60;
+
+    return 0;
+}
+
 int zsw_alarm_remove(uint32_t alarm_id)
 {
-    if (alarm_id >= MAX_ALARMS) {
+    if (alarm_id >= ZSW_MAX_ALARMS) {
+        return -EINVAL;
+    }
+
+    if (!alarms[alarm_id].used) {
         return -EINVAL;
     }
 
     int earliest_alarm_index = find_earliest_alarm();
     __ASSERT(earliest_alarm_index >= 0, "Failed to find earliest alarm");
 
-    alarms[alarm_id].used = false;
+    memset(&alarms[alarm_id], 0, sizeof(zsw_alarm_t));
 
     // Check if new alarm is the new earliest, if so change the rtc alarm time to this.
     if (earliest_alarm_index == alarm_id) {
@@ -126,8 +184,8 @@ static int find_earliest_alarm(void)
     zsw_alarm_t* earliest_alarm = NULL;
     int index = -1;
 
-    for (int i = 0; i < MAX_ALARMS; i++) {
-        if (alarms[i].used && compare(&alarms[i], earliest_alarm) < 0) {
+    for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
+        if (alarms[i].used && alarms[i].enabled && compare(&alarms[i], earliest_alarm) < 0) {
             earliest_alarm = &alarms[i];
             index = i;
         }
@@ -181,6 +239,7 @@ static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, 
     LOG_DBG("RTC alarm callback");
     int alarm_index = (int)user_data;
     alarms[alarm_index].used = false;
+    alarms[alarm_index].enabled = false;
     // Cancel alarm
     rtc_alarm_set_callback(rtc, 0, NULL, NULL);
     rtc_alarm_set_time(rtc, 0, 0, NULL);
@@ -188,14 +247,9 @@ static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, 
     alarms[alarm_index].cb(alarms[alarm_index].user_data);
 }
 
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
-{
-
-}
-
 static int find_free_alarm_slot(void)
 {
-    for (int i = 0; i < MAX_ALARMS; i++) {
+    for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
         if (!alarms[i].used) {
             return i;
         }
@@ -240,6 +294,32 @@ int compare(const void* rtc_time_a, const void* rtc_time_b) {
     return 0;
 }
 
+static void copy_rtc_time_to_tm(struct rtc_time *rtc_time, struct tm *tm_time)
+{
+    tm_time->tm_year = rtc_time->tm_year;
+    tm_time->tm_mon = rtc_time->tm_mon;
+    tm_time->tm_mday = rtc_time->tm_mday;
+    tm_time->tm_hour = rtc_time->tm_hour;
+    tm_time->tm_min = rtc_time->tm_min;
+    tm_time->tm_sec = rtc_time->tm_sec;
+    tm_time->tm_isdst = rtc_time->tm_isdst;
+    tm_time->tm_wday = rtc_time->tm_wday;
+    tm_time->tm_yday = rtc_time->tm_yday;
+}
+
+static void copy_tm_to_rtc_time(struct tm *tm_time, struct rtc_time *rtc_time)
+{
+    rtc_time->tm_year = tm_time->tm_year;
+    rtc_time->tm_mon = tm_time->tm_mon;
+    rtc_time->tm_mday = tm_time->tm_mday;
+    rtc_time->tm_hour = tm_time->tm_hour;
+    rtc_time->tm_min = tm_time->tm_min;
+    rtc_time->tm_sec = tm_time->tm_sec;
+    rtc_time->tm_isdst = tm_time->tm_isdst;
+    rtc_time->tm_wday = tm_time->tm_wday;
+    rtc_time->tm_yday = tm_time->tm_yday;
+}
+
 static int zsw_alarm_init(void)
 {
     memset(alarms, 0, sizeof(alarms));
@@ -252,8 +332,6 @@ static int zsw_alarm_init(void)
     t = mktime(tp);
     rtc_set_time(rtc, (struct rtc_time*)tp);
 
-    // TODO if any timers
-    //zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &timer_app_slow_listener);
     return 0;
 }
 

@@ -104,7 +104,20 @@ void timer_ui_add_timer(timer_app_timer_t timer)
 }
 
 void timer_ui_update_timer(timer_app_timer_t timer) {
-
+    lv_label_set_text_fmt(ui_timers[timer.timer_id].ui_timer_time_left, "%02d:%02d:%02d", timer.remaining_hour, timer.remaining_min, timer.remaining_sec);
+    switch (timer.state) {
+        case TIMER_STATE_PLAYING:
+            lv_label_set_text(ui_timers[timer.timer_id].ui_start_pause_button_label, LV_SYMBOL_PAUSE);
+            break;
+        case TIMER_STATE_PAUSED:
+            lv_label_set_text(ui_timers[timer.timer_id].ui_start_pause_button_label, LV_SYMBOL_PLAY);
+            break;
+        case TIMER_STATE_STOPPED:
+            lv_label_set_text(ui_timers[timer.timer_id].ui_start_pause_button_label, LV_SYMBOL_PLAY);
+            break;
+    default:
+        break;
+    }    
 }
 
 static void create_page_indicator(lv_obj_t *container)
