@@ -172,8 +172,10 @@ int zsw_alarm_remove(uint32_t alarm_id)
 
     memset(&alarms[alarm_id], 0, sizeof(zsw_alarm_t));
 
-    // Check if new alarm is the new earliest, if so change the rtc alarm time to this.
+    // Check if removed alarm is the earliest, if so change the rtc alarm to next.
     if (earliest_alarm_index == alarm_id) {
+        rtc_alarm_set_callback(rtc, 0, NULL, NULL);
+        rtc_alarm_set_time(rtc, 0, 0, NULL);
         start_earliest_alarm();
     }
 
@@ -186,7 +188,7 @@ static int find_earliest_alarm(void)
     int index = -1;
 
     for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
-        if (alarms[i].used && alarms[i].enabled && compare(&alarms[i], earliest_alarm) < 0) {
+        if (alarms[i].used && alarms[i].enabled && (earliest_alarm == NULL || compare(&alarms[i], earliest_alarm) < 0)) {
             earliest_alarm = &alarms[i];
             index = i;
         }
@@ -264,7 +266,7 @@ int compare(const void* rtc_time_a, const void* rtc_time_b) {
     zsw_alarm_t *b = (zsw_alarm_t*)rtc_time_b;
 
     if (a != NULL && b == NULL) {
-        return -1;
+        return 1;
     }
 
     if (b != NULL && a == NULL) {
