@@ -266,7 +266,7 @@ def erase_external_flash(target_device, jlink_speed="auto"):
         sys.exit(1)
     print("Done. Reset into flash loader mode...")
     jlink.reset(0, False)
-    print("Done. Wait for watch ti reboot...")
+    print("Done. Wait for watch to reboot...")
 
 
 if __name__ == "__main__":
