@@ -120,6 +120,12 @@ void timer_ui_update_timer(timer_app_timer_t timer) {
     }    
 }
 
+void timer_ui_remove_timer(timer_app_timer_t timer)
+{
+    assert(root_page != NULL);
+    lv_obj_del(ui_timers[timer.timer_id].ui_timer);
+}
+
 static void create_page_indicator(lv_obj_t *container)
 {
     ui_page_indicator = lv_obj_create(container);

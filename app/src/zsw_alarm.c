@@ -147,6 +147,7 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t* hour, uint32_t* min, ui
     time_t alarm_epoch = mktime(&alarm_time_tm);
 
     int diffSecs = (int)difftime(alarm_epoch, current_epoch);
+    LOG_DBG("start: %d, end: %d, diff: %d", current_epoch, alarm_epoch, diffSecs);
     __ASSERT(diffSecs >= 0, "Alarm is in the past");
 
     *hour = diffSecs / 3600;
@@ -238,6 +239,7 @@ static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, 
 {
     LOG_DBG("RTC alarm callback");
     int alarm_index = (int)user_data;
+    __ASSERT(alarms[alarm_index].used, "Alarm is not used");
     alarms[alarm_index].used = false;
     alarms[alarm_index].enabled = false;
     // Cancel alarm

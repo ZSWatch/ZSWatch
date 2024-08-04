@@ -9,6 +9,7 @@
 #include "timer_ui.h"
 #include "zsw_alarm.h"
 #include "events/zsw_periodic_event.h"
+#include "ui/popup/zsw_popup_window.h"
 
 LOG_MODULE_REGISTER(timer_app, LOG_LEVEL_DBG);
 
@@ -60,6 +61,11 @@ static void alarm_triggered_cb(void* user_data) {
     timers[timer_id].remaining_min = timers[timer_id].min;
     timers[timer_id].remaining_sec = timers[timer_id].sec;
     timer_ui_update_timer(timers[timer_id]);
+
+    static char buf[50];
+    snprintf(buf, sizeof(buf), "Timer %d triggered", timer_id);
+
+    zsw_popup_show("Timer", buf, NULL, 3, false);
 }
 
 static int find_free_timer_slot(void) {
@@ -146,18 +152,24 @@ static void on_timer_event_cb(timer_event_type_t type, uint32_t timer_id) {
         case TIMER_EVT_DELETE:
         {
             LOG_DBG("Timer %d delete", timer_id);
-            int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
-            if (ret < 0) {
-                LOG_ERR("Failed to pause timer");
-                return;
+            if (timers[timer_id].used && timers[timer_id].state == TIMER_STATE_PLAYING) {
+                int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
+                if (ret < 0) {
+                    LOG_ERR("Failed to pause timer");
+                    return;
+                }
             }
+            timer_ui_remove_timer(timers[timer_id]);
+
             memset(&timers[timer_id], 0, sizeof(timer_app_timer_t));
             break;
         }
         default:
             __ASSERT(false, "Invalid timer event type");
     }
-    timer_ui_update_timer(timers[timer_id]);
+    if (timers[timer_id].used) {
+        timer_ui_update_timer(timers[timer_id]);
+    }
 }
 
 static void zbus_periodic_1s_callback(const struct zbus_channel *chan)
