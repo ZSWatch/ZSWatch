@@ -28,6 +28,7 @@ typedef struct {
     bool animations_on;
     uint8_t watchface_index;
     bool smooth_second_hand;
+    bool relative_battery;
 } zsw_settings_watchface_t;
 #define ZSW_SETTINGS_KEY_WATCHFACE "watchface"
 #define ZSW_SETTINGS_WATCHFACE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_WATCHFACE)
