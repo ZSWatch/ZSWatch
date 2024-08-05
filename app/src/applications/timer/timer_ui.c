@@ -99,6 +99,7 @@ void timer_ui_add_timer(timer_app_timer_t timer)
 }
 
 void timer_ui_update_timer(timer_app_timer_t timer) {
+    if (!root_page) return;
     lv_label_set_text_fmt(ui_timers[timer.timer_id].ui_timer_time_left, "%02d:%02d:%02d", timer.remaining_hour, timer.remaining_min, timer.remaining_sec);
     switch (timer.state) {
         case TIMER_STATE_PLAYING:
@@ -235,6 +236,7 @@ void timer_screen_init(lv_obj_t *ui_root_container)
 
 static void create_timer_item(lv_obj_t* ui_root_container, timer_app_timer_t timer)
 {
+    assert(root_page != NULL);
     ui_timers[timer.timer_id].ui_timer = lv_obj_create(ui_root_container);
     lv_obj_t* ui_timer = ui_timers[timer.timer_id].ui_timer;
 
@@ -343,6 +345,7 @@ static void create_timer_item(lv_obj_t* ui_root_container, timer_app_timer_t tim
 
 static void create_time_popup(lv_obj_t* ui_root_container)
 {
+    assert(root_page != NULL);
     ui_time_popup = lv_obj_create(ui_root_container);
     lv_obj_remove_style_all(ui_time_popup);
     lv_obj_set_width(ui_time_popup, lv_pct(100));

@@ -8,12 +8,15 @@
 #include "ui/utils/zsw_ui_utils.h"
 #include "timer_ui.h"
 #include "zsw_alarm.h"
+#include "drivers/zsw_vibration_motor.h"
 #include "events/zsw_periodic_event.h"
 #include "ui/popup/zsw_popup_window.h"
 
 LOG_MODULE_REGISTER(timer_app, LOG_LEVEL_DBG);
 
-#define SETTING_TIMERS_LIST    "timer_app/timers"
+#define SETTINGS_NAME_TIMER_APP     "timer_app"
+#define SETTINGS_KEY_TIMERS         "timers"
+#define SETTINGS_TIMERS_LIST         SETTINGS_NAME_TIMER_APP "/" SETTINGS_KEY_TIMERS
 
 static void timer_app_start(lv_obj_t *root, lv_group_t *group);
 static void timer_app_stop(void);
@@ -26,17 +29,17 @@ static void zbus_periodic_1s_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(timer_app_1s_event_listener, zbus_periodic_1s_callback);
 
-ZSW_LV_IMG_DECLARE(battery_app_icon);
+ZSW_LV_IMG_DECLARE(timer_app_icon);
 
 static timer_app_timer_t timers[TIMER_UI_MAX_TIMERS];
+static bool app_is_open;
 
 static application_t app = {
     .name = "Timer",
-    .icon = ZSW_LV_IMG_USE(battery_app_icon),
+    .icon = ZSW_LV_IMG_USE(timer_app_icon),
     .start_func = timer_app_start,
     .stop_func = timer_app_stop
 };
-
 
 static void timer_app_start(lv_obj_t *root, lv_group_t *group)
 {
@@ -44,28 +47,40 @@ static void timer_app_start(lv_obj_t *root, lv_group_t *group)
     // Load timers from flash
     // Load alarms from flash
     timer_ui_show(root, on_timer_created_cb, on_timer_event_cb);
+    for (int i = 0; i < TIMER_UI_MAX_TIMERS; i++) {
+        if (timers[i].used) {
+            timer_ui_add_timer(timers[i]);
+        }
+    }
+    app_is_open = true;
 }
 
 static void timer_app_stop(void)
 {
+    app_is_open = false;
     timer_ui_remove();
 }
 
 static void alarm_triggered_cb(void* user_data) {
     // TODO also check:
     // Check so alarm still valid, it could have been deleted/state changed
-    // While the alarm was qued up
+    // While the alarm was queued up
     uint32_t timer_id = (uint32_t)user_data;
     timers[timer_id].state = TIMER_STATE_STOPPED;
     timers[timer_id].remaining_hour = timers[timer_id].hour;
     timers[timer_id].remaining_min = timers[timer_id].min;
     timers[timer_id].remaining_sec = timers[timer_id].sec;
-    timer_ui_update_timer(timers[timer_id]);
+
+    if (app_is_open) {
+        timer_ui_update_timer(timers[timer_id]);
+    }
 
     static char buf[50];
     snprintf(buf, sizeof(buf), "Timer %d triggered", timer_id);
 
-    zsw_popup_show("Timer", buf, NULL, 3, false);
+    zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
+    // TODO: Make a different popup for timer, and make it vibrate until timer is dismissed
+    zsw_popup_show("Timer", buf, NULL, 10, false);
 }
 
 static int find_free_timer_slot(void) {
@@ -103,6 +118,8 @@ static void on_timer_created_cb(uint32_t hour, uint32_t min, uint32_t sec) {
     
     timers[alarm_index] = timer;
     timer_ui_add_timer(timer);
+
+    settings_save_one(SETTINGS_TIMERS_LIST, &timers, sizeof(timers));
 }
 
 static void on_timer_event_cb(timer_event_type_t type, uint32_t timer_id) {
@@ -162,6 +179,7 @@ static void on_timer_event_cb(timer_event_type_t type, uint32_t timer_id) {
             timer_ui_remove_timer(timers[timer_id]);
 
             memset(&timers[timer_id], 0, sizeof(timer_app_timer_t));
+            settings_save_one(SETTINGS_TIMERS_LIST, &timers, sizeof(timers));
             break;
         }
         default:
@@ -189,6 +207,35 @@ static void zbus_periodic_1s_callback(const struct zbus_channel *chan)
     }
 }
 
+static int timers_settings_load_cb(const char *p_key, size_t len,
+                         settings_read_cb read_cb, void *p_cb_arg, void *p_param)
+{
+    ARG_UNUSED(p_key);
+
+    if (len != sizeof(timers)) {
+        LOG_ERR("Invalid length of timers structure array in settings");
+        return -EINVAL;
+    }
+
+    if (read_cb(p_cb_arg, &timers, len) != sizeof(timers)) {
+        LOG_ERR("Error reading timers from settings");
+        return -EIO;
+    }
+
+    for (int i = 0; i < TIMER_UI_MAX_TIMERS; i++) {
+        if (timers[i].used) {
+            // Reset the timer state as it may have been stored when it was running
+            // We reset all timers at startup
+            timers[i].state = TIMER_STATE_STOPPED;
+            timers[i].remaining_hour = timers[i].hour;
+            timers[i].remaining_min = timers[i].min;
+            timers[i].remaining_sec = timers[i].sec;
+        }
+    }
+
+    return 0;
+}
+
 static int timer_app_add(void)
 {
     zsw_app_manager_add_application(&app);
@@ -199,6 +246,11 @@ static int timer_app_add(void)
     }
 
     memset(timers, 0, sizeof(timers));
+
+    if (settings_load_subtree_direct(SETTINGS_TIMERS_LIST, timers_settings_load_cb, NULL)) {
+        LOG_ERR("Error during settings_load_subtree!");
+        return -EFAULT;
+    }
 
     zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &timer_app_1s_event_listener);
 
