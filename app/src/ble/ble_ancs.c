@@ -497,6 +497,11 @@ static int gattp_init(void)
     return bt_gattp_init(&gattp);
 }
 
+bool ble_ancs_present(void)
+{
+    return atomic_test_bit(&discovery_flags, DISCOVERY_ANCS_SUCCEEDED);
+}
+
 int ble_ancs_init(void)
 {
     int err = bt_ancs_client_init(&ancs_c);
