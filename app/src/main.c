@@ -140,7 +140,7 @@ static void run_input_work(struct k_work *item)
     switch (container->event.code) {
         // Button event
         case (INPUT_KEY_Y): {
-#ifdef CONFIG_MISC_ENABLE_SYSTEM_RESET
+#if(CONFIG_MISC_ENABLE_SYSTEM_RESET && (CONFIG_ZSWATCH_PCB_REV < 5))
             LOG_INF("Force restart");
 
             retained.off_count += 1;
