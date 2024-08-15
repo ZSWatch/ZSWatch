@@ -1,0 +1,70 @@
+From f849140de7f6e29791d6fe2f34756b69e9d26691 Mon Sep 17 00:00:00 2001
+From: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+Date: Tue, 16 Jul 2024 08:30:57 +0200
+Subject: [PATCH] drivers: sensor: Add attribute for gain and resolution
+
+- Add SENSOR_ATTR_GAIN and SENSOR_ATTR_RESOLUTION
+- Remove SENSOR_ATTR_GAIN from tsl2540 header
+
+Signed-off-by: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+---
+ drivers/sensor/ams/tsl2540/tsl2540.c    | 8 +++++---
+ include/zephyr/drivers/sensor.h         | 5 ++++-
+ include/zephyr/drivers/sensor/tsl2540.h | 4 +---
+ 3 files changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/sensor/ams/tsl2540/tsl2540.c b/drivers/sensor/ams/tsl2540/tsl2540.c
+index 98516d5f296..2a24c8b180a 100644
+--- a/drivers/sensor/ams/tsl2540/tsl2540.c
++++ b/drivers/sensor/ams/tsl2540/tsl2540.c
+@@ -212,10 +212,12 @@ static int tsl2540_attr_set(const struct device *dev, enum sensor_channel chan,
+ 	}
+ #endif /* CONFIG_TSL2540_TRIGGER */
+ 
+-	switch ((enum sensor_attribute_tsl2540)attr) {
+-	case SENSOR_ATTR_GAIN:
++	if (attr == SENSOR_ATTR_GAIN) {
+ 		tsl2540_attr_set_gain(dev, (enum sensor_gain_tsl2540)val->val1);
+-		break;
++		goto exit;
++	}
++
++	switch ((enum sensor_attribute_tsl2540)attr) {
+ 	case SENSOR_ATTR_INT_APERS:
+ 		temp = (uint8_t)val->val1;
+ 
+diff --git a/include/zephyr/drivers/sensor.h b/include/zephyr/drivers/sensor.h
+index f23830c8c5a..e16144faae8 100644
+--- a/include/zephyr/drivers/sensor.h
++++ b/include/zephyr/drivers/sensor.h
+@@ -343,7 +343,10 @@ enum sensor_attribute {
+ 
+ 	/** Hardware batch duration in ticks */
+ 	SENSOR_ATTR_BATCH_DURATION,
+-
++	/* Configure the gain of a sensor. */
++	SENSOR_ATTR_GAIN,
++	/* Configure the resolution of a sensor. */
++	SENSOR_ATTR_RESOLUTION,
+ 	/**
+ 	 * Number of all common sensor attributes.
+ 	 */
+diff --git a/include/zephyr/drivers/sensor/tsl2540.h b/include/zephyr/drivers/sensor/tsl2540.h
+index 63a2adfe48b..b0306e91548 100644
+--- a/include/zephyr/drivers/sensor/tsl2540.h
++++ b/include/zephyr/drivers/sensor/tsl2540.h
+@@ -22,10 +22,8 @@ extern "C" {
+ #endif
+ 
+ enum sensor_attribute_tsl2540 {
+-	/* Sensor Gain */
+-	SENSOR_ATTR_GAIN = SENSOR_ATTR_PRIV_START + 1,
+ 	/* Sensor Integration Time (in ms) */
+-	SENSOR_ATTR_INTEGRATION_TIME,
++	SENSOR_ATTR_INTEGRATION_TIME = SENSOR_ATTR_PRIV_START + 1,
+ 	/* Sensor ALS interrupt persistence filters */
+ 	SENSOR_ATTR_INT_APERS,
+ 	/* Shutdown the sensor */
+-- 
+2.34.1
+
