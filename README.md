@@ -41,12 +41,12 @@ Some things are still in progress:
 - Dock casing.
 
 **I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.<br/>
-In addition to assembled ZSWatch and dock you will get the following compared to if you build it yourself:
-- **A magnetic dock connector and cable**. I have got custom ordered cables to fit the needs of ZSWatch.
-- **Dock with onboard SEGGER J-Link OB debgger**, which means you won't need an external debugger for ZSWatch development and flashing.
+In addition to the assembled ZSWatch and dock you will get the following compared to if you build it yourself:
+- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch.
+- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing.
 - **Possibly CNC:ed casing in Stainless steel**.
 
-If you are interested in a kit, or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
+If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
 
 **Or** if you want to get notified for releases and when the missing parts are finished simply press the `Watch` button (next to Fork and Star) -> `Custom -> Releases` and you will see in your feed when it's officially released.
 <br/>
@@ -70,9 +70,8 @@ If you are interested in a kit, or want to get notified when the missing parts a
 - [Licence GPL-3.0](#licence-gpl-30)
 - [Thanks](#thanks)
 
-
 ## Hardware features
-- nRF5340 BLE chip (u-blox NORA-B10 module).
+- nRF5340 BLE chip ([u-blox NORA-B10 module](https://www.u-blox.com/en/product/nora-b1-series-open-cpu)).
   - 128 MHz Dual core.
   - 512 KB RAM.
   - 1 MB Flash.
@@ -82,13 +81,17 @@ If you are interested in a kit, or want to get notified when the missing parts a
 - Bosch [BME688](https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme688/) Environmental sensor with AI.
 - Bosch [BMP581](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp581/) High performance pressure sensor accuracy in units of ~20cm's.
 - ST [LIS2MDLTR](https://www.st.com/resource/en/datasheet/lis2mdl.pdf) Magnetometer.
-- Renesas [AT25SL128A](https://eu.mouser.com/datasheet/2/698/REN_DS_AT25SL128A_109S_032023_DST_20230329-3076025.pdf) 16 MB external flash.
+- Macronix [MX25U51245GZ4I00](https://www.mouser.de/datasheet/2/819/MX25U51245G_2c_1_8V_2c_512Mb_2c_v1_4-3371129.pdf) 64 MB external flash.
 - Broadcom [APDS-9306-065](https://docs.broadcom.com/docs/AV02-4755EN) Light Sensor for automatic brightness control.
+- Micro Crystal [RV-8263-C8](https://www.microcrystal.com/en/products/real-time-clock-rtc-modules/rv-8263-c8) RTC for time keeping and alarm functions.
+- Knowles [SPK0641HT4H-1](https://www.knowles.com/docs/default-source/model-downloads/spk0641ht4h-1-rev-a.pdf) I2S microphone for audio recording.
+- Nordic [nPM1300](https://docs.nordicsemi.com/category/npm1300-category) PMIC for power and system management
+- Texas Instruments [TS3USB221A](https://www.ti.com/lit/ds/symlink/ts3usb221a.pdf?HQS=dis-mous-null-mousermode-dsf-pf-null-wwe&ts=1695813909306&ref_url=https%253A%252F%252Feu.mouser.com%252F) USB / SWD switch to provide a USB or SWD interface on the dock connector.
 - Option to not mount some sensors to save BOM cost.
 
 ## Charger/Dock
 Option with and without onboard SEGGER J-Link OB debugger.<br>
-As the debugger requires a license, this will only be availible as part of a kit.
+As the debugger requires a license, this will only be available as part of a kit.
 
 See more at https://github.com/jakkra/ZSWatch-Dock
 <p float="left">
@@ -103,10 +106,10 @@ See more at https://github.com/jakkra/ZSWatch-Dock
 - Bluetooth LE communications with [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) Android app.
 - Also support Bluetooth Direction Finding so the watch can act as a tag and is trackable using any [u-blox AoA antenna board](https://www.u-blox.com/en/product/ant-b10-antenna-board)
 - Multiple Watchfaces showing:
-   - Standard stuff as time, date, battery
+   - Standard stuff such as time, date, battery
    - Weather
    - Step count
-   - Number unread notifications
+   - Number of unread notifications
    - Environmental data
    - ...
 - Pop-up notifications
@@ -122,7 +125,7 @@ See more at https://github.com/jakkra/ZSWatch-Dock
 ...
 
 ### Features and progress
-There are almost endless of posiblities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
+There are almost endless possibilities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
 
 ## Watchfaces
 
@@ -131,7 +134,7 @@ https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e6
 ## Smartphone communication
 
 ### Android phone communication
-Fortunately there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) which handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In future there may be a point adding native support, we'll see.
+Fortunately, there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) that handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In the future there may be a point in adding native support, we'll see.
 
 **Demo of doing HTTP requests over BLE through Gadgetbridge.**
 
@@ -141,7 +144,7 @@ https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aae
 
 #### Pairing
 - In the watch go to Settings -> Bluetooth -> Enable pairing
-- Now go reconnect to the watch from Gadgetbridge app.
+- Now go reconnect to the watch from the Gadgetbridge app.
 - You should now be paired.
 
 ### iOS device communication
@@ -154,7 +157,7 @@ Apple exposes [Apple Notification Center Service](https://developer.apple.com/li
 - You should be prompted to pair and allow share notifications
 
 ## PCB
-A 4 layer board which measures 38mm in diameter designed in KiCad.<br>
+A 4-layer board that measures 38mm in diameter is designed in KiCad.<br>
 More info here: https://github.com/jakkra/ZSWatch-HW
 
 <p float="left">
@@ -172,14 +175,14 @@ See [GETTING_STARTED.md](GETTING_STARTED.md)
 See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps)
 
 ## Other tools
-- Visit https://jakkra.github.io/ZSWatch-Web-Dashboard to connect and view sensor data in a browser that supports Web Bluetooth [(Source code)](https://github.com/jakkra/ZSWatch-Web-Dashboard 
+Visit https://jakkra.github.io/ZSWatch-Web-Dashboard to connect and view sensor data in a browser that supports Web Bluetooth [(Source code)](https://github.com/jakkra/ZSWatch-Web-Dashboard 
 )
 
 ## Licence GPL-3.0
-Main difference from MIT is now that if anyone want to build something more with this, then they need to also open source their changes back to the project, which I thinks is fair. This is so everyone can benefit from those improvements. If you think this is wrong for some reason feel free to contact me, I'm open to change the LICENCE.
+The main difference from MIT is now that if anyone wants to build something more with this, then they need to also open source their changes back to the project, which I think this is fair. This is so everyone can benefit from those improvements. If you think this is wrong free to contact me and I'm open to change the LICENCE.
 
 ## Thanks
 <a href="https://www.segger.com/"><img width="25%" src=".github/images/SEGGER-Logo-the-embedded-experts-RGB.jpg" ></a>
 
-SEGGER for supporting with SEGGER-OB licenses which makes the dock a fully functional programmer and debugger for ZSWatch.
-Thanks to this the project will be much more approchable for persons without a J-Link debugger, letting them have full development and debugging capabilites.
+SEGGER for supporting SEGGER-OB licenses that make the dock a fully functional programmer and debugger for ZSWatch.
+Thanks to this the project will be much more approachable for persons without a J-Link debugger, letting them have full development and debugging capabilities.
