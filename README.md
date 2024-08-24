@@ -1,3 +1,5 @@
+# ZSWatch
+
 ![ZSWatch_gh_banner](https://github.com/jakkra/ZSWatch/assets/4318648/dc3849d7-4618-47a4-8efe-8a909a47fd20)
 
 <div align="center">
@@ -13,21 +15,14 @@
   ZSWatch v4 CNC:ed Stainless Steel (left), Clear Resin 3D print (right)
 </sub>
 </div>
-<br/>
-<br/>
 
-<p align="center" >
-  <a href="https://www.youtube.com/watch?v=MmCzV0jV9hs"><img width="55%" src=".github/images/presentation.png" ></a>
-</p>
-<p align="center">Watch my presentation at Zephyr Developer Summit 2023</p>
+## Table of content
 
-# Table of content ZSWatch
-
-- [Table of content ZSWatch](#table-of-content-zswatch)
+- [ZSWatch](#zswatch)
+  - [Table of content](#table-of-content)
   - [About](#about)
   - [Features](#features)
     - [Hardware](#hardware)
-      - [Overview](#overview)
       - [PCB](#pcb)
     - [Software](#software)
     - [Watchfaces](#watchfaces)
@@ -42,9 +37,9 @@
   - [Building or getting one](#building-or-getting-one)
   - [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
   - [Writing apps for the Application Manager](#writing-apps-for-the-application-manager)
-  - [Other tools](#other-tools)
   - [Licence GPL-3.0](#licence-gpl-30)
   - [Thanks](#thanks)
+  - [Miscellaneous stuff](#miscellaneous-stuff)
 
 ## About
 
@@ -52,43 +47,35 @@ Smartwatch built from scratch, both hardware and software. Built on the [Zephyrâ
 
 <kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd>
 
+https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682
+
 ## Features
 
 ### Hardware
 
-#### Overview
-
-<kbd><img title="Hardware Overview" src=".github/images/Hardware-Overview.jpg"/></kbd>
-
-- nRF5340 BLE chip ([u-blox NORA-B10 module](https://www.u-blox.com/en/product/nora-b1-series-open-cpu)).
-  - 128 MHz Dual core.
-  - 512 KB RAM.
-  - 1 MB Flash.
-  - 30 MHz SPI for display.
-- [240x240 round display](https://www.buydisplay.com/240x240-round-ips-tft-lcd-display-1-28-inch-capactive-touch-circle-screen) with touch screen.
-- IMU [Bosch BMI270](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf), with this one it's possible to do many fancy things such as navigation using gestures and the typical smartwatch wakeup by moving the arm so the display is viewable.
-- Bosch [BME688](https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme688/) Environmental sensor with AI.
-- Bosch [BMP581](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp581/) High performance pressure sensor accuracy in units of ~20cm's.
-- ST [LIS2MDLTR](https://www.st.com/resource/en/datasheet/lis2mdl.pdf) Magnetometer.
-- Macronix [MX25U51245GZ4I00](https://www.mouser.de/datasheet/2/819/MX25U51245G_2c_1_8V_2c_512Mb_2c_v1_4-3371129.pdf) 64 MB external flash.
-- Broadcom [APDS-9306-065](https://docs.broadcom.com/docs/AV02-4755EN) Light Sensor for automatic brightness control.
-- Micro Crystal [RV-8263-C8](https://www.microcrystal.com/en/products/real-time-clock-rtc-modules/rv-8263-c8) RTC for time keeping and alarm functions.
-- Knowles [SPK0641HT4H-1](https://www.knowles.com/docs/default-source/model-downloads/spk0641ht4h-1-rev-a.pdf) I2S microphone for audio recording.
+- nRF5340 BLE chip ([u-blox NORA-B10 module](https://www.u-blox.com/en/product/nora-b1-series-open-cpu))
+  - 128 MHz Dual core
+  - 512 KB RAM
+  - 1 MB Flash
+  - 30 MHz SPI for display
+- [240x240 round display](https://www.buydisplay.com/240x240-round-ips-tft-lcd-display-1-28-inch-capactive-touch-circle-screen) with touch screen
+- IMU [Bosch BMI270](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf), with this one it's possible to do many fancy things such as navigation using gestures and the typical smartwatch wakeup by moving the arm so the display is viewable
+- Bosch [BME688](https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme688/) Environmental sensor with AI
+- Bosch [BMP581](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp581/) High performance pressure sensor accuracy in units of ~20cm's
+- ST [LIS2MDLTR](https://www.st.com/resource/en/datasheet/lis2mdl.pdf) Magnetometer
+- Macronix [MX25U51245GZ4I00](https://www.mouser.de/datasheet/2/819/MX25U51245G_2c_1_8V_2c_512Mb_2c_v1_4-3371129.pdf) 64 MB external flash
+- Broadcom [APDS-9306-065](https://docs.broadcom.com/docs/AV02-4755EN) Light Sensor for automatic brightness control
+- Micro Crystal [RV-8263-C8](https://www.microcrystal.com/en/products/real-time-clock-rtc-modules/rv-8263-c8) RTC for time keeping and alarm functions
+- Knowles [SPK0641HT4H-1](https://www.knowles.com/docs/default-source/model-downloads/spk0641ht4h-1-rev-a.pdf) I2S microphone for audio recording
 - Nordic [nPM1300](https://docs.nordicsemi.com/category/npm1300-category) PMIC for power and system management
-- Texas Instruments [TS3USB221A](https://www.ti.com/lit/ds/symlink/ts3usb221a.pdf?HQS=dis-mous-null-mousermode-dsf-pf-null-wwe&ts=1695813909306&ref_url=https%253A%252F%252Feu.mouser.com%252F) USB / SWD switch to provide a USB or SWD interface on the dock connector.
-- Option to not mount some sensors to save BOM cost.
+- Texas Instruments [TS3USB221A](https://www.ti.com/lit/ds/symlink/ts3usb221a.pdf?HQS=dis-mous-null-mousermode-dsf-pf-null-wwe&ts=1695813909306&ref_url=https%253A%252F%252Feu.mouser.com%252F) USB / SWD switch to provide a USB or SWD interface on the dock connector
+- Option to not mount sensors to save BOM cost
 
 #### PCB
 
 A 4-layer board that measures 38mm in diameter is designed in KiCad. More info [here](https://github.com/jakkra/ZSWatch-HW).
 
-<p float="left">
-<img src=".github/images/pcb.jpg" width="83%" object-fit="cover"/>
-</p>
-<p float="left">
-<img src=".github/images/front_pcb_render.png" width="43%" object-fit="cover"/>
-<img src=".github/images/back_pcb_render.png" width="40%" object-fit="cover"/>
-</p>
+<kbd><img title="Hardware Overview" src="docs/images/Hardware-Overview.png"/></kbd>
 
 ### Software
 
@@ -121,9 +108,9 @@ The watch supports different watchfaces which can be changed dynamically. The wa
 
 #### Pairing
 
-- In the watch go to Settings -> Bluetooth -> Enable pairing
-- Now go reconnect to the watch from the Gadgetbridge app.
-- You should now be paired.
+- In the watch go to `Settings` -> `Bluetooth` -> `Enable pairing`
+- Now go reconnect to the watch from the Gadgetbridge app
+- You should now be paired
 
 #### Android phone communication
 
@@ -154,26 +141,25 @@ See more at [here](https://github.com/jakkra/ZSWatch-Dock).
 
 ## Demos
 
-- [Handling](https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682).
 - [HTTP requests over BLE through Gadgetbridge](https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82)
 - [Watchfaces](https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d)
 
 ## Building or getting one
 
-- Head over to the hardware repos https://github.com/jakkra/ZSWatch-HW and https://github.com/jakkra/ZSWatch-Dock for information about ordering the PCBs and assembly from PCBWay.
-- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch.
+- Head over to the hardware repos for the [PCB](https://github.com/jakkra/ZSWatch-HW) and the [Dock](https://github.com/jakkra/ZSWatch-Dock) for information about ordering the PCBs and assembly from PCBWay
+- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch
 
 Some things are still in progress:
 
-- Work in progress [building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
-- Dock casing.
+- [Building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
+- Dock casing
 
 **I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.
 In addition to the assembled ZSWatch and dock you will get the following compared to if you build it yourself:
 
-- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch.
-- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing.
-- **Possibly CNC:ed casing in Stainless steel**.
+- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch
+- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing
+- **Possibly CNC:ed casing in Stainless steel**
 
 If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
 
@@ -181,16 +167,11 @@ If you are interested in a kit or want to get notified when the missing parts ab
 
 ## Environment, Compiling and running the code
 
-See [Getting started](GETTING_STARTED.md)
+See [Wiki page about Start Developing](https://github.com/jakkra/ZSWatch/wiki/Start-Developing).
 
 ## Writing apps for the Application Manager
 
-See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps)
-
-## Other tools
-
-Visit https://jakkra.github.io/ZSWatch-Web-Dashboard to connect and view sensor data in a browser that supports Web Bluetooth [(Source code)](https://github.com/jakkra/ZSWatch-Web-Dashboard 
-)
+See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps).
 
 ## Licence GPL-3.0
 
@@ -202,3 +183,7 @@ The main difference from MIT is now that if anyone wants to build something more
 
 SEGGER for supporting SEGGER-OB licenses that make the dock a fully functional programmer and debugger for ZSWatch.
 Thanks to this the project will be much more approachable for persons without a J-Link debugger, letting them have full development and debugging capabilities.
+
+## Miscellaneous stuff
+
+- [Watch my presentation at Zephyr Developer Summit 2023](https://www.youtube.com/watch?v=MmCzV0jV9hs)

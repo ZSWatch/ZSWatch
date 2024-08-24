@@ -18,11 +18,8 @@ psutil
 # Artifacts package creation
 bz
 
+# used for CAN <=> host testing
+python-can>=4.3.0
+
 # RTT connection
 pylink-square
-
-# Used for PPK integration
-ppk2-api
-
-# Used for report generation
-pytest-html

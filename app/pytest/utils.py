@@ -3,15 +3,17 @@ import logging
 import time
 import pylink
 
-from ppk2_api.ppk2_api import PPK2_API
+SERIAL_NUMBER = "760208490"
 
 log = logging.getLogger()
+
 
 def current_milli_time():
     """Get times in milliseconds"""
     return round(time.time() * 1000)
 
-def reset(serial):
+
+def reset():
     """Reset DUT"""
     log.info("Reset DUT")
     subprocess.run(
@@ -20,7 +22,7 @@ def reset(serial):
             "--family",
             "nrf53",
             "--snr",
-            serial,
+            SERIAL_NUMBER,
             "--reset",
         ],
         shell=False,
@@ -29,7 +31,8 @@ def reset(serial):
         check=True,
     )
 
-def flash(serial, hw):
+
+def flash():
     """Flash firmware"""
     log.info("Flashing CP_APPLICATION.")
     subprocess.run(
@@ -38,9 +41,9 @@ def flash(serial, hw):
             "--family",
             "nrf53",
             "--snr",
-            serial,
+            SERIAL_NUMBER,
             "--program",
-            "./zswatch_nrf5340_cpuapp@{}_debug.hex".format(hw),
+            "./zswatch_nrf5340_cpuapp@3_debug.hex",
             "--chiperase",
             "--verify",
         ],
@@ -57,7 +60,7 @@ def flash(serial, hw):
             "--family",
             "nrf53",
             "--snr",
-            serial,
+            SERIAL_NUMBER,
             "--program",
             "./zswatch_nrf5340_CPUNET.hex",
             "--coprocessor",
@@ -72,12 +75,13 @@ def flash(serial, hw):
         check=True,
     )
 
-def read_rtt(serial, target_device="nRF5340_XXAA", timeout_ms=10000):
+
+def read_rtt(target_device="nRF5340_XXAA", timeout_ms=10000):
     """Read Segger RTT output"""
     jlink = pylink.JLink()
     logging.getLogger("pylink.jlink").setLevel(logging.WARNING)
     log.info("Connecting to JLink...")
-    jlink.open(serial_no=serial)
+    jlink.open(serial_no=SERIAL_NUMBER)
     log.info("Connecting to %s..." % target_device)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
     jlink.connect(target_device)
@@ -99,41 +103,3 @@ def read_rtt(serial, target_device="nRF5340_XXAA", timeout_ms=10000):
     log.debug(read_data)
 
     return read_data
-
-def ppk_connected():
-    return PPK2_API.list_devices()
-
-def is_locked(serial, target_device="nRF5340_XXAA"):
-    '''Check if the target is locked'''
-    
-    locked = False
-    
-    jlink = pylink.JLink()
-    log.info("Connecting to JLink...")
-    jlink.open(serial_no=serial)
-    log.info("Connecting to %s..." % target_device)
-    jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-    try:
-        jlink.connect(target_device)
-    except pylink.errors.JLinkException as e:
-        locked = True
-    finally:
-        jlink.close()
-
-    return locked
-
-def unlock():
-    unlocked = False
-
-    subprocess.run(
-        [
-            "nrfjprog",
-            "--recover"
-        ],
-        shell=False,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=True,
-    )
-
-    return unlocked
