@@ -16,61 +16,50 @@
 <br/>
 <br/>
 
-
-Smartwatch built from scratch, both hardware and software. Built on the [Zephyr™ Project](https://www.zephyrproject.org/) RTOS, hence the name **ZSWatch** - *Zephyr Smartwatch*.
-<br/>
-
-<kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd><br/>
-
-**UI and features**
-
-https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682
-
 <p align="center" >
   <a href="https://www.youtube.com/watch?v=MmCzV0jV9hs"><img width="55%" src=".github/images/presentation.png" ></a>
 </p>
 <p align="center">Watch my presentation at Zephyr Developer Summit 2023</p>
 
-
-## Building or getting one
-- Head over to the hardware repos https://github.com/jakkra/ZSWatch-HW and https://github.com/jakkra/ZSWatch-Dock for information about ordering the PCBs and assembly from PCBWay.
-- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch.
-
-Some things are still in progress:
-- Work in progress [building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
-- Dock casing.
-
-**I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.<br/>
-In addition to the assembled ZSWatch and dock you will get the following compared to if you build it yourself:
-- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch.
-- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing.
-- **Possibly CNC:ed casing in Stainless steel**.
-
-If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
-
-**Or** if you want to get notified for releases and when the missing parts are finished simply press the `Watch` button (next to Fork and Star) -> `Custom -> Releases` and you will see in your feed when it's officially released.
-<br/>
-<br/>
-
 # Table of content ZSWatch
-- [Building or getting one](#building-or-getting-one)
-- [Hardware features](#hardware-features)
-- [Charger/Dock](#chargerdock)
-- [Enclosure/Casing](#enclosurecasing)
-- [Software Features](#software-features)
-   * [Features and progress](#features-and-progress)
-- [Watchfaces](#watchfaces)
-- [Smartphone communication](#smartphone-communication)
-  - [Android phone communication](#android-phone-communication)
-  - [iOS device communication](#ios-device-communication)
-- [PCB](#pcb)
-- [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
-- [Writing apps for the Application Manager](#writing-apps-for-the-application-manager)
-- [Other tools](#other-tools)
-- [Licence GPL-3.0](#licence-gpl-30)
-- [Thanks](#thanks)
 
-## Hardware features
+- [Table of content ZSWatch](#table-of-content-zswatch)
+  - [About](#about)
+  - [Features](#features)
+    - [Hardware](#hardware)
+      - [Overview](#overview)
+      - [PCB](#pcb)
+    - [Software](#software)
+    - [Watchfaces](#watchfaces)
+    - [Smartphone communication](#smartphone-communication)
+      - [Pairing](#pairing)
+      - [Android phone communication](#android-phone-communication)
+      - [iOS device communication](#ios-device-communication)
+    - [Enclosure/Casing](#enclosurecasing)
+    - [Upcomming features](#upcomming-features)
+  - [Charger/Dock](#chargerdock)
+  - [Demos](#demos)
+  - [Building or getting one](#building-or-getting-one)
+  - [Environment, Compiling and running the code](#environment-compiling-and-running-the-code)
+  - [Writing apps for the Application Manager](#writing-apps-for-the-application-manager)
+  - [Other tools](#other-tools)
+  - [Licence GPL-3.0](#licence-gpl-30)
+  - [Thanks](#thanks)
+
+## About
+
+Smartwatch built from scratch, both hardware and software. Built on the [Zephyr™ Project](https://www.zephyrproject.org/) RTOS, hence the name **ZSWatch** - *Zephyr Smartwatch*.
+
+<kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd>
+
+## Features
+
+### Hardware
+
+#### Overview
+
+<kbd><img title="Hardware Overview" src=".github/images/Hardware-Overview.jpg"/></kbd>
+
 - nRF5340 BLE chip ([u-blox NORA-B10 module](https://www.u-blox.com/en/product/nora-b1-series-open-cpu)).
   - 128 MHz Dual core.
   - 512 KB RAM.
@@ -89,76 +78,9 @@ If you are interested in a kit or want to get notified when the missing parts ab
 - Texas Instruments [TS3USB221A](https://www.ti.com/lit/ds/symlink/ts3usb221a.pdf?HQS=dis-mous-null-mousermode-dsf-pf-null-wwe&ts=1695813909306&ref_url=https%253A%252F%252Feu.mouser.com%252F) USB / SWD switch to provide a USB or SWD interface on the dock connector.
 - Option to not mount some sensors to save BOM cost.
 
-## Charger/Dock
-Option with and without onboard SEGGER J-Link OB debugger.<br>
-As the debugger requires a license, this will only be available as part of a kit.
+#### PCB
 
-See more at https://github.com/jakkra/ZSWatch-Dock
-<p float="left">
-<img src=".github/images/dock.jpg" width="48%" object-fit="cover"/>
-<img src=".github/images/dock_connector.jpg" width="49%" object-fit="cover"/>
-</p>
-
-## Enclosure/Casing
-3D printed casing with 3D printed buttons, option CNC:able casing in metal.
-
-## Software Features
-- Bluetooth LE communications with [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) Android app.
-- Also support Bluetooth Direction Finding so the watch can act as a tag and is trackable using any [u-blox AoA antenna board](https://www.u-blox.com/en/product/ant-b10-antenna-board)
-- Multiple Watchfaces showing:
-   - Standard stuff such as time, date, battery
-   - Weather
-   - Step count
-   - Number of unread notifications
-   - Environmental data
-   - ...
-- Pop-up notifications
-- [Application picker and app concept](#writing-apps-for-the-application-manager)
-   - [Setting menu system, with easy extendability](app/src/applications/settings/)
-   - [Music control app](app/src/applications/music_control/)
-   - [Settings app](app/src/applications/settings/)
-   - [Compass app](app/src/applications/compass/)
-   - etc.
-- Step counting
-- Gestures
-- And much more
-...
-
-### Features and progress
-There are almost endless possibilities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
-
-## Watchfaces
-
-https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d
-
-## Smartphone communication
-
-### Android phone communication
-Fortunately, there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) that handles everything needed on the phone side, such as notifications management, music control and so much more... The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In the future there may be a point in adding native support, we'll see.
-
-**Demo of doing HTTP requests over BLE through Gadgetbridge.**
-
-
-https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82
-
-
-#### Pairing
-- In the watch go to Settings -> Bluetooth -> Enable pairing
-- Now go reconnect to the watch from the Gadgetbridge app.
-- You should now be paired.
-
-### iOS device communication
-Apple exposes [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html)... The ZSWatch communicates straight to the iOS with no extra Apps.
-
-
-#### Pairing
-- In the watch go to Settings -> Bluetooth -> Enable pairing
-- Now go to your device settings -> Bluetooth and choose "ZSWatch"
-- You should be prompted to pair and allow share notifications
-
-## PCB
-A 4-layer board that measures 38mm in diameter is designed in KiCad.<br>
-More info here: https://github.com/jakkra/ZSWatch-HW
+A 4-layer board that measures 38mm in diameter is designed in KiCad. More info [here](https://github.com/jakkra/ZSWatch-HW).
 
 <p float="left">
 <img src=".github/images/pcb.jpg" width="83%" object-fit="cover"/>
@@ -168,20 +90,114 @@ More info here: https://github.com/jakkra/ZSWatch-HW
 <img src=".github/images/back_pcb_render.png" width="40%" object-fit="cover"/>
 </p>
 
+### Software
+
+- Bluetooth LE communications with [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) Android app.
+- Also support Bluetooth Direction Finding so the watch can act as a tag and is trackable using any [u-blox AoA antenna board](https://www.u-blox.com/en/product/ant-b10-antenna-board)
+- Multiple Watchfaces showing:
+  - Standard stuff such as time, date, battery
+  - Weather
+  - Step count
+  - Number of unread notifications
+  - Environmental data
+  - ...
+- Pop-up notifications
+- [Application picker and app concept](#writing-apps-for-the-application-manager)
+  - [Setting menu system, with easy extendability](app/src/applications/settings/)
+  - [Music control app](app/src/applications/music_control/)
+  - [Settings app](app/src/applications/settings/)
+  - [Compass app](app/src/applications/compass/)
+  - etc.
+- Step counting
+- Gestures
+- And much more
+...
+
+### Watchfaces
+
+The watch supports different watchfaces which can be changed dynamically. The watch also supports ESP32 watchfaces from [Felix Biego](https://github.com/fbiego). Please checkout [this](https://github.com/Kampi/esp32-lvgl-watchface) fork for more informations.
+
+### Smartphone communication
+
+#### Pairing
+
+- In the watch go to Settings -> Bluetooth -> Enable pairing
+- Now go reconnect to the watch from the Gadgetbridge app.
+- You should now be paired.
+
+#### Android phone communication
+
+Fortunately, there is a great Android app called [GadgetBridge](https://codeberg.org/Freeyourgadget) that handles everything needed on the phone side, such as notifications management, music control and so much more. The ZSWatch right now pretends to be one of the supported Smart Watches in Gadgetbridge, following the same API as it does. In the future there may be a point in adding native support, we'll see.
+
+#### iOS device communication
+
+Apple exposes [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) GATT server which handles notifications management on the phone side, music control is done in the same fashion using [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html)... The ZSWatch communicates straight to the iOS with no extra Apps.
+
+### Enclosure/Casing
+
+3D printed casing with 3D printed buttons, option CNC:able casing in metal.
+
+### Upcomming features
+
+There are almost endless possibilities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
+
+## Charger/Dock
+
+<p float="left">
+<img src=".github/images/dock.jpg" width="48%" object-fit="cover"/>
+<img src=".github/images/dock_connector.jpg" width="49%" object-fit="cover"/>
+</p>
+
+Option with and without onboard SEGGER J-Link OB debugger. As the debugger requires a license, this will only be available as part of a kit.
+
+See more at [here](https://github.com/jakkra/ZSWatch-Dock).
+
+## Demos
+
+- [Handling](https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682).
+- [HTTP requests over BLE through Gadgetbridge](https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82)
+- [Watchfaces](https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d)
+
+## Building or getting one
+
+- Head over to the hardware repos https://github.com/jakkra/ZSWatch-HW and https://github.com/jakkra/ZSWatch-Dock for information about ordering the PCBs and assembly from PCBWay.
+- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch.
+
+Some things are still in progress:
+
+- Work in progress [building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
+- Dock casing.
+
+**I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.
+In addition to the assembled ZSWatch and dock you will get the following compared to if you build it yourself:
+
+- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch.
+- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing.
+- **Possibly CNC:ed casing in Stainless steel**.
+
+If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
+
+**Or** if you want to get notified for releases and when the missing parts are finished simply press the `Watch` button (next to Fork and Star) -> `Custom` -> `Releases` and you will see in your feed when it's officially released.
+
 ## Environment, Compiling and running the code
-See [GETTING_STARTED.md](GETTING_STARTED.md)
+
+See [Getting started](GETTING_STARTED.md)
 
 ## Writing apps for the Application Manager
+
 See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps)
 
 ## Other tools
+
 Visit https://jakkra.github.io/ZSWatch-Web-Dashboard to connect and view sensor data in a browser that supports Web Bluetooth [(Source code)](https://github.com/jakkra/ZSWatch-Web-Dashboard 
 )
 
 ## Licence GPL-3.0
+
 The main difference from MIT is now that if anyone wants to build something more with this, then they need to also open source their changes back to the project, which I think this is fair. This is so everyone can benefit from those improvements. If you think this is wrong free to contact me and I'm open to change the LICENCE.
 
 ## Thanks
+
 <a href="https://www.segger.com/"><img width="25%" src=".github/images/SEGGER-Logo-the-embedded-experts-RGB.jpg" ></a>
 
 SEGGER for supporting SEGGER-OB licenses that make the dock a fully functional programmer and debugger for ZSWatch.
