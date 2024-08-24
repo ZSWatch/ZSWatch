@@ -15,19 +15,20 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <lvgl.h>
 #include "utils/zsw_ui_utils.h"
+#include "ble/ble_ancs.h"
 #include "managers/zsw_notification_manager.h"
+#include <lvgl.h>
 
 #if CONFIG_WATCHFACE_BACKGROUND_SPACE
-LV_IMG_DECLARE(space_blur_bg);
-const lv_img_dsc_t *global_watchface_bg_img = &space_blur_bg;
+ZSW_LV_IMG_DECLARE(space_blur_bg);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(space_blur_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_FLOWER
-LV_IMG_DECLARE(flower_watchface_bg);
-const lv_img_dsc_t *global_watchface_bg_img = &flower_watchface_bg;
+ZSW_LV_IMG_DECLARE(flower_watchface_bg);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(flower_watchface_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_PLANET
-LV_IMG_DECLARE(earth_blur_move);
-const lv_img_dsc_t *global_watchface_bg_img = &earth_blur_move;
+ZSW_LV_IMG_DECLARE(earth_blur_move);
+const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(earth_blur_move);
 #else
 const lv_img_dsc_t *global_watchface_bg_img = NULL;
 #endif
@@ -44,6 +45,7 @@ LV_IMG_DECLARE(unknown);
 
 ZSW_LV_IMG_DECLARE(ui_img_call_png);
 ZSW_LV_IMG_DECLARE(ui_img_gadget_png);
+ZSW_LV_IMG_DECLARE(ui_img_apple);
 ZSW_LV_IMG_DECLARE(ui_img_mail_png);
 ZSW_LV_IMG_DECLARE(ui_img_whatsapp_png);
 ZSW_LV_IMG_DECLARE(ui_img_trash_png);
@@ -333,7 +335,11 @@ const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
         case NOTIFICATION_SRC_CALENDAR:
             return ZSW_LV_IMG_USE(google_calendar_icon);
         default:
-            return ZSW_LV_IMG_USE(ui_img_gadget_png);
+            if (ble_ancs_present()) {
+                return ZSW_LV_IMG_USE(ui_img_apple);
+            } else {
+                return ZSW_LV_IMG_USE(ui_img_gadget_png);
+            }
     }
 }
 

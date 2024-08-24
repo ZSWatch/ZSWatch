@@ -1,0 +1,13 @@
+diff --git a/BMP5-Sensor-API/bmp5.c b/BMP5-Sensor-API/bmp5.c
+index 6af2f6a..e62172a 100644
+--- a/BMP5-Sensor-API/bmp5.c
++++ b/BMP5-Sensor-API/bmp5.c
+@@ -1130,7 +1130,7 @@ int8_t bmp5_get_fifo_len(uint16_t *fifo_len, struct bmp5_fifo *fifo, struct bmp5
+ int8_t bmp5_get_fifo_data(struct bmp5_fifo *fifo, struct bmp5_dev *dev)
+ {
+     int8_t rslt;
+-    uint16_t fifo_len;
++    uint16_t fifo_len = 0;
+ 
+     if (fifo != NULL)
+     {

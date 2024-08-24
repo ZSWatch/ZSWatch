@@ -256,4 +256,8 @@ menu "ZSWatch"
         rsource "src/applications/trivia/Kconfig"
         rsource "src/applications/ppt_remote/Kconfig"
     endmenu
+
+    menu "UI"
+        rsource "src/ui/utils/Kconfig"
+    endmenu
 endmenu

@@ -20,6 +20,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/sys/util.h>
 #include <filesystem/zsw_filesystem.h>
 #include <lvgl.h>
 #include "lv_conf.h"
@@ -56,10 +57,16 @@ typedef struct file_table_t {
 typedef struct opened_file_t {
     file_header_t  *header;
     uint32_t        index;
+    bool            is_cached;
+    uint32_t        cache_start;
+    uint32_t        cache_end;
 } opened_file_t;
 
 static file_table_t file_table;
 static opened_file_t opened_files[MAX_OPENED_FILES];
+
+static uint8_t file_cache_buffer[SPI_FLASH_SECTOR_SIZE];
+static opened_file_t *current_cached_file;
 
 static const struct flash_area *flash_area;
 
@@ -158,6 +165,7 @@ static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
     opened_file_t *open_file = (opened_file_t *)file;
     open_file->header = NULL;
     open_file->index = 0;
+    open_file->is_cached = false;
     return errno_to_lv_fs_res(0);
 }
 
@@ -165,14 +173,68 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
                                 uint32_t *br)
 {
     int rc;
+    uint32_t extra_bytes_start;
+    uint32_t extra_bytes_end;
+    uint32_t extra_cache_bytes;
+    uint32_t orig_read_address, read_address;
     opened_file_t *open_file = (opened_file_t *)file;
 
-    rc = flash_area_read(flash_area, open_file->header->offset + open_file->index + file_table.header_length, buf, btr);
+    orig_read_address = open_file->header->offset + open_file->index + file_table.header_length;
+
+    if (open_file->is_cached && (orig_read_address >= current_cached_file->cache_start) &&
+        ((orig_read_address + btr) < current_cached_file->cache_end)) {
+        __ASSERT(current_cached_file == open_file, "Cached file mismatch");
+        memcpy(buf, file_cache_buffer + (orig_read_address - current_cached_file->cache_start), btr);
+        *br = btr;
+        open_file->index += btr;
+        return errno_to_lv_fs_res(0);
+    } else if (current_cached_file) {
+        // Cache miss
+        current_cached_file->is_cached = false;
+        current_cached_file = NULL;
+    }
+
+    read_address = ROUND_DOWN(orig_read_address, 4);
+
+    if ((read_address != orig_read_address) && btr < sizeof(file_cache_buffer)) {
+        extra_bytes_start = orig_read_address - read_address;
+    } else {
+        extra_bytes_start = 0;
+        read_address = orig_read_address;
+    }
+
+    if (!IS_ALIGNED(btr + extra_bytes_start, 4) && (ROUND_UP(btr + extra_bytes_start, 4) < sizeof(file_cache_buffer))) {
+        extra_bytes_end = ROUND_UP(btr + extra_bytes_start, 4) - (btr + extra_bytes_start);
+    } else {
+        extra_bytes_end = 0;
+    }
+
+    uint32_t cache_max_len = sizeof(file_cache_buffer) - extra_bytes_start - btr - extra_bytes_end;
+    cache_max_len = MIN(cache_max_len, open_file->header->len - open_file->index);
+
+    if (!current_cached_file && btr != 4) {
+        current_cached_file = open_file;
+        current_cached_file->cache_start = read_address;
+        current_cached_file->cache_end = read_address + cache_max_len + btr + extra_bytes_start + extra_bytes_end;
+        current_cached_file->is_cached = true;
+        extra_cache_bytes = cache_max_len;
+    } else {
+        extra_cache_bytes = 0;
+    }
+
+    rc = flash_area_read(flash_area, read_address, (extra_bytes_start || extra_bytes_end ||
+                                                    current_cached_file) ? file_cache_buffer : buf,
+                         btr + extra_bytes_start + extra_bytes_end + extra_cache_bytes);
     if (rc != 0) {
         printk("Flash read failed! %d\n", rc);
         *br = 0;
         return errno_to_lv_fs_res(rc);
     }
+
+    if (extra_bytes_start || current_cached_file) {
+        memcpy(buf, file_cache_buffer + extra_bytes_start, btr);
+    }
+
     *br = btr;
     open_file->index += btr;
     return errno_to_lv_fs_res(0);

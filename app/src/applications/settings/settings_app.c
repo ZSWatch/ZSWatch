@@ -26,6 +26,7 @@ static void on_close_settings(void);
 static void on_brightness_changed(lv_setting_value_t value, bool final);
 static void on_display_on_changed(lv_setting_value_t value, bool final);
 static void on_display_vib_press_changed(lv_setting_value_t value, bool final);
+static void on_relative_battery_press_changed(lv_setting_value_t value, bool final);
 static void on_aoa_enable_changed(lv_setting_value_t value, bool final);
 static void on_aoa_interval_changed(lv_setting_value_t value, bool final);
 static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
@@ -62,6 +63,7 @@ static setting_app_t settings_app = {
     .ble_aoa_enabled = false,
     .ble_aoa_tx_interval = 100,
     .watchface = {
+        .relative_battery = false,
         .animations_on = false,
         .watchface_index = 0,
         .smooth_second_hand = false
@@ -232,6 +234,17 @@ static lv_settings_item_t ui_page_items[] = {
             }
         }
     },
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_BATTERY_3,
+        .change_callback = on_relative_battery_press_changed,
+        .item = {
+            .sw = {
+                .name = "Battery percent",
+                .inital_val = &settings_app.watchface.relative_battery,
+            }
+        }
+    },
 };
 
 static lv_settings_page_t settings_menu[] = {
@@ -300,6 +313,12 @@ static void on_display_vib_press_changed(lv_setting_value_t value, bool final)
     settings_app.vibration_on_click = value.item.sw;
     settings_save_one(ZSW_SETTINGS_VIBRATE_ON_PRESS, &settings_app.vibration_on_click,
                       sizeof(settings_app.vibration_on_click));
+}
+
+static void on_relative_battery_press_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.watchface.relative_battery = value.item.sw;
+    settings_save_one(ZSW_SETTINGS_WATCHFACE, &settings_app.watchface, sizeof(settings_app.watchface));
 }
 
 static void on_aoa_enable_changed(lv_setting_value_t value, bool final)
@@ -429,6 +448,17 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.vibration_on_click, sizeof(settings_app.vibration_on_click));
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_WATCHFACE, &next) && !next) {
+        if (len != sizeof(settings_app.watchface)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.watchface, sizeof(settings_app.watchface));
         if (rc >= 0) {
             return 0;
         }

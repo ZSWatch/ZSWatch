@@ -23,7 +23,7 @@
 #define CONCATINATE_(a, b) a##b
 #define CONCATINATE(a, b) CONCATINATE_(a, b)
 
-#if CONFIG_ZSWATCH_PCB_REV > 3
+#if CONFIG_STORE_IMAGES_EXTERNAL_FLASH
 #define ZSW_LV_IMG_DECLARE(var_name)
 #define ZSW_LV_IMG_USE(var_name)        "S:"#var_name".bin"
 #else

@@ -313,7 +313,7 @@ static int cst816s_pm_action(const struct device *dev, enum pm_device_action act
 			// Suspend/Resume only used to handle re-init after powered off.
 			break;
 		}
-		case PM_DEVICE_ACTION_RESUME: {
+		case PM_DEVICE_ACTION_TURN_ON: {
 			LOG_DBG("State changed to active");
 			status = cst816s_chip_init(dev);
 

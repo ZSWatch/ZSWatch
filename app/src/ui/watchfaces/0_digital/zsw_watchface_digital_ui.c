@@ -77,10 +77,14 @@ static int last_second = -1;
 static int last_date = -1;
 static int last_day_of_week = -1;
 
+static bool use_relative_battery = false;
+
 static watchface_app_evt_listener ui_evt_cb;
 
 static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
+    use_relative_battery = settings->relative_battery;
+
     ui_evt_cb = evt_cb;
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     root_page = lv_obj_create(parent);
@@ -312,6 +316,13 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
                       LV_OBJ_FLAG_SCROLL_CHAIN | LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_arc_width(ui_battery_arc, 3, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    if (use_relative_battery) {
+        lv_arc_set_range(ui_battery_arc, 0, 100);
+    } else {
+
+        lv_arc_set_range(ui_battery_arc, 3500, 4200);
+    }
+
     lv_obj_set_style_arc_color(ui_battery_arc, lv_color_hex(0xFFB140), LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_opa(ui_battery_arc, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_width(ui_battery_arc, 3, LV_PART_INDICATOR | LV_STATE_DEFAULT);
@@ -484,8 +495,14 @@ static void watchface_set_battery_percent(int32_t percent, int32_t battery)
     if (!root_page) {
         return;
     }
-    lv_arc_set_value(ui_battery_arc, percent);
-    lv_label_set_text_fmt(ui_battery_percent_label, "%d", battery);
+
+    if (use_relative_battery) {
+        lv_arc_set_value(ui_battery_arc, percent);
+        lv_label_set_text_fmt(ui_battery_percent_label, "%d%%", percent);
+    } else {
+        lv_arc_set_value(ui_battery_arc, battery);
+        lv_label_set_text_fmt(ui_battery_percent_label, "%d", battery);
+    }
 }
 
 static void watchface_set_hrm(int32_t bpm, int32_t oxygen)

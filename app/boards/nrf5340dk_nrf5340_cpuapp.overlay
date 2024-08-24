@@ -180,8 +180,8 @@
     cst816s: cst816s@15 {
         compatible = "hynitron,cst816s";
         reg = <0x15>;
-        irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-        rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+        irq-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+        rst-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
     };
 };
 
@@ -190,6 +190,12 @@
 };
 
 &i2c3_default {
+	group1 {
+		bias-pull-up;
+	};
+};
+
+&i2c2_default {
 	group1 {
 		bias-pull-up;
 	};
