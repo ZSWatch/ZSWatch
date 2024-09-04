@@ -21,12 +21,17 @@
 
 typedef void(*application_start_fn)(lv_obj_t *root, lv_group_t *group);
 typedef void(*application_stop_fn)(void);
+/*
+* Return true if the back button was consumed by the application.
+*/
+typedef bool(*application_back_fn)(void);
 
 typedef void(*on_app_manager_cb_fn)(void);
 
 typedef struct application_t {
     application_start_fn    start_func;
     application_stop_fn     stop_func;
+    application_back_fn     back_func;
     char                   *name;
     const void             *icon;
     bool                    hidden;

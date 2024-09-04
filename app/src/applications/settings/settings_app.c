@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
 
 static void settings_app_start(lv_obj_t *root, lv_group_t *group);
 static void settings_app_stop(void);
+static bool settings_app_back(void);
 
 static void on_close_settings(void);
 static void on_brightness_changed(lv_setting_value_t value, bool final);
@@ -74,7 +75,8 @@ static application_t app = {
     .name = "Settings",
     .icon = ZSW_LV_IMG_USE(settings),
     .start_func = settings_app_start,
-    .stop_func = settings_app_stop
+    .stop_func = settings_app_stop,
+    .back_func = settings_app_back,
 };
 
 static lv_settings_item_t display_page_items[] = {
@@ -285,6 +287,11 @@ static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 static void settings_app_stop(void)
 {
     settings_ui_remove();
+}
+
+static bool settings_app_back(void)
+{
+    return settings_ui_back();
 }
 
 static void on_close_settings(void)

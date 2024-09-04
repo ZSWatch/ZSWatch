@@ -86,3 +86,5 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
                         on_close_cb_t close_cb);
 
 void settings_ui_remove(void);
+
+bool settings_ui_back(void);
