@@ -81,7 +81,7 @@ static void parse_time(char *start_time)
     end_time = strstr(start_time, ")");
     if (end_time) {
         errno = 0;
-        cb.data.data.notify.id = strtol(start_time, &end_time, 10);
+        cb.data.data.time.seconds = strtol(start_time, &end_time, 10);
         if (start_time != end_time && errno == 0) {
             cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
             send_ble_data_event(&cb);

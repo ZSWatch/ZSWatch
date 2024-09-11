@@ -619,7 +619,19 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
                 char tz[sizeof("UTC+01")] = { '\0' };
                 char sign = (event->data.data.time.tz_offset < 0) ? '+' : '-';
                 snprintf(tz, sizeof(tz), "UTC%c%d", sign, MIN(abs(event->data.data.time.tz_offset), 99));
+
+#ifdef CONFIG_RTC
+                // When using RTC, we need to adjust the current rtc_time according to the timezone.
+                zsw_timeval_t ztm;
+                zsw_clock_get_time(&ztm);
+                ztm.tm.tm_year -= 1900;
+                time_t current_rtc_time = mktime(rtc_time_to_tm(&ztm.tm));
                 zsw_clock_set_timezone(tz);
+                memcpy(&ztm.tm, localtime(&current_rtc_time), sizeof(ztm.tm)); // Adjust the time according to the new timezone
+                zsw_clock_set_time(&ztm);
+#else
+                zsw_clock_set_timezone(tz);
+#endif
             }
             break;
         }

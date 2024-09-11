@@ -44,7 +44,7 @@ ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
 #endif
 
-LOG_MODULE_REGISTER(zsw_clock, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(zsw_clock, LOG_LEVEL_WRN);
 
 #ifndef CONFIG_RTC
 
@@ -66,23 +66,15 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 
 void zsw_clock_set_time(zsw_timeval_t *ztm)
 {
-    // Substract one from the month because we want to count from December instead of January
-    ztm->tm.tm_mon -= 1;
-
-    // Substract 1900 from the year because we want to count from 1900
-    ztm->tm.tm_year -= 1900;
-
 #if CONFIG_RTC
     rtc_set_time(rtc, &ztm->tm);
 #else
     struct timespec tspec;
 
-#warning "Not implemented"
-    tspec.tv_sec = 0;
     tspec.tv_nsec = 0;
+    tspec.tv_sec = mktime(&ztm->tm);
 
     clock_settime(CLOCK_REALTIME, &tspec);
-    zsw_clock_set_timezone(retained.timezone);
 #endif
 }
 
@@ -108,9 +100,6 @@ void zsw_clock_get_time(zsw_timeval_t *ztm)
     tm = localtime(&tv.tv_sec);
     memcpy(ztm, tm, sizeof(struct tm));
 #endif
-
-    // Add one to the month because we want to count from December instead of January
-    ztm->tm.tm_mon += 1;
 
     // Add 1900 to the year because we want to count from 1900
     ztm->tm.tm_year += 1900;

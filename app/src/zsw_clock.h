@@ -28,26 +28,38 @@ typedef void (*zsw_clock_on_update)(void);
 
 typedef struct {
 #if CONFIG_RTC
-    struct rtc_time
-        tm;                 /**< Modified time object with 1900 added to the year and the month increased by one. */
+    struct rtc_time tm;     /**< Modified time object with 1900 added to the year*/
 #else
-    struct tm   tm;                 /**< Modified time object with 1900 added to the year and the month increased by one. */
+    struct tm   tm;         /**< Modified time object with 1900 added to the year*/
 #endif
     uint32_t    tv_usec;
 } zsw_timeval_t;
 
-/** @brief
- *              NOTE: This function needs the time as seconds
- *  @param ztm
+
+/**
+ * Sets the time of the clock.
+ *
+ * @param ztm A pointer to a `zsw_timeval_t` structure representing the desired time.
  */
 void zsw_clock_set_time(zsw_timeval_t *ztm);
 
-/** @brief
- *  @param ztm
+
+/**
+ * @brief Retrieves the current time from the.
+ *
+ * This function retrieves the current time from the clock and stores it in the provided zsw_timeval_t structure.
+ *
+ * @param ztm Pointer to the zsw_timeval_t structure where the current time will be stored.
  */
 void zsw_clock_get_time(zsw_timeval_t *ztm);
 
-/** @brief
- *  @param tz
+
+/**
+ * @brief Sets the timezone for the ZSW clock.
+ *
+ * This function sets the timezone for the clock. The timezone is specified
+ * using the provided string in setenv and tzset format.
+ *
+ * @param tz The timezone string to set.
  */
 void zsw_clock_set_timezone(char *tz);
