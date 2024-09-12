@@ -34,6 +34,7 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void* user_dat
     }
 
     alarms[alarm_index].expiry_time = expiry_time;
+    alarms[alarm_index].expiry_time.tm_year -= 1900;
     alarms[alarm_index].used = true;
     alarms[alarm_index].enabled = true;
     alarms[alarm_index].cb = callback;
@@ -148,7 +149,11 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t* hour, uint32_t* min, ui
 
     int diffSecs = (int)difftime(alarm_epoch, current_epoch);
     LOG_DBG("start: %d, end: %d, diff: %d", current_epoch, alarm_epoch, diffSecs);
-    __ASSERT(diffSecs >= 0, "Alarm is in the past");
+    if (diffSecs < 0) {
+        LOG_WRN("Alarm is in the past. Indicates RTC alarm was not triggered");
+        diffSecs = 0;
+    }
+    //__ASSERT(diffSecs >= 0, "Alarm is in the past");
 
     *hour = diffSecs / 3600;
     *min = (diffSecs % 3600) / 60;
@@ -328,14 +333,14 @@ static int zsw_alarm_init(void)
 {
     memset(alarms, 0, sizeof(alarms));
 
-    // TODO should be handled somewhere else, maybe in main.
+#ifdef CONFIG_NATIVE_POSIX && CONFIG_RTC
     struct tm *tp;
     time_t t;
     t = time(NULL);
     tp = localtime(&t);
     t = mktime(tp);
     rtc_set_time(rtc, (struct rtc_time*)tp);
-
+#endif
     return 0;
 }
 
