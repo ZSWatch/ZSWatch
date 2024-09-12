@@ -35,14 +35,12 @@ typedef struct {
     uint32_t    tv_usec;
 } zsw_timeval_t;
 
-
 /**
  * Sets the time of the clock.
  *
  * @param ztm A pointer to a `zsw_timeval_t` structure representing the desired time.
  */
 void zsw_clock_set_time(zsw_timeval_t *ztm);
-
 
 /**
  * @brief Retrieves the current time from the.
@@ -52,7 +50,6 @@ void zsw_clock_set_time(zsw_timeval_t *ztm);
  * @param ztm Pointer to the zsw_timeval_t structure where the current time will be stored.
  */
 void zsw_clock_get_time(zsw_timeval_t *ztm);
-
 
 /**
  * @brief Sets the timezone for the ZSW clock.

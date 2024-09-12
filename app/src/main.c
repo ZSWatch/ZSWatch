@@ -287,22 +287,6 @@ static void run_wdt_work(struct k_work *item)
 
 int main(void)
 {
-    /*
-    while (1) {
-        struct i2c_msg msgs[1];
-        uint8_t dst;
-
-        for (uint8_t i = 0; i < 127; i++) {
-            msgs[0].buf = &dst;
-            msgs[0].len = 0U;
-            msgs[0].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
-            if (i2c_transfer(i2c, &msgs[0], 1, i) == 0) {
-                LOG_INF("Found device at 0x%X", i);
-            }
-        }
-
-        k_msleep(1000);
-    }*/
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (bootmode_check(ZSW_BOOT_MODE_RTT_FLASH_LOADER)) {
         LOG_WRN("SPI Flash Loader Boot Mode");
