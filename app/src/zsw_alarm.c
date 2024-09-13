@@ -333,14 +333,6 @@ static int zsw_alarm_init(void)
 {
     memset(alarms, 0, sizeof(alarms));
 
-#ifdef CONFIG_NATIVE_POSIX && CONFIG_RTC
-    struct tm *tp;
-    time_t t;
-    t = time(NULL);
-    tp = localtime(&t);
-    t = mktime(tp);
-    rtc_set_time(rtc, (struct rtc_time*)tp);
-#endif
     return 0;
 }
 
