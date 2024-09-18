@@ -198,7 +198,7 @@
 		reg = <0x51>;
 		status = "okay";
 		clkout = <0>;
-		int-gpios = <&gpio1 13 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+		int-gpios = <&gpio1 13 (GPIO_PULL_UP)>;
 	};
 
 	bmi270: bmi270@68 {

@@ -17,7 +17,7 @@ static int find_free_alarm_slot(void);
 static void start_earliest_alarm(void);
 static int find_earliest_alarm(void);
 static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, void *user_data);
-int compare(const void* rtc_time_a, const void* rtc_time_b);
+int compare(const void *rtc_time_a, const void *rtc_time_b);
 static void copy_rtc_time_to_tm(struct rtc_time *rtc_time, struct tm *tm_time);
 static void copy_tm_to_rtc_time(struct tm *tm_time, struct rtc_time *rtc_time);
 
@@ -25,7 +25,7 @@ static const struct device *rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
 
 static zsw_alarm_t alarms[ZSW_MAX_ALARMS];
 
-int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void* user_data)
+int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_data)
 {
     int alarm_index = find_free_alarm_slot();
 
@@ -45,7 +45,7 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void* user_dat
     return alarm_index;
 }
 
-int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb callback, void* user_data)
+int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb callback, void *user_data)
 {
     int ret;
     struct rtc_time alarm_time;
@@ -62,7 +62,7 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
 
     // This normalizes the time, i.e. if second gets to 80,
     // it will add one to minute and adjust the seconds to 20.
-    if(mktime(&tm_alarm_time) == -1) {
+    if (mktime(&tm_alarm_time) == -1) {
         LOG_ERR("Failed to convert time to epoch: %d", ret);
         return -EINVAL;
     }
@@ -107,7 +107,7 @@ int zsw_alarm_set_enabled(uint32_t alarm_id, bool enabled)
     return 0;
 }
 
-int zsw_alarm_get_enabled(uint32_t alarm_id, bool* enabled)
+int zsw_alarm_get_enabled(uint32_t alarm_id, bool *enabled)
 {
     if (alarm_id >= ZSW_MAX_ALARMS) {
         return -EINVAL;
@@ -122,7 +122,7 @@ int zsw_alarm_get_enabled(uint32_t alarm_id, bool* enabled)
     return 0;
 }
 
-int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t* hour, uint32_t* min, uint32_t* sec)
+int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, uint32_t *sec)
 {
     if (alarm_id >= ZSW_MAX_ALARMS) {
         return -EINVAL;
@@ -149,11 +149,7 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t* hour, uint32_t* min, ui
 
     int diffSecs = (int)difftime(alarm_epoch, current_epoch);
     LOG_DBG("start: %d, end: %d, diff: %d", current_epoch, alarm_epoch, diffSecs);
-    if (diffSecs < 0) {
-        LOG_WRN("Alarm is in the past. Indicates RTC alarm was not triggered");
-        diffSecs = 0;
-    }
-    //__ASSERT(diffSecs >= 0, "Alarm is in the past");
+    __ASSERT(diffSecs >= 0, "Alarm is in the past: %d", diffSecs);
 
     *hour = diffSecs / 3600;
     *min = (diffSecs % 3600) / 60;
@@ -189,7 +185,7 @@ int zsw_alarm_remove(uint32_t alarm_id)
 
 static int find_earliest_alarm(void)
 {
-    zsw_alarm_t* earliest_alarm = NULL;
+    zsw_alarm_t *earliest_alarm = NULL;
     int index = -1;
 
     for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
@@ -237,7 +233,7 @@ static void start_earliest_alarm(void)
         rtc_alarm_set_callback(rtc, 0, NULL, NULL);
         rtc_alarm_set_time(rtc, 0, 0, NULL);
         rtc_alarm_set_time(rtc, 0, RTC_ALARM_MASK_COMPARE_ALL, &alarms[earliest_alarm_index].expiry_time);
-        int ret = rtc_alarm_set_callback(rtc, 0, rtc_alarm_triggered_callback, (void*)earliest_alarm_index);
+        int ret = rtc_alarm_set_callback(rtc, 0, rtc_alarm_triggered_callback, (void *)earliest_alarm_index);
         __ASSERT(ret == 0, "Failed to set alarm callback");
     }
 }
@@ -266,9 +262,10 @@ static int find_free_alarm_slot(void)
     return -ENOMEM;
 }
 
-int compare(const void* rtc_time_a, const void* rtc_time_b) {
-    zsw_alarm_t *a = (zsw_alarm_t*)rtc_time_a;
-    zsw_alarm_t *b = (zsw_alarm_t*)rtc_time_b;
+int compare(const void *rtc_time_a, const void *rtc_time_b)
+{
+    zsw_alarm_t *a = (zsw_alarm_t *)rtc_time_a;
+    zsw_alarm_t *b = (zsw_alarm_t *)rtc_time_b;
 
     if (a != NULL && b == NULL) {
         return 1;

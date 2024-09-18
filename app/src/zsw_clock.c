@@ -132,7 +132,7 @@ static int zsw_clock_init(void)
         t = time(NULL);
         tp = localtime(&t);
         t = mktime(tp);
-        rtc_set_time(rtc, (struct rtc_time*)tp);
+        rtc_set_time(rtc, (struct rtc_time *)tp);
 #endif
         rtc_set_time(rtc, &tm);
     }
