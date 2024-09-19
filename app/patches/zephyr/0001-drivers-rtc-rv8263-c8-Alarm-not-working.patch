@@ -1,0 +1,58 @@
+From ac7b14c805a68050ed582de1b43c21c157092a74 Mon Sep 17 00:00:00 2001
+From: Daniel Kampert <danielkampert@kampis-elektroecke.de>
+Date: Thu, 19 Sep 2024 13:38:03 +0200
+Subject: [PATCH] drivers: rtc: rv8263-c8: Alarm not working
+
+Fix typos for alarm field identification
+
+Signed-off-by: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+---
+ drivers/rtc/rtc_rv8263.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/rtc/rtc_rv8263.c b/drivers/rtc/rtc_rv8263.c
+index f3cf86c6c7a..780ba2404cd 100644
+--- a/drivers/rtc/rtc_rv8263.c
++++ b/drivers/rtc/rtc_rv8263.c
+@@ -336,6 +336,7 @@ static int rv8263c8_init(const struct device *dev)
+ #endif
+ 
+ #if (CONFIG_RTC_ALARM || CONFIG_RTC_UPDATE) && DT_ANY_INST_HAS_PROP_STATUS_OKAY(int_gpios)
++	LOG_DBG("Configure interrupt pin");
+ 	if (!gpio_is_ready_dt(&config->int_gpio)) {
+ 		LOG_ERR("GPIO not ready!");
+ 		return err;
+@@ -376,6 +377,7 @@ static int rv8263c8_init(const struct device *dev)
+ 	data->dev = dev;
+ #endif
+ 	k_sem_give(&data->lock);
++	LOG_DBG("Done");
+ 
+ 	return 0;
+ }
+@@ -442,19 +444,19 @@ static int rv8263c8_alarm_set_time(const struct device *dev, uint16_t id, uint16
+ 	}
+ 
+ 	if (mask & RTC_ALARM_TIME_MASK_HOUR) {
+-		regs[3] = bin2bcd(timeptr->tm_min) & HOURS_BITS;
++		regs[3] = bin2bcd(timeptr->tm_hour) & HOURS_BITS;
+ 	} else {
+ 		regs[3] = RV8263C8_BM_ALARM_DISABLE;
+ 	}
+ 
+ 	if (mask & RTC_ALARM_TIME_MASK_MONTHDAY) {
+-		regs[4] = bin2bcd(timeptr->tm_min) & DATE_BITS;
++		regs[4] = bin2bcd(timeptr->tm_mday) & DATE_BITS;
+ 	} else {
+ 		regs[4] = RV8263C8_BM_ALARM_DISABLE;
+ 	}
+ 
+ 	if (mask & RTC_ALARM_TIME_MASK_WEEKDAY) {
+-		regs[5] = bin2bcd(timeptr->tm_min) & WEEKDAY_BITS;
++		regs[5] = bin2bcd(timeptr->tm_wday) & WEEKDAY_BITS;
+ 	} else {
+ 		regs[5] = RV8263C8_BM_ALARM_DISABLE;
+ 	}
+-- 
+2.34.1
+
