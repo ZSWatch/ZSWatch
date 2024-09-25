@@ -31,6 +31,7 @@ static void watchface_ui_invalidate_cached(void);
 LV_IMG_DECLARE(hour_minimal);
 LV_IMG_DECLARE(minute_minimal);
 LV_IMG_DECLARE(second_minimal);
+ZSW_LV_IMG_DECLARE(face_minimal_preview);
 
 static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
@@ -212,7 +213,7 @@ static void watchface_ui_invalidate_cached(void)
 
 static const void *watchface_get_preview_img(void)
 {
-    return "S:minimal_watchface_preview.bin";
+    return ZSW_LV_IMG_USE(face_minimal_preview);
 }
 
 static watchface_ui_api_t ui_api = {

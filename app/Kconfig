@@ -93,11 +93,6 @@ menu "ZSWatch"
     endmenu
 
     menu "Watchface"
-        config WATCHFACE_ANALOG
-            bool
-            prompt "Add analog watchface"
-            default n
-
         config WATCHFACE_DIGITAL
             bool
             prompt "Add digital watchface"
