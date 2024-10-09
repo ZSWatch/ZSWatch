@@ -24,14 +24,14 @@
 
 LOG_MODULE_REGISTER(zsw_pressure_sensor, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
+static void zbus_periodic_10s_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(pressure_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
-ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_lis, zbus_periodic_slow_callback);
+ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
+ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_perioidc_lis, zbus_periodic_10s_callback);
 static const struct device *const bmp581 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmp581));
 
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
+static void zbus_periodic_10s_callback(const struct zbus_channel *chan)
 {
     float pressure;
     float temperature;
@@ -53,7 +53,7 @@ int zsw_pressure_sensor_init(void)
         return -ENODEV;
     }
 
-    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_pressure_sensor_lis);
+    zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pressure_sensor_perioidc_lis);
 
     zsw_pressure_sensor_set_odr(BOSCH_BMP581_ODR_DEFAULT);
 
