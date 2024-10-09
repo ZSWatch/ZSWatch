@@ -40,6 +40,8 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
     zsw_timeval_t time;
     struct accel_event evt = {
+        .data.type = ZSW_IMU_EVT_TYPE_STEP,
+        .data.data.step.count = 0
     };
     zsw_clock_get_time(&time);
 
