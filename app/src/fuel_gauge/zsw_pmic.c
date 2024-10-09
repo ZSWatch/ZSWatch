@@ -261,8 +261,14 @@ int zsw_pmic_power_down(void)
 {
     if (vbus_connected) {
         LOG_WRN("Can't enter power down/shipping mode while VBUS is connected");
+        return -ENOTSUP;
     }
     return regulator_parent_ship_mode(regulators);
+}
+
+int zsw_pmic_reset(void)
+{
+    return mfd_npm1300_reset(pmic);
 }
 
 static int zsw_pmic_init(void)
@@ -298,6 +304,10 @@ static int zsw_pmic_init(void)
     }
 
     check_battery_voltage_cutoff(evt.mV);
+
+    if (evt.is_charging) {
+        vbus_connected = true;
+    }
 
     return 0;
 }

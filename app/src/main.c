@@ -558,8 +558,13 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
             case WATCHFACE_APP_EVENT_SHUTDOWN:
 #if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
                 int ret = zsw_pmic_power_down();
-                if (ret) {
-                    LOG_ERR("Failed to power down the system");
+                if (ret == -ENOTSUP) {
+                    // If the nPM1300 is charging thenpowering down/entering ship mode is not possible
+                    // Instead we just do a reset
+                    ret = zsw_pmic_reset();
+                    if (ret) {
+                        LOG_ERR("Failed to power down or reset the PMIC");
+                    }
                 }
 #endif
                 break;
