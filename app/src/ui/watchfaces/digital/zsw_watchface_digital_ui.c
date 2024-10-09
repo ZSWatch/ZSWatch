@@ -320,7 +320,6 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     if (use_relative_battery) {
         lv_arc_set_range(ui_battery_arc, 0, 100);
     } else {
-
         lv_arc_set_range(ui_battery_arc, 3500, 4200);
     }
 
