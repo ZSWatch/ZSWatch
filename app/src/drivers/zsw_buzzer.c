@@ -12,7 +12,7 @@
 #include <zephyr/drivers/regulator.h>
 #include <zephyr/logging/log.h>
 
-#if CONFIG_ZSWATCH_PCB_REV >= 5
+#if (CONFIG_ZSWATCH_PCB_REV >= 5 || CONFIG_BOARD_NATIVE_POSIX)
 
 LOG_MODULE_REGISTER(zsw_buzzer, LOG_LEVEL_WRN);
 
@@ -117,7 +117,46 @@ struct note_duration_t beep_song[] = {
     {.note = G5, .duration = 150},
 };
 
-static const struct pwm_dt_spec buzzer_dt = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
+static struct note_duration_t alarm_melody[] = {
+    {.note = C6, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = C6, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = C6, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = G5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = G5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = G5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = E5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = E5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = E5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = A5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = A5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = A5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = F5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = F5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = F5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = D5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = D5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+    {.note = D5, .duration = eigth},
+    {.note = REST, .duration = sixteenth},
+};
+
+static const struct pwm_dt_spec buzzer_dt = PWM_DT_SPEC_GET_OR(DT_ALIAS(buzzer_pwm), {});
 static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(regulator_buzzer));
 
 K_TIMER_DEFINE(buzzer_timer, pattern_timer_timeout, NULL);
@@ -152,6 +191,10 @@ int zsw_buzzer_run_melody(zsw_buzzer_melody_t melody)
         case ZSW_BUZZER_PATTERN_MARIO:
             active_pattern = mario_song;
             active_pattern_len = ARRAY_SIZE(mario_song);
+            break;
+        case ZSW_BUZZER_PATTERN_ALARM:
+            active_pattern = alarm_melody;
+            active_pattern_len = ARRAY_SIZE(alarm_melody);
             break;
         default:
             __ASSERT(false, "Invalid vibration pattern");

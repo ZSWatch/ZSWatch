@@ -22,6 +22,7 @@
 typedef enum zsw_vibration_pattern {
     ZSW_VIBRATION_PATTERN_CLICK,
     ZSW_VIBRATION_PATTERN_NOTIFICATION,
+    ZSW_VIBRATION_PATTERN_ALARM,
 } zsw_vibration_pattern_t;
 
 /*

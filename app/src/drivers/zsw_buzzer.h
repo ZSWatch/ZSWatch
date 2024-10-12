@@ -22,6 +22,7 @@
 typedef enum zsw_buzzer_melody_t {
     ZSW_BUZZER_PATTERN_BEEP,
     ZSW_BUZZER_PATTERN_MARIO,
+    ZSW_BUZZER_PATTERN_ALARM,
 } zsw_buzzer_melody_t;
 
 /*

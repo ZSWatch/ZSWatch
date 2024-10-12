@@ -54,6 +54,27 @@ static vib_motor_state_t not_pattern[] = {
     {.enabled = false, .percent = 0, .delay = 0},
 };
 
+static vib_motor_state_t alarm_pattern[] = {
+    {.enabled = true, .percent = 100, .delay = 200},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 200},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 200},
+    {.enabled = false, .percent = 0, .delay = 300},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 0},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 100},
+    {.enabled = false, .percent = 0, .delay = 0},
+};
+
 static vib_motor_state_t *active_pattern;
 static uint8_t active_pattern_index;
 static uint8_t active_pattern_len;
@@ -86,6 +107,10 @@ int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
         case ZSW_VIBRATION_PATTERN_NOTIFICATION:
             active_pattern = not_pattern;
             active_pattern_len = ARRAY_SIZE(not_pattern);
+            break;
+        case ZSW_VIBRATION_PATTERN_ALARM:
+            active_pattern = alarm_pattern;
+            active_pattern_len = ARRAY_SIZE(alarm_pattern);
             break;
         default:
             __ASSERT(false, "Invalid vibration pattern");
