@@ -140,7 +140,6 @@ static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id)
         case TIMER_EVT_START_PAUSE_RESUME: {
             LOG_DBG("Timer %d start/pause/resume", timer_id);
             if (timers[timer_id].state == TIMER_STATE_STOPPED || timers[timer_id].state == TIMER_STATE_PAUSED) {
-                timers[timer_id].state = TIMER_STATE_PLAYING;
                 int zsw_timer_id;
                 if (timers[timer_id].type == TYPE_ALARM) {
                     struct rtc_time time = {0};
@@ -153,9 +152,10 @@ static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id)
                                                        timers[timer_id].remaining_sec, alarm_triggered_cb, (void *)timer_id);
                 }
                 if (zsw_timer_id < 0) {
-                    LOG_ERR("Failed to add timer");
+                    LOG_ERR("Failed to start timer");
                     return;
                 }
+                timers[timer_id].state = TIMER_STATE_PLAYING;
                 timers[timer_id].zsw_alarm_timer_id = zsw_timer_id;
             } else if (timers[timer_id].state == TIMER_STATE_PLAYING) {
                 timers[timer_id].state = TIMER_STATE_PAUSED;
@@ -256,7 +256,9 @@ static int timers_settings_load_cb(const char *p_key, size_t len,
                 time.tm_hour = timers[i].hour;
                 time.tm_min = timers[i].min;
                 time.tm_sec = timers[i].sec;
-                zsw_alarm_add(time, alarm_triggered_cb, (void *)i);
+                if (timers[i].state == TIMER_STATE_PLAYING) {
+                    timers[i].zsw_alarm_timer_id = zsw_alarm_add(time, alarm_triggered_cb, (void *)i);
+                }
             }
         }
     }
