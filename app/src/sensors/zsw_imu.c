@@ -22,37 +22,14 @@
 
 #include "../drivers/sensor/bmi270/bosch_bmi270.h"
 
-#include "events/zsw_periodic_event.h"
 #include "events/accel_event.h"
 #include "sensors/zsw_imu.h"
 
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
-
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
-ZBUS_LISTENER_DEFINE(zsw_imu_lis, zbus_periodic_slow_callback);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
-
-static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
-{
-    zsw_timeval_t time;
-    struct accel_event evt = {
-        .data.type = ZSW_IMU_EVT_TYPE_STEP,
-        .data.data.step.count = 0
-    };
-    zsw_clock_get_time(&time);
-
-    if ((time.tm.tm_hour == 23) && (time.tm.tm_min == 59)) {
-
-        LOG_DBG("Reset step counter");
-        zsw_imu_reset_step_count();
-    }
-
-    zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
-}
 
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
@@ -144,8 +121,6 @@ int zsw_imu_init(void)
     bmi270_trigger.chan = SENSOR_CHAN_ALL;
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
-
-    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_imu_lis);
 
     return 0;
 }
