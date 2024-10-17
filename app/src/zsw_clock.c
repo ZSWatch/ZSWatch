@@ -113,6 +113,19 @@ void zsw_clock_set_timezone(char *tz)
     }
 }
 
+void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm)
+{
+    tm->tm_sec = ztm->tm.tm_sec;
+    tm->tm_min = ztm->tm.tm_min;
+    tm->tm_hour = ztm->tm.tm_hour;
+    tm->tm_mday = ztm->tm.tm_mday;
+    tm->tm_mon = ztm->tm.tm_mon;
+    tm->tm_year = ztm->tm.tm_year - 1900;
+    tm->tm_wday = ztm->tm.tm_wday;
+    tm->tm_yday = ztm->tm.tm_yday;
+    tm->tm_isdst = ztm->tm.tm_isdst;
+}
+
 static int zsw_clock_init(void)
 {
 #if CONFIG_RTC

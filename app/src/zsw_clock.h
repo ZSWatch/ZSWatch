@@ -60,3 +60,13 @@ void zsw_clock_get_time(zsw_timeval_t *ztm);
  * @param tz The timezone string to set.
  */
 void zsw_clock_set_timezone(char *tz);
+
+/**
+ * @brief Converts a zsw_timeval_t structure to a struct tm structure.
+ *
+ * This function converts a zsw_timeval_t structure to a struct tm structure.
+ *
+ * @param ztm Pointer to the zsw_timeval_t structure to convert.
+ * @param tm Pointer to the struct tm structure where the converted time will be stored.
+ */
+void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm);
