@@ -10,6 +10,7 @@
 #include "zsw_clock.h"
 #include "zsw_alarm.h"
 #include "history/zsw_history.h"
+#include "ui/zsw_ui.h"
 #include "zsw_clock.h"
 
 LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_DBG);
@@ -31,10 +32,13 @@ static void fitness_app_stop(void);
 
 static void step_sample_work(struct k_work *work);
 
+ZSW_LV_IMG_DECLARE(move);
+
 static application_t app = {
     .name = "Fitness",
     .start_func = fitness_app_start,
     .stop_func = fitness_app_stop,
+    .icon = ZSW_LV_IMG_USE(move),
 };
 
 static zsw_history_t fitness_history_context;
@@ -81,7 +85,7 @@ static void step_sample_work(struct k_work *work)
 
     if (zsw_imu_fetch_num_steps(&sample.steps) != 0) {
 #ifdef CONFIG_BOARD_NATIVE_POSIX
-        sample.steps = k_uptime_get_32() % 100;
+        sample.steps = rand() % 10000;
 #else
         LOG_WRN("Error during fetching of steps!");
         return;
