@@ -529,6 +529,7 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                         open_application_manager_page("Battery");
                         break;
                     case WATCHFACE_APP_EVT_CLICK_STEP:
+                        open_application_manager_page("Fitness");
                         break;
                     case WATCHFACE_APP_EVT_CLICK_WEATHER:
                         break;
