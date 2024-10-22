@@ -30,6 +30,7 @@ LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 ZBUS_CHAN_DECLARE(accel_data_chan);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
+static int step_offset = 0;
 
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
@@ -249,8 +250,14 @@ int zsw_imu_fetch_num_steps(uint32_t *num_steps)
         return -ENODATA;
     }
 
-    *num_steps = sensor_val.val1;
+    *num_steps = sensor_val.val1 + step_offset;
 
+    return 0;
+}
+
+int zsw_imu_set_step_offset(int starting_step_offset)
+{
+    step_offset = starting_step_offset;
     return 0;
 }
 
@@ -283,6 +290,7 @@ int zsw_imu_reset_step_count(void)
         return -ENODEV;
     }
 
+    step_offset = 0;
     value.val1 = 0;
     value.val2 = 0;
 

@@ -102,6 +102,13 @@ int zsw_imu_fetch_temperature(float *temperature);
 
 int zsw_imu_fetch_num_steps(uint32_t *num_steps);
 
+/*
+* Set an offset when fetching the number of steps.
+* This can be used if zsw_imu_fetch_num_steps should
+* return daily steps.
+*/
+int zsw_imu_set_step_offset(int starting_step_offset);
+
 int zsw_imu_reset_step_count(void);
 
 int zsw_imu_feature_disable(zsw_imu_feature_t feature);

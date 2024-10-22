@@ -85,7 +85,7 @@ static void step_sample_work(struct k_work *work)
 
     if (zsw_imu_fetch_num_steps(&sample.steps) != 0) {
 #ifdef CONFIG_BOARD_NATIVE_POSIX
-        sample.steps = rand() % 10000;
+        sample.steps = rand() % 1000;
 #else
         LOG_WRN("Error during fetching of steps!");
         return;
@@ -156,6 +156,11 @@ static int fitness_app_add(void)
     num_hist_samples = zsw_history_samples(&fitness_history_context);
 
     zsw_clock_get_time(&time);
+
+    // If watch was reset the step counter restarts at 0, so we need to update the offset.
+    if (num_hist_samples > 0 && time.tm.tm_mday == samples[num_hist_samples - 1].time.tm.tm_mday) {
+        zsw_imu_set_step_offset(samples[num_hist_samples - 1].steps);
+    }
 
     // Print curent minute and second
     LOG_DBG("fitness_app_add time: %d:%d:%d", time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
