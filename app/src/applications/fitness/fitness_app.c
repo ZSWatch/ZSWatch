@@ -15,7 +15,8 @@
 
 LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_DBG);
 
-#define STEP_RESET_COUNTER_INTERVAL_S 50
+#define STEP_RESET_COUNTER_INTERVAL_S   50
+#define DAYS_IN_WEEK                    7
 
 #define SETTING_BATTERY_HIST    "fitness/step/hist"
 #define SAMPLE_INTERVAL_MIN     60
@@ -105,19 +106,40 @@ static void step_sample_work(struct k_work *work)
     k_work_reschedule(&step_work, K_SECONDS(next_sample_seconds));
 }
 
+static void get_steps_per_day(uint16_t weekdays[DAYS_IN_WEEK])
+{
+    int day;
+    int num_samples = zsw_history_samples(&fitness_history_context);
+
+    for (int i = 0; i < num_samples; i++) {
+        zsw_step_sample_t sample;
+        zsw_history_get(&fitness_history_context, &sample, i);
+        day = sample.time.tm.tm_wday;
+        printk("Day: %d, Steps: %d\n", day, sample.steps);
+        weekdays[day] = MAX(sample.steps, weekdays[day]);
+    }
+}
+
 static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    zsw_step_sample_t sample;
-    fitness_ui_show(root, MAX_SAMPLES);
-    uint16_t steps[MAX_SAMPLES];
-    int num_steps_hist = zsw_history_samples(&fitness_history_context);
+    zsw_timeval_t time;
+    uint16_t step_weekdays[DAYS_IN_WEEK] = {0};
 
-    for (int i = 0; i < num_steps_hist; i++) {
-        zsw_history_get(&fitness_history_context, &sample, i);
-        LOG_DBG("Add step[%d]: %d", i, sample.steps);
-        steps[i] = sample.steps;
+    zsw_clock_get_time(&time);
+    get_steps_per_day(step_weekdays);
+
+    // Rotate the array (left/counter-clockwise) so the last element is the current day
+    int shifts = time.tm.tm_wday + 1;
+    for (int i = 0; i < shifts; i++) {
+        int first = step_weekdays[0];
+        for (int j = 0; j < DAYS_IN_WEEK - 1; j++) {
+            step_weekdays[j] = step_weekdays[j + 1];
+        }
+        step_weekdays[DAYS_IN_WEEK - 1] = first;
     }
-    fitness_ui_set_weekly_steps(steps, num_steps_hist);
+
+    fitness_ui_show(root, DAYS_IN_WEEK);
+    fitness_ui_set_weekly_steps(step_weekdays, DAYS_IN_WEEK);
 }
 
 static void fitness_app_stop(void)
