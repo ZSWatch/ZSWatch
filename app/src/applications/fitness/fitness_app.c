@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_DBG);
 #define MAX_SAMPLES             (7 * 24) // One week of hourly samples
 
 typedef struct {
-    zsw_timeval_t time;
+    zsw_timeval_t time; // TODO optimize size as NVS settings backend can do < 4096 bytes per store
     uint32_t steps;
 } zsw_step_sample_t;
 
@@ -44,7 +44,8 @@ static application_t app = {
 
 static zsw_history_t fitness_history_context;
 static zsw_step_sample_t samples[MAX_SAMPLES];
-K_WORK_DELAYABLE_DEFINE(step_work, step_sample_work);
+
+K_WORK_DELAYABLE_DEFINE(sample_step_work, step_sample_work);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
 #ifndef CONFIG_RTC
@@ -102,8 +103,8 @@ static void step_sample_work(struct k_work *work)
     LOG_DBG("Time: %d:%d:%d", sample.time.tm.tm_hour, sample.time.tm.tm_min, sample.time.tm.tm_sec);
     next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - sample.time.tm.tm_min) - sample.time.tm.tm_sec;
     LOG_DBG("Next sample in %d:%d", next_sample_seconds / 60, next_sample_seconds % 60);
-    //next_sample_seconds = 5;
-    k_work_reschedule(&step_work, K_SECONDS(next_sample_seconds));
+    //next_sample_seconds = 10;
+    k_work_reschedule(&sample_step_work, K_SECONDS(next_sample_seconds));
 }
 
 static void get_steps_per_day(uint16_t weekdays[DAYS_IN_WEEK])
@@ -115,7 +116,7 @@ static void get_steps_per_day(uint16_t weekdays[DAYS_IN_WEEK])
         zsw_step_sample_t sample;
         zsw_history_get(&fitness_history_context, &sample, i);
         day = sample.time.tm.tm_wday;
-        printk("Day: %d, Steps: %d\n", day, sample.steps);
+        printk("Day: %d, HH: %d, Steps: %d\n", day, sample.time.tm.tm_hour, sample.steps);
         weekdays[day] = MAX(sample.steps, weekdays[day]);
     }
 }
@@ -136,6 +137,10 @@ static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
             step_weekdays[j] = step_weekdays[j + 1];
         }
         step_weekdays[DAYS_IN_WEEK - 1] = first;
+    }
+
+    for (int i = 0; i < DAYS_IN_WEEK; i++) {
+        printk("Day %d: %d\n", i, step_weekdays[i]);
     }
 
     fitness_ui_show(root, DAYS_IN_WEEK);
@@ -205,7 +210,7 @@ static int fitness_app_add(void)
     }
     LOG_DBG("Next sample in %d:%d", next_sample_seconds / 60, next_sample_seconds % 60);
     //next_sample_seconds = 10;
-    k_work_schedule(&step_work, K_SECONDS(next_sample_seconds));
+    k_work_schedule(&sample_step_work, K_SECONDS(next_sample_seconds));
 
     return 0;
 }
