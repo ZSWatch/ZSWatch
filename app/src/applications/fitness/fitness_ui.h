@@ -7,4 +7,6 @@ void fitness_ui_show(lv_obj_t *root, uint16_t max_samples);
 
 void fitness_ui_set_weekly_steps(uint16_t *samples, char **weekday_names, uint16_t num_samples);
 
+void fitness_ui_set_daily_steps(uint32_t steps);
+
 void fitness_ui_remove(void);

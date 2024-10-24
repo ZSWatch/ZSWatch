@@ -13,7 +13,7 @@
 #include "ui/zsw_ui.h"
 #include "zsw_clock.h"
 
-LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_INF);
 
 #define STEP_RESET_COUNTER_INTERVAL_S   50
 #define DAYS_IN_WEEK                    7
@@ -98,7 +98,6 @@ static void step_sample_work(struct k_work *work)
     if (zsw_history_save(&fitness_history_context)) {
         LOG_ERR("Error during saving of step samples!");
     }
-    LOG_DBG("______STEP HIST ADD________");
     LOG_DBG("Step sample hist add: %d", sample.steps);
     LOG_DBG("Time: %d:%d:%d", sample.time.tm.tm_hour, sample.time.tm.tm_min, sample.time.tm.tm_sec);
     next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - sample.time.tm.tm_min) - sample.time.tm.tm_sec;
@@ -145,22 +144,29 @@ static void shift_char_array_n_left(char **arr, int n, int size)
 static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
 {
     zsw_timeval_t time;
+    uint32_t steps;
     uint16_t step_weekdays[DAYS_IN_WEEK] = {0};
     static char *weekday_names[] = {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"};
     zsw_clock_get_time(&time);
     get_steps_per_day(step_weekdays);
 
+    // Data is in the order of the days of the week, starting from Sunday (index 0)
     // Rotate the array (left/counter-clockwise) so the last element is the current day
+    // As we want the last bar in the chart to be "Today".
     int shifts = time.tm.tm_wday + 1;
     shift_array_n_left(step_weekdays, shifts, DAYS_IN_WEEK);
     shift_char_array_n_left(weekday_names, shifts, DAYS_IN_WEEK);
 
     for (int i = 0; i < DAYS_IN_WEEK; i++) {
-        printk("%s %d: %d\n", weekday_names[i], i, step_weekdays[i]);
+        LOG_DBG("%s %d: %d\n", weekday_names[i], i, step_weekdays[i]);
     }
 
     fitness_ui_show(root, DAYS_IN_WEEK);
     fitness_ui_set_weekly_steps(step_weekdays, weekday_names, DAYS_IN_WEEK);
+
+    if (zsw_imu_fetch_num_steps(&steps) == 0) {
+        fitness_ui_set_daily_steps(steps);
+    }
 }
 
 static void fitness_app_stop(void)
@@ -170,11 +176,8 @@ static void fitness_app_stop(void)
 
 static int fitness_app_add(void)
 {
-    struct tm tm;
-    struct tm prev_tm;
     int num_hist_samples;
     zsw_timeval_t time;
-    zsw_step_sample_t sample;
     int next_sample_seconds = 0;
     zsw_app_manager_add_application(&app);
 
@@ -204,9 +207,6 @@ static int fitness_app_add(void)
     if (num_hist_samples > 0 && time.tm.tm_mday == samples[num_hist_samples - 1].time.tm.tm_mday) {
         zsw_imu_set_step_offset(samples[num_hist_samples - 1].steps);
     }
-
-    // Print curent minute and second
-    LOG_DBG("fitness_app_add time: %d:%d:%d", time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
 
     // Try to sample about every full hour
     next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - time.tm.tm_min) - time.tm.tm_sec;

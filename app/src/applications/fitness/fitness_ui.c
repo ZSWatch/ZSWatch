@@ -160,7 +160,7 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_style_pad_bottom(ui_step_goal_arc, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_row(ui_step_goal_arc, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(ui_step_goal_arc, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_color(ui_step_goal_arc, lv_color_hex(0x00921A), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_color(ui_step_goal_arc, lv_color_hex(0xffd147), LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_opa(ui_step_goal_arc, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_arc_width(ui_step_goal_arc, 4, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
@@ -206,6 +206,13 @@ void fitness_ui_set_weekly_steps(uint16_t *samples, char **weekday_names, uint16
     lv_label_set_text_fmt(ui_step_progress_label, "%d / %d", samples[num_samples - 1], 10000);
     lv_obj_set_style_text_align(ui_step_progress_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_arc_set_value(ui_step_goal_arc, samples[num_samples - 1]);
+}
+
+void fitness_ui_set_daily_steps(uint32_t steps)
+{
+    lv_label_set_text_fmt(ui_step_progress_label, "%d / %d", steps, 10000);
+    lv_obj_set_style_text_align(ui_step_progress_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_arc_set_value(ui_step_goal_arc, steps);
 }
 
 void fitness_ui_remove(void)
