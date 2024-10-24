@@ -7,6 +7,7 @@ static lv_obj_t *ui_step_progress_label = NULL;
 static lv_obj_t *ui_weekly_chart = NULL;
 static lv_obj_t *ui_step_goal_arc = NULL;
 static lv_chart_series_t *ui_weekly_chart_series_1 = NULL;
+static char **chart_bar_names = NULL;
 
 static void event_cb(lv_event_t *e)
 {
@@ -22,30 +23,44 @@ static void event_cb(lv_event_t *e)
         }
         int num_points = lv_chart_get_point_count(chart);
 
-        static char *weekdays[] = {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}; // TODO correct order ha to come from fitness_app.c
         for (int id = 0; id < num_points; id++) {
             lv_point_t p;
             lv_chart_get_point_pos_by_id(chart, ser, id, &p);
 
             char buf[16];
-            lv_snprintf(buf, sizeof(buf), LV_SYMBOL_DUMMY"%s", weekdays[id]);
+            lv_snprintf(buf, sizeof(buf), "%s", chart_bar_names[id]);
 
-            lv_draw_rect_dsc_t draw_rect_dsc;
-            lv_draw_rect_dsc_init(&draw_rect_dsc);
-            draw_rect_dsc.bg_color = lv_color_black();
-            draw_rect_dsc.bg_opa = LV_OPA_50;
-            draw_rect_dsc.radius = 3;
-            draw_rect_dsc.bg_img_src = buf;
-            draw_rect_dsc.bg_img_recolor = lv_color_white();
+            // Draw the day of week above each bar
+            lv_draw_label_dsc_t draw_label_dsc;
+            lv_draw_label_dsc_init(&draw_label_dsc);
+            draw_label_dsc.color = zsw_color_red();
+            draw_label_dsc.align = LV_TEXT_ALIGN_CENTER;
 
             lv_area_t a;
-            a.x1 = chart->coords.x1 + p.x - 20;
-            a.x2 = chart->coords.x1 + p.x + 20;
+            a.x1 = chart->coords.x1 + p.x - 15;
+            a.x2 = chart->coords.x1 + p.x + 17;
             a.y1 = chart->coords.y1 + 20 - 30;
             a.y2 = chart->coords.y1 + 20 - 10;
 
             lv_draw_ctx_t *draw_ctx = lv_event_get_draw_ctx(e);
-            lv_draw_rect(draw_ctx, &draw_rect_dsc, &a);
+            lv_draw_label(draw_ctx, &draw_label_dsc, &a, buf, NULL);
+
+            // Draw a vertical line to separate the bars
+            lv_draw_rect_dsc_t draw_rect_dsc;
+            lv_draw_rect_dsc_init(&draw_rect_dsc);
+            draw_rect_dsc.bg_opa = LV_OPA_TRANSP;
+            draw_rect_dsc.border_color = zsw_color_gray();
+            draw_rect_dsc.border_width = 1;
+            draw_rect_dsc.border_side = LV_BORDER_SIDE_RIGHT;
+
+            // Note thise values are not dynamic, so needs change if graph size changes.
+            a.y1 = chart->coords.y1 + 20 - 30;
+            a.y2 = chart->coords.y1 + 20 + 99;
+
+            // Don't draw a line after the last bar
+            if (id != num_points - 1) {
+                lv_draw_rect(draw_ctx, &draw_rect_dsc, &a);
+            }
         }
 
         static int32_t id = LV_CHART_POINT_NONE;
@@ -67,7 +82,7 @@ static void event_cb(lv_event_t *e)
             lv_draw_rect_dsc_t draw_rect_dsc;
             lv_draw_rect_dsc_init(&draw_rect_dsc);
             draw_rect_dsc.bg_color = lv_color_white();
-            draw_rect_dsc.bg_opa = LV_OPA_30;
+            draw_rect_dsc.bg_opa = LV_OPA_70;
             draw_rect_dsc.radius = 5;
             draw_rect_dsc.bg_img_src = buf;
             draw_rect_dsc.bg_img_recolor = lv_color_black();
@@ -92,6 +107,8 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_x(ui_step_progress_label, 0);
     lv_obj_set_y(ui_step_progress_label, -90);
     lv_obj_set_align(ui_step_progress_label, LV_ALIGN_CENTER);
+    lv_obj_set_style_text_color(ui_step_progress_label, zsw_color_blue(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_step_progress_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(ui_step_progress_label, "- / 10000");
 
     ui_weekly_chart = lv_chart_create(ui_root_container);
@@ -102,13 +119,13 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_align(ui_weekly_chart, LV_ALIGN_CENTER);
     lv_chart_set_type(ui_weekly_chart, LV_CHART_TYPE_BAR);
     lv_chart_set_point_count(ui_weekly_chart, 7);
-    lv_chart_set_range(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 10000);
+    lv_chart_set_range(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 12000);
     lv_chart_set_range(ui_weekly_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 0);
     lv_chart_set_div_line_count(ui_weekly_chart, 0, 0);
     lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_X, 1, 1, 1, 1, false, 50);
     lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_Y, 1, 1, 1, 1, false, 50);
     lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_SECONDARY_Y, 1, 1, 1, 1, false, 25);
-    ui_weekly_chart_series_1 = lv_chart_add_series(ui_weekly_chart, lv_color_hex(0x9E3939),
+    ui_weekly_chart_series_1 = lv_chart_add_series(ui_weekly_chart, zsw_color_blue(),
                                                    LV_CHART_AXIS_PRIMARY_Y);
 
     lv_obj_set_style_bg_color(ui_weekly_chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -156,7 +173,7 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_x(ui_last_7_days_title_label, 0);
     lv_obj_set_y(ui_last_7_days_title_label, -20);
     lv_obj_set_align(ui_last_7_days_title_label, LV_ALIGN_BOTTOM_MID);
-    lv_label_set_text(ui_last_7_days_title_label, "Last 7 days");
+    lv_label_set_text(ui_last_7_days_title_label, "Steps per day");
 
     lv_obj_add_event_cb(ui_weekly_chart, event_cb, LV_EVENT_ALL, NULL);
 }
@@ -177,14 +194,17 @@ void fitness_ui_show(lv_obj_t *root, uint16_t max_samples)
     create_step_chart(root_page, max_samples);
 }
 
-void fitness_ui_set_weekly_steps(uint16_t *samples, uint16_t num_samples)
+void fitness_ui_set_weekly_steps(uint16_t *samples, char **weekday_names, uint16_t num_samples)
 {
     assert(ui_weekly_chart_series_1 != NULL);
+
+    chart_bar_names = weekday_names;
 
     for (int i = 0; i < num_samples; i++) {
         lv_chart_set_next_value(ui_weekly_chart, ui_weekly_chart_series_1, samples[i]);
     }
     lv_label_set_text_fmt(ui_step_progress_label, "%d / %d", samples[num_samples - 1], 10000);
+    lv_obj_set_style_text_align(ui_step_progress_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_arc_set_value(ui_step_goal_arc, samples[num_samples - 1]);
 }
 

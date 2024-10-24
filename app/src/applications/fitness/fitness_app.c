@@ -103,7 +103,6 @@ static void step_sample_work(struct k_work *work)
     LOG_DBG("Time: %d:%d:%d", sample.time.tm.tm_hour, sample.time.tm.tm_min, sample.time.tm.tm_sec);
     next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - sample.time.tm.tm_min) - sample.time.tm.tm_sec;
     LOG_DBG("Next sample in %d:%d", next_sample_seconds / 60, next_sample_seconds % 60);
-    //next_sample_seconds = 10;
     k_work_reschedule(&sample_step_work, K_SECONDS(next_sample_seconds));
 }
 
@@ -116,8 +115,30 @@ static void get_steps_per_day(uint16_t weekdays[DAYS_IN_WEEK])
         zsw_step_sample_t sample;
         zsw_history_get(&fitness_history_context, &sample, i);
         day = sample.time.tm.tm_wday;
-        printk("Day: %d, HH: %d, Steps: %d\n", day, sample.time.tm.tm_hour, sample.steps);
+        LOG_DBG("Day: %d, HH: %d, Steps: %d", day, sample.time.tm.tm_hour, sample.steps);
         weekdays[day] = MAX(sample.steps, weekdays[day]);
+    }
+}
+
+static void shift_array_n_left(uint16_t *arr, int n, int size)
+{
+    for (int i = 0; i < n; i++) {
+        int first = arr[0];
+        for (int j = 0; j < size - 1; j++) {
+            arr[j] = arr[j + 1];
+        }
+        arr[size - 1] = first;
+    }
+}
+
+static void shift_char_array_n_left(char **arr, int n, int size)
+{
+    for (int i = 0; i < n; i++) {
+        char *first = arr[0];
+        for (int j = 0; j < size - 1; j++) {
+            arr[j] = arr[j + 1];
+        }
+        arr[size - 1] = first;
     }
 }
 
@@ -125,26 +146,21 @@ static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
 {
     zsw_timeval_t time;
     uint16_t step_weekdays[DAYS_IN_WEEK] = {0};
-
+    static char *weekday_names[] = {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"};
     zsw_clock_get_time(&time);
     get_steps_per_day(step_weekdays);
 
     // Rotate the array (left/counter-clockwise) so the last element is the current day
     int shifts = time.tm.tm_wday + 1;
-    for (int i = 0; i < shifts; i++) {
-        int first = step_weekdays[0];
-        for (int j = 0; j < DAYS_IN_WEEK - 1; j++) {
-            step_weekdays[j] = step_weekdays[j + 1];
-        }
-        step_weekdays[DAYS_IN_WEEK - 1] = first;
-    }
+    shift_array_n_left(step_weekdays, shifts, DAYS_IN_WEEK);
+    shift_char_array_n_left(weekday_names, shifts, DAYS_IN_WEEK);
 
     for (int i = 0; i < DAYS_IN_WEEK; i++) {
-        printk("Day %d: %d\n", i, step_weekdays[i]);
+        printk("%s %d: %d\n", weekday_names[i], i, step_weekdays[i]);
     }
 
     fitness_ui_show(root, DAYS_IN_WEEK);
-    fitness_ui_set_weekly_steps(step_weekdays, DAYS_IN_WEEK);
+    fitness_ui_set_weekly_steps(step_weekdays, weekday_names, DAYS_IN_WEEK);
 }
 
 static void fitness_app_stop(void)
@@ -192,25 +208,11 @@ static int fitness_app_add(void)
     // Print curent minute and second
     LOG_DBG("fitness_app_add time: %d:%d:%d", time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
 
-    if (num_hist_samples == 0) {
-        // Try to sample about every full hour
-        next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - time.tm.tm_min) - time.tm.tm_sec;
-    } else {
-        zsw_history_get(&fitness_history_context, &sample, zsw_history_samples(&fitness_history_context) - 1);
-        zsw_timeval_to_tm(&time, &tm);
-        zsw_timeval_to_tm(&sample.time, &prev_tm);
-        time_t time_now = mktime(&tm);
-        time_t time_last_sample = mktime(&prev_tm);
-        __ASSERT(time_now != -1, "Invalid time_now!");
-        __ASSERT(time_last_sample != -1, "Invalid time_last_sample!");
+    // Try to sample about every full hour
+    next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - time.tm.tm_min) - time.tm.tm_sec;
 
-        double difference = difftime(time_now, time_last_sample);
-        __ASSERT(difference >= 0, "Time difference is negative!");
-        next_sample_seconds = MIN(3600, 3600 - difference);
-    }
     LOG_DBG("Next sample in %d:%d", next_sample_seconds / 60, next_sample_seconds % 60);
-    //next_sample_seconds = 10;
-    k_work_schedule(&sample_step_work, K_SECONDS(next_sample_seconds));
+    k_work_reschedule(&sample_step_work, K_SECONDS(next_sample_seconds));
 
     return 0;
 }

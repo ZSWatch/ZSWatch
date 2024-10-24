@@ -34,10 +34,12 @@ static int zsw_history_load_header_cb(const char *p_key, size_t len, settings_re
         LOG_ERR("Invalid header. Struct size changed!");
         zsw_history_del(p_history);
     } else if (temp_stored_history.max_samples != p_history->max_samples) {
-        LOG_ERR("max_samples does not match what's stored in settings. Erasing history.");
+        LOG_ERR("max_samples does not match what's stored in settings. Erasing history: %d != %d",
+                temp_stored_history.max_samples, p_history->max_samples);
         zsw_history_del(p_history);
     } else if (temp_stored_history.sample_size != p_history->sample_size) {
-        LOG_ERR("sample_size does not match what's stored in settings. Erasing history.");
+        LOG_ERR("sample_size does not match what's stored in settings. Erasing history: %d != %d",
+                temp_stored_history.sample_size, p_history->sample_size);
         zsw_history_del(p_history);
     } else {
         // Everything is fine, we can load the history
