@@ -9,7 +9,7 @@ typedef struct sensor_fusion {
     float z;
 } sensor_fusion_t;
 
-void zsw_sensor_fusion_init(void);
+int zsw_sensor_fusion_init(void);
 
 void zsw_sensor_fusion_deinit(void);
 

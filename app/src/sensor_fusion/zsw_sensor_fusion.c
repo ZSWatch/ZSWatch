@@ -174,15 +174,26 @@ static void sensor_fusion_timeout(struct k_work *)
     k_work_schedule(&sensor_fusion_timer, K_MSEC((1000 / SAMPLE_RATE_HZ) - (k_uptime_get_32() - start)));
 }
 
-void zsw_sensor_fusion_init(void)
+int zsw_sensor_fusion_init(void)
 {
 #if CONFIG_SEND_SENSOR_READING_OVER_RTT
     SEGGER_RTT_ConfigUpBuffer(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, "FUSION",
                               up_buffer, UP_BUFFER_SIZE,
                               SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 #endif
-    zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
-    zsw_magnetometer_set_enable(true);
+    int ret;
+
+    ret = zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
+    if (ret != 0) {
+        LOG_ERR("zsw_imu_feature_enable err: %d", ret);
+        return ret;
+    }
+
+    ret = zsw_magnetometer_set_enable(true);
+    if (ret != 0) {
+        LOG_ERR("zsw_magnetometer_set_enable err: %d", ret);
+        return ret;
+    }
 
     memset(&ahrs, 0, sizeof(ahrs));
 
@@ -203,6 +214,8 @@ void zsw_sensor_fusion_init(void)
     FusionAhrsSetSettings(&ahrs, &settings);
 
     k_work_schedule(&sensor_fusion_timer, K_MSEC(1000 / SAMPLE_RATE_HZ));
+
+    return 0;
 }
 
 void zsw_sensor_fusion_deinit(void)
