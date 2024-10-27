@@ -15,7 +15,7 @@ static lv_obj_t *root_page = NULL;
 
 static lv_obj_t *ui_bg_img;
 static lv_obj_t *ui_root_container;
-static lv_obj_t *ui_location;
+static lv_obj_t *ui_status_label;
 static lv_obj_t *ui_forecast_widget;
 static lv_obj_t *ui_time;
 static lv_obj_t *ui_today_container;
@@ -75,14 +75,14 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_clear_flag(ui_root_container, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(ui_root_container, LV_OBJ_FLAG_HIDDEN);
 
-    ui_location = lv_label_create(ui_root_container);
-    lv_obj_set_width(ui_location, LV_SIZE_CONTENT);
-    lv_obj_set_height(ui_location, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_location, 0);
-    lv_obj_set_y(ui_location, 25);
-    lv_obj_set_align(ui_location, LV_ALIGN_TOP_MID);
-    lv_label_set_text(ui_location, "");
-    lv_obj_set_style_text_font(ui_location, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ui_status_label = lv_label_create(root_page);
+    lv_obj_set_width(ui_status_label, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_status_label, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_status_label, 0);
+    lv_obj_set_y(ui_status_label, 25);
+    lv_obj_set_align(ui_status_label, LV_ALIGN_TOP_MID);
+    lv_label_set_text(ui_status_label, "");
+    lv_obj_set_style_text_font(ui_status_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_forecast_widget = lv_obj_create(ui_root_container);
     lv_obj_remove_style_all(ui_forecast_widget);
@@ -231,6 +231,17 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
         lv_label_set_text(ui_forecasts[i].ui_day_day, weather_ui_forecast_data_t[i].day);
         lv_img_set_src(ui_forecasts[i].ui_day_icon, weather_ui_forecast_data_t[i].icon);
     }
+}
+
+void weather_ui_set_error(char *error)
+{
+    if (root_page == NULL) {
+        return;
+    }
+
+    lv_obj_add_flag(ui_loading_spinner, LV_OBJ_FLAG_HIDDEN);
+
+    lv_label_set_text(ui_status_label, error);
 }
 
 void weather_ui_set_time(int hour, int min, int second)

@@ -41,3 +41,5 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
                                  int num_forecasts);
 
 void weather_ui_set_time(int hour, int min, int second);
+
+void weather_ui_set_error(char *error);

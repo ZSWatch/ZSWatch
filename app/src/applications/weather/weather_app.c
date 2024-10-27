@@ -90,6 +90,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
         ble_comm_request_gps_status(false);
     } else {
         LOG_ERR("HTTP request failed\n");
+        weather_ui_set_error(status == BLE_HTTP_STATUS_TIMEOUT ? "Timeout" : "Failed");
     }
 }
 
@@ -97,8 +98,11 @@ static void fetch_weather_data(double lat, double lon)
 {
     char weather_url[512];
     snprintf(weather_url, sizeof(weather_url), HTTP_REQUEST_URL_FMT, lat, lon, WEATHER_UI_NUM_FORECASTS);
-    zsw_ble_http_get(weather_url, http_rsp_cb);
-    // TODO Handle if HTTP requests are not enabled or supported on phone.
+    int ret = zsw_ble_http_get(weather_url, http_rsp_cb);
+    if (ret != 0 && ret != -EBUSY) {
+        LOG_ERR("Failed to send HTTP request: %d", ret);
+        weather_ui_set_error("Failed fetching weather");
+    }
 }
 
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
@@ -118,17 +122,18 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 
 static void weather_app_start(lv_obj_t *root, lv_group_t *group)
 {
+    weather_ui_show(root);
     if (last_update_gps_time == 0 || k_uptime_delta(&last_update_gps_time) > MAX_GPS_AGED_TIME_MS) {
         LOG_DBG("GPS data is too old, request GPS\n");
         int res = ble_comm_request_gps_status(true);
         if (res != 0) {
-            LOG_ERR("Failed to request GPS data\n");
+            LOG_ERR("Failed to request GPS data");
+            weather_ui_set_error("Failed to get GPS data");
         }
         // TODO Show GPS fetching in progress in app
     } else {
         fetch_weather_data(last_lat, last_lon);
     }
-    weather_ui_show(root);
 
     zsw_timeval_t time;
     zsw_clock_get_time(&time);
