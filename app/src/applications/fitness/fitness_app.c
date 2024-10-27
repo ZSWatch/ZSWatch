@@ -33,13 +33,13 @@ static void fitness_app_stop(void);
 
 static void step_sample_work(struct k_work *work);
 
-ZSW_LV_IMG_DECLARE(move);
+ZSW_LV_IMG_DECLARE(fitness_app_icon);
 
 static application_t app = {
     .name = "Fitness",
     .start_func = fitness_app_start,
     .stop_func = fitness_app_stop,
-    .icon = ZSW_LV_IMG_USE(move),
+    .icon = ZSW_LV_IMG_USE(fitness_app_icon),
 };
 
 static zsw_history_t fitness_history_context;

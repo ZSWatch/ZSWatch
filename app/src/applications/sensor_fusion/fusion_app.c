@@ -14,14 +14,14 @@ static void fusion_app_start(lv_obj_t *root, lv_group_t *group);
 static void fusion_app_stop(void);
 static void on_close_fusion(void);
 
-ZSW_LV_IMG_DECLARE(move);
+ZSW_LV_IMG_DECLARE(imu_sensor_icon);
 
 ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(accel_app_lis, zbus_fetch_fusion_data_callback);
 
 static application_t app = {
     .name = "Sensor Fusion",
-    .icon = ZSW_LV_IMG_USE(move),
+    .icon = ZSW_LV_IMG_USE(imu_sensor_icon),
     .start_func = fusion_app_start,
     .stop_func = fusion_app_stop
 };
