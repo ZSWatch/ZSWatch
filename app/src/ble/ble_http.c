@@ -29,6 +29,7 @@ K_WORK_DELAYABLE_DEFINE(ble_http_timeout_work, ble_http_timeout_handler);
 static void ble_http_timeout_handler(struct k_work *work)
 {
     LOG_WRN("HTTP Timeout");
+    request_pending = false;
     ble_http_cb(BLE_HTTP_STATUS_TIMEOUT, NULL);
 }
 
