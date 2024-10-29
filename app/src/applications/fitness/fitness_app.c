@@ -18,13 +18,25 @@ LOG_MODULE_REGISTER(fitness_app, LOG_LEVEL_INF);
 #define STEP_RESET_COUNTER_INTERVAL_S   50
 #define DAYS_IN_WEEK                    7
 
-#define SETTING_BATTERY_HIST    "fitness/step/hist"
-#define SAMPLE_INTERVAL_MIN     60
-#define SAMPLE_INTERVAL_MS      (SAMPLE_INTERVAL_MIN * 60 * 1000)
-#define MAX_SAMPLES             (7 * 24) // One week of hourly samples
+#define SETTING_FITNESS_HIST_KEY    "fitness/step/hist"
+#define SAMPLE_INTERVAL_MIN         60
+#define SAMPLE_INTERVAL_MS          (SAMPLE_INTERVAL_MIN * 60 * 1000)
+#define MAX_SAMPLES                 (7 * 24) // One week of hourly samples
+
+typedef struct minimal_zsw_timeval {
+    // Same structure as zsw_timeval_t, but with smaller types and without tm_isdst and nanoseconds
+    uint8_t  tm_sec;    /**< Seconds [0, 59] */
+    uint8_t  tm_min;     /**< Minutes [0, 59] */
+    uint8_t  tm_hour;   /**< Hours [0, 23] */
+    uint8_t  tm_mday;   /**< Day of the month [1, 31] */
+    uint8_t  tm_mon;    /**< Month [0, 11] */
+    uint16_t tm_year;   /**< Year */
+    uint8_t  tm_wday;   /**< Day of the week [0, 6] (Sunday = 0) (Unknown = -1) */
+    uint16_t tm_yday;   /**< Day of the year [0, 365] (Unknown = -1) */
+} minimal_zsw_timeval_t;
 
 typedef struct {
-    zsw_timeval_t time; // TODO optimize size as NVS settings backend can do < 4096 bytes per store
+    minimal_zsw_timeval_t time;
     uint32_t steps;
 } zsw_step_sample_t;
 
@@ -80,9 +92,22 @@ static void step_work_callback(struct k_work *work)
     }
 }
 
+static void timeval_to_minimal_timeval(zsw_timeval_t *time, minimal_zsw_timeval_t *minimal_time)
+{
+    minimal_time->tm_sec = time->tm.tm_sec;
+    minimal_time->tm_min = time->tm.tm_min;
+    minimal_time->tm_hour = time->tm.tm_hour;
+    minimal_time->tm_mday = time->tm.tm_mday;
+    minimal_time->tm_mon = time->tm.tm_mon;
+    minimal_time->tm_year = time->tm.tm_year;
+    minimal_time->tm_wday = time->tm.tm_wday;
+    minimal_time->tm_yday = time->tm.tm_yday;
+}
+
 static void step_sample_work(struct k_work *work)
 {
     zsw_step_sample_t sample;
+    zsw_timeval_t time_now;
     int next_sample_seconds;
 
     if (zsw_imu_fetch_num_steps(&sample.steps) != 0) {
@@ -93,14 +118,16 @@ static void step_sample_work(struct k_work *work)
         return;
 #endif
     }
-    zsw_clock_get_time(&sample.time);
+    zsw_clock_get_time(&time_now);
+    timeval_to_minimal_timeval(&time_now, &sample.time);
+
     zsw_history_add(&fitness_history_context, &sample);
     if (zsw_history_save(&fitness_history_context)) {
         LOG_ERR("Error during saving of step samples!");
     }
     LOG_DBG("Step sample hist add: %d", sample.steps);
-    LOG_DBG("Time: %d:%d:%d", sample.time.tm.tm_hour, sample.time.tm.tm_min, sample.time.tm.tm_sec);
-    next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - sample.time.tm.tm_min) - sample.time.tm.tm_sec;
+    LOG_DBG("Time: %d:%d:%d", sample.time.tm_hour, sample.time.tm_min, sample.time.tm_sec);
+    next_sample_seconds = 60 * (SAMPLE_INTERVAL_MIN - sample.time.tm_min) - sample.time.tm_sec;
     LOG_DBG("Next sample in %d:%d", next_sample_seconds / 60, next_sample_seconds % 60);
     k_work_reschedule(&sample_step_work, K_SECONDS(next_sample_seconds));
 }
@@ -113,8 +140,8 @@ static void get_steps_per_day(uint16_t weekdays[DAYS_IN_WEEK])
     for (int i = 0; i < num_samples; i++) {
         zsw_step_sample_t sample;
         zsw_history_get(&fitness_history_context, &sample, i);
-        day = sample.time.tm.tm_wday;
-        LOG_DBG("Day: %d, HH: %d, Steps: %d", day, sample.time.tm.tm_hour, sample.steps);
+        day = sample.time.tm_wday;
+        LOG_DBG("Day: %d, HH: %d, Steps: %d", day, sample.time.tm_hour, sample.steps);
         weekdays[day] = MAX(sample.steps, weekdays[day]);
     }
 }
@@ -192,7 +219,7 @@ static int fitness_app_add(void)
     k_work_reschedule(&step_work, K_SECONDS(STEP_RESET_COUNTER_INTERVAL_S));
 #endif
 
-    zsw_history_init(&fitness_history_context, MAX_SAMPLES, sizeof(zsw_step_sample_t), samples, SETTING_BATTERY_HIST);
+    zsw_history_init(&fitness_history_context, MAX_SAMPLES, sizeof(zsw_step_sample_t), samples, SETTING_FITNESS_HIST_KEY);
 
     if (zsw_history_load(&fitness_history_context)) {
         LOG_ERR("Error during settings_load_subtree!");
@@ -204,7 +231,7 @@ static int fitness_app_add(void)
     zsw_clock_get_time(&time);
 
     // If watch was reset the step counter restarts at 0, so we need to update the offset.
-    if (num_hist_samples > 0 && time.tm.tm_mday == samples[num_hist_samples - 1].time.tm.tm_mday) {
+    if (num_hist_samples > 0 && time.tm.tm_mday == samples[num_hist_samples - 1].time.tm_mday) {
         zsw_imu_set_step_offset(samples[num_hist_samples - 1].steps);
     }
 
