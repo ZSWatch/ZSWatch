@@ -16,15 +16,21 @@ LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 #define HTTP_REQUEST_URL_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=wind_speed_10m,temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,rain_sum,precipitation_probability_max&wind_speed_unit=ms&timezone=auto&forecast_days=%d"
 
 #define MAX_GPS_AGED_TIME_MS 30 * 60 * 1000
+#define WEATHER_BACKGROUND_FETCH_INTERVAL_S (30 * 60)
 
 // Functions needed for all applications
 static void weather_app_start(lv_obj_t *root, lv_group_t *group);
 static void weather_app_stop(void);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
+static void periodic_fetch_weather_data(struct k_work *work);
+static void publish_weather_data(struct k_work *work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(weather_ble_comm_lis, on_zbus_ble_data_callback);
 ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, weather_ble_comm_lis, 1);
+
+K_WORK_DELAYABLE_DEFINE(weather_app_fetch_work, periodic_fetch_weather_data);
+K_WORK_DEFINE(weather_app_publish, publish_weather_data);
 
 ZSW_LV_IMG_DECLARE(weather_app_icon);
 
@@ -33,6 +39,8 @@ static uint64_t last_update_gps_time;
 static uint64_t last_update_weather_time;
 static double last_lat;
 static double last_lon;
+
+static ble_comm_weather_t last_weather;
 
 static application_t app = {
     .name = "Weather",
@@ -47,10 +55,6 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     weather_ui_current_weather_data_t current_weather;
     weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS];
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-
-    if (!active) {
-        return;
-    }
 
     if (status == BLE_HTTP_STATUS_OK) {
         zsw_clock_get_time(&time_now);
@@ -85,13 +89,30 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
 
         weather_ui_set_weather_data(current_weather, forecasts, cJSON_GetArraySize(weather_code_list));
 
+        ble_comm_request_gps_status(false);
+        last_weather.temperature_c = current_weather.temperature;
+        last_weather.humidity = 0;
+        last_weather.wind = current_weather.wind_speed;
+        last_weather.wind_direction = 0;
+        last_weather.weather_code = wmo_code_to_weather_code(current_weather_code->valueint);
+        strncpy(last_weather.report_text, current_weather.text, sizeof(last_weather.report_text));
+
         cJSON_Delete(parsed_response);
         last_update_weather_time = k_uptime_get();
-        ble_comm_request_gps_status(false);
+
+        k_work_submit(&weather_app_publish);
     } else {
         LOG_ERR("HTTP request failed\n");
         weather_ui_set_error(status == BLE_HTTP_STATUS_TIMEOUT ? "Timeout" : "Failed");
     }
+}
+
+static void publish_weather_data(struct k_work *work)
+{
+    ble_comm_cb_data_t data;
+    data.type = BLE_COMM_DATA_TYPE_WEATHER;
+    data.data.weather = last_weather;
+    zbus_chan_pub(&ble_comm_data_chan, &data, K_MSEC(250));
 }
 
 static void fetch_weather_data(double lat, double lon)
@@ -103,6 +124,15 @@ static void fetch_weather_data(double lat, double lon)
         LOG_ERR("Failed to send HTTP request: %d", ret);
         weather_ui_set_error("Failed fetching weather");
     }
+}
+
+static void periodic_fetch_weather_data(struct k_work *work)
+{
+    int ret = ble_comm_request_gps_status(true);
+    if (ret != 0) {
+        LOG_ERR("Failed to disable phone GPS: %d", ret);
+    }
+    k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_BACKGROUND_FETCH_INTERVAL_S));
 }
 
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
@@ -117,6 +147,10 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
         last_lat = event->data.data.gps.lat;
         last_lon = event->data.data.gps.lon;
         fetch_weather_data(event->data.data.gps.lat, event->data.data.gps.lon);
+        int ret = ble_comm_request_gps_status(false);
+        if (ret != 0) {
+            LOG_ERR("Failed to request GPS data: %d", ret);
+        }
     }
 }
 
@@ -152,7 +186,7 @@ static int weather_app_add(void)
 {
     zsw_app_manager_add_application(&app);
 
-    // TODO Add periodic GPS and weather polling in backgrund.
+    k_work_reschedule(&weather_app_fetch_work, K_SECONDS(30));
 
     return 0;
 }

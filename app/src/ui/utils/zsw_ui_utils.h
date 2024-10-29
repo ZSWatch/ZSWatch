@@ -37,6 +37,8 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
 
 const void *zsw_ui_utils_icon_from_wmo_weather_code(int code, lv_color_t *color, char **text);
 
+int wmo_code_to_weather_code(int wmo_code);
+
 const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src);
 
 const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src);

@@ -132,9 +132,99 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
     }
 }
 
+int wmo_code_to_weather_code(int wmo_code)
+{
+    switch (wmo_code) {
+        case 0: {
+            return 800;
+        }
+        case 1: {
+            return 800;
+        }
+        case 2: {
+            return 800;
+        }
+        case 3: {
+            return 803;
+        }
+        case 45: {
+            return 700;
+        }
+        case 48: {
+            return 700;
+        }
+        case 51: {
+            return 700;
+        }
+        case 53: {
+            return 512;
+        }
+        case 55: {
+            return 512;
+        }
+        case 80: {
+            return 512;
+        }
+        case 81: {
+            return 512;
+        }
+        case 82: {
+            return 512;
+        }
+        case 61: {
+            return 512;
+        }
+        case 63: {
+            return 512;
+        }
+        case 65: {
+            return 512;
+        }
+        case 56: {
+            return 512;
+        }
+        case 57: {
+            return 512;
+        }
+        case 66: {
+            return 512;
+        }
+        case 67: {
+            return 512;
+        }
+        case 71: {
+            return 511;
+        }
+        case 73: {
+            return 511;
+        }
+        case 75: {
+            return 511;
+        }
+        case 77: {
+            return 511;
+        }
+        case 85: {
+            return 511;
+        }
+        case 86: {
+            return 511;
+        }
+        case 95: {
+            return 200;
+        }
+        case 96: {
+            return 200;
+        }
+        case 99: {
+            return 200;
+        }
+    }
+    return -1;
+}
+
 const void *zsw_ui_utils_icon_from_wmo_weather_code(int code, lv_color_t *color, char **text)
 {
-    printk("WMO Code: %d\n", code);
     switch (code) {
         case 0: {
             *color = lv_color_hex(0xF1F1F1);
