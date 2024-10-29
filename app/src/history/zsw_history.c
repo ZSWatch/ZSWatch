@@ -5,7 +5,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
-
+#ifdef CONFIG_SETTINGS_NVS
+#include <zephyr/fs/nvs.h>
+#endif
 #include "zsw_history.h"
 
 #define ZSW_HISTORY_HEADER_EXTENSION    "head"
@@ -73,7 +75,7 @@ static int zsw_history_load_data_cb(const char *p_key, size_t len, settings_read
 int zsw_history_init(zsw_history_t *p_history, uint32_t max_samples, uint8_t sample_size, void *p_samples,
                      const char *p_key)
 {
-    int32_t error;
+    int32_t rc;
 
     __ASSERT((p_history != NULL) && (p_samples != NULL) && (p_key != NULL), "Invalid parameters for zsw_history_init");
 
@@ -86,12 +88,25 @@ int zsw_history_init(zsw_history_t *p_history, uint32_t max_samples, uint8_t sam
     memset(p_samples, 0, max_samples * sample_size);
     strcpy(p_history->key, p_key);
 
-    error = settings_subsys_init();
-    if (error) {
-        LOG_ERR("Error during settings initialization! Error: %i", error);
+    rc = settings_subsys_init();
+    if (rc) {
+        LOG_ERR("Error during settings initialization! Error: %i", rc);
         return -EFAULT;
     }
 
+#ifdef CONFIG_SETTINGS_NVS
+    struct nvs_fs *nvs_storage;
+
+    rc = settings_storage_get(&nvs_storage);
+    __ASSERT(rc == 0, "Error during settings storage get! Error: %d", rc);
+
+    // As long as history is storing all samples as one key, we have a limit of NVS sector size for total size of samples
+    // TODO: Should store history not as one big chunk as it's not very efficient for flash wear.
+#define NVS_ESTIMATED_OVERHEAD 100
+    __ASSERT(max_samples * sample_size < (nvs_storage->sector_size - NVS_ESTIMATED_OVERHEAD),
+             "NVS sector size too small! history of %d has to fit one NVS page of %d", max_samples * sample_size,
+             (nvs_storage->sector_size - NVS_ESTIMATED_OVERHEAD));
+#endif
     return 0;
 }
 
