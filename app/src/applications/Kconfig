@@ -54,4 +54,14 @@ menu "Applications"
     rsource "compass/Kconfig"
     rsource "sensors_summary/Kconfig"
     rsource "voice_memo/Kconfig"
+    rsource "lea_assistant/Kconfig"
+
+    config APPLICATIONS_USE_LEA_ASSISTANT
+        bool
+        prompt "Activate the application 'LE Audio Assistant'"
+        select BT_CENTRAL
+        select BT_AUDIO
+        select BT_BAP_BROADCAST_ASSISTANT
+        select BT_TINYCRYPT_ECC
+        default n
 endmenu

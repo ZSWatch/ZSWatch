@@ -77,6 +77,10 @@
 #include "ui/overlay/zsw_voice_memo_popup.h"
 #endif
 
+#ifdef CONFIG_APPLICATIONS_USE_LEA_ASSISTANT
+#include "applications/lea_assistant/broadcast_assistant.h"
+#endif
+
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
 static void run_init_work(struct k_work *item);
@@ -191,6 +195,10 @@ static void enable_bluetooth(void)
 #endif
 #ifdef CONFIG_BT_ANCS_CLIENT
     ble_ancs_init();
+#endif
+
+#ifdef CONFIG_APPLICATIONS_USE_LEA_ASSISTANT
+    broadcast_assistant_init();
 #endif
 }
 

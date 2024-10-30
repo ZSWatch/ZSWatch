@@ -1,0 +1,3 @@
+module = ZSW_LEA_ASSISTANT_APP
+module-str = ZSW_LEA_ASSISTANT_APP
+source "subsys/logging/Kconfig.template.log_config"
