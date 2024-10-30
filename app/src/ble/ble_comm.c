@@ -309,14 +309,19 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
         LOG_ERR("Connection failed (err %u)", err);
         return;
     }
+
+    struct bt_conn_info info;
+    bt_conn_get_info(conn, &info);
+    if (info.role != BT_CONN_ROLE_PERIPHERAL) {
+        return;
+    }
+
     current_conn = bt_conn_ref(conn);
     max_send_len = 20;
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
     LOG_INF("Connected %s", addr);
     request_mtu_exchange();
-    struct bt_conn_info info;
-    bt_conn_get_info(conn, &info);
     LOG_INF("Interval: %d, latency: %d, timeout: %d", info.le.interval, info.le.latency, info.le.timeout);
 
     // Right after a new connection we want short connection interval

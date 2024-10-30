@@ -90,6 +90,15 @@ menu "ZSWatch"
                 default 100
             endmenu
         endmenu
+        
+        config APPLICATIONS_USE_LEA_ASSISTANT
+            bool
+            select BT_CENTRAL
+            select BT_AUDIO
+            select BT_BAP_BROADCAST_ASSISTANT
+            select BT_TINYCRYPT_ECC
+        prompt "Activate the application 'LE Audio Assistant'"
+        default n
     endmenu
 
     menu "Watchface"
@@ -255,6 +264,7 @@ menu "ZSWatch"
         rsource "src/applications/notification/Kconfig"
         rsource "src/applications/trivia/Kconfig"
         rsource "src/applications/ppt_remote/Kconfig"
+        rsource "src/applications/lea_assistant/Kconfig"
     endmenu
 
     menu "UI"
