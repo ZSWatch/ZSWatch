@@ -16,8 +16,6 @@ struct webusb_ltv_data {
     char broadcast_name[BT_NAME_LEN];
 } __packed;
 
-static struct webusb_ltv_data parsed_ltv_data;
-
 static bool data_found(struct bt_data *data, void *user_data)
 {
     struct webusb_ltv_data *_parsed = (struct webusb_ltv_data *)user_data;
@@ -68,7 +66,7 @@ int webusb_transmit(struct net_buf *tx_net_buf)
         LOG_ERR("Null msg_ptr");
         return 1;
     }
-
+    struct webusb_ltv_data parsed_ltv_data = {0};
     struct webusb_message *webusb_message = (struct webusb_message *)tx_net_buf->b.data;
 
     struct net_buf_simple msg_net_buf = {

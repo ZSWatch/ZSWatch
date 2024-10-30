@@ -154,7 +154,7 @@ static void lea_assistant_ui_add_list_entry(lea_assistant_device_t *device)
     lv_obj_add_flag(btn, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
     lv_obj_t *title = lv_label_create(btn);
-    lv_label_set_text(title, device->name);
+    lv_label_set_text_static(title, device->name);
     lv_obj_set_size(title, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align(title, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
