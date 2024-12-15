@@ -1,4 +1,4 @@
-identifier: zswatch_nrf5340_cpuapp_ns
+identifier: zswatch/nrf5340/cpuapp/ns
 name: ZSWatch-NRF5340-application-MCU-Non-Secure
 type: mcu
 arch: arm
@@ -14,4 +14,8 @@ supported:
   - watchdog
   - usb_cdc
   - usb_device
+  - usbd
   - netif:openthread
+  - gpio
+  - spi
+vendor: nordic

@@ -1,0 +1,16 @@
+board:
+  name: zswatch
+  vendor: nordic
+  socs:
+  - name: 'nrf5340'
+    variants:
+    - name: 'ns'
+      cpucluster: 'cpuapp'
+  revision:
+    format: number
+    default: "5"
+    exact: false
+    revisions:
+    - name: "3"
+    - name: "4"
+    - name: "5"

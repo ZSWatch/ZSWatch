@@ -1,5 +1,5 @@
-identifier: zswatch_nrf5340_cpuapp
-name: ZSWatch-NRF5340-application-MCU
+identifier: zswatch/nrf5340/cpuapp
+name: NRF5340-DK-NRF5340-application-MCU
 type: mcu
 arch: arm
 toolchain:
@@ -11,8 +11,13 @@ flash: 1024
 supported:
   - gpio
   - i2c
+  - i2s
   - pwm
   - watchdog
   - usb_cdc
   - usb_device
+  - usbd
   - netif:openthread
+  - gpio
+  - spi
+vendor: jakkra

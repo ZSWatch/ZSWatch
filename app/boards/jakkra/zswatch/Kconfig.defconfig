@@ -1,27 +1,9 @@
-# ZSWatch NRF5340 board configuration
+# nRF5340 DK nRF5340 board configuration
 
-# Copyright (c) 2023 Jakob Krantz
+# Copyright (c) 2019-2020 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
-
-config BOARD
-	default "zswatch_nrf5340_cpuapp"
-
-# By default, if we build for a Non-Secure version of the board,
-# enable building with TF-M as the Secure Execution Environment.
-config BUILD_WITH_TFM
-	default y if BOARD_ZSWATCH_NRF5340_CPUAPP_NS
-
-if BUILD_WITH_TFM
-
-# By default, if we build with TF-M, instruct build system to
-# flash the combined TF-M (Secure) & Zephyr (Non Secure) image
-config TFM_FLASH_MERGED_BINARY
-	bool
-	default y
-
-endif # BUILD_WITH_TFM
+if  BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
 # Code Partition:
 #
@@ -71,43 +53,26 @@ config FLASH_LOAD_SIZE
 
 endif # BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
-if !TRUSTED_EXECUTION_SECURE
+endif # BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
+
+config MBOX_NRFX_IPC
+	default MBOX
+
+if BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
 choice BT_HCI_BUS_TYPE
 	default BT_HCI_IPC if BT
 endchoice
 
-config HEAP_MEM_POOL_SIZE
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int
 	default 4096 if BT_HCI_IPC
 
-config BT_HAS_HCI_VS
-	default BT
-
-config USB_NRFX_ATTACHED_EVENT_DELAY
-	default 700 if USB_DEVICE_DRIVER
-
-config I2C
-	default y
-
-config SPI
-	default y
-
-config REGULATOR
-	default y
-
-endif # !TRUSTED_EXECUTION_SECURE
-
-endif # BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
+endif #  BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
 if BOARD_ZSWATCH_NRF5340_CPUNET
 
-config BOARD
-	default "zswatch_nrf5340_cpunet"
-
 config BT_CTLR
-	default BT
-
-config BT_ECC
-	default BT
+	default y if BT
 
 endif # BOARD_ZSWATCH_NRF5340_CPUNET

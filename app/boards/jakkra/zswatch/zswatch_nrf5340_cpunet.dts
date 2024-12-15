@@ -9,8 +9,8 @@
 #include "zswatch_nrf5340_cpunet-pinctrl.dtsi"
 
 / {
-	model = "Nordic ZSWatch NRF5340 Network";
-	compatible = "nordic,zswatch-nrf5340-cpunet";
+	model = "ZSWatch NRF5340 Network";
+	compatible = "jakkra,zswatch-nrf5340-cpunet";
 
 	chosen {
 		zephyr,console = &uart0;
@@ -19,11 +19,14 @@
 		zephyr,bt-mon-uart = &uart0;
 		zephyr,bt-c2h-uart = &uart0;
 		zephyr,bt-hci-ipc = &ipc0;
+		nordic,802154-spinel-ipc = &ipc0;
 		zephyr,sram = &sram1;
 		zephyr,flash = &flash1;
 		zephyr,code-partition = &slot0_partition;
+		zephyr,ieee802154 = &ieee802154;
 	};
 
+	/* These aliases are provided for compatibility with samples */
 	aliases {
 		watchdog0 = &wdt;
 	};
@@ -42,7 +45,6 @@
 };
 
 &uart0 {
-	compatible = "nordic,nrf-uarte";
 	status = "disabled";
 	current-speed = <115200>;
 	pinctrl-0 = <&uart0_default>;
@@ -51,6 +53,7 @@
 };
 
 &flash1 {
+
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -62,15 +65,11 @@
 		};
 		slot0_partition: partition@c000 {
 			label = "image-0";
-			reg = <0x0000C000 0x12000>;
+			reg = <0x0000C000 0x17000>;
 		};
-		slot1_partition: partition@1e000 {
+		slot1_partition: partition@23000 {
 			label = "image-1";
-			reg = <0x0001E000 0x12000>;
-		};
-		scratch_partition: partition@30000 {
-			label = "image-scratch";
-			reg = <0x00030000 0xa000>;
+			reg = <0x00023000 0x17000>;
 		};
 		storage_partition: partition@3a000 {
 			label = "storage";
@@ -79,16 +78,9 @@
 	};
 };
 
-// Zephyr gets mad if this is not set, even thought we don't do any switching
-&radio {
+&ieee802154 {
 	status = "okay";
-	dfe-antenna-num = <10>;
-	dfe-pdu-antenna = <0x1>;
-	dfegpio0-gpios = <&gpio1 1 0>;
-	dfegpio1-gpios = <&gpio1 1 0>;
-	dfegpio2-gpios = <&gpio1 1 0>;
-	dfegpio3-gpios = <&gpio1 1 0>;
 };
 
 /* Include shared RAM configuration file */
-#include "zswatch_nrf5340_shared_sram_planning_conf.dts"
+#include "nrf5340_shared_sram_planning_conf.dtsi"

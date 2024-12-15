@@ -6,11 +6,11 @@
 
 /dts-v1/;
 #include <nordic/nrf5340_cpuapp_qkaa.dtsi>
-#include "zswatch_nrf5340_common.dts"
+#include "nrf5340_cpuapp_common.dtsi"
 
 / {
-	model = "Nordic ZSWatch NRF5340 Application";
-	compatible = "nordic,zswatch-nrf5340-cpuapp";
+	model = "ZSWatch NRF5340 Application";
+	compatible = "jakkra,zswatch-nrf5340-cpuapp";
 
 	chosen {
 		zephyr,sram = &sram0_image;

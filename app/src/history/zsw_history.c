@@ -97,7 +97,7 @@ int zsw_history_init(zsw_history_t *p_history, uint32_t max_samples, uint8_t sam
 #ifdef CONFIG_SETTINGS_NVS
     struct nvs_fs *nvs_storage;
 
-    rc = settings_storage_get((void**)&nvs_storage);
+    rc = settings_storage_get((void **)&nvs_storage);
     __ASSERT(rc == 0, "Error during settings storage get! Error: %d", rc);
 
     // As long as history is storing all samples as one key, we have a limit of NVS sector size for total size of samples

@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         built_type: [debug, release]
-        board: [zswatch_nrf5340_cpuapp@3, zswatch_nrf5340_cpuapp@4, zswatch_nrf5340_cpuapp@5, native_posix, nrf5340dk_nrf5340_cpuapp]
+        board: [zswatch@3/nrf5340/cpuapp, zswatch@4/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_posix/native, nrf5340dk/nrf5340/cpuapp]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,31 +40,41 @@ jobs:
         working-directory: ZSWatch
         run: |
           west format --dry-run
+      
+      - name: Define build directory name
+        working-directory: ZSWatch
+        run: |
+          # Since board name contains slashes, we need to replace them with underscores
+          # as the board name is used as part of the build directory name.
+          # It's output to GITHUB_ENV so it can be used in the next steps
+          # and only needs to be calculated once.
+          BUILD_DIR=${{ matrix.board }}_${{ matrix.built_type }}
+          echo "BUILD_DIR=${BUILD_DIR}" | sed 's/\//_/g' >> $GITHUB_ENV
 
       - name: Build firmware
-        if: ${{ matrix.board != 'native_posix' }}
+        if: ${{ matrix.board != 'native_posix/native' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
-          mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}.hex
-          mv ${{ matrix.board }}_${{ matrix.built_type }}/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}.elf
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }}_rotated -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
-          mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.hex fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.hex
-          mv ${{ matrix.board }}_${{ matrix.built_type }}_rotated/zephyr/zephyr.elf fw_images/${{ matrix.board }}_${{ matrix.built_type }}_rotated.elf
+          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
+          mv ${{ env.BUILD_DIR }}/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}.hex
+          mv ${{ env.BUILD_DIR }}/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
+          west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
+          mv ${{ env.BUILD_DIR }}_rotated/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
+          mv ${{ env.BUILD_DIR }}_rotated/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
 
           # Only one copy of Net Core image needed, it's the same for all builds
-          mv ${{ matrix.board }}_${{ matrix.built_type }}/hci_ipc/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
+          mv ${{ env.BUILD_DIR }}/hci_ipc/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
 
       - name: Build native_posix
-        if: ${{ matrix.board == 'native_posix' }}
+        if: ${{ matrix.board == 'native_posix/native' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ matrix.board }}_${{ matrix.built_type }} -p -b ${{ matrix.board }} -- -DOVERLAY_CONFIG=boards/${{ matrix.built_type }}.conf
+          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }}
       
       - name : Upload Firmware
         uses: actions/upload-artifact@v4.3.3
         with:
-          name: ${{ matrix.board }}_${{ matrix.built_type }}
+          name: ${{ env.BUILD_DIR }}
           path: |
             ZSWatch/fw_images
           if-no-files-found: ignore
