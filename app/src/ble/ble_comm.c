@@ -28,6 +28,7 @@
 
 #include "ui/zsw_ui.h"
 #include "gadgetbridge/ble_gadgetbridge.h"
+#include "chronos/ble_chronos.h"
 
 #include <bluetooth/services/ams_client.h>
 #include <bluetooth/services/ancs_client.h>
@@ -359,4 +360,6 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint1
     LOG_HEXDUMP_DBG(data, len, "RX");
 
     ble_gadgetbridge_input(data, len);
+
+    ble_chronos_input(data, len);
 }
