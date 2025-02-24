@@ -1,0 +1,3 @@
+module = ZSW_CHRONOS_APP
+module-str = ZSW_CHRONOS_APP
+source "subsys/logging/Kconfig.template.log_config"

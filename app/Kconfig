@@ -66,6 +66,11 @@ menu "ZSWatch"
         prompt "Activate the application 'PPT remote'"
         default n
 
+        config APPLICATIONS_USE_CHRONOS
+            bool
+        prompt "Activate the application 'Chronos'"
+        default y
+
         menu "Configuration"
             menu "Compass"
                 depends on APPLICATIONS_USE_COMPASS

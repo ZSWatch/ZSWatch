@@ -7,6 +7,7 @@ target_sources(app PRIVATE ble_cts.c)
 target_sources(app PRIVATE gadgetbridge/ble_gadgetbridge.c)
 target_sources(app PRIVATE ble_http.c)
 target_sources(app PRIVATE zsw_gatt_sensor_server.c)
+target_sources(app PRIVATE chronos/ble_chronos.c)
 
 if(CONFIG_APPLICATIONS_USE_PPT_REMOTE)
     target_sources(app PRIVATE ble_hid.c)
