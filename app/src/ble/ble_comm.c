@@ -333,6 +333,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
             bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
         }
     }
+    ble_chronos_state(true);
 }
 
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
@@ -348,6 +349,8 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }
+
+    ble_chronos_state(false);
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
