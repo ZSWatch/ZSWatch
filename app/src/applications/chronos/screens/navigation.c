@@ -3,7 +3,7 @@
 #include "../chronos_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 
-ZSW_LV_IMG_DECLARE(image_chronos_icon);
+ZSW_LV_IMG_DECLARE(ui_img_arrow_png);
 
 #define CANVAS_WIDTH 48
 #define CANVAS_HEIGHT 48
@@ -17,10 +17,13 @@ static lv_obj_t *ui_navIcon;
 static lv_obj_t *ui_navDistance;
 static lv_obj_t *ui_navDirection;
 
-void navigation_init(lv_obj_t *page)
+void chronos_ui_navigation_init(lv_obj_t *page)
 {
 
-    add_app_title(page, "Navigation", ZSW_LV_IMG_USE(image_chronos_icon));
+    chronos_ui_add_app_title(page, "Navigation", ZSW_LV_IMG_USE(ui_img_arrow_png));
+
+    lv_obj_set_style_pad_top(page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_navPanel = lv_obj_create(page);
     lv_obj_set_width(ui_navPanel, 240);
@@ -59,7 +62,7 @@ void navigation_init(lv_obj_t *page)
 
 
     ui_navIcon = lv_img_create(ui_navPanel);
-    lv_img_set_src(ui_navIcon, ZSW_LV_IMG_USE(image_chronos_icon));
+    lv_img_set_src(ui_navIcon, ZSW_LV_IMG_USE(ui_img_arrow_png));
     lv_obj_set_width(ui_navIcon, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_navIcon, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_navIcon, LV_ALIGN_CENTER);
@@ -84,14 +87,15 @@ void navigation_init(lv_obj_t *page)
 
 }
 
-void navigateInfo(const char *text, const char *title, const char *directions)
+void chronos_ui_set_nav_info(const char *text, const char *title, const char *directions)
 {
     lv_label_set_text(ui_navText, text);
     lv_label_set_text(ui_navDirection, directions);
     lv_label_set_text(ui_navDistance, title);
 }
 
-void navIconState(bool show)
+void chronos_ui_set_nav_icon_state(bool show)
+
 {
     if (show) {
         lv_obj_clear_flag(ui_navIconCanvas, LV_OBJ_FLAG_HIDDEN);
@@ -102,7 +106,7 @@ void navIconState(bool show)
     }
 }
 
-void setNavIconPx(uint16_t x, uint16_t y, bool on)
+void chronos_ui_set_nav_icon_px(uint16_t x, uint16_t y, bool on)
 {
     if (on) {
         lv_canvas_set_px_color(ui_navIconCanvas, x, y, lv_color_make(255, 255, 255));

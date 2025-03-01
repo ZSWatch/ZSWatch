@@ -3,11 +3,14 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <math.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
@@ -18,9 +21,8 @@
 
 LOG_MODULE_REGISTER(ble_chronos, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-static int parse_data(char *data, int len);
-static void parse_time(char *data);
-static void parse_time_zone(char *offset);
+
+// static void parse_time(char *data);
 static void music_control_event_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -28,20 +30,44 @@ ZBUS_LISTENER_DEFINE(android_music_control_lis_chronos, music_control_event_call
 
 static chronos_data_t incoming; // variable to store incoming data
 
-static chronos_notification_t notifications[NOTIF_SIZE];
-static int notificationIndex;
+static chronos_notification_t notifications[CH_NOTIF_SIZE];
+static int notificationIndex = -1;
 
-static chronos_weather_t weather[WEATHER_SIZE];
-static int weatherSize;
+static chronos_weather_t weather[CH_WEATHER_SIZE];
+static chronos_weather_info_t weather_info;
+static chronos_hourly_forecast_t hourly_forecast[CH_FORECAST_SIZE];
 
 static chronos_navigation_t navigation;
 
+static chronos_remote_touch_t remote_touch;
+static char *caller_name;
+
+static chronos_phone_info_t phone_info;
+static chronos_app_info_t app_info;
 
 static notification_callback_t notification_callback = NULL;
+static ringer_callback_t ringer_callback = NULL;
+static configuration_callback_t configuration_callback = NULL;
+static touch_callback_t touch_callback = NULL;
 
-void register_notification_callback(notification_callback_t callback)
+void ble_chronos_add_notification_cb(notification_callback_t callback)
 {
     notification_callback = callback;
+}
+
+void ble_chronos_add_ringer_cb(ringer_callback_t callback)
+{
+    ringer_callback = callback;
+}
+
+void ble_chronos_add_configuration_cb(configuration_callback_t callback)
+{
+    configuration_callback = callback;
+}
+
+void ble_chronos_add_touch_cb(touch_callback_t callback)
+{
+    touch_callback = callback;
 }
 
 static void send_ble_data_event(struct ble_data_event *evt)
@@ -49,43 +75,79 @@ static void send_ble_data_event(struct ble_data_event *evt)
     zbus_chan_pub(&ble_comm_data_chan, evt, K_MSEC(250));
 }
 
+
 static void music_control_event_callback(const struct zbus_channel *chan)
 {
     const struct music_event *event = zbus_chan_const_msg(chan);
 
-    uint8_t buf[50];
-    int msg_len = 0;
+    LOG_INF("Music control event %d", event->control_type);
 
-    if (msg_len > 0) {
-        ble_comm_send(buf, msg_len);
+    switch (event->control_type) {
+        case MUSIC_CONTROL_UI_PLAY:
+            ble_chronos_music_control(CH_CONTROL_MUSIC_PLAY);
+            break;
+        case MUSIC_CONTROL_UI_PAUSE:
+            ble_chronos_music_control(CH_CONTROL_MUSIC_PAUSE);
+            break;
+        case MUSIC_CONTROL_UI_NEXT_TRACK:
+            ble_chronos_music_control(CH_CONTROL_MUSIC_NEXT);
+            break;
+        case MUSIC_CONTROL_UI_PREV_TRACK:
+            ble_chronos_music_control(CH_CONTROL_MUSIC_PREVIOUS);
+            break;
+        case MUSIC_CONTROL_UI_CLOSE:
+        default:
+            // Nothing to do
+            break;
+    }
+
+}
+
+static void parse_time(char *start_time)
+{
+    char *end_time;
+    struct ble_data_event cb;
+    memset(&cb, 0, sizeof(cb));
+
+    end_time = strstr(start_time, ")");
+    if (end_time) {
+        errno = 0;
+        cb.data.data.time.seconds = strtol(start_time, &end_time, 10);
+        if (start_time != end_time && errno == 0) {
+            cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
+            send_ble_data_event(&cb);
+        } else {
+            LOG_WRN("Failed parsing time");
+        }
+    }
+
+    // If setTime contains timezone, process here, i.e setTime(1700556601);E.setTimeZone(1.0);(...
+    char *time_zone = strstr(start_time, ";E.setTimeZone(");
+    if (time_zone) {
+        time_zone += strlen(";E.setTimeZone(");
+        parse_time_zone(time_zone);
     }
 }
 
-void parse_time(char *start_time)
-{
-    ble_comm_cb_data_t cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
-    send_ble_data_event(&cb);
-}
-
-void parse_time_zone(char *offset)
-{
-    ble_comm_cb_data_t cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.type = BLE_COMM_DATA_TYPE_SET_TIME;
-
-    send_ble_data_event(&cb);
-}
-
-static int parse_notify(char *data, int len)
+static int parse_notify(chronos_notification_t *notification)
 {
     struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
+    struct tm tm_info = ble_chronos_get_time_struct();
+
     cb.data.type = BLE_COMM_DATA_TYPE_NOTIFY;
+    cb.data.data.notify.id = tm_info.tm_sec + notification->time.hour * 10000 +  notification->time.minute * 100;
+    cb.data.data.notify.src = strdup(ble_chronos_get_app_name(notification->icon));
+    cb.data.data.notify.src_len = strlen(ble_chronos_get_app_name(notification->icon));
+    cb.data.data.notify.sender = strdup(ble_chronos_get_app_name(notification->icon));
+    cb.data.data.notify.sender_len = strlen(ble_chronos_get_app_name(notification->icon));
+    cb.data.data.notify.title = strdup(notification->title);
+    cb.data.data.notify.title_len = strlen(notification->title);
+    cb.data.data.notify.subject = strdup(notification->title);
+    cb.data.data.notify.subject_len = strlen(notification->title);
+    cb.data.data.notify.body = strdup(notification->message);
+    cb.data.data.notify.body_len = strlen(notification->message);
 
     send_ble_data_event(&cb);
 
@@ -106,10 +168,26 @@ static int parse_notify_delete(char *data, int len)
 
 static int parse_weather(char *data, int len)
 {
-    ble_comm_cb_data_t cb;
+    //{t:"weather",temp:268,hum:97,code:802,txt:"slightly cloudy",wind:2.0,wdir:14,loc:"MALMO"
+    int temp_len;
+    char *temp_value;
+    float temperature;
+    struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    cb.type = BLE_COMM_DATA_TYPE_WEATHER;
+    cb.data.type = BLE_COMM_DATA_TYPE_WEATHER;
+    int32_t temperature_k = extract_value_uint32("\"temp\":", data);
+    cb.data.data.weather.humidity = extract_value_uint32("\"hum\":", data);
+    cb.data.data.weather.weather_code = extract_value_uint32("\"code\":", data);
+    cb.data.data.weather.wind = extract_value_uint32("\"wind\":", data);
+    cb.data.data.weather.wind_direction = extract_value_uint32("\"wdir\":", data);
+    temp_value = extract_value_str("\"txt\":", data, &temp_len);
+
+    strncpy(cb.data.data.weather.report_text, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
+
+    // App sends temperature in Kelvin
+    temperature = temperature_k - 273.15f;
+    cb.data.data.weather.temperature_c = (int8_t)roundf(temperature);
 
     send_ble_data_event(&cb);
 
@@ -118,8 +196,6 @@ static int parse_weather(char *data, int len)
 
 static int parse_musicinfo(char *data, int len)
 {
-    char *temp_value;
-    int temp_len;
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
 
@@ -132,8 +208,7 @@ static int parse_musicinfo(char *data, int len)
 
 static int parse_musicstate(char *data, int len)
 {
-    char *temp_value;
-    int temp_len;
+
     ble_comm_cb_data_t cb;
     memset(&cb, 0, sizeof(cb));
 
@@ -144,75 +219,208 @@ static int parse_musicstate(char *data, int len)
     return 0;
 }
 
-int parse_data(char *data, int len)
-{
-    on_receive_data(data, len);
-
-    return 0;
-}
-
 void ble_chronos_input(const uint8_t *const data, uint16_t len)
 {
     // LOG_HEXDUMP_DBG(data, len, "RX");
-    LOG_INF("Data received, length %d", len);
-    parse_data((char *)data, len);
+    // LOG_INF("Data received, length %d", len);
+    ble_chronos_on_receive_data(data, len);
 }
 
-void send_command(uint8_t *command, size_t length)
+void ble_chronos_state(bool connect)
+{
+    LOG_INF("Bluetooth  %s", connect ? "Connected" : "Disconnected");
+
+    if (connect) {
+        // connected
+        ble_chronos_send_info(); // needed to detect watch type on Chronos app
+        ble_chronos_set_notify_battery(true); // needed for navigation to work
+    } else {
+        // disconnected
+        if (navigation.active) {
+            navigation.active = false;
+            if (configuration_callback != NULL) {
+                configuration_callback(CH_CONFIG_NAV_DATA, navigation.active ? 1 : 0, 0);
+            }
+        }
+
+        if (remote_touch.state) {
+            remote_touch.state = false;
+            if (touch_callback != NULL) {
+                touch_callback(&remote_touch);
+            }
+        }
+    }
+
+}
+
+void ble_chronos_send_command(uint8_t *command, size_t length)
 {
 
-    LOG_HEXDUMP_DBG(command, length, "Chronos TX");
-    LOG_INF("Data sent, length %d", length);
+    // LOG_HEXDUMP_DBG(command, length, "Chronos TX");
+    // LOG_INF("Data sent, length %d", length);
 
     ble_comm_send(command, length);
 }
 
-void music_control(chronos_control_t command)
+void ble_chronos_music_control(chronos_control_t command)
 {
     uint8_t music_cmd[] = {0xAB, 0x00, 0x04, 0xFF, (uint8_t)(command >> 8), 0x80, (uint8_t)(command)};
-    send_command(music_cmd, 7);
+    ble_chronos_send_command(music_cmd, 7);
 }
 
-void set_volume(uint8_t level)
+void ble_chronos_set_volume(uint8_t level)
 {
     uint8_t volume_cmd[] = {0xAB, 0x00, 0x05, 0xFF, 0x99, 0x80, 0xA0, level};
-    send_command(volume_cmd, 8);
+    ble_chronos_send_command(volume_cmd, 8);
 }
 
-void capture_photo()
+void ble_chronos_capture_photo()
 {
     uint8_t capture_cmd[] = {0xAB, 0x00, 0x04, 0xFF, 0x79, 0x80, 0x01};
-    send_command(capture_cmd, 7);
+    ble_chronos_send_command(capture_cmd, 7);
 }
 
-void find_phone(bool state)
+void ble_chronos_find_phone(bool state)
 {
     uint8_t c = state ? 0x01 : 0x00;
     uint8_t find_cmd[] = {0xAB, 0x00, 0x04, 0xFF, 0x7D, 0x80, c};
-    send_command(find_cmd, 7);
+    ble_chronos_send_command(find_cmd, 7);
 }
 
-void send_info()
+void ble_chronos_send_info()
 {
     uint8_t info_cmd[] = {0xab, 0x00, 0x11, 0xff, 0x92, 0xc0, CHRONOSESP_VERSION_MAJOR, (CHRONOSESP_VERSION_MINOR * 10 + CHRONOSESP_VERSION_PATCH), 0x00, 0xfb, 0x1e, 0x40, 0xc0, 0x0e, 0x32, 0x28, 0x00, 0xe2, 0x07, 0x80};
-    send_command(info_cmd, 20);
+    ble_chronos_send_command(info_cmd, 20);
 }
 
-void send_battery(uint8_t level, bool charging)
+void ble_chronos_send_battery(uint8_t level, bool charging)
 {
     uint8_t c = charging ? 0x01 : 0x00;
     uint8_t bat_cmd[] = {0xAB, 0x00, 0x05, 0xFF, 0x91, 0x80, c, level};
-    send_command(bat_cmd, 8);
+    ble_chronos_send_command(bat_cmd, 8);
 }
 
-void set_notify_battery(bool state)
+void ble_chronos_set_notify_battery(bool state)
 {
     uint8_t s = state ? 0x01 : 0x00;
     uint8_t bat_cmd[] = {0xAB, 0x00, 0x04, 0xFE, 0x91, 0x80, s}; // custom command AB..FE
-    send_command(bat_cmd, 7);
+    ble_chronos_send_command(bat_cmd, 7);
 }
 
-const char *app_name(int id)
+chronos_notification_t *ble_chronos_get_notification(int index)
+{
+    return &notifications[index % CH_NOTIF_SIZE];
+}
+
+int ble_chronos_get_notification_count()
+{
+    if (notificationIndex + 1 >= CH_NOTIF_SIZE) {
+        return CH_NOTIF_SIZE; // the buffer is full
+    } else {
+        return notificationIndex + 1; // the buffer is not full,
+    }
+}
+
+void ble_chronos_clear_notifications()
+{
+    // here we just set the index to -1, existing data at the buffer will be overwritten
+    // ble_chronos_get_notification_count() will return 0 but ble_chronos_get_notification(int index) will return previous existing data
+
+    for (int i = 0; i < CH_NOTIF_SIZE; i++) {
+        if (notifications[i].message) {
+            free(notifications[i].message);
+        }
+        if (notifications[i].title) {
+            free(notifications[i].title);
+        }
+        notifications[i].available = false;
+
+    }
+    notificationIndex = -1;
+}
+
+
+
+chronos_navigation_t *ble_chronos_get_navigation()
+{
+    return &navigation;
+}
+
+chronos_weather_info_t *ble_chronos_get_weather_info()
+{
+    return &weather_info;
+}
+
+chronos_weather_t *ble_chronos_get_weather(int index)
+{
+    return &weather[index % CH_WEATHER_SIZE];
+}
+
+chronos_hourly_forecast_t *ble_chronos_get_forecast_hour(int hour)
+{
+    return &hourly_forecast[hour % CH_FORECAST_SIZE];
+}
+
+chronos_app_info_t *ble_chronos_get_app_info()
+{
+    return &app_info;
+}
+
+chronos_phone_info_t *ble_chronos_get_phone_info()
+{
+    return &phone_info;
+}
+
+struct tm ble_chronos_get_time_struct()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL); // Get current time
+    struct tm *tn = localtime(&tv.tv_sec);  // Convert to local time
+    return *tn;
+}
+
+void ble_chronos_extract_notification(const char *input, char **title, char **message)
+{
+    *title = NULL;
+    *message = NULL;
+
+    if (!input) {
+        return;
+    }
+
+    char *colon_pos = strchr(input, ':');
+    if (!colon_pos) {
+        // No ':' found, return original string as message
+        *message = strdup(input);
+        LOG_INF("No ':' found, return original string as message");
+        return;
+    }
+
+    size_t title_length = colon_pos - input;
+    char *newline_pos = strchr(input, '\n');
+
+    // Check title conditions
+    if (title_length >= 30 || (newline_pos && newline_pos < colon_pos)) {
+        // Title is too long or contains a newline before ':'
+        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, colon_pos, input,
+                colon_pos - input);
+        *message = strdup(input);
+        return;
+    }
+
+    *title = (char *)malloc(title_length + 1);
+    if (!*title) {
+        LOG_INF("Memory allocation failed");
+        return;    // Memory allocation failed
+    }
+
+    strncpy(*title, input, title_length);
+    (*title)[title_length] = '\0'; // Null-terminate
+
+    *message = strdup(colon_pos + 1); // Copy the message after ':'
+}
+
+const char *ble_chronos_get_app_name(int id)
 {
     switch (id) {
         case 0x03:
@@ -263,24 +471,11 @@ const char *app_name(int id)
 }
 
 
-chronos_notification_t *get_notification(int index)
-{
-    return &notifications[index % NOTIF_SIZE];
-}
-
-chronos_navigation_t *get_navigation()
-{
-    return &navigation;
-}
-
 /* DATA FROM CHRONOS APP FUNCTIONS */
-// write on RX (6e400002-b5a3-f393-e0a9-e50e24dcca9e)
 
-// Chronos received commands (data[0] is 0xAB or 0xEA or <= 0x19) on RX characteristic
-
+// Chronos received commands (data[0] is 0xAB or 0xEA or <= 0x19) on RX characteristic.
 // this function assembles data packets that are split over multiple transmissions
-// when data on RX (6e400002-b5a3-f393-e0a9-e50e24dcca9e) is written
-void on_receive_data(uint8_t *data, int len)
+void ble_chronos_on_receive_data(const uint8_t *data, uint16_t len)
 {
     // LOG_HEXDUMP_DBG(data, len, "Chronos RX");
     if (len > 0) {
@@ -296,7 +491,7 @@ void on_receive_data(uint8_t *data, int len)
 
             if (incoming.length <= len) {
                 // complete packet assembled
-                data_received();
+                ble_chronos_data_received();
             } else {
                 // data is still being assembled
                 // LOG_INF("Incomplete");
@@ -311,7 +506,7 @@ void on_receive_data(uint8_t *data, int len)
 
             if (incoming.length <= len + j - 1) {
                 // complete packet assembled
-                data_received();
+                ble_chronos_data_received();
             } else {
                 // data is still being assembled
                 // LOG_INF("Incomplete");
@@ -322,12 +517,12 @@ void on_receive_data(uint8_t *data, int len)
     }
 }
 
-void data_received()
+void ble_chronos_data_received()
 {
     int len = incoming.length;
 
-    LOG_INF("Complete data length %d", len);
-    LOG_HEXDUMP_DBG(incoming.data, len, "Chronos RX");
+    // LOG_INF("Complete data length %d", len);
+    // LOG_HEXDUMP_DBG(incoming.data, len, "Chronos RX");
 
     if (incoming.data[0] == 0xAB) {
         switch (incoming.data[4]) {
@@ -347,16 +542,6 @@ void data_received()
                 // find watch
                 // the watch should vibrate and/or ring for a few seconds
                 LOG_INF("find watch");
-
-                for (int i = 0; i < NOTIF_SIZE; i++) {
-
-                    LOG_INF("Notification index %d available %s", i,  notifications[i].available ? "true" : "false");
-
-                    if (notifications[i].available) {
-                        LOG_INF("Icon 0x%02X %s, Time %s: %s", notifications[i].icon, notifications[i].app, notifications[i].time,
-                                notifications[i].message);
-                    }
-                }
                 break;
             case 0x72: {
                 int icon = incoming.data[6]; // See ALERT ICONS
@@ -367,33 +552,61 @@ void data_received()
                     strncat(message, (char *)&incoming.data[i], 1);
                 }
 
-                LOG_INF("Notification id: %02X, state: %d", icon, state);
+                // LOG_INF("Notification id: %02X, state: %d", icon, state);
 
                 if (icon == 0x01) {
                     // caller command
                     // message contains the caller details (name or number)
+                    if (caller_name) {
+                        free(caller_name);
+                    }
+                    caller_name = strdup(message);
+                    if (ringer_callback != NULL) {
+                        ringer_callback(true, caller_name);
+                    }
                 } else if (icon == 0x02) {
                     // cancel caller command
-                    //
+                    if (ringer_callback != NULL) {
+                        ringer_callback(false, caller_name);
+                    }
                 } else if (state == 0x02) {
+
+                    struct tm tm_info = ble_chronos_get_time_struct();
+
+                    chronos_time_t time = {
+                        .hour = tm_info.tm_hour,
+                        .minute = tm_info.tm_min
+                    };
 
 
                     // Free old memory before assigning new values
                     notificationIndex++;
-                    if (notifications[notificationIndex % NOTIF_SIZE].time) {
-                        free(notifications[notificationIndex % NOTIF_SIZE].time);
+
+                    if (notifications[notificationIndex % CH_NOTIF_SIZE].message) {
+                        free(notifications[notificationIndex % CH_NOTIF_SIZE].message);
                     }
-                    if (notifications[notificationIndex % NOTIF_SIZE].message) {
-                        free(notifications[notificationIndex % NOTIF_SIZE].message);
+                    if (notifications[notificationIndex % CH_NOTIF_SIZE].title) {
+                        free(notifications[notificationIndex % CH_NOTIF_SIZE].title);
                     }
-                    notifications[notificationIndex % NOTIF_SIZE].available = true;
-                    notifications[notificationIndex % NOTIF_SIZE].icon = icon;
-                    notifications[notificationIndex % NOTIF_SIZE].app = app_name(icon);
-                    notifications[notificationIndex % NOTIF_SIZE].time = strdup("12:45");
-                    notifications[notificationIndex % NOTIF_SIZE].message = strdup(message);
+
+                    ble_chronos_extract_notification(message,
+                                                     &notifications[notificationIndex % CH_NOTIF_SIZE].title,
+                                                     &notifications[notificationIndex % CH_NOTIF_SIZE].message
+                                                    );
+
+                    if (!notifications[notificationIndex % CH_NOTIF_SIZE].title) {
+                        notifications[notificationIndex % CH_NOTIF_SIZE].title = strdup(ble_chronos_get_app_name(icon));
+                    }
+
+                    notifications[notificationIndex % CH_NOTIF_SIZE].available = true;
+                    notifications[notificationIndex % CH_NOTIF_SIZE].icon = icon;
+                    notifications[notificationIndex % CH_NOTIF_SIZE].time = time;
+
+
+                    parse_notify(&notifications[notificationIndex % CH_NOTIF_SIZE]);
 
                     if (notification_callback != NULL) {
-                        notification_callback(&notifications[notificationIndex % NOTIF_SIZE]);
+                        notification_callback(&notifications[notificationIndex % CH_NOTIF_SIZE]);
                     }
                 }
             }
@@ -452,7 +665,10 @@ void data_received()
             case 0x79:
                 // remote camera function
                 // this tells the watch that the camera is active on the app and ready to receive capture command
-                // incoming.data[6]; 1->ACTIVE 0->INACTIVE
+                // _cameraReady = ((uint8_t)incoming.data[6] == 1);
+                if (configuration_callback != NULL) {
+                    configuration_callback(CH_CONFIG_CAMERA, 0, (uint32_t)incoming.data[6]);
+                }
                 break;
             case 0x7B:
                 // change watch language if supported
@@ -465,18 +681,27 @@ void data_received()
             case 0x7E:
                 // weather data received
                 // contains daily forecast
-                weatherSize = 0;
+                struct tm tm_info = ble_chronos_get_time_struct();
+                chronos_time_t time = {
+                    .hour = tm_info.tm_hour,
+                    .minute = tm_info.tm_min
+                };
+                weather_info.time = time;
+                weather_info.size = 0;
                 for (int k = 0; k < (len - 6) / 2; k++) {
                     int sign = (incoming.data[(k * 2) + 6] & 1) ? -1 : 1;
 
                     int icon = incoming.data[(k * 2) + 6] >> 4; // icon id; See WEATHER ICONS
                     int temp = ((int)incoming.data[(k * 2) + 7]) * sign;
 
-                    int dy = k; //int dy = this->getDayofWeek() + k;
+                    int dy = tm_info.tm_wday + k;
                     weather[k].day = dy % 7;
                     weather[k].icon = icon;
                     weather[k].temp = temp;
-                    weatherSize++;
+                    weather_info.size++;
+                }
+                if (configuration_callback != NULL) {
+                    configuration_callback(CH_CONFIG_WEATHER, 1, 0);
                 }
                 break;
             case 0x7F:
@@ -500,13 +725,19 @@ void data_received()
                     weather[k].high = tempH;
                     weather[k].low = tempL;
                 }
+                if (configuration_callback != NULL) {
+                    configuration_callback(CH_CONFIG_WEATHER, 2, 0);
+                }
                 break;
             case 0x91:
                 if (incoming.data[3] == 0xFE) {
                     // custom app command
                     // status of the phone battery
-                    // incoming.data[6]; 1->Charging 0->Not Charging
-                    // incoming.data[7]; phone battery level %
+                    phone_info.state = incoming.data[6]; // 1->Charging 0->Not Charging
+                    phone_info.level = incoming.data[7]; // phone battery level %
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_PBAT, phone_info.state, phone_info.level);
+                    }
                 }
 
                 break;
@@ -541,16 +772,31 @@ void data_received()
             case 0xBF:
                 if (incoming.data[3] == 0xFE) {
                     // remote touch data (Chronos v3.7.0+)
-                    // touch.state = incoming.data[5] == 1;
-                    // touch.x = uint32_t(incoming.data[6] << 8) | uint32_t(incoming.data[7]);
-                    // touch.y = uint32_t(incoming.data[8] << 8) | uint32_t(incoming.data[9]);
+                    remote_touch.state = incoming.data[5] == 1;
+                    remote_touch.x = (uint32_t)(incoming.data[6] << 8) | (uint32_t)(incoming.data[7]);
+                    remote_touch.y = (uint32_t)(incoming.data[8] << 8) | (uint32_t)(incoming.data[9]);
+
+                    if (touch_callback != NULL) {
+                        touch_callback(&remote_touch);
+                    }
                 }
                 break;
             case 0xCA:
                 if (incoming.data[3] == 0xFE) {
-                    // Chronos app version info
-                    // appCode; (incoming.data[6] * 256) + incoming.data[7];
-                    // appVersion; link incoming.data[8:len]
+                    app_info.code = (incoming.data[6] * 256) + incoming.data[7];
+
+                    char version[50] = {0};
+                    for (int i = 8; i < len; i++) {
+                        strncat(version, (char *)&incoming.data[i], 1);
+                    }
+                    if (app_info.version) {
+                        free(app_info.version);
+                    }
+                    app_info.version = strdup(version);
+
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_APP, app_info.code, 0);
+                    }
                 }
                 break;
             // case 0xCC:
@@ -558,83 +804,79 @@ void data_received()
             //         setChunkedTransfer(incoming.data[5] != 0x00);
             //     }
             //     break;
-            // case 0xEE:
-            //     if (incoming.data[3] == 0xFE) {
-            //         // navigation icon data received
-            //         uint8_t pos = incoming.data[6];
-            //         uint32_t crc = uint32_t(incoming.data[7] << 24) | uint32_t(incoming.data[8] << 16) | uint32_t(
-            //                            incoming.data[9] << 8) | uint32_t(incoming.data[10]);
-            //         for (int i = 0; i < 96; i++) {
-            //             navigation.icon[i + (96 * pos)] = incoming.data[11 + i];
-            //         }
+            case 0xEE:
+                if (incoming.data[3] == 0xFE) {
+                    // navigation icon data received
+                    uint8_t pos = incoming.data[6];
+                    uint32_t crc = (uint32_t)(incoming.data[7] << 24) | (uint32_t)(incoming.data[8] << 16) | (uint32_t)(
+                                       incoming.data[9] << 8) | (uint32_t)(incoming.data[10]);
+                    for (int i = 0; i < 96; i++) {
+                        navigation.icon[i + (96 * pos)] = incoming.data[11 + i];
+                    }
 
-            //         if (configurationReceivedCallback != nullptr) {
-            //             configurationReceivedCallback(CF_NAV_ICON, pos, crc);
-            //         }
-            //     }
-            //     break;
-            // case 0xEF:
-            //     if (incoming.data[3] == 0xFE) {
-            //         // navigation data received
-            //         if (incoming.data[5] == 0x00) {
-            //             navigation.active = false;
-            //         } else if (incoming.data[5] == 0xFF) {
-            //             navigation.active = true;
-            //             navigation.title = "Disabled";
-            //             navigation.duration = "";
-            //             navigation.distance = "";
-            //             navigation.eta = "";
-            //             navigation.directions = "Check app settings";
-            //             navigation.has_icon = false;
-            //             navigation.is_navigation = false;
-            //         } else if (incoming.data[5] == 0x80) {
-            //             navigation.active = true;
-            //             navigation.has_icon = incoming.data[6] == 1;
-            //             navigation.is_navigation = incoming.data[7] == 1;
-            //             navigation.icon_crc = uint32_t(incoming.data[8] << 24) | uint32_t(incoming.data[9] << 16) | uint32_t(
-            //                                       incoming.data[10] << 8) | uint32_t(incoming.data[11]);
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_NAV_ICON, pos, crc);
+                    }
+                }
+                break;
+            case 0xEF:
+                if (incoming.data[3] == 0xFE) {
+                    // navigation data received
+                    char **fields[] = {
+                        &navigation.title,
+                        &navigation.duration,
+                        &navigation.distance,
+                        &navigation.eta,
+                        &navigation.directions
+                    };
 
-            //             int i = 12;
-            //             navigation.title = "";
-            //             while (incoming.data[i] != 0 && i < len) {
-            //                 navigation.title += char(incoming.data[i]);
-            //                 i++;
-            //             }
-            //             i++;
+                    for (int i = 0; i < 5; i++) {
+                        free(*fields[i]);
+                        *fields[i] = NULL;
+                    }
 
-            //             navigation.duration = "";
-            //             while (incoming.data[i] != 0 && i < len) {
-            //                 navigation.duration += char(incoming.data[i]);
-            //                 i++;
-            //             }
-            //             i++;
+                    if (incoming.data[5] == 0x00) {
+                        navigation.active = false;
+                        navigation.eta = strdup("Navigation");
+                        navigation.duration = strdup("Inactive");
+                        navigation.distance = strdup("");
+                        navigation.title = strdup("Chronos");
+                        navigation.directions = strdup("Start navigation on Google maps");
+                    } else if (incoming.data[5] == 0xFF) {
+                        navigation.active = true;
+                        navigation.eta = strdup("Navigation");
+                        navigation.duration = strdup("Disabled");
+                        navigation.distance = strdup("");
+                        navigation.title = strdup("Chronos");
+                        navigation.directions = strdup("Check Chronos app settings");
+                        navigation.has_icon = false;
+                        navigation.is_navigation = false;
+                    } else if (incoming.data[5] == 0x80) {
+                        navigation.active = true;
+                        navigation.has_icon = incoming.data[6] == 1;
+                        navigation.is_navigation = incoming.data[7] == 1;
+                        navigation.icon_crc = (uint32_t)(incoming.data[8] << 24) | (uint32_t)(incoming.data[9] << 16) | (uint32_t)(
+                                                  incoming.data[10] << 8) | (uint32_t)(incoming.data[11]);
 
-            //             navigation.distance = "";
-            //             while (incoming.data[i] != 0 && i < len) {
-            //                 navigation.distance += char(incoming.data[i]);
-            //                 i++;
-            //             }
-            //             i++;
+                        const uint8_t *ptr = incoming.data + 12;
+                        const uint8_t *end = incoming.data + len;
 
-            //             navigation.eta = "";
-            //             while (incoming.data[i] != 0 && i < len) {
-            //                 navigation.eta += char(incoming.data[i]);
-            //                 i++;
-            //             }
-            //             i++;
+                        for (int i = 0; i < 5 && ptr < end; i++) {
+                            size_t field_len = 0;
+                            const uint8_t *sep = memchr(ptr, '\0', end - ptr);
 
-            //             navigation.directions = "";
-            //             while (incoming.data[i] != 0 && i < len) {
-            //                 navigation.directions += char(incoming.data[i]);
-            //                 i++;
-            //             }
-            //             i++;
-            //         }
-            //         // if (configurationReceivedCallback != nullptr) {
-            //         //     configurationReceivedCallback(CF_NAV_DATA, navigation.active ? 1 : 0, 0);
-            //         // }
-            //     }
-            //     break;
+                            field_len = sep ? (size_t)(sep - ptr) : (size_t)(end - ptr);
+                            *fields[i] = strndup((const char *)ptr, field_len);
+
+                            ptr += field_len + (sep ? 1 : 0);  // Move past separator
+                        }
+                    }
+
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_NAV_DATA, navigation.active ? 1 : 0, 0);
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -644,20 +886,42 @@ void data_received()
                 case 0x01:
                     // weather city name
                     // incoming.data[7:len]
+                    char city[512] = {0};
+
+                    for (int i = 7; i < len; i++) {
+                        strncat(city, (char *)&incoming.data[i], 1);
+                    }
+
+                    if (weather_info.city) {
+                        free(weather_info.city);
+                    }
+
+                    weather_info.city = strdup(city);
+
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_WEATHER, 0, 1);
+                    }
+
                     break;
                 case 0x02:
                     // hourly weather forecsat
                     int size = incoming.data[6]; // data size
                     int hour = incoming.data[7]; // current hour
+                    struct tm tm_info = ble_chronos_get_time_struct();
                     for (int z = 0; z < size; z++) {
 
                         int sign = (incoming.data[8 + (6 * z)] & 1) ? -1 : 1;
 
                         int icon = incoming.data[8 + (6 * z)] >> 4; // See WEATHER ICONS
                         int temp = ((int)incoming.data[9 + (6 * z)]) * sign;
-                        // windSpeed km/h; (incoming.data[10 + (6 * z)] * 256) + incoming.data[11 + (6 * z)];
-                        // humidity %; incoming.data[12 + (6 * z)];
-                        // uv index; incoming.data[13 + (6 * z)];
+
+                        hourly_forecast[hour + z].day = tm_info.tm_yday;
+                        hourly_forecast[hour + z].hour = hour + z;
+                        hourly_forecast[hour + z].wind = (incoming.data[10 + (6 * z)] * 256) + incoming.data[11 + (6 * z)];
+                        hourly_forecast[hour + z].humidity = incoming.data[12 + (6 * z)];
+                        hourly_forecast[hour + z].uv = incoming.data[13 + (6 * z)];
+                        hourly_forecast[hour + z].icon = icon;
+                        hourly_forecast[hour + z].temp = temp;
                     }
                     break;
             }

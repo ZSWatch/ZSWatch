@@ -3,24 +3,42 @@
 
 #include <lvgl.h>
 
-
+#include "ble/chronos/ble_chronos.h"
 
 void chronos_ui_init(lv_obj_t *root);
 
 void chronos_ui_deinit();
 
-void add_app_title(lv_obj_t *parent, const char *title, const void *src);
+void chronos_ui_add_app_title(lv_obj_t *parent, const char *title, const void *src);
+lv_obj_t *chronos_ui_add_page(lv_obj_t *parent);
+lv_obj_t *chronos_ui_add_page_static(lv_obj_t *parent);
+
+void chronos_ui_camera_panel_init(lv_obj_t *parent);
+void chronos_ui_call_panel_init(lv_obj_t *parent);
+
+void chronos_ui_about_init(lv_obj_t *page);
+void chronos_ui_set_app_info(chronos_app_info_t info);
+void chronos_ui_set_phone_info(chronos_phone_info_t info);
+
+void chronos_ui_remote_touch_init(lv_obj_t *page);
+void chronos_ui_set_remote_touch(chronos_remote_touch_t touch);
+
+void chronos_ui_notifications_init(lv_obj_t *page);
+void chronos_ui_add_notification(chronos_notification_t notification);
+void chronos_ui_clear_notifications(bool info);
+void chronos_ui_hide_notification_empty();
+
+void chronos_ui_weather_init(lv_obj_t *page);
+void chronos_ui_set_weather_city(const char *city);
+void chronos_ui_set_weather_info(int temp, uint8_t icon, chronos_time_t updated);
+void chronos_ui_add_weather_weekly(chronos_weather_t weather);
+void chronos_ui_clear_weather_weekly(bool info);
+void chronos_ui_clear_weather_hourly(bool info);
+void chronos_ui_add_weather_hourly(chronos_hourly_forecast_t forecast);
 
 
-void notifications_init(lv_obj_t *page);
-void add_notification(int id, const char *title, const char *time, const char *message);
-
-void weather_init(lv_obj_t *page);
-void add_weekly(const char *day, const void *src, int temp);
-
-
-void navigation_init(lv_obj_t *page);
-void navigateInfo(const char *text, const char *title, const char *directions);
-void navIconState(bool show);
-void setNavIconPx(uint16_t x, uint16_t y, bool on);
+void chronos_ui_navigation_init(lv_obj_t *page);
+void chronos_ui_set_nav_info(const char *text, const char *title, const char *directions);
+void chronos_ui_set_nav_icon_state(bool show);
+void chronos_ui_set_nav_icon_px(uint16_t x, uint16_t y, bool on);
 

@@ -1,10 +1,14 @@
 
 
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zephyr/logging/log.h>
 
 #include "../chronos_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 
+LOG_MODULE_REGISTER(chronos_notification, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 ZSW_LV_IMG_DECLARE(image_chronos_icon);
 
@@ -49,10 +53,12 @@ static const void *notificationIcons[] = {
 
 static lv_obj_t *notification_panel;
 
-void notifications_init(lv_obj_t *page)
+static lv_obj_t *ui_emptyNotification;
+
+void chronos_ui_notifications_init(lv_obj_t *page)
 {
 
-    add_app_title(page, "Notifications", ZSW_LV_IMG_USE(image_chronos_icon));
+    chronos_ui_add_app_title(page, "Notifications", ZSW_LV_IMG_USE(image_chronos_icon));
 
     notification_panel = lv_obj_create(page);
     lv_obj_set_width(notification_panel, lv_pct(100));
@@ -67,6 +73,9 @@ void notifications_init(lv_obj_t *page)
     lv_obj_set_style_border_width(notification_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_row(notification_panel, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(notification_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    chronos_ui_clear_notifications(true);
+
 }
 
 int getNotificationIconIndex(int id)
@@ -113,7 +122,50 @@ int getNotificationIconIndex(int id)
     }
 }
 
-void add_notification(int id, const char *title, const char *time, const char *message)
+
+
+
+void chronos_ui_hide_notification_empty()
+{
+    if (notification_panel == NULL) {
+        return;
+    }
+    if (ui_emptyNotification == NULL) {
+        return;
+    }
+    lv_obj_add_flag(ui_emptyNotification, LV_OBJ_FLAG_HIDDEN);
+
+}
+
+void chronos_ui_clear_notifications(bool info)
+{
+    if (notification_panel == NULL) {
+        return;
+    }
+    lv_obj_clean(notification_panel);
+
+    if (!info) {
+        return;
+    }
+
+    ui_emptyNotification = lv_label_create(notification_panel);
+    lv_obj_set_width(ui_emptyNotification, lv_pct(80));
+    lv_obj_set_height(ui_emptyNotification, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_align(ui_emptyNotification, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_emptyNotification, "No notifications. Check back later");
+    lv_obj_set_style_text_color(ui_emptyNotification, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_emptyNotification, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui_emptyNotification, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_emptyNotification, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui_emptyNotification, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+
+}
+
+void chronos_ui_add_notification(chronos_notification_t notification)
 {
     if (notification_panel == NULL) {
         return;
@@ -152,18 +204,20 @@ void add_notification(int id, const char *title, const char *time, const char *m
     lv_obj_set_style_pad_bottom(title_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *app_icon = lv_img_create(title_panel);
-    lv_img_set_src(app_icon, notificationIcons[getNotificationIconIndex(id)]);
+    lv_img_set_src(app_icon, notificationIcons[getNotificationIconIndex(notification.icon)]);
     lv_obj_set_width(app_icon, LV_SIZE_CONTENT);         /// 100
     lv_obj_set_height(app_icon, LV_SIZE_CONTENT);        /// 1
     lv_obj_add_flag(app_icon, LV_OBJ_FLAG_ADV_HITTEST);  /// Flags
     lv_obj_clear_flag(app_icon, LV_OBJ_FLAG_SCROLLABLE); /// Flags
 
+
     lv_obj_t *app_name = lv_label_create(title_panel);
-    lv_obj_set_width(app_name, LV_SIZE_CONTENT);  /// 1
+    lv_obj_set_width(app_name, 170);  /// 1
     lv_obj_set_height(app_name, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(app_name, 45);
+    lv_obj_set_x(app_name, 40);
     lv_obj_set_y(app_name, 0);
-    lv_label_set_text(app_name, title);
+    lv_label_set_long_mode(app_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(app_name, notification.title);
     lv_obj_set_style_text_font(app_name, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     LV_FONT_DECLARE(lv_font_montserrat_14);
@@ -171,13 +225,14 @@ void add_notification(int id, const char *title, const char *time, const char *m
     lv_obj_set_width(time_label, LV_SIZE_CONTENT);  /// 1
     lv_obj_set_height(time_label, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(time_label, LV_ALIGN_BOTTOM_RIGHT);
-    lv_label_set_text(time_label, time);
+    lv_label_set_text_fmt(time_label, "%02d:%02d", notification.time.hour, notification.time.minute);
     lv_obj_set_style_text_font(time_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *message_label = lv_label_create(item);
     lv_obj_set_width(message_label, lv_pct(100));
     lv_obj_set_height(message_label, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(message_label, LV_ALIGN_CENTER);
-    lv_label_set_text(message_label, message);
+    lv_label_set_text(message_label, notification.message);
     lv_obj_set_style_text_font(message_label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 }
