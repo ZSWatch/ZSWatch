@@ -137,11 +137,13 @@ void on_configuration_received_cb(chronos_config_t config, uint32_t a, uint32_t 
     }
 }
 
+void capture_button_event(lv_event_t *e)
+{
+    ble_chronos_capture_photo();
+}
 
 void chronos_ui_init(lv_obj_t *root)
 {
-    LOG_INF("Starting Chronos app");
-
     root_page = lv_obj_create(root);
     lv_obj_remove_style_all(root_page);
     lv_obj_set_style_bg_color(root_page, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -163,6 +165,7 @@ void chronos_ui_init(lv_obj_t *root)
     lv_obj_set_style_pad_right(root_page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(root_page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(root_page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
 
     lv_obj_t *page = chronos_ui_add_page(root_page);
     chronos_ui_about_init(page);
@@ -231,14 +234,10 @@ void chronos_ui_init(lv_obj_t *root)
     ble_chronos_add_configuration_cb(on_configuration_received_cb);
     ble_chronos_add_touch_cb(on_remote_touch_cb);
     ble_chronos_add_ringer_cb(on_ringer_cb);
-
-    LOG_INF("Started Chronos app");
 }
 
 void chronos_ui_deinit()
 {
-    LOG_INF("Closing Chronos app");
-
     ble_chronos_add_notification_cb(NULL);
     ble_chronos_add_configuration_cb(NULL);
     ble_chronos_add_touch_cb(NULL);
@@ -247,7 +246,6 @@ void chronos_ui_deinit()
     lv_obj_del(root_page);
     root_page = NULL;
 
-    LOG_INF("Closed Chronos app");
 }
 
 //////////////////////////////////////////////////////////////////
@@ -338,7 +336,6 @@ void chronos_ui_add_app_title(lv_obj_t *parent, const char *title, const void *s
     lv_obj_set_style_text_font(app_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
-
 void chronos_ui_camera_panel_init(lv_obj_t *parent)
 {
 
@@ -364,7 +361,7 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
     lv_obj_set_style_text_font(ui_cameralabel, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_cameraimage = lv_img_create(ui_camerapanel);
-    lv_img_set_src(ui_cameraimage, &ui_img_camera_png);
+    lv_img_set_src(ui_cameraimage, ZSW_LV_IMG_USE(ui_img_camera_png));
     lv_obj_set_width(ui_cameraimage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_cameraimage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_cameraimage, LV_ALIGN_CENTER);
@@ -391,6 +388,7 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
     lv_obj_set_style_radius(ui_capturebutton, 20, LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_set_style_bg_color(ui_capturebutton, lv_color_hex(0xD0D0D0), LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(ui_capturebutton, 255, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_add_event_cb(ui_capturebutton, capture_button_event, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *ui_capturetext = lv_label_create(ui_capturebutton);
     lv_obj_set_width(ui_capturetext, LV_SIZE_CONTENT);   /// 1
@@ -402,7 +400,6 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
 
 void chronos_ui_call_panel_init(lv_obj_t *parent)
 {
-
     ui_callpanel = lv_obj_create(parent);
     lv_obj_set_width(ui_callpanel, 240);
     lv_obj_set_height(ui_callpanel, 240);
@@ -425,7 +422,7 @@ void chronos_ui_call_panel_init(lv_obj_t *parent)
     lv_obj_set_style_text_font(ui_calltext, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_callimage = lv_img_create(ui_callpanel);
-    lv_img_set_src(ui_callimage, &ui_img_phone_png);
+    lv_img_set_src(ui_callimage, ZSW_LV_IMG_USE(ui_img_phone_png));
     lv_obj_set_width(ui_callimage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_callimage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_callimage, LV_ALIGN_CENTER);
@@ -441,3 +438,4 @@ void chronos_ui_call_panel_init(lv_obj_t *parent)
     lv_obj_set_style_text_font(ui_callername, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
+
