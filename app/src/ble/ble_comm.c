@@ -356,6 +356,7 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
 {
     LOG_INF("Updated => Interval: %d, latency: %d, timeout: %d", interval, latency, timeout);
+    ble_chronos_connection_update();
 }
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len)

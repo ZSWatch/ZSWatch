@@ -17,14 +17,14 @@ ZSW_LV_IMG_DECLARE(ui_img_602202963);
 
 
 const lv_img_dsc_t *weatherIcons[] = {
-    &ui_img_602206286,
-    &ui_img_602205261,
-    &ui_img_602199888,
-    &ui_img_602207311,
-    &ui_img_dy4_png,
-    &ui_img_602200913,
-    &ui_img_602195540,
-    &ui_img_602202963
+    ZSW_LV_IMG_USE(ui_img_602206286),
+    ZSW_LV_IMG_USE(ui_img_602205261),
+    ZSW_LV_IMG_USE(ui_img_602199888),
+    ZSW_LV_IMG_USE(ui_img_602207311),
+    ZSW_LV_IMG_USE(ui_img_dy4_png),
+    ZSW_LV_IMG_USE(ui_img_602200913),
+    ZSW_LV_IMG_USE(ui_img_602195540),
+    ZSW_LV_IMG_USE(ui_img_602202963)
 };
 
 
@@ -40,13 +40,11 @@ static lv_obj_t *ui_updatetime;
 static lv_obj_t *ui_templabel;
 static lv_obj_t *ui_weathericon;
 
-// static lv_obj_t *ui_noweather;
-
 
 void chronos_ui_weather_init(lv_obj_t *page)
 {
 
-    chronos_ui_add_app_title(page, "Weather", &image_chronos_icon);
+    chronos_ui_add_app_title(page, "Weather", ZSW_LV_IMG_USE(image_chronos_icon));
 
     lv_obj_t *ui_weatherpanel = lv_obj_create(page);
     lv_obj_set_width(ui_weatherpanel, lv_pct(100));

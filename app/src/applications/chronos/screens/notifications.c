@@ -31,24 +31,24 @@ ZSW_LV_IMG_DECLARE(image_chrns);    // Chronos
 ZSW_LV_IMG_DECLARE(image_wechat);     // Wechat
 
 static const void *notificationIcons[] = {
-    &image_sms,       // SMS
-    &image_mail,      // Mail
-    &image_penguin,   // Penguin
-    &image_skype,     // Skype
-    &image_whatsapp,  // WhatsApp
-    &image_mail,      // Mail2
-    &image_line,      // Line
-    &image_twitter_x, // Twitter
-    &image_facebook,  // Facebook
-    &image_messenger, // Messenger
-    &image_instagram, // Instagram
-    &image_weibo,     // Weibo
-    &image_kakao,     // Kakao
-    &image_viber,     // Viber
-    &image_vkontakte, // Vkontakte
-    &image_telegram,  // Telegram
-    &image_chrns,     // Chronos
-    &image_wechat     // Wechat
+    ZSW_LV_IMG_USE(image_sms),       // SMS
+    ZSW_LV_IMG_USE(image_mail),      // Mail
+    ZSW_LV_IMG_USE(image_penguin),   // Penguin
+    ZSW_LV_IMG_USE(image_skype),     // Skype
+    ZSW_LV_IMG_USE(image_whatsapp),  // WhatsApp
+    ZSW_LV_IMG_USE(image_mail),      // Mail2
+    ZSW_LV_IMG_USE(image_line),      // Line
+    ZSW_LV_IMG_USE(image_twitter_x), // Twitter
+    ZSW_LV_IMG_USE(image_facebook),  // Facebook
+    ZSW_LV_IMG_USE(image_messenger), // Messenger
+    ZSW_LV_IMG_USE(image_instagram), // Instagram
+    ZSW_LV_IMG_USE(image_weibo),     // Weibo
+    ZSW_LV_IMG_USE(image_kakao),     // Kakao
+    ZSW_LV_IMG_USE(image_viber),     // Viber
+    ZSW_LV_IMG_USE(image_vkontakte), // Vkontakte
+    ZSW_LV_IMG_USE(image_telegram),  // Telegram
+    ZSW_LV_IMG_USE(image_chrns),     // Chronos
+    ZSW_LV_IMG_USE(image_wechat)     // Wechat
 };
 
 static lv_obj_t *notification_panel;
@@ -78,7 +78,7 @@ void chronos_ui_notifications_init(lv_obj_t *page)
 
 }
 
-int getNotificationIconIndex(int id)
+int get_notification_icon_index(int id)
 {
     switch (id) {
         case 0x03:
@@ -121,9 +121,6 @@ int getNotificationIconIndex(int id)
             return 0;
     }
 }
-
-
-
 
 void chronos_ui_hide_notification_empty()
 {
@@ -204,7 +201,7 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_obj_set_style_pad_bottom(title_panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *app_icon = lv_img_create(title_panel);
-    lv_img_set_src(app_icon, notificationIcons[getNotificationIconIndex(notification.icon)]);
+    lv_img_set_src(app_icon, notificationIcons[get_notification_icon_index(notification.icon)]);
     lv_obj_set_width(app_icon, LV_SIZE_CONTENT);         /// 100
     lv_obj_set_height(app_icon, LV_SIZE_CONTENT);        /// 1
     lv_obj_add_flag(app_icon, LV_OBJ_FLAG_ADV_HITTEST);  /// Flags
@@ -234,5 +231,4 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_obj_set_align(message_label, LV_ALIGN_CENTER);
     lv_label_set_text(message_label, notification.message);
     lv_obj_set_style_text_font(message_label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
-
 }

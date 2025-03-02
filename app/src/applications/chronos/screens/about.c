@@ -28,11 +28,47 @@ static lv_obj_t *ui_findimage;
 static lv_obj_t *ui_findtext;
 static bool find_active;
 
+static lv_anim_t rotate;
+
+
+void rotate_image_cb(void *var, int32_t v)
+{
+    lv_img_set_angle(var, v);
+}
+
+void rotate_anim_deleted_cb(lv_anim_t *anim)
+{
+    find_active = false;
+    lv_label_set_text(ui_findtext, "Start");
+    lv_obj_set_style_img_recolor_opa(ui_findimage, 155, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_img_set_angle(ui_findimage, 2700);
+    ble_chronos_find_phone(false);
+}
+
+void start_rotate_anim()
+{
+    lv_anim_init(&rotate);
+    lv_anim_set_exec_cb(&rotate, rotate_image_cb);
+    lv_anim_set_var(&rotate, ui_findimage);
+    lv_anim_set_time(&rotate, 5000);
+    lv_anim_set_values(&rotate, 2700, 2700 + 3600);
+    lv_anim_set_repeat_count(&rotate, 2);
+    lv_anim_set_deleted_cb(&rotate, rotate_anim_deleted_cb);
+    lv_anim_start(&rotate);
+
+    lv_label_set_text(ui_findtext, "Stop");
+    lv_obj_set_style_img_recolor_opa(ui_findimage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    ble_chronos_find_phone(true);
+}
+
+void stop_rotate_anim()
+{
+    lv_anim_del(ui_findimage, rotate_image_cb);
+}
+
 void music_button_event_cb(lv_event_t *e)
 {
     chronos_control_t code = (chronos_control_t)lv_event_get_user_data(e);
-    LOG_INF("Music control code: 0x%04X", code);
-
     ble_chronos_music_control(code);
 }
 
@@ -40,14 +76,10 @@ void find_button_event_cb(lv_event_t *e)
 {
     find_active = !find_active;
     if (find_active) {
-        lv_label_set_text(ui_findtext, "Stop");
-        lv_obj_set_style_img_recolor_opa(ui_findimage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        start_rotate_anim();
     } else {
-        lv_label_set_text(ui_findtext, "Start");
-        lv_obj_set_style_img_recolor_opa(ui_findimage, 155, LV_PART_MAIN | LV_STATE_DEFAULT);
+        stop_rotate_anim();
     }
-
-    ble_chronos_find_phone(find_active);
 
 }
 
@@ -210,7 +242,7 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_align(ui_previousbutton, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_previousbutton, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_previousbutton, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_previousbutton, &ui_img_previous_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_previousbutton, ZSW_LV_IMG_USE(ui_img_previous_png), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_previousbutton, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_previousbutton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_previousbutton, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -226,7 +258,7 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_align(ui_playpausebutton, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_playpausebutton, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_playpausebutton, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_playpausebutton, &ui_img_play_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_playpausebutton, ZSW_LV_IMG_USE(ui_img_play_png), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_playpausebutton, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_playpausebutton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_playpausebutton, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -242,7 +274,7 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_align(ui_nextbutton, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_nextbutton, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_nextbutton, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_nextbutton, &ui_img_forward_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_nextbutton, ZSW_LV_IMG_USE(ui_img_forward_png), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_nextbutton, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_nextbutton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_nextbutton, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -267,7 +299,8 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_align(ui_volumedownbutton, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_volumedownbutton, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_volumedownbutton, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_volumedownbutton, &ui_img_volume_down_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_volumedownbutton, ZSW_LV_IMG_USE(ui_img_volume_down_png),
+                                LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_volumedownbutton, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_volumedownbutton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_volumedownbutton, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -283,7 +316,7 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_align(ui_volumeupbutton, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_volumeupbutton, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_radius(ui_volumeupbutton, 25, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_img_src(ui_volumeupbutton, &ui_img_volume_up_png, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_volumeupbutton, ZSW_LV_IMG_USE(ui_img_volume_up_png), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui_volumeupbutton, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(ui_volumeupbutton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_volumeupbutton, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -319,7 +352,7 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_style_text_font(ui_findlabel, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_findimage = lv_img_create(ui_findphonepanel);
-    lv_img_set_src(ui_findimage, &ui_img_radar_png);
+    lv_img_set_src(ui_findimage, ZSW_LV_IMG_USE(ui_img_radar_png));
     lv_obj_set_width(ui_findimage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_findimage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_findimage, LV_ALIGN_CENTER);

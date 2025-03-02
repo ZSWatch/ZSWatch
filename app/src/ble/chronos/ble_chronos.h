@@ -167,6 +167,7 @@ void ble_chronos_add_touch_cb(touch_callback_t callback);
 
 void ble_chronos_input(const uint8_t *const data, uint16_t len);
 void ble_chronos_state(bool connect);
+void ble_chronos_connection_update();
 
 void ble_chronos_send_command(uint8_t *command, size_t length);
 

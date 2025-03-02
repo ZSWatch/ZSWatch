@@ -103,30 +103,16 @@ static void music_control_event_callback(const struct zbus_channel *chan)
 
 }
 
-static void parse_time(char *start_time)
+static void parse_time(uint32_t epoch)
 {
     char *end_time;
     struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    end_time = strstr(start_time, ")");
-    if (end_time) {
-        errno = 0;
-        cb.data.data.time.seconds = strtol(start_time, &end_time, 10);
-        if (start_time != end_time && errno == 0) {
-            cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
-            send_ble_data_event(&cb);
-        } else {
-            LOG_WRN("Failed parsing time");
-        }
-    }
+    cb.data.data.time.seconds = epoch;
+    cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
+    send_ble_data_event(&cb);
 
-    // If setTime contains timezone, process here, i.e setTime(1700556601);E.setTimeZone(1.0);(...
-    char *time_zone = strstr(start_time, ";E.setTimeZone(");
-    if (time_zone) {
-        time_zone += strlen(";E.setTimeZone(");
-        parse_time_zone(time_zone);
-    }
 }
 
 static int parse_notify(chronos_notification_t *notification)
@@ -154,70 +140,30 @@ static int parse_notify(chronos_notification_t *notification)
     return 0;
 }
 
-static int parse_notify_delete(char *data, int len)
-{
-    ble_comm_cb_data_t cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.type = BLE_COMM_DATA_TYPE_NOTIFY_REMOVE;
-
-    send_ble_data_event(&cb);
-
-    return 0;
-}
-
-static int parse_weather(char *data, int len)
+static int parse_weather()
 {
     //{t:"weather",temp:268,hum:97,code:802,txt:"slightly cloudy",wind:2.0,wdir:14,loc:"MALMO"
-    int temp_len;
-    char *temp_value;
-    float temperature;
     struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
+    chronos_weather_info_t *info = ble_chronos_get_weather_info();
+    chronos_weather_t *weather = ble_chronos_get_weather(0);
+    chronos_hourly_forecast_t *forecast = ble_chronos_get_forecast_hour(ble_chronos_get_time_struct().tm_hour);
+
     cb.data.type = BLE_COMM_DATA_TYPE_WEATHER;
-    int32_t temperature_k = extract_value_uint32("\"temp\":", data);
-    cb.data.data.weather.humidity = extract_value_uint32("\"hum\":", data);
-    cb.data.data.weather.weather_code = extract_value_uint32("\"code\":", data);
-    cb.data.data.weather.wind = extract_value_uint32("\"wind\":", data);
-    cb.data.data.weather.wind_direction = extract_value_uint32("\"wdir\":", data);
-    temp_value = extract_value_str("\"txt\":", data, &temp_len);
+    cb.data.data.weather.humidity = forecast->humidity;
+    cb.data.data.weather.weather_code = 0;
+    cb.data.data.weather.wind = forecast->wind;
+    cb.data.data.weather.wind_direction = 0;
+    // cb.data.data.weather.report_text
 
-    strncpy(cb.data.data.weather.report_text, temp_value, MIN(temp_len, MAX_MUSIC_FIELD_LENGTH));
-
-    // App sends temperature in Kelvin
-    temperature = temperature_k - 273.15f;
-    cb.data.data.weather.temperature_c = (int8_t)roundf(temperature);
+    cb.data.data.weather.temperature_c = weather->temp;
 
     send_ble_data_event(&cb);
 
     return 0;
 }
 
-static int parse_musicinfo(char *data, int len)
-{
-    ble_comm_cb_data_t cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.type = BLE_COMM_DATA_TYPE_MUSIC_INFO;
-
-    send_ble_data_event(&cb);
-
-    return 0;
-}
-
-static int parse_musicstate(char *data, int len)
-{
-
-    ble_comm_cb_data_t cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
-
-    send_ble_data_event(&cb);
-
-    return 0;
-}
 
 void ble_chronos_input(const uint8_t *const data, uint16_t len)
 {
@@ -251,6 +197,13 @@ void ble_chronos_state(bool connect)
         }
     }
 
+}
+
+void ble_chronos_connection_update()
+{
+    // connected
+    ble_chronos_send_info(); // needed to detect watch type on Chronos app
+    ble_chronos_set_notify_battery(true); // needed for navigation to work
 }
 
 void ble_chronos_send_command(uint8_t *command, size_t length)
@@ -725,6 +678,7 @@ void ble_chronos_data_received()
                     weather[k].high = tempH;
                     weather[k].low = tempL;
                 }
+                parse_weather();
                 if (configuration_callback != NULL) {
                     configuration_callback(CH_CONFIG_WEATHER, 2, 0);
                 }
@@ -749,7 +703,16 @@ void ble_chronos_data_received()
                 // hour; incoming.data[11]
                 // minute; incoming.data[12]
                 // seconds; incoming.data[13]
-                LOG_INF("Set time");
+                struct tm t = {0, 0, 0, 0, 0, 0, 0, 0, 0};      // Initalize to all 0's
+                t.tm_year = (incoming.data[7] * 256) + incoming.data[8] - 1900;    // This is year-1900, so 121 = 2021
+                t.tm_mon = incoming.data[9] - 1;
+                t.tm_mday = incoming.data[10];
+                t.tm_hour = incoming.data[11];
+                t.tm_min = incoming.data[12];
+                t.tm_sec = incoming.data[13];
+                time_t epoch = mktime(&t);
+                parse_time((uint32_t)epoch);
+
                 break;
             case 0x9C:
                 // watchface font style and color settings
