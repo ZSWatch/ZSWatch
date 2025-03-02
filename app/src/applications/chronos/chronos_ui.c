@@ -19,7 +19,7 @@ ZSW_LV_IMG_DECLARE(ui_img_phone_png);
 ZSW_LV_IMG_DECLARE(ui_img_camera_png);
 
 static lv_obj_t *root_page = NULL;
-static uint32_t navIcCRC = 0xFFFFFFFF;
+static uint32_t nav_icon_crc = 0xFFFFFFFF;
 
 static lv_obj_t *ui_camerapanel;
 static lv_obj_t *ui_callpanel;
@@ -67,6 +67,10 @@ void on_configuration_received_cb(chronos_config_t config, uint32_t a, uint32_t 
         case CH_CONFIG_NAV_DATA:
             chronos_navigation_t *nav = ble_chronos_get_navigation();
 
+            if (!nav->active) {
+                nav_icon_crc = 0xFFFFFFFF;
+            }
+
             chronos_ui_set_nav_icon_state(nav->active && nav->has_icon);
 
             char *navtext = NULL;
@@ -87,8 +91,8 @@ void on_configuration_received_cb(chronos_config_t config, uint32_t a, uint32_t 
 
             if (a == 2) {
                 chronos_navigation_t *nav = ble_chronos_get_navigation();
-                if (nav->icon_crc != navIcCRC) {
-                    navIcCRC = nav->icon_crc;
+                if (nav->icon_crc != nav_icon_crc) {
+                    nav_icon_crc = nav->icon_crc;
                     chronos_ui_set_nav_icon_state(nav->active && nav->has_icon);
                     for (int y = 0; y < 48; y++) {
                         for (int x = 0; x < 48; x++) {
