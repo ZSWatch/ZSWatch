@@ -95,6 +95,8 @@ const config = {
           {
             position: 'right',
             type: 'custom-githubStarsLink', 
+            repoOrg: 'jakkra',
+            repoName: 'ZSWatch',
           },
         ],
       },
