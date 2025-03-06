@@ -1,0 +1,18 @@
+jakkra:
+  name: Jakob Krantz
+  title: Senior Software Engineer and ZSWatch Creator and Maintainer
+  url: https://jakobkrantz.se
+  image_url: https://github.com/jakkra.png
+  page: true
+  socials:
+    github: jakkra
+    linkedin: jakob-krantz-ba9a97127
+
+kampi:
+  name: Daniel Kampert
+  itle: Senior Hardware Engineer and ZSWatch Maintainer
+  url: https://github.com/Kampi
+  image_url: https://github.com/Kampi.png
+  page: true
+  socials:
+    github: Kampi

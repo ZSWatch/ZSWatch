@@ -1,0 +1,19 @@
+zswatch:
+  label: ZSWatch
+  permalink: /zswatch
+  description: ZSWatch core
+
+zswatch_software:
+  label: ZSWatch Software
+  permalink: /zswatch_software
+  description: ZSWatch software core
+
+zswatch_hardware:
+  label: ZSWatch Hardware
+  permalink: /zswatch_hardware
+  description: ZSWatch hardware core
+
+nlnet:
+  label: NLnet Foundation
+  permalink: /nlnet
+  description: Anything regarding NLnet Foundation

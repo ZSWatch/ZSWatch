@@ -1,0 +1,23 @@
+.githubIconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  padding: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.3s;
+  color: #30343F;
+}
+
+.githubIconContainer:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #9EC8F6;
+}
+
+
+.githubIcon {
+  width: 25px;
+  height: 25px;
+  margin-right: 5px;
+}
