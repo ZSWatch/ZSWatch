@@ -32,10 +32,6 @@
 }
 
 :root {
-  /*--ifm-background-color: #fa0000;*/
-  /*--ifm-color-primary: #30343F;*/
-  /*--ifm-color-secondary: #9EC8F6;*/
-  /*--ifm-background-color: #fcfcfc;*/
   --ifm-navbar-background-color: #FFBAAF;
   --ifm-navbar-link-color: #30343F;
   --ifm-navbar-link-hover-color: #9EC8F6;
