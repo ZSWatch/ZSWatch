@@ -41,3 +41,45 @@
   --ifm-hero-background-color: #30343F;
   --ifm-hero-text-color: #9EC8F6;
 }
+
+
+.toggleButton_gllP {
+  color: #30343F;
+}
+
+.menu__link {
+  color: #30343F;
+}
+
+.menu__link:hover {
+  color: #9EC8F6;
+}
+
+.menu__link--active {
+  color: #6d7383;
+}
+
+.navbar__toggle.clean-btn {
+  color: #30343F;
+}
+
+.navbar__toggle.clean-btn:hover {
+  color: #9EC8F6;
+}
+
+.navbar-sidebar__close {
+  color: #30343F;
+  --ifm-color-emphasis-600: #30343F;
+}
+
+.menu_SIkG {
+  background-color: #FFBAAF;
+}
+
+.menu__caret {
+  color: #30343F;
+}
+
+.navbar-sidebar__back {
+  color: #30343F;
+}
