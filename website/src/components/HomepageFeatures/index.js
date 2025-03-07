@@ -20,7 +20,7 @@ const FeatureList = [
     image: <img className={styles.featureSvg} role="img" src={require('@site/static/img/ui_rund_demo_watchface.png').default} />,
     description: (
       <>
-        Feature rich, easy to use, and open source. The ZSWatch software is designed to be easily modified and expanded.
+        Written from scratch in C, there are no binary blobs. Everything from high level application to the lowest level Bluetooth radio driver is open source. The ZSWatch software is designed to be easily modified and expanded.
       </>
     ),
   },
