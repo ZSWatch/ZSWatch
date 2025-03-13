@@ -6,6 +6,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
-  test:
-    needs: [build]
-    uses: ./.github/workflows/test.yml
+  # Temporary disable until we have a fixed HW test setup
+  #test:
+  #  needs: [build]
+  #  uses: ./.github/workflows/test.yml
