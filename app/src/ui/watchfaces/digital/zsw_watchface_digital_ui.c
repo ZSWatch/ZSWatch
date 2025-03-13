@@ -70,6 +70,8 @@ ZSW_LV_IMG_DECLARE(face_digital_preview);
 LV_FONT_DECLARE(ui_font_aliean_47);
 LV_FONT_DECLARE(ui_font_aliean_25);
 
+ZSW_LV_IMG_DECLARE(snoopy)
+
 // Remember last values as if no change then
 // no reason to waste resourses and redraw
 static int last_hour = -1;
@@ -465,16 +467,14 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_img_recolor(ui_weather_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_weather_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-#if defined(CONFIG_LV_Z_USE_FILESYSTEM)
     if (settings->animations_on) {
         lv_obj_t *img = lv_gif_create(ui_digital_watchface);
-        lv_gif_set_src(img, "/lvgl_lfs/snoopy.gif");
+        lv_gif_set_src(img, ZSW_LV_IMG_USE(snoopy));
         lv_obj_set_align(img, LV_ALIGN_CENTER);
         lv_obj_set_width(img, LV_SIZE_CONTENT);
         lv_obj_set_height(img, LV_SIZE_CONTENT);
         lv_obj_set_y(img, 45);
     }
-#endif
 
     // Listeners
     lv_obj_add_event_cb(ui_battery_arc_icon, arc_event_pressed, LV_EVENT_CLICKED, NULL);

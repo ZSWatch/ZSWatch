@@ -32,6 +32,7 @@ LV_IMG_DECLARE(hour_minimal);
 LV_IMG_DECLARE(minute_minimal);
 LV_IMG_DECLARE(second_minimal);
 ZSW_LV_IMG_DECLARE(face_minimal_preview);
+ZSW_LV_IMG_DECLARE(snoopy_alt);
 
 static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
@@ -115,17 +116,15 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_img_recolor(ui_second_img, lv_color_hex(0xFF4242), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_second_img, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-#if defined(CONFIG_LV_Z_USE_FILESYSTEM)
     if (settings->animations_on) {
         lv_obj_t *img = lv_gif_create(ui_minimal_watchface);
-        lv_gif_set_src(img, "/lvgl_lfs/snoopy_alt.gif");
+        lv_gif_set_src(img, ZSW_LV_IMG_USE(snoopy_alt));
         lv_obj_set_align(img, LV_ALIGN_CENTER);
         lv_obj_set_width(img, LV_SIZE_CONTENT);
         lv_obj_set_height(img, LV_SIZE_CONTENT);
         lv_obj_set_x(img, -10);
         lv_obj_set_y(img, 90);
     }
-#endif
 
     zsw_ui_notifications_area = zsw_ui_notification_area_add(ui_minimal_watchface);
     lv_obj_set_pos(zsw_ui_notifications_area->ui_notifications_container, 0, 90);
