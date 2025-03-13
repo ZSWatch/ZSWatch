@@ -139,7 +139,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} ZSWatch, Inc. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} ZSWatch. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,
