@@ -27,3 +27,55 @@
   max-height: 300px;
   margin: 0 auto;
 }
+
+.signup {
+  background-color: #FFBAAF;
+  border-top: 7px solid #1B1B1D;
+  padding: 0px 10px 10px 10px;
+}
+
+.signupTitle {
+  color: #1B1B1D;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.emailInput {
+  background-color: rgb(255, 255, 255);
+  border: 0px;
+  font-size: 1.0em;
+  padding: 10px;
+  color: #1B1B1D;
+}
+
+.subscribeBtn {
+  background-color: #1B1B1D;
+  border: 0px;
+  margin-left: 1rem;
+  margin-top: 0.3rem;
+  font-size: 1.0em;
+  color: #ffffff;
+  padding: 10px;
+}
+
+input[type="submit"].subscribeBtn:hover {
+  background-color: #303035;
+}
+
+input[type="email"].emailInput:focus {
+  border: 0px;
+  border-radius: 0px;
+  outline: none;
+}
+
+input[type="email"].emailInput:-webkit-autofill,
+input[type="email"].emailInput:-webkit-autofill:hover,
+input[type="email"].emailInput:-webkit-autofill:focus,
+input[type="email"].emailInput:-webkit-autofill:active {
+  background-color: #ffffff !important; /* White background color */
+  font-size: 1.0em !important; /* Example font size */
+  color: #000000 !important; /* Black text color */
+  border: 0px solid rgb(16, 1, 1) !important;
+  -webkit-box-shadow: 0 0 0px 1000px #3c3c3c inset !important; /* Match background color */
+  box-shadow: 0 0 0px 1000px #30343F inset !important; /* Match background color */
+}

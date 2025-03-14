@@ -20,8 +20,7 @@ const FeatureList = [
     image: <img className={styles.featureSvg} role="img" src={require('@site/static/img/ui_rund_demo_watchface.png').default} />,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Feature rich, easy to use, and open source. The ZSWatch software is designed to be easily modified and expanded.
       </>
     ),
   },
