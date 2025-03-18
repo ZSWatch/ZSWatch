@@ -14,7 +14,6 @@ import NGI0CoreLogo from './nlnet_banner.png';
   <img src={NlnetLogo} width="33%" /> 
   <img src={NGI0CoreLogo} width="33%" />
 </p>
-Click title to read more!
 
 <!-- truncate -->
 For the last few months there have not been much progress in ZSWatch. **But** that's about to change, because we have received 50 000 € from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/) to take ZSWatch to the next level!
