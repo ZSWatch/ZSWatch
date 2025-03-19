@@ -4,7 +4,7 @@ import styles from './styles.module.css';
 export default function SubscriptionForm() {
   return (
     <form method="post" action="https://zswatch.pikapod.net/subscription/form" className={styles.signup}>
-      <div>
+      <div className={styles.center}>
         <div className={styles.signupTitle}>Sign up for updates here</div>
         <input type="hidden" name="nonce" />
         <div>

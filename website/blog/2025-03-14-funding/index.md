@@ -1,13 +1,13 @@
 ---
 slug: funding
-title: Funding
+title: We received funding!
 authors: [jakkra]
 tags: [zswatch, nlnet]
 ---
-### **We received funding from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/)!**
 import ZSWatchLogo from './ZSWatch_logo_with_text.png';
 import NlnetLogo from './NGI0Core_tag.png';
 import NGI0CoreLogo from './nlnet_banner.png';
+import SubscriptionForm from '@site/src/components/SubscriptionForm';
 
 <p float="left">
   <img src={ZSWatchLogo} width="33%" />
@@ -16,7 +16,6 @@ import NGI0CoreLogo from './nlnet_banner.png';
 </p>
 
 
-<!-- truncate -->
 For the last few months there have not been much progress in ZSWatch. **But** that's about to change, because we have received 50 000 € from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/) to take ZSWatch to the next level!
 
 The NLnet Foundation is funded by the European Commission's *Next Generation Internet*:
@@ -25,11 +24,14 @@ The NLnet Foundation is funded by the European Commission's *Next Generation Int
 
 Which ZSWatch falls pretty well under.
 
+Below we go into more details about what this means.
+
+<!-- truncate -->
 ### How the funding will be used
 
 The funding will allow [me] to work 50% and [Daniel] to work 20% on ZSWatch. The rest of the money will go to hardware and hardware prototyping costs. The funded project will run for 1 year.
 
-The goal is to both rework and improve ZSWatch. Mainly to make it more accessible to a broader audience and grow the community. This will be done by making it cheaper, easier to assemble and use more accessible parts.
+The goal is to both rework and improve ZSWatch. Mainly to make it more accessible to a broader audience and grow the community. This will be done by making it cheaper, easier to assemble and use more accessible parts. Right now getting all parts and assembling a ZSWatch is not super easy, this we aim to change!
 
 **Our goal is within one year have a robust watch that is easy to assembly that you can easily get your hands on!**
 
@@ -59,8 +61,6 @@ There are so much more details defined, but including that would make this post 
 :::
 
 We will post updates of our progress so don't forget to sign up for our email list!
-
-import SubscriptionForm from '@site/src/components/SubscriptionForm';
 
 <SubscriptionForm/>
 

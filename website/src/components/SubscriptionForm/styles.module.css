@@ -4,6 +4,10 @@
   padding: 0px 10px 10px 10px;
 }
 
+.center {
+  text-align: center;
+}
+
 .signupTitle {
   color: #1B1B1D;
   font-size: 1.2em;

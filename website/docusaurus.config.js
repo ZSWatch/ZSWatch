@@ -86,15 +86,15 @@ const config = {
         },
         items: [
           {
+            to: '/blog',
+            label: 'Blog',
+            position: 'left'
+          },
+          {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
             label: 'Docs',
-          },
-          {
-            to: '/blog',
-            label: 'Blog',
-            position: 'left'
           },
           {
             position: 'right',
