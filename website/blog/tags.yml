@@ -17,3 +17,13 @@ nlnet:
   label: NLnet Foundation
   permalink: /nlnet
   description: Anything regarding NLnet Foundation
+
+intro:
+  label: intro
+  permalink: /intro
+  description: Everything related to intruduction of ZSWatch
+
+feedback:
+  label: feedback
+  permalink: /feedback
+  description: Everything related to use lookinf for feedback and ideas

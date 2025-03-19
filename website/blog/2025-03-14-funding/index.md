@@ -15,8 +15,7 @@ import SubscriptionForm from '@site/src/components/SubscriptionForm';
   <img src={NGI0CoreLogo} width="33%" />
 </p>
 
-
-For the last few months there have not been much progress in ZSWatch. **But** that's about to change, because we have received 50 000 € from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/) to take ZSWatch to the next level!
+For the last few months there have not been much progress in ZSWatch. **But** that's about to change because we have received 50 000 € from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/) to take ZSWatch to the next level!
 
 The NLnet Foundation is funded by the European Commission's *Next Generation Internet*:
 
@@ -24,7 +23,7 @@ The NLnet Foundation is funded by the European Commission's *Next Generation Int
 
 Which ZSWatch falls pretty well under.
 
-Below we go into more details about what this means.
+Here we go into more details about what this means.
 
 <!-- truncate -->
 ### How the funding will be used
@@ -59,6 +58,8 @@ There are so much more details defined, but including that would make this post 
         - We need more automated tests to easy catch regressions.
     - Phone integration improvements.
 :::
+
+Also we are looking for feedback, see the [Feedback Blog Post](../2025-03-19-feedback/index.md)
 
 We will post updates of our progress so don't forget to sign up for our email list!
 

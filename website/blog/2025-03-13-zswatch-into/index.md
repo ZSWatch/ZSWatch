@@ -1,6 +1,6 @@
 ---
 slug: intro
-title: ZSWatch Intro
+title: What is ZSWatch
 authors: [jakkra]
 tags: [zswatch, intro]
 ---
