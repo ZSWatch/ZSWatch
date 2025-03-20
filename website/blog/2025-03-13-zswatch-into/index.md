@@ -6,15 +6,30 @@ tags: [zswatch, intro]
 ---
 If you have not heard of ZSWatch before, here is a short intro!
 <!-- truncate -->
-import ZSWatchLogo from './ZSWatch_logo_with_text.png';
 import SubscriptionForm from '@site/src/components/SubscriptionForm';
 import ReactPlayer from 'react-player'
 import HardwareOverview from '@site/static/img/Hardware_Overview_transparent.png'
+
+import StainlessWatchFrontNoBg from '@site/static/img/real_photos/stainless_front_no_bg.png'
+import StainlessWatchStandNoBg from '@site/static/img/real_photos/stainless_stand_no_bg.png'
+import TransparentWatchFrontNoBg from '@site/static/img/real_photos/clear_front_no_bg.png'
+
+import StainlessWatchStand from '@site/static/img/real_photos/stainless_stand.JPG'
+
+import StainlessWatchFrontWide from '@site/static/img/real_photos/stainless_front_wide.JPG'
+import ClearWatchFrontWide from '@site/static/img/real_photos/clear_front_wide.JPG'
+
 
 Built on the [Zephyr™ Project](https://www.zephyrproject.org/) RTOS, hence the name **ZSWatch** - *Zephyr Smartwatch*.
 
 ZSWatch is a free and open source smartwatch you can build almost from scratch - including software, hardware, and mechanics. Everything from the lowest level BLE radio driver code to PCB and casing is available and can be customised to suit your needs. 
 
+<center>How ZSWatch looks like today.</center>
+<img src={StainlessWatchFrontWide} />
+<img src={ClearWatchFrontWide} />
+<img src={StainlessWatchStand} /> 
+
+<p></p>
 
 <center>Video walking through some of the UI and features.</center>
 <ReactPlayer width="100%" playing muted controls url='https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682' />
