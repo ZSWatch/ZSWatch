@@ -10,12 +10,7 @@ import SubscriptionForm from '@site/src/components/SubscriptionForm';
 import ReactPlayer from 'react-player'
 import HardwareOverview from '@site/static/img/Hardware_Overview_transparent.png'
 
-import StainlessWatchFrontNoBg from '@site/static/img/real_photos/stainless_front_no_bg.png'
-import StainlessWatchStandNoBg from '@site/static/img/real_photos/stainless_stand_no_bg.png'
-import TransparentWatchFrontNoBg from '@site/static/img/real_photos/clear_front_no_bg.png'
-
 import StainlessWatchStand from '@site/static/img/real_photos/stainless_stand.JPG'
-
 import StainlessWatchFrontWide from '@site/static/img/real_photos/stainless_front_wide.JPG'
 import ClearWatchFrontWide from '@site/static/img/real_photos/clear_front_wide.JPG'
 

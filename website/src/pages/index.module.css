@@ -27,3 +27,31 @@
   max-height: 300px;
   margin: 0 auto;
 }
+
+.watchImg {
+  height: auto;
+  width: 80%;
+  margin-bottom: 1rem;
+  margin-top: 5%;
+}
+
+.watchImg img {
+  border-radius: 40px;
+}
+
+@media screen and (max-width: 996px) {
+  .watchImg {
+    width: 100%;
+  }
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+image-gallery-image {
+  border-radius: 20px;
+}
