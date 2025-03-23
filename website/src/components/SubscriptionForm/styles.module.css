@@ -1,7 +1,7 @@
 .signup {
   background-color: #FFBAAF;
   border-top: 7px solid #1B1B1D;
-  padding: 0px 10px 10px 10px;
+  padding: 0px 10px 0px 10px;
 }
 
 .center {
@@ -30,6 +30,12 @@
   font-size: 1.0em;
   color: #ffffff;
   padding: 10px;
+}
+
+.blogReminder {
+  color: #1B1B1D;
+  font-weight: bold;
+  font-size: 0.95rem;
 }
 
 input[type="submit"].subscribeBtn:hover {

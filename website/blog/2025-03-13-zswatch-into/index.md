@@ -4,7 +4,7 @@ title: What is ZSWatch
 authors: [jakkra]
 tags: [zswatch, intro]
 ---
-If you have not heard of ZSWatch before, here is a short intro!
+If you have not heard of ZSWatch before, here is an intro!
 <!-- truncate -->
 import SubscriptionForm from '@site/src/components/SubscriptionForm';
 import ReactPlayer from 'react-player'

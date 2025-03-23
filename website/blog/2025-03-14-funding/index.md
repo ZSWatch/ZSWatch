@@ -17,7 +17,7 @@ import SubscriptionForm from '@site/src/components/SubscriptionForm';
 
 For the last few months there have not been much progress in ZSWatch. **But** that's about to change because we have received 50 000 € from the [NLnet Foundation](https://nlnet.nl/project/ZSWatch/) to take ZSWatch to the next level!
 
-The NLnet Foundation is funded by the European Commission's *Next Generation Internet*:
+> [NGI0 Commons Fund](https://nlnet.nl/commonsfund), a fund established by [NLnet](https://nlnet.nl) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu) program. Learn more at the [NLnet project page](https://nlnet.nl/project/ZSWatch).
 
 > We support organisations and people who contribute to an open internet for all. We fund projects that help fix the internet through open hardware, open software, open standards, open science and open data.
 
@@ -37,13 +37,22 @@ The goal is to both rework and improve ZSWatch. Mainly to make it more accessibl
 ### High level plan
 There are so much more details defined, but including that would make this post very long. So here is the high level tasks we aim to finish.
 :::tip Goals
+    - Support daughter board interface attached to the main PCB.
+        - This allows to keep core ZSWatch chaper.
+        - Allows expandability.
+        - Expand with any feature you need.
+            - Health tracking (this we will do).
+            - Additional sensors.
+            - A GPS maybe?
+            - Go crazy and add cellular maybe?
+            - Unlimited possibilities.
     - New daughter board for health tracking.
         - This will be a optional PCB that connects to the main PCB.
         - Since HR algorithms are no easy task, we are planning to use [MAX32664(C) Biometric Snesor Hub with embedded algorithms](https://www.analog.com/en/products/max32664.html).
     - New main board.
         - Cheaper.
         - Optimize physical layout for improved mechanical assembly.
-        - Changes to accomodate the daughter board.
+        - Changes to accomodate daughter boards.
     - Change of components on ZSWatch.
     - New simpler dock.
     - Case redesign.

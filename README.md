@@ -172,7 +172,16 @@ The main difference from MIT is now that if anyone wants to build something more
 
 ## Thanks
 
-<a href="https://www.segger.com/"><img width="25%" src=".github/images/SEGGER-Logo-the-embedded-experts-RGB.jpg" ></a>
+### Funding
+
+This project is partly funded through [NGI0 Commons Fund](https://nlnet.nl/commonsfund), a fund established by [NLnet](https://nlnet.nl) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu) program. Learn more at the [NLnet project page](https://nlnet.nl/project/ZSWatch).
+
+[<img src="https://nlnet.nl/logo/banner.png" alt="NLnet foundation logo" width="20%" />](https://nlnet.nl)
+[<img src="https://nlnet.nl/image/logos/NGI0_tag.svg" alt="NGI Zero Logo" width="20%" />](https://nlnet.nl/commonsfund)
+
+### Support
+
+<a href="https://www.segger.com/"><img width="10%" src=".github/images/SEGGER-Logo-the-embedded-experts-RGB.jpg" ></a>
 
 SEGGER for supporting SEGGER-OB licenses that make the dock a fully functional programmer and debugger for ZSWatch.
 Thanks to this the project will be much more approachable for persons without a J-Link debugger, letting them have full development and debugging capabilities.

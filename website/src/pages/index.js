@@ -1,5 +1,4 @@
 import clsx from 'clsx';
-import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
@@ -52,7 +51,7 @@ function HomepageHeader() {
             <div className={clsx('col col--6')}>
               <img src={require('@site/static/img/zswatch_social_card.png').default} alt="Logo" className={styles.imgLogo} />
               <p className="hero__subtitle">{siteConfig.tagline}</p>
-              <div className={styles.buttons}>
+              <div className={styles.subForm}>
                 <SubscriptionForm />
               </div>
             </div>
