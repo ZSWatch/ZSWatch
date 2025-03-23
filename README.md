@@ -1,4 +1,4 @@
-# ZSWatch
+# [ZSWatch](https://zswatch.dev/)
 
 ![ZSWatch_gh_banner](https://github.com/jakkra/ZSWatch/assets/4318648/dc3849d7-4618-47a4-8efe-8a909a47fd20)
 
@@ -75,7 +75,7 @@ https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfc
 
 A 4-layer board that measures 38mm in diameter is designed in KiCad. More info [here](https://github.com/jakkra/ZSWatch-HW).
 
-<kbd><img title="Hardware Overview" src="docs/images/Hardware-Overview.png"/></kbd>
+<kbd><img title="Hardware Overview" src="resources/images/Hardware-Overview.png"/></kbd>
 
 ### Software
 
@@ -154,14 +154,7 @@ Some things are still in progress:
 - [Building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
 - Dock casing
 
-**I'll also build a few initial kits** (assembled) for those who don't want or can build ZSWatch themselves.
-In addition to the assembled ZSWatch and dock you will get the following compared to if you build it yourself:
-
-- **A magnetic dock connector and cable**. I got custom-ordered cables to fit the needs of ZSWatch
-- **Dock with onboard SEGGER J-Link OB debugger**, which means you won't need an external debugger for ZSWatch development and flashing
-- **Possibly CNC:ed casing in Stainless steel**
-
-If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here (Google form)](https://forms.gle/G48Sm5zDe9aCaYtT9)** and I'll send a reminder when it's ready.
+If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here](https://zswatch.dev/)** and we'll send a reminder when it's ready.
 
 **Or** if you want to get notified for releases and when the missing parts are finished simply press the `Watch` button (next to Fork and Star) -> `Custom` -> `Releases` and you will see in your feed when it's officially released.
 
