@@ -99,7 +99,7 @@ const config = {
           {
             position: 'right',
             type: 'custom-githubStarsLink', 
-            repoOrg: 'jakkra',
+            repoOrg: 'ZSWatch',
             repoName: 'ZSWatch',
           },
         ],
@@ -134,7 +134,7 @@ const config = {
               },
               {
                 label: 'GitHub',
-                href: 'https://github.com/jakkra/ZSWatch',
+                href: 'https://github.com/ZSWatch/ZSWatch',
               },
             ],
           },

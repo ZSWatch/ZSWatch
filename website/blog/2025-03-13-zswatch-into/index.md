@@ -27,7 +27,7 @@ ZSWatch is a free and open source smartwatch you can build almost from scratch -
 <p></p>
 
 <center>Video walking through some of the UI and features.</center>
-<ReactPlayer width="100%" playing muted controls url='https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682' />
+<ReactPlayer width="100%" playing muted controls url='https://github.com/ZSWatch/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682' />
 
 ### Software
 Short feature overview:

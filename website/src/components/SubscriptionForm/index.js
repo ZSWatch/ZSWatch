@@ -11,7 +11,7 @@ export default function SubscriptionForm() {
           <input type="email" name="email" required placeholder="Enter your email" className={styles.emailInput} />
           <input type="submit" value="Subscribe" className={styles.subscribeBtn} />
         </div>
-        <a href="/blog/" className={styles.blogReminder}>
+        <a href="/blog" className={styles.blogReminder}>
           Read the blog for latest info
         </a>
         <p hidden>
