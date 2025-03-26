@@ -182,6 +182,12 @@ static void read_current_time_cb(struct bt_cts_client *cts_c,
 
 static void pairing_complete(struct bt_conn *conn, bool bonded)
 {
+    struct bt_conn_info info;
+    bt_conn_get_info(conn, &info);
+    if (info.role != BT_CONN_ROLE_PERIPHERAL) {
+        return;
+    }
+
     LOG_DBG("Pairing completed, get time");
 
     int err = bt_cts_read_current_time(&cts_c, read_current_time_cb);
@@ -232,6 +238,12 @@ static void connected(struct bt_conn *conn, uint8_t err)
     }
 
     has_cts = false;
+
+    struct bt_conn_info info;
+    bt_conn_get_info(conn, &info);
+    if (info.role != BT_CONN_ROLE_PERIPHERAL) {
+        return;
+    }
 
     discover_gattp(conn);
 }
