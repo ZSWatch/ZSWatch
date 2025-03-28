@@ -13,10 +13,10 @@
 
 LOG_MODULE_REGISTER(chronos_ui, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-ZSW_LV_IMG_DECLARE(image_chronos_icon);
+ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
-ZSW_LV_IMG_DECLARE(ui_img_phone_png);
-ZSW_LV_IMG_DECLARE(ui_img_camera_png);
+ZSW_LV_IMG_DECLARE(chronos_phone_icon);
+ZSW_LV_IMG_DECLARE(chronos_camera_icon);
 
 static lv_obj_t *root_page = NULL;
 static uint32_t nav_icon_crc = 0xFFFFFFFF;
@@ -238,6 +238,9 @@ void chronos_ui_init(lv_obj_t *root)
     ble_chronos_add_configuration_cb(on_configuration_received_cb);
     ble_chronos_add_touch_cb(on_remote_touch_cb);
     ble_chronos_add_ringer_cb(on_ringer_cb);
+
+    chronos_check_recommended();
+
 }
 
 void chronos_ui_deinit()
@@ -250,6 +253,37 @@ void chronos_ui_deinit()
     lv_obj_del(root_page);
     root_page = NULL;
 
+}
+
+void chronos_check_recommended()
+{
+#if !defined(LV_USE_CANVAS) || (LV_USE_CANVAS == 0)
+    LOG_INF("Navigation icon not avaialble. Enable  with CONFIG_LV_USE_CANVAS=y in prj.conf");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_14) || (LV_FONT_MONTSERRAT_14 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_14 not enabled");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_16) || (LV_FONT_MONTSERRAT_16 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_16 not enabled");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_18) || (LV_FONT_MONTSERRAT_18 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_18 not enabled");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_20) || (LV_FONT_MONTSERRAT_20 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_20 not enabled");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_30) || (LV_FONT_MONTSERRAT_30 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_30 not enabled");
+#endif
+
+#if !defined(LV_FONT_MONTSERRAT_40) || (LV_FONT_MONTSERRAT_40 == 0)
+    LOG_INF("LV_FONT_MONTSERRAT_40 not enabled");
+#endif
 }
 
 //////////////////////////////////////////////////////////////////
@@ -337,7 +371,7 @@ void chronos_ui_add_app_title(lv_obj_t *parent, const char *title, const void *s
     lv_obj_set_height(app_label, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(app_label, LV_ALIGN_CENTER);
     lv_label_set_text(app_label, title);
-    lv_obj_set_style_text_font(app_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(app_label, CHRONOS_FONT_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void chronos_ui_camera_panel_init(lv_obj_t *parent)
@@ -362,10 +396,10 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
     lv_obj_set_height(ui_cameralabel, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_cameralabel, LV_ALIGN_CENTER);
     lv_label_set_text(ui_cameralabel, "Camera");
-    lv_obj_set_style_text_font(ui_cameralabel, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_cameralabel, CHRONOS_FONT_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_cameraimage = lv_img_create(ui_camerapanel);
-    lv_img_set_src(ui_cameraimage, ZSW_LV_IMG_USE(ui_img_camera_png));
+    lv_img_set_src(ui_cameraimage, ZSW_LV_IMG_USE(chronos_camera_icon));
     lv_obj_set_width(ui_cameraimage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_cameraimage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_cameraimage, LV_ALIGN_CENTER);
@@ -377,7 +411,7 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
     lv_obj_set_height(ui_camerainfo, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_camerainfo, LV_ALIGN_CENTER);
     lv_label_set_text(ui_camerainfo, "Click to take a photo");
-    lv_obj_set_style_text_font(ui_camerainfo, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_camerainfo, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_capturebutton = lv_obj_create(ui_camerapanel);
     lv_obj_remove_style_all(ui_capturebutton);
@@ -399,7 +433,7 @@ void chronos_ui_camera_panel_init(lv_obj_t *parent)
     lv_obj_set_height(ui_capturetext, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_capturetext, LV_ALIGN_CENTER);
     lv_label_set_text(ui_capturetext, "Capture");
-    lv_obj_set_style_text_font(ui_capturetext, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_capturetext, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void chronos_ui_call_panel_init(lv_obj_t *parent)
@@ -423,10 +457,10 @@ void chronos_ui_call_panel_init(lv_obj_t *parent)
     lv_obj_set_height(ui_calltext, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_calltext, LV_ALIGN_CENTER);
     lv_label_set_text(ui_calltext, "Incoming Call");
-    lv_obj_set_style_text_font(ui_calltext, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_calltext, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_callimage = lv_img_create(ui_callpanel);
-    lv_img_set_src(ui_callimage, ZSW_LV_IMG_USE(ui_img_phone_png));
+    lv_img_set_src(ui_callimage, ZSW_LV_IMG_USE(chronos_phone_icon));
     lv_obj_set_width(ui_callimage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_callimage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_callimage, LV_ALIGN_CENTER);
@@ -439,7 +473,7 @@ void chronos_ui_call_panel_init(lv_obj_t *parent)
     lv_obj_set_align(ui_callername, LV_ALIGN_CENTER);
     lv_label_set_text(ui_callername, "Caller name");
     lv_obj_set_style_text_align(ui_callername, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_callername, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_callername, CHRONOS_FONT_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 

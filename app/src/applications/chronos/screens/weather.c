@@ -4,27 +4,27 @@
 #include "ui/utils/zsw_ui_utils.h"
 
 
-ZSW_LV_IMG_DECLARE(image_chronos_icon);
+ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
-ZSW_LV_IMG_DECLARE(ui_img_602206286);
-ZSW_LV_IMG_DECLARE(ui_img_602205261);
-ZSW_LV_IMG_DECLARE(ui_img_602199888);
-ZSW_LV_IMG_DECLARE(ui_img_602207311);
-ZSW_LV_IMG_DECLARE(ui_img_dy4_png);
-ZSW_LV_IMG_DECLARE(ui_img_602200913);
-ZSW_LV_IMG_DECLARE(ui_img_602195540);
-ZSW_LV_IMG_DECLARE(ui_img_602202963);
+ZSW_LV_IMG_DECLARE(chronos_day_0_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_1_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_2_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_3_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_4_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_5_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_6_icon);
+ZSW_LV_IMG_DECLARE(chronos_day_7_icon);
 
 
-const lv_img_dsc_t *weatherIcons[] = {
-    ZSW_LV_IMG_USE(ui_img_602206286),
-    ZSW_LV_IMG_USE(ui_img_602205261),
-    ZSW_LV_IMG_USE(ui_img_602199888),
-    ZSW_LV_IMG_USE(ui_img_602207311),
-    ZSW_LV_IMG_USE(ui_img_dy4_png),
-    ZSW_LV_IMG_USE(ui_img_602200913),
-    ZSW_LV_IMG_USE(ui_img_602195540),
-    ZSW_LV_IMG_USE(ui_img_602202963)
+static const void *weatherIcons[] = {
+    ZSW_LV_IMG_USE(chronos_day_0_icon),
+    ZSW_LV_IMG_USE(chronos_day_1_icon),
+    ZSW_LV_IMG_USE(chronos_day_2_icon),
+    ZSW_LV_IMG_USE(chronos_day_3_icon),
+    ZSW_LV_IMG_USE(chronos_day_4_icon),
+    ZSW_LV_IMG_USE(chronos_day_5_icon),
+    ZSW_LV_IMG_USE(chronos_day_6_icon),
+    ZSW_LV_IMG_USE(chronos_day_7_icon)
 };
 
 
@@ -44,7 +44,7 @@ static lv_obj_t *ui_weathericon;
 void chronos_ui_weather_init(lv_obj_t *page)
 {
 
-    chronos_ui_add_app_title(page, "Weather", ZSW_LV_IMG_USE(image_chronos_icon));
+    chronos_ui_add_app_title(page, "Weather", ZSW_LV_IMG_USE(chronos_logo_icon));
 
     lv_obj_t *ui_weatherpanel = lv_obj_create(page);
     lv_obj_set_width(ui_weatherpanel, lv_pct(100));
@@ -66,10 +66,10 @@ void chronos_ui_weather_init(lv_obj_t *page)
     lv_obj_set_align(ui_citylabel, LV_ALIGN_CENTER);
     lv_label_set_text(ui_citylabel, "");
     lv_obj_set_style_text_align(ui_citylabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_citylabel, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_citylabel, CHRONOS_FONT_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_weathericon = lv_img_create(ui_weatherpanel);
-    lv_img_set_src(ui_weathericon, ZSW_LV_IMG_USE(ui_img_602206286));
+    lv_img_set_src(ui_weathericon, ZSW_LV_IMG_USE(chronos_day_0_icon));
     lv_obj_set_width(ui_weathericon, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_weathericon, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_weathericon, LV_ALIGN_CENTER);
@@ -81,7 +81,7 @@ void chronos_ui_weather_init(lv_obj_t *page)
     lv_obj_set_height(ui_templabel, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_templabel, LV_ALIGN_CENTER);
     lv_label_set_text(ui_templabel, "--°C");
-    lv_obj_set_style_text_font(ui_templabel, &lv_font_montserrat_40, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_templabel, CHRONOS_FONT_40, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_updatetime = lv_label_create(ui_weatherpanel);
     lv_obj_set_width(ui_updatetime, LV_SIZE_CONTENT);   /// 1
@@ -89,7 +89,7 @@ void chronos_ui_weather_init(lv_obj_t *page)
     lv_obj_set_align(ui_updatetime, LV_ALIGN_CENTER);
     lv_label_set_text(ui_updatetime, "No weather\ndata");
     lv_obj_set_style_text_align(ui_updatetime, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_updatetime, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_updatetime, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_hourlypanel = lv_obj_create(page);
     lv_obj_set_width(ui_hourlypanel, lv_pct(100));
@@ -167,7 +167,7 @@ void chronos_ui_clear_weather_weekly(bool info)
     lv_obj_set_style_text_color(ui_noweather, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_noweather, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_noweather, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_noweather, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_noweather, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 
@@ -192,7 +192,7 @@ void chronos_ui_clear_weather_hourly(bool info)
     lv_obj_set_style_text_color(ui_noweather, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_noweather, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_noweather, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_noweather, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_noweather, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 
 }
@@ -227,7 +227,7 @@ void chronos_ui_add_weather_hourly(chronos_hourly_forecast_t forecast)
     lv_label_set_text_fmt(ui_hourlytime, "%02d:00", forecast.hour);
     lv_obj_set_style_text_align(ui_hourlytime, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_decor(ui_hourlytime, LV_TEXT_DECOR_UNDERLINE, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_hourlytime, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_hourlytime, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_hourlyicon = lv_img_create(ui_hourlyitem);
     lv_img_set_src(ui_hourlyicon, weatherIcons[forecast.icon % 7]);
@@ -247,14 +247,14 @@ void chronos_ui_add_weather_hourly(chronos_hourly_forecast_t forecast)
     lv_obj_set_y(ui_hourlytemp, -20);
     lv_obj_set_align(ui_hourlytemp, LV_ALIGN_BOTTOM_MID);
     lv_label_set_text_fmt(ui_hourlytemp, "%d°", forecast.temp);
-    lv_obj_set_style_text_font(ui_hourlytemp, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_hourlytemp, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_hourlyhumidity = lv_label_create(ui_hourlyitem);
     lv_obj_set_width(ui_hourlyhumidity, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_hourlyhumidity, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_hourlyhumidity, LV_ALIGN_BOTTOM_MID);
     lv_label_set_text_fmt(ui_hourlyhumidity, "%d%%", forecast.humidity);
-    lv_obj_set_style_text_font(ui_hourlyhumidity, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_hourlyhumidity, CHRONOS_FONT_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 void chronos_ui_add_weather_weekly(chronos_weather_t weather)
@@ -285,7 +285,7 @@ void chronos_ui_add_weather_weekly(chronos_weather_t weather)
     lv_obj_set_align(ui_daylabel, LV_ALIGN_LEFT_MID);
     lv_label_set_text(ui_daylabel, days[weather.day % 7]);
     lv_obj_set_style_text_align(ui_daylabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_daylabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_daylabel, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_dayicon = lv_img_create(ui_weekitem);
     lv_img_set_src(ui_dayicon, weatherIcons[weather.icon % 7]);
@@ -302,6 +302,6 @@ void chronos_ui_add_weather_weekly(chronos_weather_t weather)
     lv_obj_set_align(ui_daytemp, LV_ALIGN_RIGHT_MID);
     lv_label_set_text_fmt(ui_daytemp, "%d°C", weather.temp);
     lv_obj_set_style_text_align(ui_daytemp, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_daytemp, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_daytemp, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }

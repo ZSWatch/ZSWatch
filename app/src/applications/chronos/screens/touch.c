@@ -44,7 +44,7 @@ void chronos_ui_remote_touch_init(lv_obj_t *page)
     lv_label_set_text(ui_touchlabel, "Remote Touch");
     lv_obj_set_style_text_color(ui_touchlabel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_touchlabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_touchlabel, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_touchlabel, CHRONOS_FONT_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_touchinfo = lv_label_create(page);
     lv_obj_set_width(ui_touchinfo, LV_SIZE_CONTENT);   /// 1
@@ -55,7 +55,7 @@ void chronos_ui_remote_touch_init(lv_obj_t *page)
     lv_label_set_text(ui_touchinfo, "Try from the \nChronos app");
     lv_obj_set_style_text_color(ui_touchinfo, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_touchinfo, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_touchinfo, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_touchinfo, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_xpoint = lv_label_create(page);
     lv_obj_set_width(ui_xpoint, LV_SIZE_CONTENT);   /// 1
@@ -67,7 +67,7 @@ void chronos_ui_remote_touch_init(lv_obj_t *page)
     lv_obj_add_flag(ui_xpoint, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(ui_xpoint, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_xpoint, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_xpoint, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_xpoint, CHRONOS_FONT_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_ypoint = lv_label_create(page);
     lv_obj_set_width(ui_ypoint, LV_SIZE_CONTENT);   /// 1
@@ -79,7 +79,7 @@ void chronos_ui_remote_touch_init(lv_obj_t *page)
     lv_obj_add_flag(ui_ypoint, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(ui_ypoint, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_ypoint, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_ypoint, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_ypoint, CHRONOS_FONT_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
 
