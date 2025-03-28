@@ -5,6 +5,48 @@
 
 #include "ble/chronos/ble_chronos.h"
 
+#define CHRONOS_FONT_DEFAULT &lv_font_montserrat_16
+
+
+#if LV_FONT_MONTSERRAT_14 == 1
+#define CHRONOS_FONT_14 &lv_font_montserrat_14
+#else
+#define CHRONOS_FONT_14 CHRONOS_FONT_DEFAULT
+#endif
+
+#if LV_FONT_MONTSERRAT_16 == 1
+#define CHRONOS_FONT_16 &lv_font_montserrat_16
+#else
+#define CHRONOS_FONT_16 CHRONOS_FONT_DEFAULT
+#endif
+
+#if LV_FONT_MONTSERRAT_18 == 1
+#define CHRONOS_FONT_18 &lv_font_montserrat_18
+#else
+#define CHRONOS_FONT_18 CHRONOS_FONT_DEFAULT
+#endif
+
+#if LV_FONT_MONTSERRAT_20 == 1
+#define CHRONOS_FONT_20 &lv_font_montserrat_20
+#else
+#define CHRONOS_FONT_20 CHRONOS_FONT_DEFAULT
+#endif
+
+#if LV_FONT_MONTSERRAT_30
+#define CHRONOS_FONT_30 &lv_font_montserrat_30
+#else
+#define CHRONOS_FONT_30 CHRONOS_FONT_DEFAULT
+#endif
+
+#if LV_FONT_MONTSERRAT_40 == 1
+#define CHRONOS_FONT_40 &lv_font_montserrat_40
+#else
+#define CHRONOS_FONT_40 CHRONOS_FONT_DEFAULT
+#endif
+
+
+void chronos_check_recommended();
+
 void chronos_ui_init(lv_obj_t *root);
 
 void chronos_ui_deinit();

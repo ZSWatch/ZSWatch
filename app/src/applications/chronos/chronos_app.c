@@ -13,11 +13,11 @@ static void chronos_app_start(lv_obj_t *root, lv_group_t *group);
 static void chronos_app_stop(void);
 
 
-ZSW_LV_IMG_DECLARE(image_chronos_icon);
+ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
 static application_t app = {
     .name = "Chronos",
-    .icon = ZSW_LV_IMG_USE(image_chronos_icon),
+    .icon = ZSW_LV_IMG_USE(chronos_logo_icon),
     .start_func = chronos_app_start,
     .stop_func = chronos_app_stop
 };

@@ -10,45 +10,45 @@
 
 LOG_MODULE_REGISTER(chronos_notification, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-ZSW_LV_IMG_DECLARE(image_chronos_icon);
+ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
-ZSW_LV_IMG_DECLARE(image_sms);      // SMS
-ZSW_LV_IMG_DECLARE(image_mail);     // Mail
-ZSW_LV_IMG_DECLARE(image_penguin);  // Penguin
-ZSW_LV_IMG_DECLARE(image_skype);    // Skype
-ZSW_LV_IMG_DECLARE(image_whatsapp); // WhatsApp
-ZSW_LV_IMG_DECLARE(image_line);     // Line
-ZSW_LV_IMG_DECLARE(image_twitter_x);// Twitter
-ZSW_LV_IMG_DECLARE(image_facebook); // Facebook
-ZSW_LV_IMG_DECLARE(image_messenger);// Messenger
-ZSW_LV_IMG_DECLARE(image_instagram);// Instagram
-ZSW_LV_IMG_DECLARE(image_weibo);    // Weibo
-ZSW_LV_IMG_DECLARE(image_kakao);    // Kakao
-ZSW_LV_IMG_DECLARE(image_viber);    // Viber
-ZSW_LV_IMG_DECLARE(image_vkontakte);// Vkontakte
-ZSW_LV_IMG_DECLARE(image_telegram); // Telegram
-ZSW_LV_IMG_DECLARE(image_chrns);    // Chronos
-ZSW_LV_IMG_DECLARE(image_wechat);     // Wechat
+ZSW_LV_IMG_DECLARE(chronos_sms_icon);      // SMS
+ZSW_LV_IMG_DECLARE(chronos_mail_icon);     // Mail
+ZSW_LV_IMG_DECLARE(chronos_penguin_icon);  // Penguin
+ZSW_LV_IMG_DECLARE(chronos_skype_icon);    // Skype
+ZSW_LV_IMG_DECLARE(chronos_whatsapp_icon); // WhatsApp
+ZSW_LV_IMG_DECLARE(chronos_line_icon);     // Line
+ZSW_LV_IMG_DECLARE(chronos_twitter_x_icon);// Twitter
+ZSW_LV_IMG_DECLARE(chronos_facebook_icon); // Facebook
+ZSW_LV_IMG_DECLARE(chronos_messenger_icon);// Messenger
+ZSW_LV_IMG_DECLARE(chronos_instagram_icon);// Instagram
+ZSW_LV_IMG_DECLARE(chronos_weibo_icon);    // Weibo
+ZSW_LV_IMG_DECLARE(chronos_kakao_icon);    // Kakao
+ZSW_LV_IMG_DECLARE(chronos_viber_icon);    // Viber
+ZSW_LV_IMG_DECLARE(chronos_vkontakte_icon);// Vkontakte
+ZSW_LV_IMG_DECLARE(chronos_telegram_icon); // Telegram
+ZSW_LV_IMG_DECLARE(chronos_chrns_icon);    // Chronos
+ZSW_LV_IMG_DECLARE(chronos_wechat_icon);     // Wechat
 
 static const void *notificationIcons[] = {
-    ZSW_LV_IMG_USE(image_sms),       // SMS
-    ZSW_LV_IMG_USE(image_mail),      // Mail
-    ZSW_LV_IMG_USE(image_penguin),   // Penguin
-    ZSW_LV_IMG_USE(image_skype),     // Skype
-    ZSW_LV_IMG_USE(image_whatsapp),  // WhatsApp
-    ZSW_LV_IMG_USE(image_mail),      // Mail2
-    ZSW_LV_IMG_USE(image_line),      // Line
-    ZSW_LV_IMG_USE(image_twitter_x), // Twitter
-    ZSW_LV_IMG_USE(image_facebook),  // Facebook
-    ZSW_LV_IMG_USE(image_messenger), // Messenger
-    ZSW_LV_IMG_USE(image_instagram), // Instagram
-    ZSW_LV_IMG_USE(image_weibo),     // Weibo
-    ZSW_LV_IMG_USE(image_kakao),     // Kakao
-    ZSW_LV_IMG_USE(image_viber),     // Viber
-    ZSW_LV_IMG_USE(image_vkontakte), // Vkontakte
-    ZSW_LV_IMG_USE(image_telegram),  // Telegram
-    ZSW_LV_IMG_USE(image_chrns),     // Chronos
-    ZSW_LV_IMG_USE(image_wechat)     // Wechat
+    ZSW_LV_IMG_USE(chronos_sms_icon),       // SMS
+    ZSW_LV_IMG_USE(chronos_mail_icon),      // Mail
+    ZSW_LV_IMG_USE(chronos_penguin_icon),   // Penguin
+    ZSW_LV_IMG_USE(chronos_skype_icon),     // Skype
+    ZSW_LV_IMG_USE(chronos_whatsapp_icon),  // WhatsApp
+    ZSW_LV_IMG_USE(chronos_mail_icon),      // Mail2
+    ZSW_LV_IMG_USE(chronos_line_icon),      // Line
+    ZSW_LV_IMG_USE(chronos_twitter_x_icon), // Twitter
+    ZSW_LV_IMG_USE(chronos_facebook_icon),  // Facebook
+    ZSW_LV_IMG_USE(chronos_messenger_icon), // Messenger
+    ZSW_LV_IMG_USE(chronos_instagram_icon), // Instagram
+    ZSW_LV_IMG_USE(chronos_weibo_icon),     // Weibo
+    ZSW_LV_IMG_USE(chronos_kakao_icon),     // Kakao
+    ZSW_LV_IMG_USE(chronos_viber_icon),     // Viber
+    ZSW_LV_IMG_USE(chronos_vkontakte_icon), // Vkontakte
+    ZSW_LV_IMG_USE(chronos_telegram_icon),  // Telegram
+    ZSW_LV_IMG_USE(chronos_chrns_icon),     // Chronos
+    ZSW_LV_IMG_USE(chronos_wechat_icon)     // Wechat
 };
 
 static lv_obj_t *notification_panel;
@@ -58,7 +58,7 @@ static lv_obj_t *ui_emptyNotification;
 void chronos_ui_notifications_init(lv_obj_t *page)
 {
 
-    chronos_ui_add_app_title(page, "Notifications", ZSW_LV_IMG_USE(image_chronos_icon));
+    chronos_ui_add_app_title(page, "Notifications", ZSW_LV_IMG_USE(chronos_logo_icon));
 
     notification_panel = lv_obj_create(page);
     lv_obj_set_width(notification_panel, lv_pct(100));
@@ -153,7 +153,7 @@ void chronos_ui_clear_notifications(bool info)
     lv_obj_set_style_text_color(ui_emptyNotification, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_emptyNotification, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_emptyNotification, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_emptyNotification, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_emptyNotification, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_emptyNotification, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -215,7 +215,7 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_obj_set_y(app_name, 0);
     lv_label_set_long_mode(app_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_label_set_text(app_name, notification.title);
-    lv_obj_set_style_text_font(app_name, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(app_name, CHRONOS_FONT_18, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     LV_FONT_DECLARE(lv_font_montserrat_14);
     lv_obj_t *time_label = lv_label_create(title_panel);
@@ -223,12 +223,12 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_obj_set_height(time_label, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(time_label, LV_ALIGN_BOTTOM_RIGHT);
     lv_label_set_text_fmt(time_label, "%02d:%02d", notification.time.hour, notification.time.minute);
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(time_label, CHRONOS_FONT_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *message_label = lv_label_create(item);
     lv_obj_set_width(message_label, lv_pct(100));
     lv_obj_set_height(message_label, LV_SIZE_CONTENT); /// 1
     lv_obj_set_align(message_label, LV_ALIGN_CENTER);
     lv_label_set_text(message_label, notification.message);
-    lv_obj_set_style_text_font(message_label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(message_label, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
