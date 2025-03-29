@@ -46,3 +46,33 @@
         };
     };
 };
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+		lvgl_lfs: lvgl_lfs {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lvgl_lfs";
+			partition = <&littlefs_storage>;
+			automount;
+			read-size = <1024>;
+			prog-size = <512>;
+			cache-size = <4096>;
+			lookahead-size = <4096>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+&flash0 {
+    partitions {
+        littlefs_storage: partition@100000 {
+			label = "littlefs_storage";
+			reg = <0x00100000 0x000f0000>;
+		};
+        lvgl_raw_partition: partition@1f0000 {
+			label = "lvgl_raw_partition";
+			reg = <0x001f0000 0x0000d000>;
+		};
+    };
+};
