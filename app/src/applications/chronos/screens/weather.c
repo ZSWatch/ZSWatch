@@ -1,8 +1,6 @@
 
-
 #include "../chronos_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
-
 
 ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
@@ -15,7 +13,6 @@ ZSW_LV_IMG_DECLARE(chronos_day_5_icon);
 ZSW_LV_IMG_DECLARE(chronos_day_6_icon);
 ZSW_LV_IMG_DECLARE(chronos_day_7_icon);
 
-
 static const void *weatherIcons[] = {
     ZSW_LV_IMG_USE(chronos_day_0_icon),
     ZSW_LV_IMG_USE(chronos_day_1_icon),
@@ -27,10 +24,7 @@ static const void *weatherIcons[] = {
     ZSW_LV_IMG_USE(chronos_day_7_icon)
 };
 
-
-
 const char *days[7] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-
 
 static lv_obj_t *ui_weeklypanel;
 static lv_obj_t *ui_hourlypanel;
@@ -39,7 +33,6 @@ static lv_obj_t *ui_citylabel;
 static lv_obj_t *ui_updatetime;
 static lv_obj_t *ui_templabel;
 static lv_obj_t *ui_weathericon;
-
 
 void chronos_ui_weather_init(lv_obj_t *page)
 {
@@ -131,7 +124,6 @@ void chronos_ui_weather_init(lv_obj_t *page)
 
     // chronos_ui_clear_weather_hourly(true);
 
-
 }
 
 void chronos_ui_set_weather_info(int temp, uint8_t icon, chronos_time_t updated)
@@ -193,7 +185,6 @@ void chronos_ui_clear_weather_hourly(bool info)
     lv_obj_set_style_text_opa(ui_noweather, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_noweather, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_noweather, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
-
 
 }
 

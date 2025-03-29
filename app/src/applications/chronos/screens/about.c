@@ -17,7 +17,6 @@ ZSW_LV_IMG_DECLARE(chronos_volume_up_icon);
 ZSW_LV_IMG_DECLARE(chronos_volume_down_icon);
 ZSW_LV_IMG_DECLARE(chronos_radar_icon);
 
-
 static lv_obj_t *ui_appversion;
 static lv_obj_t *ui_appcode;
 
@@ -29,7 +28,6 @@ static lv_obj_t *ui_findtext;
 static bool find_active;
 
 static lv_anim_t rotate;
-
 
 void rotate_chronos_cb(void *var, int32_t v)
 {
@@ -87,7 +85,6 @@ void chronos_ui_about_init(lv_obj_t *page)
 {
 
     chronos_ui_add_app_title(page, "About", ZSW_LV_IMG_USE(chronos_logo_icon));
-
 
     lv_obj_t *ui_aboutpanel = lv_obj_create(page);
     lv_obj_set_width(ui_aboutpanel, lv_pct(100));
@@ -233,7 +230,6 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_flex_flow(ui_playcontrols, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(ui_playcontrols, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_clear_flag(ui_playcontrols, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-
 
     lv_obj_t *ui_previousbutton = lv_obj_create(ui_playcontrols);
     lv_obj_remove_style_all(ui_previousbutton);
@@ -384,7 +380,6 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_label_set_text(ui_findtext, "Start");
     lv_obj_set_style_text_font(ui_findtext, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-
     lv_obj_t *ui_morepanel = lv_obj_create(ui_controlpanel);
     lv_obj_remove_style_all(ui_morepanel);
     lv_obj_set_width(ui_morepanel, 200);
@@ -409,7 +404,6 @@ void chronos_ui_about_init(lv_obj_t *page)
     lv_obj_set_height(ui_morelabel, LV_SIZE_CONTENT);    /// 1
     lv_label_set_text(ui_morelabel, "More apps available on the right. Swipe to explore");
     lv_obj_set_style_text_font(ui_morelabel, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
-
 
 }
 
