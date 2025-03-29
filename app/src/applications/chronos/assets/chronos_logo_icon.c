@@ -1,5 +1,4 @@
 
-
 #ifdef __has_include
 #if __has_include("lvgl.h")
 #ifndef LV_LVGL_H_INCLUDE_SIMPLE
@@ -14,7 +13,6 @@
 #include "lvgl/lvgl.h"
 #endif
 
-
 #ifndef LV_ATTRIBUTE_MEM_ALIGN
 #define LV_ATTRIBUTE_MEM_ALIGN
 #endif
@@ -22,7 +20,6 @@
 #ifndef LV_ATTRIBUTE_CHRONOS_LOGO_ICON
 #define LV_ATTRIBUTE_CHRONOS_LOGO_ICON
 #endif
-
 
 // IMAGE DATA: assets\chrns.png
 const LV_ATTRIBUTE_MEM_ALIGN uint8_t chronos_logo_icon_data[] = {

@@ -12,7 +12,6 @@ LOG_MODULE_REGISTER(chronos_app, CONFIG_ZSW_TEMPLATE_APP_LOG_LEVEL);
 static void chronos_app_start(lv_obj_t *root, lv_group_t *group);
 static void chronos_app_stop(void);
 
-
 ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
 static application_t app = {
@@ -21,7 +20,6 @@ static application_t app = {
     .start_func = chronos_app_start,
     .stop_func = chronos_app_stop
 };
-
 
 static void chronos_app_start(lv_obj_t *root, lv_group_t *group)
 {
@@ -34,7 +32,6 @@ static void chronos_app_stop(void)
 
     chronos_ui_deinit();
 }
-
 
 static int chronos_app_add(void)
 {

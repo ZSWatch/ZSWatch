@@ -151,7 +151,6 @@ typedef enum chronos_config {
     CH_CONFIG_CONTACT,  // contacts data received
 } chronos_config_t;
 
-
 typedef void (*notification_callback_t)(const chronos_notification_t *notification);
 
 typedef void (*ringer_callback_t)(bool state, char *caller);
@@ -203,4 +202,3 @@ const char *ble_chronos_get_app_name(int id);
 
 void ble_chronos_on_receive_data(const uint8_t *data, uint16_t len);
 void ble_chronos_data_received();
-

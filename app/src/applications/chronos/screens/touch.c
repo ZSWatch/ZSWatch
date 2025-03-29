@@ -8,7 +8,6 @@
 
 LOG_MODULE_REGISTER(chronos_touch, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-
 static lv_obj_t *ui_touchpoint;
 static lv_obj_t *ui_xpoint;
 static lv_obj_t *ui_ypoint;
@@ -33,7 +32,6 @@ void chronos_ui_remote_touch_init(lv_obj_t *page)
     lv_obj_set_style_shadow_opa(ui_touchpoint, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_width(ui_touchpoint, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_spread(ui_touchpoint, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
-
 
     lv_obj_t *ui_touchlabel = lv_label_create(page);
     lv_obj_set_width(ui_touchlabel, LV_SIZE_CONTENT);   /// 1

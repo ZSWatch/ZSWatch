@@ -1,12 +1,10 @@
 #pragma once
 
-
 #include <lvgl.h>
 
 #include "ble/chronos/ble_chronos.h"
 
 #define CHRONOS_FONT_DEFAULT &lv_font_montserrat_16
-
 
 #if LV_FONT_MONTSERRAT_14 == 1
 #define CHRONOS_FONT_14 &lv_font_montserrat_14
@@ -44,7 +42,6 @@
 #define CHRONOS_FONT_40 CHRONOS_FONT_DEFAULT
 #endif
 
-
 void chronos_check_recommended();
 
 void chronos_ui_init(lv_obj_t *root);
@@ -78,9 +75,7 @@ void chronos_ui_clear_weather_weekly(bool info);
 void chronos_ui_clear_weather_hourly(bool info);
 void chronos_ui_add_weather_hourly(chronos_hourly_forecast_t forecast);
 
-
 void chronos_ui_navigation_init(lv_obj_t *page);
 void chronos_ui_set_nav_info(const char *text, const char *title, const char *directions);
 void chronos_ui_set_nav_icon_state(bool show);
 void chronos_ui_set_nav_icon_px(uint16_t x, uint16_t y, bool on);
-

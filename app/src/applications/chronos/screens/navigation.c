@@ -1,17 +1,14 @@
 
-
 #include "../chronos_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 ZSW_LV_IMG_DECLARE(chronos_arrow_icon);
-
 
 #if LV_USE_CANVAS == 1
 #define CANVAS_WIDTH 48
 #define CANVAS_HEIGHT 48
 static lv_color_t cbuf[LV_IMG_BUF_SIZE_INDEXED_1BIT(CANVAS_WIDTH, CANVAS_HEIGHT)];
 #endif
-
 
 static lv_obj_t *ui_navText;
 static lv_obj_t *ui_navIconCanvas;
@@ -91,7 +88,6 @@ void chronos_ui_navigation_init(lv_obj_t *page)
     lv_label_set_text(ui_navDirection, "Start Navigation on Google Maps ");
     lv_obj_set_style_text_align(ui_navDirection, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_navDirection, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
-
 
 }
 

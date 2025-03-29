@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,7 +158,6 @@ void chronos_ui_clear_notifications(bool info)
     lv_obj_set_style_pad_top(ui_emptyNotification, 50, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(ui_emptyNotification, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-
 }
 
 void chronos_ui_add_notification(chronos_notification_t notification)
@@ -206,7 +204,6 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_obj_set_height(app_icon, LV_SIZE_CONTENT);        /// 1
     lv_obj_add_flag(app_icon, LV_OBJ_FLAG_ADV_HITTEST);  /// Flags
     lv_obj_clear_flag(app_icon, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-
 
     lv_obj_t *app_name = lv_label_create(title_panel);
     lv_obj_set_width(app_name, 170);  /// 1

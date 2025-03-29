@@ -21,7 +21,6 @@
 
 LOG_MODULE_REGISTER(ble_chronos, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-
 // static void parse_time(char *data);
 static void music_control_event_callback(const struct zbus_channel *chan);
 
@@ -74,7 +73,6 @@ static void send_ble_data_event(struct ble_data_event *evt)
 {
     zbus_chan_pub(&ble_comm_data_chan, evt, K_MSEC(250));
 }
-
 
 static void music_control_event_callback(const struct zbus_channel *chan)
 {
@@ -163,7 +161,6 @@ static int parse_weather()
 
     return 0;
 }
-
 
 void ble_chronos_input(const uint8_t *const data, uint16_t len)
 {
@@ -291,8 +288,6 @@ void ble_chronos_clear_notifications()
     }
     notificationIndex = -1;
 }
-
-
 
 chronos_navigation_t *ble_chronos_get_navigation()
 {
@@ -423,7 +418,6 @@ const char *ble_chronos_get_app_name(int id)
     }
 }
 
-
 /* DATA FROM CHRONOS APP FUNCTIONS */
 
 // Chronos received commands (data[0] is 0xAB or 0xEA or <= 0x19) on RX characteristic.
@@ -531,7 +525,6 @@ void ble_chronos_data_received()
                         .minute = tm_info.tm_min
                     };
 
-
                     // Free old memory before assigning new values
                     notificationIndex++;
 
@@ -554,7 +547,6 @@ void ble_chronos_data_received()
                     notifications[notificationIndex % CH_NOTIF_SIZE].available = true;
                     notifications[notificationIndex % CH_NOTIF_SIZE].icon = icon;
                     notifications[notificationIndex % CH_NOTIF_SIZE].time = time;
-
 
                     parse_notify(&notifications[notificationIndex % CH_NOTIF_SIZE]);
 

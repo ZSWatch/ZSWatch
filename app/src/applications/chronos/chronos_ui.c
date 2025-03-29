@@ -10,7 +10,6 @@
 
 #include "ble/chronos/ble_chronos.h"
 
-
 LOG_MODULE_REGISTER(chronos_ui, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 ZSW_LV_IMG_DECLARE(chronos_logo_icon);
@@ -170,7 +169,6 @@ void chronos_ui_init(lv_obj_t *root)
     lv_obj_set_style_pad_top(root_page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(root_page, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-
     lv_obj_t *page = chronos_ui_add_page(root_page);
     chronos_ui_about_init(page);
 
@@ -178,7 +176,6 @@ void chronos_ui_init(lv_obj_t *root)
     chronos_ui_set_app_info(*app_info);
     chronos_phone_info_t *phone_info = ble_chronos_get_phone_info();
     chronos_ui_set_phone_info(*phone_info);
-
 
     page = chronos_ui_add_page(root_page);
     chronos_ui_notifications_init(page);
@@ -220,7 +217,6 @@ void chronos_ui_init(lv_obj_t *root)
         }
     }
 
-
     page = chronos_ui_add_page(root_page);
     chronos_ui_navigation_init(page);
 
@@ -232,7 +228,6 @@ void chronos_ui_init(lv_obj_t *root)
 
     chronos_ui_camera_panel_init(root);
     chronos_ui_call_panel_init(root);
-
 
     ble_chronos_add_notification_cb(on_notification_received_cb);
     ble_chronos_add_configuration_cb(on_configuration_received_cb);
@@ -258,7 +253,7 @@ void chronos_ui_deinit()
 void chronos_check_recommended()
 {
 #if !defined(LV_USE_CANVAS) || (LV_USE_CANVAS == 0)
-    LOG_INF("Navigation icon not avaialble. Enable  with CONFIG_LV_USE_CANVAS=y in prj.conf");
+    LOG_INF("Navigation icon not avaialble. Enable with CONFIG_LV_USE_CANVAS=y in prj.conf");
 #endif
 
 #if !defined(LV_FONT_MONTSERRAT_14) || (LV_FONT_MONTSERRAT_14 == 0)
@@ -476,4 +471,3 @@ void chronos_ui_call_panel_init(lv_obj_t *parent)
     lv_obj_set_style_text_font(ui_callername, CHRONOS_FONT_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
 }
-
