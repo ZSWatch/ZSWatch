@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2023 Jakob Krantz
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+* Copyright (c) 2023 Jakob Krantz
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
 #include "nrf5340_cpuapp_common-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-
 
 / {
     chosen {
@@ -14,7 +13,7 @@
         zephyr,uart-mcumgr = &uart0;
         zephyr,bt-mon-uart = &uart0;
         zephyr,bt-c2h-uart = &uart0;
-        zephyr,bt-hci-ipc = &ipc0;
+        zephyr,bt-hci = &bt_hci_ipc0;
         zephyr,ieee802154 = &ieee802154;
         zephyr,display = &gc9a01;
     };
@@ -47,6 +46,18 @@
         watchdog0 = &wdt0;
         mcuboot-button1 = &button1;
     };
+};
+
+&vregmain {
+    regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&vregradio {
+    regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&vregh {
+    status = "okay";
 };
 
 &pwm0 {

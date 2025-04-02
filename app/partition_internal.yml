@@ -1,6 +1,0 @@
-#-------------------
-# Partitions
-# ------------------
-settings_partition:
-  address: 0x000fa000
-  size: 0x00006000

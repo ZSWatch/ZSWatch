@@ -98,7 +98,7 @@ static void on_application_manager_close(void);
 static void on_popup_notifcation_closed(uint32_t id);
 static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
-static void on_input_subsys_callback(struct input_event *evt);
+static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e);
 
@@ -225,7 +225,7 @@ static void run_init_work(struct k_work *item)
 
     // Need to enable the gpio-keys as they are suspended by default
     pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(buttons)), PM_DEVICE_ACTION_RESUME);
-    INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback);
+    INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback, NULL);
 
     lv_indev_drv_init(&enc_drv);
     enc_drv.type = LV_INDEV_TYPE_ENCODER;
@@ -421,7 +421,7 @@ static void async_turn_off_buttons_allocation(void *unused)
     is_buttons_for_lvgl = false;
 }
 
-static void on_input_subsys_callback(struct input_event *evt)
+static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 {
     // Currently you have to define a keycode as binding between buttons and longpress. We skip this binding codes for now.
     // Also touch events will be skipped, because they are handled by LVGL.

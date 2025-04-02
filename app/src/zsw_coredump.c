@@ -15,16 +15,6 @@
 
 LOG_MODULE_REGISTER(zsw_coredump, LOG_LEVEL_DBG);
 
-/**
- * Those are picked from coredump_internal.h in zephyr.
- * Save the coredump it in the same format.
- * Allows to use the coredump uart command to process the coredump file.
- */
-#define COREDUMP_BEGIN_STR  "BEGIN#\r\n"
-#define COREDUMP_END_STR    "END#\r\n"
-#define COREDUMP_ERROR_STR  "ERROR CANNOT DUMP#\r\n"
-#define COREDUMP_PREFIX_STR "#CD:"
-
 #define COREDUMP_LINE_OVERHEAD (sizeof(COREDUMP_PREFIX_STR) + sizeof("\r\n") + 1)
 
 #define FILE_CHUNK_LENGTH 256

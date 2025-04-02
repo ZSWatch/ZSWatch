@@ -3,9 +3,6 @@
 // LVGL version: 8.3.11
 // Project name: SquareLine_Project_npm
 
-#ifndef LV_ATTRIBUTE_MEM_ALIGN
-    #define LV_ATTRIBUTE_MEM_ALIGN
-#endif
 
 #ifdef __has_include
     #if __has_include("lvgl.h")
@@ -19,6 +16,10 @@
     #include "lvgl.h"
 #else
     #include "lvgl/lvgl.h"
+#endif
+
+#ifndef LV_ATTRIBUTE_MEM_ALIGN
+    #define LV_ATTRIBUTE_MEM_ALIGN
 #endif
 
 // IMAGE DATA: assets/nrf_icon.png

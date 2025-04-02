@@ -56,14 +56,14 @@ jobs:
         working-directory: ZSWatch
         run: |
           west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
-          mv ${{ env.BUILD_DIR }}/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}.hex
-          mv ${{ env.BUILD_DIR }}/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
+          mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}.hex
+          mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
           west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
-          mv ${{ env.BUILD_DIR }}_rotated/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
-          mv ${{ env.BUILD_DIR }}_rotated/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
+          mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
+          mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
 
           # Only one copy of Net Core image needed, it's the same for all builds
-          mv ${{ env.BUILD_DIR }}/hci_ipc/zephyr/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
+          mv ${{ env.BUILD_DIR }}/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
 
       - name: Build native_posix
         if: ${{ matrix.board == 'native_posix/native' }}

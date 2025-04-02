@@ -5,7 +5,7 @@
             "name": "Debug Native (sudo)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/app/build/zephyr/zephyr.exe",
+            "program": "${workspaceFolder}/app/build/app/zephyr/zephyr.exe",
             "args": [
                 "--bt-dev=hci0"
             ],

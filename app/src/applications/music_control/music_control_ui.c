@@ -14,7 +14,7 @@ static lv_obj_t *time_label;
 static on_music_control_ui_event_cb_t ui_evt_callback;
 static bool is_playing;
 
-ZSW_LV_IMG_DECLARE(pause);
+ZSW_LV_IMG_DECLARE(pause_icon);
 ZSW_LV_IMG_DECLARE(play);
 ZSW_LV_IMG_DECLARE(next);
 ZSW_LV_IMG_DECLARE(previous);
@@ -77,8 +77,8 @@ static void create_buttons(lv_obj_t *parent)
     play_pause_button = lv_imgbtn_create(parent);
     lv_obj_clear_flag(play_pause_button, LV_OBJ_FLAG_SCROLLABLE);
     lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_RELEASED, NULL, ZSW_LV_IMG_USE(play), NULL);
-    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_CHECKED_RELEASED, NULL, ZSW_LV_IMG_USE(pause), NULL);
-    lv_img_decoder_get_info(ZSW_LV_IMG_USE(pause), &header);
+    lv_imgbtn_set_src(play_pause_button, LV_IMGBTN_STATE_CHECKED_RELEASED, NULL, ZSW_LV_IMG_USE(pause_icon), NULL);
+    lv_img_decoder_get_info(ZSW_LV_IMG_USE(pause_icon), &header);
     lv_obj_set_width(play_pause_button, header.w);
     lv_obj_set_height(play_pause_button, header.h + 5);
     lv_obj_add_flag(play_pause_button, LV_OBJ_FLAG_CHECKABLE);

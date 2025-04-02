@@ -235,7 +235,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 
     delta = (float) k_uptime_delta(&ref_time) / 1000.f;
 
-    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
+    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, vbus_connected, NULL);
     tte = nrf_fuel_gauge_tte_get();
     ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
