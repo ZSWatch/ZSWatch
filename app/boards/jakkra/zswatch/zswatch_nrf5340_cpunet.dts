@@ -19,6 +19,7 @@
 		zephyr,bt-mon-uart = &uart0;
 		zephyr,bt-c2h-uart = &uart0;
 		zephyr,bt-hci-ipc = &ipc0;
+		zephyr,bt-hci = &ipc0;
 		nordic,802154-spinel-ipc = &ipc0;
 		zephyr,sram = &sram1;
 		zephyr,flash = &flash1;
@@ -82,5 +83,13 @@
 	status = "okay";
 };
 
-/* Include shared RAM configuration file */
-#include "nrf5340_shared_sram_planning_conf.dtsi"
+/*
+* Reduce SRAM0 usage by 256 bytes to account for non-init area.
+* The last 256 bytes of SRAM0 are used for retention memory.
+*/
+&sram0 {
+    reg = <0x20000000 0x7DFFF>;
+};
+
+/* Include default shared RAM configuration file */
+#include <common/nordic/nrf5340_shared_sram_partition.dtsi>

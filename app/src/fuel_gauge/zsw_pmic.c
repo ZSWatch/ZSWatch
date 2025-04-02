@@ -235,7 +235,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 
     delta = (float) k_uptime_delta(&ref_time) / 1000.f;
 
-    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
+    soc = nrf_fuel_gauge_process(voltage, current, temp, delta, vbus_connected, NULL);
     tte = nrf_fuel_gauge_tte_get();
     ttf = nrf_fuel_gauge_ttf_get(cc_charging, -term_charge_current);
 
@@ -293,10 +293,20 @@ static int zsw_pmic_init(void)
 
     mfd_npm1300_add_callback(pmic, &event_cb);
 
+    /* Initialise vbus detection status. */
+ 	struct sensor_value val;
+ 	int ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
+ 
+ 	if (ret < 0) {
+ 		return false;
+ 	}
+ 
+ 	vbus_connected = (val.val1 != 0) || (val.val2 != 0);
+
     zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pmic_slow_lis);
 
     struct battery_sample_event evt;
-    int ret = zsw_pmic_get_full_state(&evt);
+    ret = zsw_pmic_get_full_state(&evt);
     if (ret == 0) {
         zbus_chan_pub(&battery_sample_data_chan, &evt, K_MSEC(50));
     } else {
@@ -304,10 +314,6 @@ static int zsw_pmic_init(void)
     }
 
     check_battery_voltage_cutoff(evt.mV);
-
-    if (evt.is_charging) {
-        vbus_connected = true;
-    }
 
     return 0;
 }

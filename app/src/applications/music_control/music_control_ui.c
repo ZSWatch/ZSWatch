@@ -14,7 +14,7 @@ static lv_obj_t *time_label;
 static on_music_control_ui_event_cb_t ui_evt_callback;
 static bool is_playing;
 
-ZSW_LV_IMG_DECLARE(pause);
+ZSW_LV_IMG_DECLARE(pause_icon);
 ZSW_LV_IMG_DECLARE(play);
 ZSW_LV_IMG_DECLARE(next);
 ZSW_LV_IMG_DECLARE(previous);

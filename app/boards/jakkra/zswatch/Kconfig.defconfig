@@ -1,4 +1,4 @@
-# nRF5340 DK nRF5340 board configuration
+# ZSWatch nRF5340 board configuration
 
 # Copyright (c) 2019-2020 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
@@ -55,18 +55,18 @@ endif # BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
 endif # BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
-config MBOX_NRFX_IPC
-	default MBOX
-
 if BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 
-choice BT_HCI_BUS_TYPE
-	default BT_HCI_IPC if BT
-endchoice
+config BT_HCI_IPC
+	default y if BT
 
 config HEAP_MEM_POOL_ADD_SIZE_BOARD
 	int
 	default 4096 if BT_HCI_IPC
+
+config ENTROPY_GENERATOR
+	bool
+	default y if BT
 
 endif #  BOARD_ZSWATCH_NRF5340_CPUAPP || BOARD_ZSWATCH_NRF5340_CPUAPP_NS
 

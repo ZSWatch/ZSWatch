@@ -62,6 +62,7 @@
         zephyr,display = &gc9a01;
         zephyr,keyboard-scan = &cst816s;
         nordic,pm-ext-flash = &mx25r64;
+        zephyr,bt-hci = &bt_hci_ipc0;
     };
 
     lvgl_pointer_input: lvgl_pointer {

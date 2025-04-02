@@ -10,7 +10,8 @@
         "${workspaceFolder}\\zephyr",
     ],
     "nrf-connect.debugging.bindings": {
-        "${workspaceFolder}/app/build": "Launch build"
+        "${workspaceFolder}/app/build": "Launch build",
+        "${workspaceFolder}/app/build/ipc_radio": "Launch build"
     },
     "editor.defaultFormatter": "chiehyu.vscode-astyle",
     "astyle.astylerc": "${workspaceRoot}/app/tools/astyle.cfg",
@@ -21,5 +22,8 @@
     "search.useIgnoreFiles": false,
     "[c]": {
         "editor.defaultFormatter": "chiehyu.vscode-astyle"
+    },
+    "files.associations": {
+        "debug.h": "c"
     }
 }
