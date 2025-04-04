@@ -6,6 +6,8 @@ from create_littlefs_resouce_image import create_littlefs_fs_image
 import sys
 import os
 from pathlib import Path
+from pynrfjprog import HighLevel
+import intelhex
 
 
 class UploadFsWestCommand(WestCommand):
@@ -55,17 +57,86 @@ class UploadFsWestCommand(WestCommand):
         parser.add_argument(
             "-s",
             "--serial_number",
-            type=str,
+            type=int,
             help="JLink serial number",
             default=None,
             required=False,
         )
 
+        parser.add_argument(
+            "--use_rtt",
+            action="store_true",
+            help="Upload using RTT, needed for v3 watches without QSPI flash",
+        )
+
         return parser
+
+    def prompt_for_serial_number(self):
+        serial_number = None
+        with HighLevel.API() as api:
+            probes = api.get_connected_probes()
+            if len(probes) > 1:
+                print("# More than one device found, please specify which one to use.")
+                for i, probe in enumerate(probes):
+                    print(f"{i+1}: {probe}")
+                probe_index = input("Enter the number of the device to use: ")
+                try:
+                    probe_index = int(probe_index)
+                    if probe_index < 1 or probe_index > len(probes):
+                        print("Invalid probe number. Please enter a valid number.")
+                    else:
+                        serial_number = probes[probe_index - 1]
+                except ValueError:
+                    print("Invalid probe number. Please enter a valid number.")
+
+            else:
+                serial_number = probes[0]
+
+        return serial_number
+
+    def write_to_qspi_flash(self, serial_number, hex_file, speed=4000):
+        if serial_number is None:
+            serial_number = self.prompt_for_serial_number()
+
+        if serial_number is None:
+            print("No serial number provided and or no probe found.")
+            return
+
+        with HighLevel.API() as api:
+            with HighLevel.DebugProbe(api, serial_number, clock_speed=speed) as probe:
+                print("# Setting up the probe to qspi.")
+                probe.setup_qspi_with_ini("app/qspi_mx25u51245.ini")
+                program_options = HighLevel.ProgramOptions(
+                    erase_action=HighLevel.EraseAction.ERASE_SECTOR,
+                    qspi_erase_action=HighLevel.EraseAction.ERASE_SECTOR,
+                    reset=HighLevel.ResetAction.RESET_SYSTEM,
+                    verify=HighLevel.VerifyAction.VERIFY_READ,
+                )
+
+                print("# Programming:", hex_file)
+                probe.program(hex_file, program_options=program_options)
+                print("# Programming done.")
+
+    def erase_qspi_flash(self, serial_number):
+        if serial_number is None:
+            serial_number = self.prompt_for_serial_number()
+
+        if serial_number is None:
+            print("No serial number provided and or no probe found.")
+            return
+
+        print("# Erasing QSPI flash. This may take over a minute...")
+        with HighLevel.API() as api:
+            with HighLevel.DebugProbe(api, serial_number) as probe:
+                print("# Setting up the probe to qspi.")
+                probe.setup_qspi_with_ini("app/qspi_mx25u51245.ini")
+                probe.erase(HighLevel.EraseAction.ERASE_ALL, 0x10000000)
+
+                print("# Programming done.")
 
     def do_run(self, args, unknown_args):
         if args.erase:
-            sys.exit(erase_external_flash("nRF5340_XXAA"))
+            sys.exit(self.erase_qspi_flash(args.serial_number))
             return
         log.inf("Creating image")
         img_size = 2 * 1024 * 1024
@@ -80,6 +151,7 @@ class UploadFsWestCommand(WestCommand):
         partition = args.partition
         zephyr_base = Path(os.environ.get("ZEPHYR_BASE"))
         images_path = f"{zephyr_base.parent.absolute()}/app/src/images/binaries"
+        qspi_flash_address = 0x10000000
         print(images_path)
         if args.read_file:
             filename = args.read_file
@@ -89,9 +161,11 @@ class UploadFsWestCommand(WestCommand):
                 source_dir = f"{images_path}/S"
                 partition = partition if partition else "lvgl_raw_partition"
                 create_custom_raw_fs_image(filename, source_dir, block_size)
+                qspi_flash_address = qspi_flash_address + 0x200000
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"
                 partition = partition if partition else "littlefs_storage"
+                qspi_flash_address = qspi_flash_address + 0x0
                 create_littlefs_fs_image(
                     filename,
                     img_size,
@@ -104,14 +178,24 @@ class UploadFsWestCommand(WestCommand):
                     source_dir,
                     disk_version,
                 )
+
+        # Convert file to Intel Hex file
+        hex_file = filename + ".hex"
+        ih = intelhex.IntelHex()
+        ih.loadbin(filename, qspi_flash_address)
+        ih.tofile(hex_file, format="hex")
+
         log.inf("Uploading image")
-        sys.exit(
-            rtt_run_flush_loader(
-                "nRF5340_XXAA",
-                filename,
-                partition,
-                args.speed,
-                args.read_file,
-                args.serial_number,
+        if args.use_rtt:
+            sys.exit(
+                rtt_run_flush_loader(
+                    "nRF5340_XXAA",
+                    filename,
+                    partition,
+                    args.speed,
+                    args.read_file,
+                    str(args.serial_number),
+                )
             )
-        )
+        else:
+            sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, args.speed))
