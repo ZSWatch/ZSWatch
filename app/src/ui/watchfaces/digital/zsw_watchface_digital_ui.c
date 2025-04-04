@@ -469,7 +469,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     if (settings->animations_on) {
         lv_obj_t *img = lv_gif_create(ui_digital_watchface);
-        lv_gif_set_src(img, ZSW_LV_IMG_USE(snoopy));
+        lv_gif_set_src(img, ZSW_LV_IMG_USE_WITH_MOUNT(snoopy, "/lvgl_lfs"));
         lv_obj_set_align(img, LV_ALIGN_CENTER);
         lv_obj_set_width(img, LV_SIZE_CONTENT);
         lv_obj_set_height(img, LV_SIZE_CONTENT);

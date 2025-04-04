@@ -25,10 +25,13 @@
 
 #if CONFIG_STORE_IMAGES_EXTERNAL_FLASH
 #define ZSW_LV_IMG_DECLARE(var_name)
-#define ZSW_LV_IMG_USE(var_name)        "S:"#var_name".bin"
+#define ZSW_LV_IMG_USE(var_name)                            "S:"#var_name".bin"
+#define ZSW_LV_IMG_USE_WITH_MOUNT(var_name, mount_letter)   mount_letter "/" #var_name ".bin"
 #else
-#define ZSW_LV_IMG_DECLARE(var_name) LV_IMG_DECLARE(var_name)
-#define ZSW_LV_IMG_USE(var_name) &var_name
+#define ZSW_LV_IMG_DECLARE(var_name)                        LV_IMG_DECLARE(var_name)
+#define ZSW_LV_IMG_USE(var_name)                            &var_name
+#define ZSW_LV_IMG_USE_WITH_MOUNT(var_name, mount_letter)   &var_name
+
 #endif
 
 extern const lv_img_dsc_t *global_watchface_bg_img;
