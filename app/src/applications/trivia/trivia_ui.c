@@ -33,7 +33,7 @@ void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
     lv_label_set_long_mode(question_lb, LV_LABEL_LONG_WRAP);            /*Break the long lines*/
     lv_obj_align(question_lb, LV_ALIGN_TOP_MID, 0, 35);                 /*Aling to the center of screen*/
     lv_obj_set_style_text_align(question_lb, LV_TEXT_ALIGN_CENTER, 0);  /*Allign text center*/
-    lv_obj_set_style_text_font(question_lb, &lv_font_montserrat_16, 0); /*Change font size*/
+    lv_obj_set_style_text_font(question_lb, &lv_font_montserrat_14, 0); /*Change font size*/
     lv_label_set_text(question_lb, "-");
 
     /*Create Buttons*/

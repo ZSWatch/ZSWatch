@@ -52,7 +52,7 @@ zsw_ui_notification_area_t *zsw_ui_notification_area_add(lv_obj_t *parent)
     lv_obj_set_y(not_area->ui_notification_count_label, -3);
     lv_obj_set_align(not_area->ui_notification_count_label, LV_ALIGN_CENTER);
     lv_label_set_text(not_area->ui_notification_count_label, "");
-    lv_obj_set_style_text_font(not_area->ui_notification_count_label, &lv_font_montserrat_12,
+    lv_obj_set_style_text_font(not_area->ui_notification_count_label, &lv_font_montserrat_14,
                                LV_PART_MAIN | LV_STATE_DEFAULT);
 
     not_area->ui_bt_icon = lv_img_create(not_area->ui_notifications_container);

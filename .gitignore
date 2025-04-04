@@ -16,3 +16,6 @@ __pycache__
 /test
 
 /.vscode
+
+lvgl_resources*
+flash.bin

@@ -47,7 +47,7 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_label_set_long_mode(ui_faceLabel, LV_LABEL_LONG_DOT);
     lv_label_set_text(ui_faceLabel, name);
     lv_obj_set_style_text_align(ui_faceLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_faceLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_faceLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_faceItem, on_watchface_selected, LV_EVENT_ALL, (void *)index);
 

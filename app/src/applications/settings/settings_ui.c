@@ -224,7 +224,7 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
         cont = lv_menu_cont_create(_mainPage);
         lv_obj_add_style(cont, &outline_primary, LV_STATE_FOCUS_KEY);
         label = lv_label_create(cont);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_text(label, pages[i].name);
         lv_menu_set_load_page_event(_menu, cont, sub_page);
         lv_group_add_obj(input_group, cont);

@@ -218,7 +218,7 @@ static void timer_screen_init(lv_obj_t *ui_root_container)
     lv_label_set_text(ui_Label12, "Timers");
     lv_obj_set_style_text_color(ui_Label12, lv_color_hex(0xAAADFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Label12, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_Label12, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_Label12, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_add_timer_button = lv_btn_create(ui_root_container);
     lv_obj_set_width(ui_add_timer_button, 40);
@@ -404,7 +404,7 @@ static void create_timer_popup(lv_obj_t *ui_root_container)
     lv_obj_set_style_text_color(ui_picker_new_alarm_time, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_picker_new_alarm_time, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_picker_new_alarm_time, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_picker_new_alarm_time, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_picker_new_alarm_time, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_picker_new_alarm_time, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_picker_new_alarm_time, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_picker_new_alarm_time, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -595,7 +595,7 @@ static void alarm_screen_init(lv_obj_t *ui_root_container)
     lv_label_set_text(ui_Label12, "Alarms");
     lv_obj_set_style_text_color(ui_Label12, lv_color_hex(0xAAADFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_Label12, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_Label12, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_Label12, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_add_alarm_button = lv_btn_create(ui_root_container);
     lv_obj_set_width(ui_add_alarm_button, 40);

@@ -89,7 +89,7 @@ void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_ve
     lv_obj_set_align(ui_hw_revision, LV_ALIGN_CENTER);
     lv_label_set_text_fmt(ui_hw_revision, "Hardware v%d", hw_version);
     lv_obj_set_style_text_align(ui_hw_revision, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_hw_revision, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_hw_revision, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *icon_img = lv_img_create(root_page);
 #ifdef CONFIG_BOARD_NATIVE_POSIX

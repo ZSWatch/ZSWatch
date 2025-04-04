@@ -230,7 +230,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_clear_flag(ui_watch_temperature_label,
                       LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC |
                       LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_font(ui_watch_temperature_label, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_watch_temperature_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_time = lv_obj_create(ui_digital_watchface);
     lv_obj_set_width(ui_time, LV_SIZE_CONTENT);
@@ -426,7 +426,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_label_set_text(ui_day_label, "");
     lv_obj_set_style_text_color(ui_day_label, lv_color_hex(0xA3A1A1), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_day_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_day_label, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_day_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_date_label = lv_label_create(ui_top_panel);
     lv_obj_set_width(ui_date_label, LV_SIZE_CONTENT);
@@ -435,7 +435,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_label_set_text(ui_date_label, "");
     lv_obj_set_style_text_color(ui_date_label, lv_color_hex(0xFF8600), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_date_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     zsw_ui_notifications_area = zsw_ui_notification_area_add(ui_top_panel);
 

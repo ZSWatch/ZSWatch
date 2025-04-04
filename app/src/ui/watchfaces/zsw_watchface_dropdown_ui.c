@@ -185,7 +185,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_label_set_text(ui_music_label, LV_SYMBOL_AUDIO);
     lv_obj_set_style_text_color(ui_music_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_music_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_music_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_music_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_flashlight_button = lv_btn_create(ui_down_bg_panel);
     lv_obj_set_width(ui_flashlight_button, 50);
@@ -202,7 +202,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_label_set_text(ui_flashlight_label, LV_SYMBOL_CHARGE);
     lv_obj_set_style_text_color(ui_flashlight_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_flashlight_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_flashlight_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_flashlight_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_shutdown_button = lv_btn_create(ui_down_bg_panel);
     lv_obj_set_width(ui_shutdown_button, 50);
@@ -220,7 +220,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_label_set_text(ui_shutdown_label, LV_SYMBOL_POWER);
     lv_obj_set_style_text_color(ui_shutdown_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_shutdown_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_shutdown_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_shutdown_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_settings_button = lv_btn_create(ui_down_bg_panel);
     lv_obj_set_width(ui_settings_button, 50);
@@ -238,7 +238,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_label_set_text(ui_settings_label, LV_SYMBOL_SETTINGS);
     lv_obj_set_style_text_color(ui_settings_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_settings_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_settings_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_settings_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_bri_slider = lv_slider_create(ui_down_bg_panel);
     lv_slider_set_value(ui_bri_slider, ui_light_slider_value, LV_ANIM_OFF);
