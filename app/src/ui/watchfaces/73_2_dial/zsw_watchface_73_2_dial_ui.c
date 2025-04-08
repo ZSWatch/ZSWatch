@@ -288,6 +288,9 @@ static void watchface_73_2_dial_set_datetime(int day_of_week, int date, int day,
         return;
     }
 
+    // Month parameter is 0-11, but we want to show 1-12 in UI.
+    month += 1;
+
     if (getPlaceValue(last_year, 1) != getPlaceValue(year, 1)) {
         last_year = setPlaceValue(last_year, 1, getPlaceValue(year, 1));
         lv_img_set_src(face_73_2_dial_8_59942, face_73_2_dial_8_59942_group[(year / 1) % 10]);

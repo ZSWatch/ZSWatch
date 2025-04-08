@@ -298,6 +298,9 @@ static void watchface_goog_set_datetime(int day_of_week, int date, int day, int 
         return;
     }
 
+    // Month parameter is 0-11, but we want to show 1-12 in UI.
+    month += 1;
+
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
         last_weekday = setPlaceValue(last_weekday, 1, getPlaceValue(weekday, 1));
         lv_img_set_src(face_goog_22_72744, face_goog_22_72744_group[((weekday + 6) / 1) % 7]);
