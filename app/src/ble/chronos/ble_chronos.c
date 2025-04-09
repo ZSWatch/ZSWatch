@@ -103,7 +103,6 @@ static void music_control_event_callback(const struct zbus_channel *chan)
 
 static void parse_time(uint32_t epoch)
 {
-    char *end_time;
     struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
@@ -144,7 +143,6 @@ static int parse_weather()
     struct ble_data_event cb;
     memset(&cb, 0, sizeof(cb));
 
-    chronos_weather_info_t *info = ble_chronos_get_weather_info();
     chronos_weather_t *weather = ble_chronos_get_weather(0);
     chronos_hourly_forecast_t *forecast = ble_chronos_get_forecast_hour(ble_chronos_get_time_struct().tm_hour);
 
@@ -350,8 +348,9 @@ void ble_chronos_extract_notification(const char *input, char **title, char **me
     // Check title conditions
     if (title_length >= 30 || (newline_pos && newline_pos < colon_pos)) {
         // Title is too long or contains a newline before ':'
-        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, colon_pos, input,
-                colon_pos - input);
+        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, (int)colon_pos,
+                (int)input,
+                (int)(colon_pos - input));
         *message = strdup(input);
         return;
     }

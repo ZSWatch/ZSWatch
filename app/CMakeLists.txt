@@ -101,6 +101,8 @@ if(DFU_BUILD)
     target_sources(app PRIVATE src/dfu.c)
 endif()
 
+target_compile_definitions(app PRIVATE _POSIX_C_SOURCE=200809L)
+
 FILE(GLOB events_sources src/events/*.c)
 target_sources(app PRIVATE ${events_sources})
 
