@@ -22,37 +22,23 @@ if(ZSWATCH_BOARD)
     set(CONFIG_BT_DIS_HW_REV_STR ${VERSION_STRING} CACHE INTERNAL "")
 
     message("PCB revision: " ${CONFIG_ZSWATCH_PCB_REV})
-
-    if(CONFIG_ZSWATCH_PCB_REV GREATER_EQUAL 3)
-        set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/partition_external.yml)
-    else()
-        set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/partition_internal.yml)
-    endif()
-elseif("nrf5340dk/nrf5340/cpuapp" STREQUAL "${BOARD}")
-    set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/partition_external.yml)
-else()
-    message(WARNING "Not supported board: ${BOARD}. Build may not work.")
-endif()
-
-if(CONFIG_BOOTLOADER_MCUBOOT)
-    # TODO: Needed for MCUBoot
-    #set(DFU_BUILD true)
-    #set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_SOURCE_DIR}/partition_mcuboot.yml)
-    #set(OVERLAY_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/boards/dfu.conf)
-    #set(mcuboot_DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/overlays/mcuboot.overlay)
 endif()
 
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
+macro(app_set_runner_args)
+    if (CONFIG_BOARD_ZSWATCH_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "5") 
+        board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_mx25u51245.ini")
+    else()
+        message("TODO: No qspi_xxx.ini file created for this QSPI flash. Uploacing firmware to external flash may fail.")
+    endif()
+endmacro()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ZSWatchFW)
 
-# These are XIP related anomalies and aren't applicable for us and cause
-# throughput issues and QSPI issues on NCS 2.6.0
 zephyr_compile_definitions(
-  -DNRF53_ERRATA_43_ENABLE_WORKAROUND=0
-  -DNRF52_ERRATA_215_ENABLE_WORKAROUND=0
-  -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0 #Not allowing 128MHz CPU with QPSI at same time. We take the risk of this errata that may cause currupt QPSI data.
+  -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0 # Not allowing 128MHz CPU with QPSI at same time. We take the risk of this errata that may cause currupt QPSI data.
 )
 
 add_subdirectory(drivers)
@@ -96,11 +82,6 @@ target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_
 
 target_sources_ifdef(CONFIG_RTC_ALARM app PRIVATE src/zsw_alarm.c)
 
-
-if(DFU_BUILD)
-    target_sources(app PRIVATE src/dfu.c)
-endif()
-
 target_compile_definitions(app PRIVATE _POSIX_C_SOURCE=200809L)
 
 FILE(GLOB events_sources src/events/*.c)
@@ -116,3 +97,14 @@ message("Number of external filesystem files:" ${num_ext_fs_files})
 # TODO fix all of them. New since NCS 2.7
 set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
 zephyr_compile_options(-Wno-double-promotion)
+
+# XIP Code Relocation
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__transport LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__smp LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__img_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+
+zephyr_code_relocate(LIBRARY modules__lvgl LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY modules__lvgl LOCATION RAM_DATA)

@@ -36,7 +36,7 @@
 #include <zephyr/input/input.h>
 #include <zephyr/retention/bootmode.h>
 #include <zephyr/sys/reboot.h>
-#include "dfu.h"
+#include <zephyr/usb/usb_device.h>
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
 #include "ble/ble_aoa.h"
@@ -287,6 +287,13 @@ static void run_wdt_work(struct k_work *item)
 
 int main(void)
 {
+    if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
+        int ret = usb_enable(NULL);
+        if (ret) {
+            return 0;
+        }
+        LOG_INF("USB stack enabled");
+    }
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (bootmode_check(ZSW_BOOT_MODE_RTT_FLASH_LOADER)) {
         LOG_WRN("SPI Flash Loader Boot Mode");
@@ -345,10 +352,13 @@ static void enable_bluetooth(void)
 
     __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();
-
+#ifdef CONFIG_BT_AMS_CLIENT
     ble_ams_init();
     ble_cts_init();
+#endif
+#ifdef CONFIG_BT_ANCS_CLIENT
     ble_ancs_init();
+#endif
 }
 
 static void print_retention_ram(void)

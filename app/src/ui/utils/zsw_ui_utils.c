@@ -425,9 +425,13 @@ const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src)
         case NOTIFICATION_SRC_CALENDAR:
             return ZSW_LV_IMG_USE(google_calendar_icon);
         default:
+#ifdef CONFIG_BT_ANCS_CLIENT
             if (ble_ancs_present()) {
                 return ZSW_LV_IMG_USE(ui_img_apple);
             } else {
+#else
+            {
+#endif
                 return ZSW_LV_IMG_USE(ui_img_gadget_png);
             }
     }
