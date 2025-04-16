@@ -348,8 +348,7 @@ void ble_chronos_extract_notification(const char *input, char **title, char **me
     // Check title conditions
     if (title_length >= 30 || (newline_pos && newline_pos < colon_pos)) {
         // Title is too long or contains a newline before ':'
-        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, (int)colon_pos,
-                (int)input,
+        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, (int)colon_pos, (int)input,
                 (int)(colon_pos - input));
         *message = strdup(input);
         return;
