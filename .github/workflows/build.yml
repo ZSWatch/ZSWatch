@@ -55,10 +55,14 @@ jobs:
         if: ${{ matrix.board != 'native_posix/native' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
+          EXTRA_ARGS=""
+          if [[ "${{ matrix.board }}" == "zswatch@3/nrf5340/cpuapp" ]]; then
+            EXTRA_ARGS="-DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
+          fi
+          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}.hex
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
-          west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
+          west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
           mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
           mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
 
