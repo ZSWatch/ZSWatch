@@ -32,7 +32,7 @@ macro(app_set_runner_args)
     elseif(CONFIG_BOARD_ZSWATCH_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "4")
         board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_at25sl128a.ini")
     else ()
-        message("Unsupported board. Uploacing firmware to external flash may fail.")
+        message("Uploading firmware to external flash may fail. Default ini will be used.")
     endif()
 endmacro()
 

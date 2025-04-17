@@ -294,14 +294,14 @@ static int zsw_pmic_init(void)
     mfd_npm1300_add_callback(pmic, &event_cb);
 
     /* Initialise vbus detection status. */
-	struct sensor_value val;
-	int ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
+    struct sensor_value val;
+    int ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
 
-	if (ret < 0) {
-		return false;
-	}
+    if (ret < 0) {
+        return false;
+    }
 
-	vbus_connected = (val.val1 != 0) || (val.val2 != 0);
+    vbus_connected = (val.val1 != 0) || (val.val2 != 0);
 
     zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pmic_slow_lis);
 
