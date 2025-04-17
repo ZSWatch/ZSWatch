@@ -3,11 +3,6 @@ app:
   end_address: 0xe4000
   region: flash_primary
   size: 0xd3e00
-external_flash:
-  address: 0x120000
-  end_address: 0x1CA0000
-  region: external_flash
-  size: 0x1B80000
 mcuboot:
   address: 0x0
   end_address: 0x10000
