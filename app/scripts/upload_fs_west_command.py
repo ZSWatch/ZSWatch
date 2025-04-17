@@ -64,6 +64,14 @@ class UploadFsWestCommand(WestCommand):
         )
 
         parser.add_argument(
+            "-ini",
+            "--ini_file",
+            type=str,
+            help="nrfjprog qspsi ini file",
+            default="app/qspi_mx25u51245.ini",
+        )
+
+        parser.add_argument(
             "--use_rtt",
             action="store_true",
             help="Upload using RTT, needed for v3 watches without QSPI flash",
@@ -94,7 +102,7 @@ class UploadFsWestCommand(WestCommand):
 
         return serial_number
 
-    def write_to_qspi_flash(self, serial_number, hex_file, speed=4000):
+    def write_to_qspi_flash(self, serial_number, hex_file, ini_file=None, speed=4000):
         if serial_number is None:
             serial_number = self.prompt_for_serial_number()
 
@@ -103,9 +111,9 @@ class UploadFsWestCommand(WestCommand):
             return
 
         with HighLevel.API() as api:
-            with HighLevel.DebugProbe(api, serial_number, clock_speed=speed) as probe:
+            with HighLevel.DebugProbe(api, serial_number) as probe:
                 print("# Setting up the probe to qspi.")
-                probe.setup_qspi_with_ini("app/qspi_mx25u51245.ini")
+                probe.setup_qspi_with_ini(ini_file)
                 program_options = HighLevel.ProgramOptions(
                     erase_action=HighLevel.EraseAction.ERASE_SECTOR,
                     qspi_erase_action=HighLevel.EraseAction.ERASE_SECTOR,
@@ -117,7 +125,7 @@ class UploadFsWestCommand(WestCommand):
                 probe.program(hex_file, program_options=program_options)
                 print("# Programming done.")
 
-    def erase_qspi_flash(self, serial_number):
+    def erase_qspi_flash(self, serial_number, ini_file):
         if serial_number is None:
             serial_number = self.prompt_for_serial_number()
 
@@ -129,14 +137,14 @@ class UploadFsWestCommand(WestCommand):
         with HighLevel.API() as api:
             with HighLevel.DebugProbe(api, serial_number) as probe:
                 print("# Setting up the probe to qspi.")
-                probe.setup_qspi_with_ini("app/qspi_mx25u51245.ini")
+                probe.setup_qspi_with_ini(ini_file)
                 probe.erase(HighLevel.EraseAction.ERASE_ALL, 0x10000000)
 
                 print("# Programming done.")
 
     def do_run(self, args, unknown_args):
         if args.erase:
-            sys.exit(self.erase_qspi_flash(args.serial_number))
+            sys.exit(self.erase_qspi_flash(args.serial_number, args.ini_file))
             return
         log.inf("Creating image")
         img_size = 2 * 1024 * 1024
@@ -161,11 +169,11 @@ class UploadFsWestCommand(WestCommand):
                 source_dir = f"{images_path}/S"
                 partition = partition if partition else "lvgl_raw_partition"
                 create_custom_raw_fs_image(filename, source_dir, block_size)
-                qspi_flash_address = qspi_flash_address + 0x200000
+                qspi_flash_address = qspi_flash_address + 0x3A0000
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"
                 partition = partition if partition else "littlefs_storage"
-                qspi_flash_address = qspi_flash_address + 0x0
+                qspi_flash_address = qspi_flash_address + 0x1a0000
                 create_littlefs_fs_image(
                     filename,
                     img_size,
@@ -198,4 +206,5 @@ class UploadFsWestCommand(WestCommand):
                 )
             )
         else:
-            sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, 0 if args.speed == 'auto' else args.speed ))
+            speed = None if args.speed == 'auto' else int(args.speed)
+            sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, args.ini_file, speed))

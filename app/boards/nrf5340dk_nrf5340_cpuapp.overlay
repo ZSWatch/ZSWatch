@@ -265,9 +265,9 @@
 };
 
 / {
-    sram@2007DFFF {
+    sram@2006E000 {
         compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2007DFFF 0x2000>;
+        reg = <0x2006E000 0x2000>;
         zephyr,memory-region = "RetainedMem";
         status = "okay";
 
@@ -305,6 +305,7 @@
 
     chosen {
             zephyr,boot-mode = &retention1;
+            zephyr,console = &uart0;
     };
 };
 
@@ -313,5 +314,5 @@
 * The last 256 bytes of SRAM0 are used for retention memory.
 */
 &sram0 {
-    reg = <0x20000000 0x7DFFF>;
+    //reg = <0x20000000 0x7DFFF>;
 };

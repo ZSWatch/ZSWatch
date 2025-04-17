@@ -1,0 +1,16 @@
+
+&uart0 {
+    status = "disabled";
+};
+
+&bmi270 {
+	status = "disabled";
+};
+
+&npm1300_pmic {
+	status = "disabled";
+};
+
+&npm1300_gpio {
+	status = "disabled";
+};

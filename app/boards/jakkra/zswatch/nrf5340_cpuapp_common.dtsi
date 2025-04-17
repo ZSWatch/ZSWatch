@@ -44,7 +44,7 @@
         sw3 = &button3;
         sw4 = &button4;
         watchdog0 = &wdt0;
-        mcuboot-button1 = &button1;
+        mcuboot-button0 = &button1;
     };
 };
 
@@ -221,9 +221,9 @@ zephyr_udc0: &usbd {
 };
 
 / {
-    sram@2007DFFF {
+    sram@2006E000 {
         compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2007DFFF 0x2000>;
+        reg = <0x2006E000 0x2000>;
         zephyr,memory-region = "RetainedMem";
         status = "okay";
 
@@ -264,12 +264,13 @@ zephyr_udc0: &usbd {
     };
 };
 
+
 /*
 * Reduce SRAM0 usage by 256 bytes to account for non-init area.
 * The last 256 bytes of SRAM0 are used for retention memory.
 */
 &sram0 {
-    reg = <0x20000000 0x7DFFF>;
+    //reg = <0x20000000 0x7DFFF>;
 };
 
 /* Include partition configuration file */
