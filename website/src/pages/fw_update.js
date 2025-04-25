@@ -19,21 +19,35 @@ const imageNameMapping = {
   2: 'App External (XIP)',
 }
 
+const binaryFileNameToImageId = {
+  'app.internal.bin': 0,
+  'ipc_radio.bin': 1,
+  'app.external.bin': 2,
+}
+
+const hashArrayToString = (hash) => {
+  return Array.from(hash)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 const ZSWatchApp = () => {
   const [deviceName, setDeviceName] = useState(
     localStorage.getItem("deviceName") || "Connect your device",
   );
   const [screen, setScreen] = useState("initial");
+  const [fileUploadPercentage, setFileUploadPercentage] = useState(null);
+  const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [images, setImages] = useState([]);
-  const [file, setFile] = useState(null);
-  const [fileData, setFileData] = useState(null);
-  const [fileInfo, setFileInfo] = useState(null);
-  const [fileStatus, setFileStatus] = useState("Select image file (.img)");
+  const [fileInfos, setFileInfos] = useState([]);
+  const [fileStatus, setFileStatus] = useState("Select image files (.bin or .zip)");
   const [bluetoothAvailable, setBluetoothAvailable] = useState(false);
 
   // Use useRef to create a stable mcumgr instance
   const mcumgrRef = useRef(new MCUManager());
   const mcumgr = mcumgrRef.current;
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const isBluetoothAvailable = navigator?.bluetooth?.getAvailability() || false;
@@ -56,13 +70,26 @@ const ZSWatchApp = () => {
 
     mcumgr.onImageUploadProgress(({ percentage }) => {
       setFileStatus(`Uploading... ${percentage}%`);
+      setFileUploadPercentage(percentage);
     });
 
     mcumgr.onImageUploadFinished(() => {
       setFileStatus("Upload complete");
-      setFileInfo(null);
-      setFile(null);
-      mcumgr.cmdImageState();
+      console.log("File upload finished", fileInfos);
+      const fileInfo = fileInfos.find((file) => !file.isUploaded && !file.isUploading);
+      if (fileInfo) {
+        doFwUpload(fileInfo);
+      } else {
+        console.log("All files uploaded");
+        mcumgr.cmdImageState();
+        promptForConfirmationOfFwImages();
+      }
+
+      setFileInfos((prevFileInfos) =>
+        prevFileInfos.map((file) =>
+          file.isUploading ? { ...file, isUploaded: true, isUploading: false } : file
+        )
+      );
     });
 
     mcumgr.onMessage(({ group, id, data }) => {
@@ -83,7 +110,23 @@ const ZSWatchApp = () => {
         case MGMT_GROUP_ID_IMAGE:
           switch (id) {
             case IMG_MGMT_ID_STATE:
+              console.log(data, fileInfos);
               setImages(data.images || []);
+              if (!data.images) {
+                return;
+              }
+              fileInfos.forEach((fileInfo) => {
+                const matchingImage = data.images.find(
+                  (image) => image.image === fileInfo.imageNumber && hashArrayToString(image.hash) === fileInfo.hash
+                );
+                if (matchingImage) {
+                  setFileInfos((prevFileInfos) =>
+                    prevFileInfos.map((file) =>
+                      file === fileInfo ? { ...file, isUploaded: false, mcuMgrImageStatus: `Active: ${matchingImage.active}, Pending: ${matchingImage.pending}, Slot: ${matchingImage.slot}` } : file
+                    )
+                  );
+                }
+              });
               break;
           }
           break;
@@ -92,7 +135,7 @@ const ZSWatchApp = () => {
           break;
       }
     });
-  }, [mcumgr]);
+  }, [mcumgr, fileInfos]);
 
   const handleDeviceNameChange = (e) => {
     const name = e.target.value;
@@ -100,40 +143,115 @@ const ZSWatchApp = () => {
     localStorage.setItem("deviceName", name);
   };
 
+  const handleBinFileUpload = async (selectedFile, reader) => {
+    let imageNumber = binaryFileNameToImageId[selectedFile.name];
+    if (imageNumber == undefined) {
+      imageNumber = parseInt(prompt("Enter the image number:", "0"), 10);
+      if (isNaN(imageNumber) || imageNumber < 0) {
+        alert("Invalid image number. Please enter a non-negative integer.");
+        setFileStatus("Ready to upload");
+        return;
+      }
+    }
+    try {
+      const info = await mcumgr.imageInfo(reader.result);
+      setFileInfos((prevFileInfos) => {
+        const updatedFileInfos = prevFileInfos.filter(
+          (fileInfo) => fileInfo.imageNumber !== (imageNumber)
+        );
+        return [
+          ...updatedFileInfos,
+          {
+            version: info.version,
+            hash: info.hash,
+            fileSize: reader.result.byteLength,
+            imageNumber: imageNumber,
+            fileData: reader.result,
+            name: selectedFile.name,
+            isUploaded: false,
+            isUploading: false,
+            isSetPending: false,
+            mcuMgrImageStatus: "",
+          },
+        ];
+      });
+      console.log("Fileinfo:", fileInfos);
+      setFileStatus("Ready to upload");
+    } catch (error) {
+      console.error("Error reading file:", error);
+      setFileStatus("Invalid image file");
+    }
+  }
+
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
+    const selectedUploadFile = e.target.files[0];
+    if (!selectedUploadFile) {
+      setFileStatus("No file selected");
+      return;
+    }
+    console.log("Selected file:", selectedUploadFile);
     const reader = new FileReader();
     reader.onload = async () => {
       console.log("File loaded:", reader.result);
-      setFileData(reader.result);
-      try {
-        const info = await mcumgr.imageInfo(reader.result);
-        setFileInfo({
-          version: info.version,
-          hash: info.hash,
-          fileSize: reader.result.byteLength,
-        });
-        setFileStatus("Ready to upload");
-      } catch (error) {
-        setFileStatus("Invalid image file");
+      if (selectedUploadFile.type === "application/zip") {
+        await handleZipFileUpload(selectedUploadFile, reader);
+        setFileStatus("Using zip file");
+      } else {
+        await handleBinFileUpload(selectedUploadFile, reader);
       }
+      fileInputRef.current.value = null;
+      mcumgr.cmdImageState();
     };
-    reader.readAsArrayBuffer(selectedFile);
+    reader.readAsArrayBuffer(selectedUploadFile);
   };
 
-  const handleFileUpload = async () => {
-    setFileStatus("Uploading...");
-    const imageNumber = parseInt(prompt("Enter the image number:", "0"), 10);
-    if (isNaN(imageNumber) || imageNumber < 0) {
-      alert("Invalid image number. Please enter a non-negative integer.");
+  const promptForConfirmationOfFwImages = async () => {
+    console.log("Prompting for confirmation of firmware images...", fileInfos);
+    const userConfirmed = window.confirm("Do you want to confirm the images and restart the device?");
+    if (userConfirmed) {
+      for (const fileInfo of fileInfos) {
+        console.log("Confirming image:", fileInfo);
+        const hashArray = Uint8Array.from(fileInfo.hash.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        console.log("Hash array:", hashArray);
+        await mcumgr.cmdImageTest(hashArray);
+      }
+    }
+  }
+
+  const doFwUpload = async (fileInfo) => {
+    if (!fileInfo) {
       setFileStatus("Ready to upload");
       return;
     }
+    setIsFileUploadInProgress(true);
+    setFileUploadPercentage(0);
+    setFileStatus("Uploading...");
     try {
-      await mcumgr.cmdUpload(fileData, imageNumber);
+      setIsFileUploadInProgress(false);
+      await mcumgr.cmdUpload(fileInfo.fileData, fileInfo.imageNumber);
     } catch (error) {
       setFileStatus("Upload failed");
+    }
+    setFileInfos((prevFileInfos) =>
+      prevFileInfos.map((file) =>
+      file === fileInfo ? { ...file, isUploading: true } : file
+      )
+    );
+
+  };
+
+  const handleFileUpload = async () => {
+    if (fileInfos.length <= 0) {
+      setIsFileUploadInProgress(false);
+    } else if (fileInfos[0].fileData) {
+      const fileInfo = fileInfos.find((file) => !file.isUploaded);
+      if (fileInfo) {
+        doFwUpload(fileInfo);
+      } else {
+        setFileStatus("All files uploaded");
+        setIsFileUploadInProgress(false);
+        promptForConfirmationOfFwImages();
+      }
     }
   };
 
@@ -160,47 +278,190 @@ const ZSWatchApp = () => {
         );
       case "connected":
         return renderConnectedImageManagement();
+      case "connected_advanced":
+        return renderAdvancedConnectedImageManagement();
       default:
         return null;
+    }
+
+    function renderTopButtonRow() {
+      return (
+        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              const message = prompt("Enter a text message to send", "Hello World!");
+              mcumgr.smpEcho(message);
+            } }
+          >
+            <i className="bi-soundwave"></i> Echo
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleDisconnect}
+          >
+            <i className="bi-x-square"></i> Disconnect
+          </button>
+          <button
+            className="btn btn-info"
+            onClick={() => mcumgr.cmdReset()}
+          >
+            <i className="bi-arrow-clockwise"></i> Reset
+          </button>
+          <button
+            className="btn btn-info"
+            onClick={() => setScreen("connected_advanced")}
+          >
+            <i className="bi-arrow-clockwise"></i> Use advanzed mode
+          </button>
+        </div>
+      );
+    }
+
+    function renderUploadImageSection(onFileUploiadCallback) {
+      return (
+        <div>
+          <div className="form-group" style={{ marginBottom: "10px" }}>
+            <input
+              type="file"
+              className="form-control"
+              id="file-image"
+              onChange={handleFileChange}
+              disabled={isFileUploadInProgress}
+              ref={fileInputRef}/>
+          </div>
+          <div
+            className="image"
+            style={{
+              padding: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "5px",
+            }}
+          >
+            <div className="form-group" style={{ marginBottom: "10px" }}>
+              <div id="file-status">{fileStatus}</div>
+              {fileInfos && fileInfos.map((fileInfo, index) => (
+                <table id="file-info" key={index}>
+                  <tbody>
+                  <tr>
+                      <th>Name</th>
+                      <td>{fileInfo.name}</td>
+                    </tr>
+                    <tr>
+                      <th>Image number</th>
+                      <td>{fileInfo.imageNumber}</td>
+                    </tr>
+                    <tr>
+                      <th>Version</th>
+                      <td>{fileInfo.version}</td>
+                    </tr>
+                    <tr>
+                      <th>Hash</th>
+                      <td>{fileInfo.hash}</td>
+                    </tr>
+                    <tr>
+                      <th>File Size</th>
+                      <td>{fileInfo.fileSize} bytes</td>
+                    </tr>
+                      <tr>
+                      <th>Upload Status</th>
+                      <td>
+                        {fileInfo.isUploading && (
+                        <div style={{ width: "100%", borderRadius: "5px" }}>
+                          <div
+                          style={{
+                            width: `${fileUploadPercentage}%`,
+                            backgroundColor: "#4caf50",
+                            height: "10px",
+                            borderRadius: "5px",
+                          }}
+                          ></div>
+                          <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
+                        </div>
+                        )}
+                        {fileInfo.isUploaded && (
+                        <div style={{ width: "100%", borderRadius: "5px" }}>
+                          <div
+                          style={{
+                            width: "100%",
+                            backgroundColor: "#4caf50",
+                            height: "10px",
+                            borderRadius: "5px",
+                          }}
+                          ></div>
+                          <span style={{ fontSize: "16px" }}>{fileInfo.mcuMgrImageStatus}</span>
+                        </div>
+                        )}
+                      </td>
+                      </tr>
+                  </tbody>
+                </table>
+              ))}
+            </div>
+            <button
+              className="btn btn-primary"
+              disabled={fileInfos.length === 0 || isFileUploadInProgress}
+              onClick={onFileUploiadCallback}
+            >
+              <i className="bi-upload"></i> Upload
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => mcumgr.cmdImageErase()}
+            >
+              <i className="bi-upload"></i> Erase files
+            </button>
+
+          </div>
+        </div>
+      );
     }
 
     function renderConnectedImageManagement() {
       return <div className="content">
         <div className="container">
+          {renderTopButtonRow()}
+          <Admonition type="tip" icon="💡" title="How to...">
+            - Upload the all binary files or .zip containing all binary files<br></br>
+          </Admonition>
+          <hr />
+          <h3>Images</h3>
           <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
             <button
-              id="button-echo"
-              type="submit"
-              className="btn btn-primary"
-              onClick={() => {
-                const message = prompt("Enter a text message to send", "Hello World!");
-                mcumgr.smpEcho(message);
-              } }
-            >
-              <i className="bi-soundwave"></i> Echo
-            </button>
-            <button
-              id="button-disconnect"
-              type="submit"
-              className="btn btn-secondary"
-              onClick={handleDisconnect}
-            >
-              <i className="bi-x-square"></i> Disconnect
-            </button>
-            <button
-              id="button-reset"
+              id="button-image-state"
               type="submit"
               className="btn btn-info"
-              onClick={() => mcumgr.cmdReset()}
+              onClick={() => mcumgr.cmdImageState()}
             >
-              <i className="bi-arrow-clockwise"></i> Reset
+              <i className="bi-arrow-down-circle"></i> Refresh
+            </button>
+            <button
+              id="button-confirm"
+              type="submit"
+              className="btn btn-success"
+              onClick={() => {
+                const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
+                if (!isNaN(imageIndex) && images[imageIndex]?.confirmed === false) {
+                  mcumgr.cmdImageConfirm(images[imageIndex].hash);
+                }
+              } }
+            >
+              <i className="bi-check2-square"></i> Confirm
             </button>
           </div>
+          <hr />
+          <h3>Image Upload</h3>
+          {renderUploadImageSection(handleFileUpload)}
+        </div>
+      </div>;
+    }
+
+    function renderAdvancedConnectedImageManagement() {
+      return <div className="content">
+        <div className="container">
+          {renderTopButtonRow()}
           <Admonition type="tip" icon="💡" title="How to...">
-            - Extract the files in the FW .zip. Upload one by one to ZSWatch.<br></br>
-            - Once done you should have 3 files marked "standby". <br></br>
-            - Next press the "Confirm button and input the image index of each image.<br></br>
-            - Now press reset and ZSWatch will reboot with the new firmware (will take some time).<br></br>
+            - Upload the all binary files or .zip containing all binary files<br></br>
           </Admonition>
           <hr />
           <h3>Images</h3>
@@ -256,14 +517,10 @@ const ZSWatchApp = () => {
                           maxWidth: "150px",
                           cursor: "pointer",
                         }}
-                        title={Array.from(image.hash)
-                          .map((byte) => byte.toString(16).padStart(2, "0"))
-                          .join("")}
+                        title={hashArrayToString(image.hash)}
                         onClick={() => {
                           navigator.clipboard.writeText(
-                            Array.from(image.hash)
-                              .map((byte) => byte.toString(16).padStart(2, "0"))
-                              .join("")
+                            hashArrayToString(image.hash)
                           );
                           alert("Hash copied to clipboard!");
                         } }
@@ -324,72 +581,21 @@ const ZSWatchApp = () => {
           </div>
           <hr />
           <h3>Image Upload</h3>
-          <div className="form-group" style={{ marginBottom: "10px" }}>
-            <input
-              type="file"
-              className="form-control"
-              id="file-image"
-              onChange={handleFileChange} />
-          </div>
-          <div
-            className="image"
-            style={{
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "5px",
-            }}
-          >
-            <div className="form-group" style={{ marginBottom: "10px" }}>
-              <div id="file-status">{fileStatus}</div>
-              {fileInfo && (
-                <table id="file-info">
-                  <tbody>
-                    <tr>
-                      <th>Version</th>
-                      <td>{fileInfo.version}</td>
-                    </tr>
-                    <tr>
-                      <th>Hash</th>
-                      <td>{fileInfo.hash}</td>
-                    </tr>
-                    <tr>
-                      <th>File Size</th>
-                      <td>{fileInfo.fileSize} bytes</td>
-                    </tr>
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <button
-              className="btn btn-primary"
-              id="file-upload"
-              disabled={!file}
-              onClick={handleFileUpload}
-            >
-              <i className="bi-upload"></i> Upload
-            </button>
-          </div>
+          {renderUploadImageSection(handleFileUpload)}
         </div>
       </div>;
     }
 
     function renderBluetoothConnect() {
       return <div className="content">
-        <div
-          className={`alert ${
-            bluetoothAvailable ? "alert-success" : "alert-danger"
-          }`}
-          role="alert"
-        >
-          <b>
-            {bluetoothAvailable
+          <Admonition type={bluetoothAvailable ? "tip" : "warning"} icon="💡">
+          {bluetoothAvailable
               ? "Bluetooth is available in your browser."
               : `This tool is compatible with desktops (or laptops) with the
-                  <b>latest Chrome, Opera and Edge</b> browsers, and working Bluetooth connection (most
+                  latest Chrome, Opera and Edge browsers, and working Bluetooth connection (most
                   laptops have them these days). You can also try it from Chrome on Android, or Bluefy
                   on iOS/iPadOS.`}
-          </b>
-        </div>
+          </Admonition>
         <div id="connect-block">
           <div className="form-group form-inline">
             <div className="col-auto">
@@ -420,12 +626,10 @@ const ZSWatchApp = () => {
   return (
     <Layout>
       <div>
-        <main role="main" className="container">
-          <div className="starter-template">
-            <h1>FW Update over BLE</h1>
-            {renderScreen()}
-          </div>
-        </main>
+        <div className="container">
+          <h1>FW Update over BLE</h1>
+          {renderScreen()}
+        </div>
       </div>
     </Layout>
   );
