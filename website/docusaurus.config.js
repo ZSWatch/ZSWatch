@@ -97,6 +97,11 @@ const config = {
             label: 'Docs',
           },
           {
+            to: '/update',
+            label: 'FW Update',
+            position: 'left'
+          },
+          {
             position: 'right',
             type: 'custom-githubStarsLink', 
             repoOrg: 'ZSWatch',

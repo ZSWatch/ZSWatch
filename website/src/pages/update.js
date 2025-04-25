@@ -1,6 +1,6 @@
 import Layout from "@theme/Layout";
 import React, { useState, useEffect, useRef } from "react";
-import Admonition from '@theme/Admonition';
+import Admonition from "@theme/Admonition";
 import "./mcumgr.css";
 import MCUManager from "../mcumgr-web/js/mcumgr";
 import JSZip from "jszip";
@@ -15,27 +15,96 @@ import {
 } from "../mcumgr-web/js/mcumgr";
 
 const imageNameMapping = {
-  0: 'App Internal',
-  1: 'Net Core',
-  2: 'App External (XIP)',
-}
+  0: "App Internal",
+  1: "Net Core",
+  2: "App External (XIP)",
+};
 
 const binaryFileNameToImageId = {
-  'app.internal.bin': 0,
-  'ipc_radio.bin': 1,
-  'app.external.bin': 2,
-}
+  "app.internal.bin": 0,
+  "ipc_radio.bin": 1,
+  "app.external.bin": 2,
+};
 
 const hashArrayToString = (hash) => {
   return Array.from(hash)
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-}
+};
 
-const ZSWatchApp = () => {
-  const [deviceName, setDeviceName] = useState(
-    localStorage.getItem("deviceName") || "Connect your device",
-  );
+const owner = "ZSWatch"; // Replace with the repository owner
+const repo = "ZSWatch"; // Replace with the repository name
+const token = null;
+
+const fetchArtifacts = async (numRuns = 5) => {
+  let firmwares = [];
+  try {
+    // Step 1: Get the list of workflow runs
+    const runsResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/runs`,
+      token
+        ? {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        : {},
+    );
+    const runsData = await runsResponse.json();
+
+    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+      console.log("No workflow runs found.");
+      return;
+    }
+
+    console.log("Found", runsData, runsData.workflow_runs.length, "workflow runs.");
+
+    // Step 2: Get the latest X workflow runs
+    const latestRuns = runsData.workflow_runs
+      .filter((run) => run.conclusion === "success")
+      .slice(0, numRuns);
+    console.log(`Fetching artifacts from the latest ${numRuns} workflow runs...`);
+
+    for (const run of latestRuns) {
+      console.log(`Processing workflow run: ${run.id} (${run.name})`, run);
+
+      // Step 3: Get the artifacts for the current workflow run
+      const artifactsResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`,
+        token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : {},
+      );
+      const artifactsData = await artifactsResponse.json();
+
+      if (!artifactsData.artifacts || artifactsData.artifacts.length === 0) {
+        console.log(`No artifacts found for workflow run: ${run.id}`);
+        continue;
+      }
+
+      const fwRun = {
+        branch: run.head_branch,
+        user: run.actor.login,
+        runId: run.id,
+        artifacts: artifactsData.artifacts.filter(
+          (artifact) => artifact.name.includes("@4") || artifact.name.includes("@5"),
+        ),
+      };
+
+      firmwares.push(fwRun);
+    }
+  } catch (error) {
+    console.error("Error fetching artifacts:", error);
+  }
+  return firmwares;
+};
+
+const FirmwareUpdateApp = () => {
+  const [deviceName, setDeviceName] = useState('ZSWatch');
   const [screen, setScreen] = useState("initial");
   const [fileUploadPercentage, setFileUploadPercentage] = useState(null);
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
@@ -43,12 +112,15 @@ const ZSWatchApp = () => {
   const [fileInfos, setFileInfos] = useState([]);
   const [fileStatus, setFileStatus] = useState("Select image files (.bin or .zip)");
   const [bluetoothAvailable, setBluetoothAvailable] = useState(false);
+  const [isFetchingFirmwares, setIsFetchingFirmwares] = useState(false);
 
   // Use useRef to create a stable mcumgr instance
   const mcumgrRef = useRef(new MCUManager());
   const mcumgr = mcumgrRef.current;
 
   const fileInputRef = useRef(null);
+
+  const [firmwares, setFirmwares] = useState([]);
 
   useEffect(() => {
     const isBluetoothAvailable = navigator?.bluetooth?.getAvailability() || false;
@@ -88,8 +160,8 @@ const ZSWatchApp = () => {
 
       setFileInfos((prevFileInfos) =>
         prevFileInfos.map((file) =>
-          file.isUploading ? { ...file, isUploaded: true, isUploading: false } : file
-        )
+          file.isUploading ? { ...file, isUploaded: true, isUploading: false } : file,
+        ),
       );
     });
 
@@ -117,13 +189,21 @@ const ZSWatchApp = () => {
               }
               fileInfos.forEach((fileInfo) => {
                 const matchingImage = data.images.find(
-                  (image) => image.image === fileInfo.imageNumber && hashArrayToString(image.hash) === fileInfo.hash
+                  (image) =>
+                    image.image === fileInfo.imageNumber &&
+                    hashArrayToString(image.hash) === fileInfo.hash,
                 );
                 if (matchingImage) {
                   setFileInfos((prevFileInfos) =>
                     prevFileInfos.map((file) =>
-                      file === fileInfo ? { ...file, isUploaded: false, mcuMgrImageStatus: `Active: ${matchingImage.active}, Pending: ${matchingImage.pending}, Slot: ${matchingImage.slot}` } : file
-                    )
+                      file === fileInfo
+                        ? {
+                            ...file,
+                            isUploaded: false,
+                            mcuMgrImageStatus: `Active: ${matchingImage.active}, Pending: ${matchingImage.pending}, Slot: ${matchingImage.slot}`,
+                          }
+                        : file,
+                    ),
                   );
                 }
               });
@@ -157,7 +237,7 @@ const ZSWatchApp = () => {
       const info = await mcumgr.imageInfo(reader.result);
       setFileInfos((prevFileInfos) => {
         const updatedFileInfos = prevFileInfos.filter(
-          (fileInfo) => fileInfo.imageNumber !== (imageNumber)
+          (fileInfo) => fileInfo.imageNumber !== imageNumber,
         );
         return [
           ...updatedFileInfos,
@@ -180,7 +260,17 @@ const ZSWatchApp = () => {
       console.error("Error reading file:", error);
       setFileStatus("Invalid image file");
     }
-  }
+  };
+
+  const fetchAndSetFirmwares = async (numToFetch) => {
+    setIsFetchingFirmwares(true);
+    const fetchedFirmwares = await fetchArtifacts(numToFetch);
+    console.log("Fetched firmwares:", fetchedFirmwares);
+    if (fetchedFirmwares) {
+      setFirmwares(fetchedFirmwares);
+    }
+    setIsFetchingFirmwares(false);
+  };
 
   const handleZipFileUpload = async (selectedFile, reader) => {
     const zip = new JSZip();
@@ -190,30 +280,31 @@ const ZSWatchApp = () => {
         Object.keys(zipContent.files)
           .filter((filename) => filename.endsWith(".bin"))
           .map(async (filename) => {
-        const fileData = await zipContent.files[filename].async("arraybuffer");
-        const imageNumber = binaryFileNameToImageId[filename];
-        if (imageNumber == undefined) {
-          alert(`Invalid file: ${filename}. Please use a valid binary file name.`);
-          return null;
-        }
-        const info = await mcumgr.imageInfo(fileData);
-        return {
-          version: info.version,
-          hash: info.hash,
-          fileSize: fileData.byteLength,
-          imageNumber: imageNumber,
-          fileData: fileData,
-          name: filename,
-          isUploaded: false,
-          isUploading: false,
-          isSetPending: false,
-          mcuMgrImageStatus: "",
-        };
-          })
+            const fileData = await zipContent.files[filename].async("arraybuffer");
+            const imageNumber = binaryFileNameToImageId[filename];
+            if (imageNumber == undefined) {
+              alert(`Invalid file: ${filename}. Please use a valid binary file name.`);
+              return null;
+            }
+            const info = await mcumgr.imageInfo(fileData);
+            return {
+              version: info.version,
+              hash: info.hash,
+              fileSize: fileData.byteLength,
+              imageNumber: imageNumber,
+              fileData: fileData,
+              name: filename,
+              isUploaded: false,
+              isUploading: false,
+              isSetPending: false,
+              mcuMgrImageStatus: "",
+            };
+          }),
       );
       setFileInfos((prevFileInfos) => [
         ...prevFileInfos.filter(
-          (fileInfo) => !fwFiles.some((fwFile) => fwFile && fwFile.imageNumber === fileInfo.imageNumber)
+          (fileInfo) =>
+            !fwFiles.some((fwFile) => fwFile && fwFile.imageNumber === fileInfo.imageNumber),
         ),
         ...fwFiles.filter((fileInfo) => fileInfo !== null),
       ]);
@@ -246,14 +337,18 @@ const ZSWatchApp = () => {
   };
 
   const promptForConfirmationOfFwImages = async () => {
-    const userConfirmed = window.confirm("Do you want to confirm the images and restart the device?");
+    const userConfirmed = window.confirm(
+      "Do you want to confirm the images and restart the device? After confirming, you need to restart the device to apply the changes.",
+    );
     if (userConfirmed) {
       for (const fileInfo of fileInfos) {
-        const hashArray = Uint8Array.from(fileInfo.hash.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        const hashArray = Uint8Array.from(
+          fileInfo.hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)),
+        );
         await mcumgr.cmdImageTest(hashArray);
       }
     }
-  }
+  };
 
   const doFwUpload = async (fileInfo) => {
     if (!fileInfo) {
@@ -270,11 +365,8 @@ const ZSWatchApp = () => {
       setFileStatus("Upload failed");
     }
     setFileInfos((prevFileInfos) =>
-      prevFileInfos.map((file) =>
-      file === fileInfo ? { ...file, isUploading: true } : file
-      )
+      prevFileInfos.map((file) => (file === fileInfo ? { ...file, isUploading: true } : file)),
     );
-
   };
 
   const handleFileUpload = async () => {
@@ -329,26 +421,17 @@ const ZSWatchApp = () => {
             onClick={() => {
               const message = prompt("Enter a text message to send", "Hello World!");
               mcumgr.smpEcho(message);
-            } }
+            }}
           >
             <i className="bi-soundwave"></i> Echo
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={handleDisconnect}
-          >
+          <button className="btn btn-danger" onClick={handleDisconnect}>
             <i className="bi-x-square"></i> Disconnect
           </button>
-          <button
-            className="btn btn-info"
-            onClick={() => mcumgr.cmdReset()}
-          >
+          <button className="btn btn-warning" onClick={() => mcumgr.cmdReset()}>
             <i className="bi-arrow-clockwise"></i> Reset
           </button>
-          <button
-            className="btn btn-info"
-            onClick={() => setScreen("connected_advanced")}
-          >
+          <button className="btn btn-info" onClick={() => setScreen("connected_advanced")}>
             <i className="bi-arrow-clockwise"></i> Use advanzed mode
           </button>
         </div>
@@ -357,325 +440,424 @@ const ZSWatchApp = () => {
 
     function renderUploadImageSection(onFileUploiadCallback) {
       return (
-      <div>
-        <div className="form-group" style={{ marginBottom: "10px" }}>
-        <input
-          type="file"
-          className="form-control"
-          id="file-image"
-          onChange={handleFileChange}
-          disabled={isFileUploadInProgress}
-          ref={fileInputRef}/>
-        </div>
-        <div
-        className="image"
-        style={{
-          padding: "10px",
-          border: "1px solid #ccc",
-          borderRadius: "5px",
-        }}
-        >
-        <div className="form-group" style={{ marginBottom: "10px" }}>
-          <div id="file-status">{fileStatus}</div>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {fileInfos && fileInfos.map((fileInfo, index) => (
-            <table id="file-info" key={index} style={{ backgroundColor: "#1B1B1D", border: "1px solid #ccc", borderRadius: "5px", padding: "10px" }}>
-            <tbody>
-              <tr>
-              <th>Name</th>
-              <td>{fileInfo.name}</td>
-              </tr>
-              <tr>
-              <th>Image number</th>
-              <td>{fileInfo.imageNumber}</td>
-              </tr>
-              <tr>
-              <th>Version</th>
-              <td>{fileInfo.version}</td>
-              </tr>
-              <tr>
-                <th>Hash</th>
-                <td>
-                  <div
-                    style={{
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      maxWidth: "150px",
-                      cursor: "pointer",
-                    }}
-                    title={fileInfo.hash}
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        fileInfo.hash
-                      );
-                      alert("Hash copied to clipboard!");
-                    } }
-                  >
-                    {fileInfo.hash}
-                  </div>
-                </td>
-              </tr>
-              <tr>
-              <th>File Size</th>
-              <td>{fileInfo.fileSize} bytes</td>
-              </tr>
-              <tr>
-              <th>Upload Status</th>
-              <td>
-                {fileInfo.isUploading && (
-                <div style={{ width: "100%", borderRadius: "5px" }}>
-                  <div
-                  style={{
-                    width: `${fileUploadPercentage}%`,
-                    backgroundColor: "#4caf50",
-                    height: "10px",
-                    borderRadius: "5px",
-                  }}
-                  ></div>
-                  <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
-                </div>
-                )}
-                {fileInfo.isUploaded && (
-                <div style={{ width: "100%", borderRadius: "5px" }}>
-                  <div
-                  style={{
-                    width: "100%",
-                    backgroundColor: "#4caf50",
-                    height: "10px",
-                    borderRadius: "5px",
-                  }}
-                  ></div>
-                  <span style={{ fontSize: "16px" }}>{fileInfo.mcuMgrImageStatus}</span>
-                </div>
-                )}
-              </td>
-              </tr>
-            </tbody>
-            </table>
-          ))}
+        <div>
+          <div className="form-group" style={{ marginBottom: "10px" }}>
+            <input
+              type="file"
+              className="form-control"
+              id="file-image"
+              onChange={handleFileChange}
+              disabled={isFileUploadInProgress}
+              ref={fileInputRef}
+            />
+          </div>
+          <div
+            className="image"
+            style={{
+              padding: "10px",
+              border: "1px solid #ccc",
+              borderRadius: "5px",
+            }}
+          >
+            <div className="form-group" style={{ marginBottom: "10px" }}>
+              <div id="file-status">{fileStatus}</div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {fileInfos &&
+                  fileInfos.map((fileInfo, index) => (
+                    <table
+                      id="file-info"
+                      key={index}
+                      style={{
+                        backgroundColor: "#1B1B1D",
+                        border: "1px solid #ccc",
+                        borderRadius: "5px",
+                        padding: "10px",
+                      }}
+                    >
+                      <tbody>
+                        <tr>
+                          <th>Name</th>
+                          <td>{fileInfo.name}</td>
+                        </tr>
+                        <tr>
+                          <th>Image number</th>
+                          <td>{fileInfo.imageNumber}</td>
+                        </tr>
+                        <tr>
+                          <th>Version</th>
+                          <td>{fileInfo.version}</td>
+                        </tr>
+                        <tr>
+                          <th>Hash</th>
+                          <td>
+                            <div
+                              style={{
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: "150px",
+                                cursor: "pointer",
+                              }}
+                              title={fileInfo.hash}
+                              onClick={() => {
+                                navigator.clipboard.writeText(fileInfo.hash);
+                                alert("Hash copied to clipboard!");
+                              }}
+                            >
+                              {fileInfo.hash}
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>File Size</th>
+                          <td>{fileInfo.fileSize} bytes</td>
+                        </tr>
+                        <tr>
+                          <th>Upload Status</th>
+                          <td>
+                            {fileInfo.isUploading && (
+                              <div style={{ width: "100%", borderRadius: "5px" }}>
+                                <div
+                                  style={{
+                                    width: `${fileUploadPercentage}%`,
+                                    backgroundColor: "#4caf50",
+                                    height: "10px",
+                                    borderRadius: "5px",
+                                  }}
+                                ></div>
+                                <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
+                              </div>
+                            )}
+                            {fileInfo.isUploaded && (
+                              <div style={{ width: "100%", borderRadius: "5px" }}>
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    backgroundColor: "#4caf50",
+                                    height: "10px",
+                                    borderRadius: "5px",
+                                  }}
+                                ></div>
+                                <span style={{ fontSize: "16px" }}>
+                                  {fileInfo.mcuMgrImageStatus}
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  ))}
+              </div>
+            </div>
+            <button
+              className="btn btn-secondary"
+              disabled={fileInfos.length === 0 || isFileUploadInProgress}
+              onClick={onFileUploiadCallback}
+            >
+              <i className="bi-upload"></i> Upload
+            </button>
+            <button className="btn btn-danger" onClick={() => mcumgr.cmdImageErase()}>
+              <i className="bi-upload"></i> Erase files
+            </button>
+            <button className="btn btn-primary" onClick={() => promptForConfirmationOfFwImages()}>
+              <i className="bi-upload"></i> Confirm files
+            </button>
           </div>
         </div>
-        <button
-          className="btn btn-secondary"
-          disabled={fileInfos.length === 0 || isFileUploadInProgress}
-          onClick={onFileUploiadCallback}
-        >
-          <i className="bi-upload"></i> Upload
-        </button>
-        <button
-          className="btn btn-danger"
-          onClick={() => mcumgr.cmdImageErase()}
-        >
-          <i className="bi-upload"></i> Erase files
-        </button>
-        </div>
-      </div>
       );
     }
 
-    function renderConnectedImageManagement() {
-      return <div className="content">
-        <div className="container">
-          <Admonition type="tip" icon="💡" title="How to...">
-            Upload the all binary files or .zip containing all binary files<br></br>
+    function Highlight({ children, color }) {
+      return (
+        <span
+          style={{
+            backgroundColor: color,
+            borderRadius: "2px",
+            color: "#fff",
+            padding: "0.2rem",
+          }}
+        >
+          {children}
+        </span>
+      );
+    }
+
+    function renderPrebuiltFirmwares() {
+      return (
+        <div>
+          <details>
+            <summary>Help</summary>
+            <Admonition type="note" icon="" title="">
+              If you don't have a firmware, you can fetch one from here.<br></br>
+              You will see the last builds in CI. Pick the build you want, for example last build on
+              the <strong>main branch.</strong>
+              <br></br>
+              Then choose the artifact corresponding to your watch version (4 or 5) and click on it
+              to download the firmware.<br></br>
+            </Admonition>
+          </details>
+          <Admonition type="info" icon="" title="">
+            Once downloaded you need to unzip it and upload the <strong>dfu_application.zip</strong>{" "}
+            file below.<br></br>
           </Admonition>
-          {renderTopButtonRow()}
-          <hr />
-          <h3>Images</h3>
-          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-            <button
-              id="button-image-state"
-              type="submit"
-              className="btn btn-info"
-              onClick={() => mcumgr.cmdImageState()}
-            >
-              <i className="bi-arrow-down-circle"></i> Refresh
-            </button>
-            <button
-              id="button-confirm"
-              type="submit"
-              className="btn btn-success"
-              onClick={() => {
-                const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
-                if (!isNaN(imageIndex) && images[imageIndex]?.confirmed === false) {
-                  mcumgr.cmdImageConfirm(images[imageIndex].hash);
-                }
-              } }
-            >
-              <i className="bi-check2-square"></i> Confirm
-            </button>
-          </div>
-          <hr />
-          <h3>Image Upload</h3>
-          {renderUploadImageSection(handleFileUpload)}
+          <button
+            className="btn btn-success"
+            onClick={() => fetchAndSetFirmwares(2)}
+            style={{ marginBottom: "10px" }}
+          >
+            Fetch Prebuilt Firmwares
+          </button>
+          {isFetchingFirmwares ? (
+            <p>Loading...</p>
+          ) : firmwares.length === 0 ? (
+            <p>No prebuilt firmwares fetched.</p>
+          ) : (
+            <div>
+              {firmwares.map((firmware, index) => (
+                <details key={index} style={{ marginBottom: "10px" }}>
+                  <summary>
+                    Branch <Highlight color="#1877F2">{firmware.branch}</Highlight> by user{" "}
+                    <Highlight color="green">{firmware.user}</Highlight>
+                  </summary>
+                  <div style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "5px" }}>
+                    <p>
+                      <strong>Artifacts:</strong>
+                    </p>
+                    <ul>
+                      {firmware.artifacts.map((artifact, artifactIndex) => (
+                        <li key={artifactIndex}>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => downloadAndFlashFirmware(firmware.runId, artifact.id)}
+                            style={{ width: "50%", marginBottom: "10px" }}
+                          >
+                            {artifact.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
         </div>
-      </div>;
+      );
+    }
+
+    async function downloadAndFlashFirmware(runId, artifactId) {
+      try {
+        setFileStatus("Downloading firmware...");
+        const downloadUrl = `https://github.com/ZSWatch/ZSWatch/actions/runs/${runId}/artifacts/${artifactId}`;
+        console.log("URL", downloadUrl);
+
+        setFileStatus("Firmware download started. Please check your browser's downloads.");
+
+        // Due to API Token is required to download the artifact, we need to let the browser download it manually
+        // And then ask user to upload the zip file
+        // Redirect the browser to the download URL
+        window.location.href = downloadUrl;
+      } catch (error) {
+        console.error("Error downloading or flashing firmware:", error);
+        setFileStatus("Failed to download firmware.");
+      }
+    }
+
+    function renderConnectedImageManagement() {
+      return (
+        <div className="content">
+          <div className="container">
+            {renderTopButtonRow()}
+            <hr />
+            <h3>Prebuilt firmwares</h3>
+            {renderPrebuiltFirmwares()}
+            <h3>Image Upload</h3>
+            <Admonition type="tip" icon="💡" title="How to...">
+              Upload the <strong>dfu_application.zip</strong> previosuly downloaded.<br></br>
+              Then press <strong>Upload</strong> button to upload the firmware.<br></br>
+            </Admonition>
+            {renderUploadImageSection(handleFileUpload)}
+            <details>
+              <summary>Troubleshooting</summary>
+              <Admonition type="info" icon="" title="">
+                If upload hangs, or doesn't start then try again after resetting the watch.
+              </Admonition>
+            </details>
+          </div>
+        </div>
+      );
     }
 
     function renderAdvancedConnectedImageManagement() {
-      return <div className="content">
-        <div className="container">
-          <Admonition type="tip" icon="💡" title="How to...">
-            Upload the all binary files or .zip containing all binary files<br></br>
-          </Admonition>
-          {renderTopButtonRow()}
-          <hr />
-          <h3>Images</h3>
-          <div
-            id="image-list"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            {images.map((image, index) => (
-              <div key={index} className={`image ${image.active ? "active" : "standby"}`}>
-                <h2>{image.active ? "active" : "standby"} {imageNameMapping[image.image]} Slot {image.slot}</h2>
-                <table>
-                  <tr>
-                    <th>Image index (for actions)</th>
-                    <td>{index}</td>
-                  </tr>
-                  <tr>
-                    <th>Image number</th>
-                    <td>{image.image}</td>
-                  </tr>
-                  <tr>
-                    <th>slot</th>
-                    <td>{image.slot}</td>
-                  </tr>
-                  <tr>
-                    <th>Version</th>
-                    <td>v{image.version}</td>
-                  </tr>
-                  <tr>
-                    <th>Bootable</th>
-                    <td>{image.bootable ? "true" : "false"}</td>
-                  </tr>
-                  <tr>
-                    <th>Confirmed</th>
-                    <td>{image.confirmed ? "true" : "false"}</td>
-                  </tr>
-                  <tr>
-                    <th>Pending</th>
-                    <td>{image.pending ? "true" : "false"}</td>
-                  </tr>
-                  <tr>
-                    <th>Hash</th>
-                    <td>
-                      <div
-                        style={{
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: "150px",
-                          cursor: "pointer",
-                        }}
-                        title={hashArrayToString(image.hash)}
-                        onClick={() => {
-                          navigator.clipboard.writeText(
-                            hashArrayToString(image.hash)
-                          );
-                          alert("Hash copied to clipboard!");
-                        } }
-                      >
-                        {Array.from(image.hash)
-                          .map((byte) => byte.toString(16).padStart(2, "0"))
-                          .join("")}
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-            <button
-              id="button-image-state"
-              type="submit"
-              className="btn btn-info"
-              onClick={() => mcumgr.cmdImageState()}
-            >
-              <i className="bi-arrow-down-circle"></i> Refresh
-            </button>
-            <button
-              type="submit"
-              className="btn btn-warning"
-              onClick={() => mcumgr.cmdImageErase()}
-            >
-              <i className="bi-eraser-fill"></i> Erase
-            </button>
-            <button
-              type="submit"
-              className="btn btn-success"
-              onClick={() => {
-                const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
-                if (!isNaN(imageIndex) && images[imageIndex]?.pending === false) {
-                  mcumgr.cmdImageTest(images[imageIndex].hash);
-                }
+      return (
+        <div className="content">
+          <div className="container">
+            <Admonition type="tip" icon="💡" title="How to...">
+              Upload the all binary files or .zip containing all binary files<br></br>
+            </Admonition>
+            {renderTopButtonRow()}
+            <hr />
+            <h3>Images</h3>
+            <div
+              id="image-list"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "10px",
+                marginBottom: "10px",
               }}
             >
-              <i className="bi-question-square"></i> Test
-            </button>
-            <button
-              id="button-confirm"
-              type="submit"
-              className="btn btn-success"
-              onClick={() => {
-                const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
-                if (!isNaN(imageIndex) && images[imageIndex]?.confirmed === false) {
-                  mcumgr.cmdImageConfirm(images[imageIndex].hash);
-                }
-              } }
-            >
-              <i className="bi-check2-square"></i> Confirm
-            </button>
+              {images.map((image, index) => (
+                <div key={index} className={`image ${image.active ? "active" : "standby"}`}>
+                  <h2>
+                    {image.active ? "active" : "standby"} {imageNameMapping[image.image]} Slot{" "}
+                    {image.slot}
+                  </h2>
+                  <table>
+                    <tr>
+                      <th>Image index (for actions)</th>
+                      <td>{index}</td>
+                    </tr>
+                    <tr>
+                      <th>Image number</th>
+                      <td>{image.image}</td>
+                    </tr>
+                    <tr>
+                      <th>slot</th>
+                      <td>{image.slot}</td>
+                    </tr>
+                    <tr>
+                      <th>Version</th>
+                      <td>v{image.version}</td>
+                    </tr>
+                    <tr>
+                      <th>Bootable</th>
+                      <td>{image.bootable ? "true" : "false"}</td>
+                    </tr>
+                    <tr>
+                      <th>Confirmed</th>
+                      <td>{image.confirmed ? "true" : "false"}</td>
+                    </tr>
+                    <tr>
+                      <th>Pending</th>
+                      <td>{image.pending ? "true" : "false"}</td>
+                    </tr>
+                    <tr>
+                      <th>Hash</th>
+                      <td>
+                        <div
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "150px",
+                            cursor: "pointer",
+                          }}
+                          title={hashArrayToString(image.hash)}
+                          onClick={() => {
+                            navigator.clipboard.writeText(hashArrayToString(image.hash));
+                            alert("Hash copied to clipboard!");
+                          }}
+                        >
+                          {Array.from(image.hash)
+                            .map((byte) => byte.toString(16).padStart(2, "0"))
+                            .join("")}
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+              <button
+                id="button-image-state"
+                type="submit"
+                className="btn btn-info"
+                onClick={() => mcumgr.cmdImageState()}
+              >
+                <i className="bi-arrow-down-circle"></i> Refresh
+              </button>
+              <button
+                type="submit"
+                className="btn btn-warning"
+                onClick={() => mcumgr.cmdImageErase()}
+              >
+                <i className="bi-eraser-fill"></i> Erase
+              </button>
+              <button
+                type="submit"
+                className="btn btn-success"
+                onClick={() => {
+                  const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
+                  if (!isNaN(imageIndex) && images[imageIndex]?.pending === false) {
+                    mcumgr.cmdImageTest(images[imageIndex].hash);
+                  }
+                }}
+              >
+                <i className="bi-question-square"></i> Test
+              </button>
+              <button
+                id="button-confirm"
+                type="submit"
+                className="btn btn-success"
+                onClick={() => {
+                  const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
+                  if (!isNaN(imageIndex) && images[imageIndex]?.confirmed === false) {
+                    mcumgr.cmdImageConfirm(images[imageIndex].hash);
+                  }
+                }}
+              >
+                <i className="bi-check2-square"></i> Confirm
+              </button>
+            </div>
+            <hr />
+            <h3>Image Upload</h3>
+            {renderUploadImageSection(handleFileUpload)}
           </div>
-          <hr />
-          <h3>Image Upload</h3>
-          {renderUploadImageSection(handleFileUpload)}
         </div>
-      </div>;
+      );
     }
 
     function renderBluetoothConnect() {
-      return <div className="content">
+      return (
+        <div className="content">
           <Admonition type={bluetoothAvailable ? "tip" : "warning"} icon="💡">
-          {bluetoothAvailable
+            {bluetoothAvailable
               ? "Bluetooth is available in your browser."
               : `This tool is compatible with desktops (or laptops) with the
                   latest Chrome, Opera and Edge browsers, and working Bluetooth connection (most
                   laptops have them these days). You can also try it from Chrome on Android, or Bluefy
                   on iOS/iPadOS.`}
           </Admonition>
-        <div id="connect-block">
-          <div className="form-group form-inline">
-            <div className="col-auto">
-              <input
-                style={{ padding: "5px", fontSize: "1em", marginBottom: "10px" }}
-                id="device-name-input"
-                type="text"
-                className="form-control"
-                placeholder="Device name (optional)"
-                value={deviceName}
-                onChange={handleDeviceNameChange} />
-            </div>
-            <div className="col-auto">
-              <button
-                id="button-connect"
-                type="submit"
-                className="btn btn-primary"
-                onClick={handleConnect}
-              >
-                <i className="bi-bluetooth"></i> Connect
-              </button>
+          <div id="connect-block">
+            <div className="form-group form-inline">
+              <div className="col-auto">
+                <input
+                  style={{ padding: "5px", fontSize: "1em", marginBottom: "10px" }}
+                  id="device-name-input"
+                  type="text"
+                  className="form-control"
+                  placeholder="Device name (optional)"
+                  value={deviceName}
+                  onChange={handleDeviceNameChange}
+                />
+              </div>
+              <div className="col-auto">
+                <button
+                  id="button-connect"
+                  type="submit"
+                  className="btn btn-primary"
+                  onClick={handleConnect}
+                >
+                  <i className="bi-bluetooth"></i> Connect
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>;
+      );
     }
   };
 
@@ -691,4 +873,4 @@ const ZSWatchApp = () => {
   );
 };
 
-export default ZSWatchApp;
+export default FirmwareUpdateApp;
