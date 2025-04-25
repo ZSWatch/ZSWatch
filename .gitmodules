@@ -19,3 +19,6 @@
 [submodule "sensor-fusion"]
 	path = app/src/ext_drivers/fusion
 	url = https://github.com/xioTechnologies/Fusion.git
+[submodule "website/src/mcumgr-web"]
+	path = website/src/mcumgr-web
+	url = git@github.com:ZSWatch/mcumgr-web.git
