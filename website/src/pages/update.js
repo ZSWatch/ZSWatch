@@ -320,110 +320,130 @@ const ZSWatchApp = () => {
 
     function renderUploadImageSection(onFileUploiadCallback) {
       return (
-        <div>
-          <div className="form-group" style={{ marginBottom: "10px" }}>
-            <input
-              type="file"
-              className="form-control"
-              id="file-image"
-              onChange={handleFileChange}
-              disabled={isFileUploadInProgress}
-              ref={fileInputRef}/>
-          </div>
-          <div
-            className="image"
-            style={{
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "5px",
-            }}
-          >
-            <div className="form-group" style={{ marginBottom: "10px" }}>
-              <div id="file-status">{fileStatus}</div>
-              {fileInfos && fileInfos.map((fileInfo, index) => (
-                <table id="file-info" key={index}>
-                  <tbody>
-                  <tr>
-                      <th>Name</th>
-                      <td>{fileInfo.name}</td>
-                    </tr>
-                    <tr>
-                      <th>Image number</th>
-                      <td>{fileInfo.imageNumber}</td>
-                    </tr>
-                    <tr>
-                      <th>Version</th>
-                      <td>{fileInfo.version}</td>
-                    </tr>
-                    <tr>
-                      <th>Hash</th>
-                      <td>{fileInfo.hash}</td>
-                    </tr>
-                    <tr>
-                      <th>File Size</th>
-                      <td>{fileInfo.fileSize} bytes</td>
-                    </tr>
-                      <tr>
-                      <th>Upload Status</th>
-                      <td>
-                        {fileInfo.isUploading && (
-                        <div style={{ width: "100%", borderRadius: "5px" }}>
-                          <div
-                          style={{
-                            width: `${fileUploadPercentage}%`,
-                            backgroundColor: "#4caf50",
-                            height: "10px",
-                            borderRadius: "5px",
-                          }}
-                          ></div>
-                          <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
-                        </div>
-                        )}
-                        {fileInfo.isUploaded && (
-                        <div style={{ width: "100%", borderRadius: "5px" }}>
-                          <div
-                          style={{
-                            width: "100%",
-                            backgroundColor: "#4caf50",
-                            height: "10px",
-                            borderRadius: "5px",
-                          }}
-                          ></div>
-                          <span style={{ fontSize: "16px" }}>{fileInfo.mcuMgrImageStatus}</span>
-                        </div>
-                        )}
-                      </td>
-                      </tr>
-                  </tbody>
-                </table>
-              ))}
-            </div>
-            <button
-              className="btn btn-primary"
-              disabled={fileInfos.length === 0 || isFileUploadInProgress}
-              onClick={onFileUploiadCallback}
-            >
-              <i className="bi-upload"></i> Upload
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => mcumgr.cmdImageErase()}
-            >
-              <i className="bi-upload"></i> Erase files
-            </button>
-
+      <div>
+        <div className="form-group" style={{ marginBottom: "10px" }}>
+        <input
+          type="file"
+          className="form-control"
+          id="file-image"
+          onChange={handleFileChange}
+          disabled={isFileUploadInProgress}
+          ref={fileInputRef}/>
+        </div>
+        <div
+        className="image"
+        style={{
+          padding: "10px",
+          border: "1px solid #ccc",
+          borderRadius: "5px",
+        }}
+        >
+        <div className="form-group" style={{ marginBottom: "10px" }}>
+          <div id="file-status">{fileStatus}</div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {fileInfos && fileInfos.map((fileInfo, index) => (
+            <table id="file-info" key={index} style={{ backgroundColor: "#1B1B1D", border: "1px solid #ccc", borderRadius: "5px", padding: "10px" }}>
+            <tbody>
+              <tr>
+              <th>Name</th>
+              <td>{fileInfo.name}</td>
+              </tr>
+              <tr>
+              <th>Image number</th>
+              <td>{fileInfo.imageNumber}</td>
+              </tr>
+              <tr>
+              <th>Version</th>
+              <td>{fileInfo.version}</td>
+              </tr>
+              <tr>
+                <th>Hash</th>
+                <td>
+                  <div
+                    style={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "150px",
+                      cursor: "pointer",
+                    }}
+                    title={fileInfo.hash}
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        fileInfo.hash
+                      );
+                      alert("Hash copied to clipboard!");
+                    } }
+                  >
+                    {fileInfo.hash}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+              <th>File Size</th>
+              <td>{fileInfo.fileSize} bytes</td>
+              </tr>
+              <tr>
+              <th>Upload Status</th>
+              <td>
+                {fileInfo.isUploading && (
+                <div style={{ width: "100%", borderRadius: "5px" }}>
+                  <div
+                  style={{
+                    width: `${fileUploadPercentage}%`,
+                    backgroundColor: "#4caf50",
+                    height: "10px",
+                    borderRadius: "5px",
+                  }}
+                  ></div>
+                  <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
+                </div>
+                )}
+                {fileInfo.isUploaded && (
+                <div style={{ width: "100%", borderRadius: "5px" }}>
+                  <div
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#4caf50",
+                    height: "10px",
+                    borderRadius: "5px",
+                  }}
+                  ></div>
+                  <span style={{ fontSize: "16px" }}>{fileInfo.mcuMgrImageStatus}</span>
+                </div>
+                )}
+              </td>
+              </tr>
+            </tbody>
+            </table>
+          ))}
           </div>
         </div>
+        <button
+          className="btn btn-secondary"
+          disabled={fileInfos.length === 0 || isFileUploadInProgress}
+          onClick={onFileUploiadCallback}
+        >
+          <i className="bi-upload"></i> Upload
+        </button>
+        <button
+          className="btn btn-danger"
+          onClick={() => mcumgr.cmdImageErase()}
+        >
+          <i className="bi-upload"></i> Erase files
+        </button>
+        </div>
+      </div>
       );
     }
 
     function renderConnectedImageManagement() {
       return <div className="content">
         <div className="container">
-          {renderTopButtonRow()}
           <Admonition type="tip" icon="💡" title="How to...">
-            - Upload the all binary files or .zip containing all binary files<br></br>
+            Upload the all binary files or .zip containing all binary files<br></br>
           </Admonition>
+          {renderTopButtonRow()}
           <hr />
           <h3>Images</h3>
           <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
@@ -459,10 +479,10 @@ const ZSWatchApp = () => {
     function renderAdvancedConnectedImageManagement() {
       return <div className="content">
         <div className="container">
-          {renderTopButtonRow()}
           <Admonition type="tip" icon="💡" title="How to...">
-            - Upload the all binary files or .zip containing all binary files<br></br>
+            Upload the all binary files or .zip containing all binary files<br></br>
           </Admonition>
+          {renderTopButtonRow()}
           <hr />
           <h3>Images</h3>
           <div
@@ -545,7 +565,6 @@ const ZSWatchApp = () => {
               <i className="bi-arrow-down-circle"></i> Refresh
             </button>
             <button
-              id="button-erase"
               type="submit"
               className="btn btn-warning"
               onClick={() => mcumgr.cmdImageErase()}
@@ -553,15 +572,14 @@ const ZSWatchApp = () => {
               <i className="bi-eraser-fill"></i> Erase
             </button>
             <button
-              id="button-test"
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-success"
               onClick={() => {
                 const imageIndex = parseInt(prompt("Enter the image index:", "0"), 10);
                 if (!isNaN(imageIndex) && images[imageIndex]?.pending === false) {
                   mcumgr.cmdImageTest(images[imageIndex].hash);
                 }
-              } }
+              }}
             >
               <i className="bi-question-square"></i> Test
             </button>
@@ -600,6 +618,7 @@ const ZSWatchApp = () => {
           <div className="form-group form-inline">
             <div className="col-auto">
               <input
+                style={{ padding: "5px", fontSize: "1em", marginBottom: "10px" }}
                 id="device-name-input"
                 type="text"
                 className="form-control"
