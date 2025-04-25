@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Admonition from '@theme/Admonition';
 import "./mcumgr.css";
 import MCUManager from "../mcumgr-web/js/mcumgr";
+import JSZip from "jszip";
 
 import {
   MGMT_GROUP_ID_IMAGE,
@@ -110,7 +111,6 @@ const ZSWatchApp = () => {
         case MGMT_GROUP_ID_IMAGE:
           switch (id) {
             case IMG_MGMT_ID_STATE:
-              console.log(data, fileInfos);
               setImages(data.images || []);
               if (!data.images) {
                 return;
@@ -175,7 +175,6 @@ const ZSWatchApp = () => {
           },
         ];
       });
-      console.log("Fileinfo:", fileInfos);
       setFileStatus("Ready to upload");
     } catch (error) {
       console.error("Error reading file:", error);
@@ -183,16 +182,57 @@ const ZSWatchApp = () => {
     }
   }
 
+  const handleZipFileUpload = async (selectedFile, reader) => {
+    const zip = new JSZip();
+    try {
+      const zipContent = await zip.loadAsync(reader.result);
+      const fwFiles = await Promise.all(
+        Object.keys(zipContent.files)
+          .filter((filename) => filename.endsWith(".bin"))
+          .map(async (filename) => {
+        const fileData = await zipContent.files[filename].async("arraybuffer");
+        const imageNumber = binaryFileNameToImageId[filename];
+        if (imageNumber == undefined) {
+          alert(`Invalid file: ${filename}. Please use a valid binary file name.`);
+          return null;
+        }
+        const info = await mcumgr.imageInfo(fileData);
+        return {
+          version: info.version,
+          hash: info.hash,
+          fileSize: fileData.byteLength,
+          imageNumber: imageNumber,
+          fileData: fileData,
+          name: filename,
+          isUploaded: false,
+          isUploading: false,
+          isSetPending: false,
+          mcuMgrImageStatus: "",
+        };
+          })
+      );
+      setFileInfos((prevFileInfos) => [
+        ...prevFileInfos.filter(
+          (fileInfo) => !fwFiles.some((fwFile) => fwFile && fwFile.imageNumber === fileInfo.imageNumber)
+        ),
+        ...fwFiles.filter((fileInfo) => fileInfo !== null),
+      ]);
+      setFileStatus("Ready to upload");
+    } catch (error) {
+      console.error("Error reading zip file:", error);
+      setFileStatus("Invalid zip file");
+    }
+  };
+
   const handleFileChange = (e) => {
     const selectedUploadFile = e.target.files[0];
     if (!selectedUploadFile) {
       setFileStatus("No file selected");
       return;
     }
-    console.log("Selected file:", selectedUploadFile);
+
     const reader = new FileReader();
     reader.onload = async () => {
-      console.log("File loaded:", reader.result);
       if (selectedUploadFile.type === "application/zip") {
         await handleZipFileUpload(selectedUploadFile, reader);
         setFileStatus("Using zip file");
@@ -206,13 +246,10 @@ const ZSWatchApp = () => {
   };
 
   const promptForConfirmationOfFwImages = async () => {
-    console.log("Prompting for confirmation of firmware images...", fileInfos);
     const userConfirmed = window.confirm("Do you want to confirm the images and restart the device?");
     if (userConfirmed) {
       for (const fileInfo of fileInfos) {
-        console.log("Confirming image:", fileInfo);
         const hashArray = Uint8Array.from(fileInfo.hash.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-        console.log("Hash array:", hashArray);
         await mcumgr.cmdImageTest(hashArray);
       }
     }
