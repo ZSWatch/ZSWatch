@@ -107,6 +107,7 @@ const FirmwareUpdateApp = () => {
   const [deviceName, setDeviceName] = useState('ZSWatch');
   const [screen, setScreen] = useState("initial");
   const [fileUploadPercentage, setFileUploadPercentage] = useState(null);
+  const [fileUploadSpeed, setFileUploadSpeed] = useState(null); // New state for speed
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [images, setImages] = useState([]);
   const [fileInfos, setFileInfos] = useState([]);
@@ -119,6 +120,11 @@ const FirmwareUpdateApp = () => {
   const mcumgr = mcumgrRef.current;
 
   const fileInputRef = useRef(null);
+
+  const uploadStartTimeRef = useRef(null); // Start time of the upload
+  const lastUpdateTimeRef = useRef(null); // Time of the last percentage update
+  const fileSizeRef = useRef(null); // File size in bytes
+  const lastPercentageRef = useRef(0); // Last percentage value
 
   const [firmwares, setFirmwares] = useState([]);
 
@@ -144,10 +150,25 @@ const FirmwareUpdateApp = () => {
     mcumgr.onImageUploadProgress(({ percentage }) => {
       setFileStatus(`Uploading... ${percentage}%`);
       setFileUploadPercentage(percentage);
+      const currentTime = Date.now();
+      const elapsedTime = (currentTime - lastUpdateTimeRef.current) / 1000; // Time in seconds
+      const percentageDelta = percentage - lastPercentageRef.current;
+
+      if (percentageDelta > 0 && fileSizeRef.current) {
+        const bytesTransferred = (percentageDelta / 100) * fileSizeRef.current;
+        const speed = (bytesTransferred / 1024) / elapsedTime; // Speed in kbps
+
+        setFileUploadSpeed(speed.toFixed(2)); // Update speed state
+
+        // Update cached values
+        lastUpdateTimeRef.current = currentTime;
+        lastPercentageRef.current = percentage;
+      }
     });
 
     mcumgr.onImageUploadFinished(() => {
       setFileStatus("Upload complete");
+      setFileUploadSpeed(null); // Reset speed
       console.log("File upload finished", fileInfos);
       const fileInfo = fileInfos.find((file) => !file.isUploaded && !file.isUploading);
       if (fileInfo) {
@@ -355,18 +376,28 @@ const FirmwareUpdateApp = () => {
       setFileStatus("Ready to upload");
       return;
     }
+
     setIsFileUploadInProgress(true);
     setFileUploadPercentage(0);
+    setFileUploadSpeed(null); // Reset speed
     setFileStatus("Uploading...");
+
+    // Cache file size and start time
+    fileSizeRef.current = fileInfo.fileSize;
+    uploadStartTimeRef.current = Date.now();
+    lastUpdateTimeRef.current = Date.now();
+    lastPercentageRef.current = 0;
+
     try {
-      setIsFileUploadInProgress(false);
       await mcumgr.cmdUpload(fileInfo.fileData, fileInfo.imageNumber);
+      setIsFileUploadInProgress(false);
+      setFileInfos((prevFileInfos) =>
+        prevFileInfos.map((file) => (file === fileInfo ? { ...file, isUploading: true } : file)),
+      );
     } catch (error) {
       setFileStatus("Upload failed");
+      setIsFileUploadInProgress(false);
     }
-    setFileInfos((prevFileInfos) =>
-      prevFileInfos.map((file) => (file === fileInfo ? { ...file, isUploading: true } : file)),
-    );
   };
 
   const handleFileUpload = async () => {
@@ -525,7 +556,7 @@ const FirmwareUpdateApp = () => {
                                     borderRadius: "5px",
                                   }}
                                 ></div>
-                                <span style={{ fontSize: "16px" }}>{fileUploadPercentage}%</span>
+                                <span style={{ fontSize: "16px" }}>{fileUploadPercentage}% Speed: {fileUploadSpeed} kbps</span>
                               </div>
                             )}
                             {fileInfo.isUploaded && (
@@ -603,7 +634,7 @@ const FirmwareUpdateApp = () => {
           </Admonition>
           <button
             className="btn btn-success"
-            onClick={() => fetchAndSetFirmwares(2)}
+            onClick={() => fetchAndSetFirmwares(6)}
             style={{ marginBottom: "10px" }}
           >
             Fetch Prebuilt Firmwares
