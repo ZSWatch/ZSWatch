@@ -4,6 +4,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Generate Raw FS",
+            "type": "shell",
+            "command": "west upload_fs --type raw --generate_only"
+        },
+        {
+            "label": "Generate LittleFS",
+            "type": "shell",
+            "command": "west upload_fs --type lfs --generate_only"
+        },
+        {
             "label": "Upload Raw FS v5",
             "type": "shell",
             "command": "west upload_fs --type raw --ini_file app/qspi_mx25u51245.ini"

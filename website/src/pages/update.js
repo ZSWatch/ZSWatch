@@ -59,9 +59,9 @@ const fetchArtifacts = async (numRuns = 5) => {
 
     console.log("Found", runsData, runsData.workflow_runs.length, "workflow runs.");
 
-    // Step 2: Get the latest X workflow runs
+    // Step 2: Get the latest X workflow runs3
     const latestRuns = runsData.workflow_runs
-      .filter((run) => run.conclusion === "success")
+      .filter((run) => run.conclusion === "success" && run.head_branch !== "gh-pages")
       .slice(0, numRuns);
     console.log(`Fetching artifacts from the latest ${numRuns} workflow runs...`);
 
@@ -115,11 +115,15 @@ const FirmwareUpdateApp = () => {
   const [bluetoothAvailable, setBluetoothAvailable] = useState(false);
   const [isFetchingFirmwares, setIsFetchingFirmwares] = useState(false);
 
+  const [fileSystemUploadProgress, setFileSystemUploadProgress] = useState(null); // Progress for filesystem upload
+  const [fileSystemUploadStatus, setFileSystemUploadStatus] = useState("Select a filesystem file"); // Status for filesystem upload
+
   // Use useRef to create a stable mcumgr instance
   const mcumgrRef = useRef(new MCUManager());
   const mcumgr = mcumgrRef.current;
 
   const fileInputRef = useRef(null);
+  const fileFsInputRef = useRef(null);
 
   const uploadStartTimeRef = useRef(null); // Start time of the upload
   const lastUpdateTimeRef = useRef(null); // Time of the last percentage update
@@ -184,6 +188,15 @@ const FirmwareUpdateApp = () => {
           file.isUploading ? { ...file, isUploaded: true, isUploading: false } : file,
         ),
       );
+    });
+
+    mcumgr.onFsUploadFinished((ok) => {
+      if (ok) {
+        setFileSystemUploadStatus("Upload complete");
+      } else {
+        setFileSystemUploadStatus("Upload failed");
+      }
+      setFileSystemUploadProgress(null);
     });
 
     mcumgr.onMessage(({ group, id, data }) => {
@@ -415,6 +428,42 @@ const FirmwareUpdateApp = () => {
     }
   };
 
+  const handleFileSystemUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      setFileSystemUploadStatus("No file selected");
+      return;
+    }
+
+    console.log("Selected file:", file);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const filePath = "/S/full_fs";
+
+      setFileSystemUploadStatus("Uploading...");
+      setFileSystemUploadProgress(0);
+
+      const mcumgr = mcumgrRef.current;
+
+      mcumgr.onFsUploadProgress(({ percentage }) => {
+        setFileSystemUploadProgress(percentage);
+      });
+
+      try {
+        await mcumgr.cmdUploadFileSystemImage(reader.result, filePath);
+        setFileSystemUploadStatus("Upload started");
+      } catch (error) {
+        console.error("Filesystem upload failed:", error);
+        setFileSystemUploadStatus("Upload failed");
+        setFileSystemUploadProgress(null);
+      }
+      fileFsInputRef.current.value = null;
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
   const handleConnect = async () => {
     const filters = deviceName ? [{ namePrefix: deviceName }] : null;
     await mcumgr.connect(filters);
@@ -423,6 +472,21 @@ const FirmwareUpdateApp = () => {
   const handleDisconnect = async () => {
     await mcumgr.disconnect();
   };
+
+  const renderFileSystemUpload = () => (
+    <div>
+      <h2>Upload Filesystem</h2>
+      <input
+        type="file"
+        ref={fileFsInputRef}
+        onChange={handleFileSystemUpload}
+      />
+      <p>Status: {fileSystemUploadStatus}</p>
+      {fileSystemUploadProgress !== null && (
+        <p>Progress: {fileSystemUploadProgress}%</p>
+      )}
+    </div>
+  );
 
   const renderScreen = () => {
     switch (screen) {
@@ -713,8 +777,11 @@ const FirmwareUpdateApp = () => {
               <summary>Troubleshooting</summary>
               <Admonition type="info" icon="" title="">
                 If upload hangs, or doesn't start then try again after resetting the watch.
+                If the watch FW is not working this way of uploading will not work as it relies on Bluetooth and application working.
+                To fix this you need to use the <strong>mcumgr over USB</strong> method.
               </Admonition>
             </details>
+{renderFileSystemUpload()}
           </div>
         </div>
       );
@@ -846,6 +913,7 @@ const FirmwareUpdateApp = () => {
             <hr />
             <h3>Image Upload</h3>
             {renderUploadImageSection(handleFileUpload)}
+            {renderFileSystemUpload()}
           </div>
         </div>
       );

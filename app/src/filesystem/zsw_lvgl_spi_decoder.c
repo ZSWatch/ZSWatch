@@ -24,6 +24,20 @@
 #include <filesystem/zsw_filesystem.h>
 #include <lvgl.h>
 #include "lv_conf.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <zephyr/kernel.h>
+#include <zephyr/types.h>
+#include <errno.h>
+#include <zephyr/fs/fs.h>
+#include <zephyr/fs/fs_sys.h>
+#include <zephyr/sys/__assert.h>
+
+LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
+
+#define ZSW_FS_MOUNT_POINT "/S"
+
 #include LV_MEM_CUSTOM_INCLUDE
 
 #define TABLE_HEADER_MAGIC 0x0A0A0A0A
@@ -39,6 +53,11 @@
 #define FILE_TABLE_MAX_LEN  32000
 #define MAX_FILE_NAME_LEN   32
 #define MAX_OPENED_FILES    64
+
+#define IS_SPECIAL_FULL_FS_FILE_PATH(name) \
+    (strncmp(name, FULL_FS_SPECIAL_FILE_NAME, sizeof(FULL_FS_SPECIAL_FILE_NAME) - 1) == 0)
+#define IS_SPECIAL_FULL_FS_FILE(ptr) \
+    (ptr == &full_fs_file)
 
 typedef struct file_header_t {
     uint8_t         filename[MAX_FILE_NAME_LEN];
@@ -62,6 +81,14 @@ typedef struct opened_file_t {
     uint32_t        cache_end;
 } opened_file_t;
 
+#define FULL_FS_SPECIAL_FILE_NAME "full_fs"
+
+typedef struct fullFsFile_t {
+    uint32_t        index;
+    uint32_t        len;
+    bool            opened;
+} fullFsFile_t;
+
 static file_table_t file_table;
 static opened_file_t opened_files[MAX_OPENED_FILES];
 
@@ -71,6 +98,8 @@ static opened_file_t *current_cached_file;
 static const struct flash_area *flash_area;
 
 static lv_fs_drv_t fs_drv;
+
+static fullFsFile_t full_fs_file;
 
 static file_header_t *find_file(const char *name)
 {
@@ -160,6 +189,54 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
     return open_file;
 }
 
+static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t mode)
+{
+    // TODO: Set max opened files to 1 to avoid issues when the full fs is open.
+    // OR handle it another way, like error if opening full fs if other file is open.
+
+    // Zephyr FS always passes the full path, so we need to strip the mount point.
+    char *file_name_ptr = (char *)file_name + strlen(ZSW_FS_MOUNT_POINT) + 1;
+
+    LOG_INF("Opening fs file %s, mode: %d", file_name_ptr, (int)mode);
+
+    if (mode & ~(FS_O_RDWR | FS_O_CREATE)) {
+        LOG_ERR("Unsupported mode flags set: %d", mode);
+        return -EINVAL;
+    }
+
+    if (IS_SPECIAL_FULL_FS_FILE_PATH(file_name_ptr)) {
+        if (full_fs_file.opened) {
+            return -EALREADY;
+        }
+        if (mode & FS_O_WRITE) {
+            // TODO: Erase whole image?
+            /*
+            LOG_INF("Erasing full fs image");
+            int rc = flash_area_erase(flash_area, 0, flash_area->fa_size);
+            LOG_INF("Flash area erased with rc: %d", rc);
+            if (rc != 0) {
+                LOG_ERR("Failed to erase flash area: %d", rc);
+                return -EIO;
+            }*/
+        }
+        full_fs_file.opened = true;
+        full_fs_file.index = 0;
+        zfp->filep = &full_fs_file;
+    } else {
+        if (mode & FS_O_WRITE) {
+            LOG_ERR("Write mode not supported for this file");
+            return -EACCES;
+        }
+        zfp->filep = lvgl_fs_open(NULL, file_name_ptr, 0);
+
+        if (zfp->filep == NULL) {
+            return -EEXIST;
+        }
+    }
+
+    return 0;
+}
+
 static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
 {
     opened_file_t *open_file = (opened_file_t *)file;
@@ -167,6 +244,18 @@ static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
     open_file->index = 0;
     open_file->is_cached = false;
     return errno_to_lv_fs_res(0);
+}
+
+static int zsw_fs_close(struct fs_file_t *zfp)
+{
+    if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
+        full_fs_file.opened = false;
+        full_fs_file.index = 0;
+        return 0;
+    } else {
+        lvgl_fs_close(NULL, zfp->filep);
+    }
+    return 0;
 }
 
 static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf, uint32_t btr,
@@ -178,6 +267,12 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     uint32_t extra_cache_bytes;
     uint32_t orig_read_address, read_address;
     opened_file_t *open_file = (opened_file_t *)file;
+
+    btr = MIN(btr, open_file->header->len - open_file->index);
+    if (btr == 0) {
+        *br = 0;
+        return LV_FS_RES_OK;
+    }
 
     orig_read_address = open_file->header->offset + open_file->index + file_table.header_length;
 
@@ -240,10 +335,58 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     return errno_to_lv_fs_res(0);
 }
 
+static ssize_t zsw_fs_read(struct fs_file_t *zfp, void *ptr, size_t size)
+{
+    LOG_DBG("Reading %d bytes from file", size);
+    if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
+        int rc;
+        size = MIN(size, full_fs_file.len - full_fs_file.index);
+        rc = flash_area_read(flash_area, full_fs_file.index, ptr, size);
+        if (rc != 0) {
+            return -EIO;
+        } else {
+            full_fs_file.index += size;
+            return size;
+        }
+    } else {
+        uint32_t bytes_read;
+
+        lv_fs_res_t res = lvgl_fs_read(NULL, zfp->filep, ptr, size, &bytes_read);
+        LOG_DBG("Res: %d, bytes read: %d", res, bytes_read);
+        if (res != LV_FS_RES_OK) {
+            return -EIO;
+        }
+
+        return bytes_read;
+    }
+}
+
 static lv_fs_res_t lvgl_fs_write(struct _lv_fs_drv_t *drv, void *file, const void *buf,
                                  uint32_t btw, uint32_t *bw)
 {
     return LV_FS_RES_NOT_IMP;
+}
+
+static ssize_t zsw_fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
+{
+    if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
+        int rc;
+        rc = flash_area_write(flash_area, full_fs_file.index, ptr, size);
+        LOG_DBG("W: %d => %d (%d)", full_fs_file.index, size, rc);
+        if (rc != 0) {
+            int new_rc = flash_area_write(flash_area, full_fs_file.index, ptr, size);
+            LOG_ERR("Flash write failed! %d\n", new_rc);
+            if (new_rc != 0) {
+                return -EIO;
+            }
+            return -EIO;
+        } else {
+            full_fs_file.index += size;
+            return size;
+        }
+    } else {
+        return -ENOTSUP;
+    }
 }
 
 static lv_fs_res_t lvgl_fs_seek(struct _lv_fs_drv_t *drv, void *file, uint32_t pos,
@@ -267,11 +410,66 @@ static lv_fs_res_t lvgl_fs_seek(struct _lv_fs_drv_t *drv, void *file, uint32_t p
     return errno_to_lv_fs_res(0);
 }
 
+static int zsw_fs_seek(struct fs_file_t *zfp, off_t offset, int whence)
+{
+    int rc;
+    LOG_DBG("Seeking %d bytes in file, whence: %d", (int)offset, whence);
+
+    if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
+        switch (whence) {
+            case FS_SEEK_SET:
+                full_fs_file.index = offset;
+                break;
+            case FS_SEEK_CUR:
+                full_fs_file.index += offset;
+                break;
+            case FS_SEEK_END:
+                full_fs_file.index = full_fs_file.len + offset;
+                break;
+            default:
+                return -EINVAL;
+        }
+    } else {
+        switch (whence) {
+            case FS_SEEK_SET:
+                rc = lvgl_fs_seek(NULL, zfp->filep, offset, LV_FS_SEEK_SET);
+                break;
+            case FS_SEEK_CUR:
+                rc = lvgl_fs_seek(NULL, zfp->filep, offset, LV_FS_SEEK_CUR);
+                break;
+            case FS_SEEK_END:
+                rc = lvgl_fs_seek(NULL, zfp->filep, offset, LV_FS_SEEK_END);
+                break;
+            default:
+                return -EINVAL;
+        }
+
+        if (rc != LV_FS_RES_OK) {
+            return -EIO;
+        }
+    }
+
+
+    return 0;
+}
+
 static lv_fs_res_t lvgl_fs_tell(struct _lv_fs_drv_t *drv, void *file, uint32_t *pos_p)
 {
     opened_file_t *open_file = (opened_file_t *)file;
     *pos_p = open_file->index;
+    LOG_DBG("Telling file, pos: %d", *pos_p);
     return LV_FS_RES_OK;
+}
+
+static off_t zsw_fs_tell(struct fs_file_t *zfp)
+{
+    if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
+        return full_fs_file.index;
+    } else {
+        uint32_t pos;
+        lvgl_fs_tell(NULL, zfp->filep, &pos);
+        return pos;
+    }
 }
 
 static void *lvgl_fs_dir_open(struct _lv_fs_drv_t *drv, const char *path)
@@ -286,9 +484,56 @@ static lv_fs_res_t lvgl_fs_dir_read(struct _lv_fs_drv_t *drv, void *dir, char *f
 
 static lv_fs_res_t lvgl_fs_dir_close(struct _lv_fs_drv_t *drv, void *dir)
 {
-    int err;
-    err = 0;
-    return errno_to_lv_fs_res(err);
+    return LV_FS_RES_NOT_IMP;
+}
+
+static int zsw_fs_mount(struct fs_mount_t *mountp)
+{
+    mountp->mnt_point = ZSW_FS_MOUNT_POINT;
+    return 0;
+}
+
+static int zsw_fs_unmount(struct fs_mount_t *mountp)
+{
+    return 0;
+}
+
+static int zsw_fs_stat(struct fs_mount_t *mountp,
+                       const char *path, struct fs_dirent *entry)
+{
+    char *file_name_ptr = (char *)path + strlen(ZSW_FS_MOUNT_POINT) + 1;
+
+    LOG_DBG("stat file %s", file_name_ptr);
+
+    if (IS_SPECIAL_FULL_FS_FILE_PATH(file_name_ptr)) {
+        entry->type = FS_DIR_ENTRY_FILE;
+        entry->size = full_fs_file.len;
+        strncpy(entry->name, FULL_FS_SPECIAL_FILE_NAME, MAX_FILE_NAME_LEN);
+        return 0;
+    } else {
+        file_header_t *file = find_file(file_name_ptr);
+        if (file) {
+            entry->type = FS_DIR_ENTRY_FILE;
+            entry->size = file->len;
+            strncpy(entry->name, file->filename, MAX_FILE_NAME_LEN);
+            return 0;
+        } else {
+            return -ENOENT;
+        }
+    }
+}
+
+static int zsw_fs_unlink(struct fs_mount_t *mountp, const char *path)
+{
+    char *file_name_ptr = (char *)path + strlen(ZSW_FS_MOUNT_POINT) + 1;
+
+    LOG_DBG("unlink file %s", file_name_ptr);
+
+    if (IS_SPECIAL_FULL_FS_FILE_PATH(file_name_ptr)) {
+        return 0;
+    } else {
+        return -ENOTSUP;
+    }
 }
 
 int zsw_filesytem_get_num_rawfs_files(void)
@@ -300,6 +545,47 @@ int zsw_filesytem_get_total_size(void)
 {
     return file_table.total_length;
 }
+
+int zsw_filesytem_erase(void)
+{
+    memset(opened_files, 0, sizeof(opened_files));
+    memset(&file_table, 0, sizeof(file_table));
+    current_cached_file = NULL;
+    full_fs_file.len = 0;
+    full_fs_file.index = 0;
+
+    int num_opened_files = 0;
+    for (int i = 0; i < MAX_OPENED_FILES; i++) {
+        if (opened_files[i].header != NULL) {
+            num_opened_files++;
+        }
+    }
+    LOG_WRN("Number of opened files: %d", num_opened_files);
+
+    LOG_INF("Erasing full fs image");
+    int rc = flash_area_erase(flash_area, 0, flash_area->fa_size);
+    LOG_INF("Flash area erased with rc: %d", rc);
+    if (rc != 0) {
+        LOG_ERR("Failed to erase flash area: %d", rc);
+        return -EIO;
+    }
+
+    return 0;
+}
+
+/* Zephyr File system interface */
+static const struct fs_file_system_t zsw_fs = {
+    .open = zsw_fs_open,
+    .close = zsw_fs_close,
+    .read = zsw_fs_read,
+    .write = zsw_fs_write,
+    .lseek = zsw_fs_seek,
+    .tell = zsw_fs_tell,
+    .mount = zsw_fs_mount,
+    .unmount = zsw_fs_unmount,
+    .unlink = zsw_fs_unlink,
+    .stat = zsw_fs_stat,
+};
 
 static int zsw_decoder_init(void)
 {
@@ -342,7 +628,28 @@ static int zsw_decoder_init(void)
         printk("Flash read failed! %d\n", rc);
         return rc;
     }
-    return 0;
+
+    // Fill in the special file that corresponds to the full image.
+    full_fs_file.opened = false;
+    full_fs_file.index = 0;
+    full_fs_file.len = file_table.total_length;
+    if (file_table.magic != TABLE_HEADER_MAGIC) {
+        LOG_ERR("Invalid file table magic: %x", file_table.magic);
+        full_fs_file.len = 0;
+    }
+
+    rc = fs_register(FS_TYPE_EXTERNAL_BASE, &zsw_fs);
+
+    if (rc == 0) {
+        static struct fs_mount_t zsw_fs_mount = {
+            .mnt_point = ZSW_FS_MOUNT_POINT,
+            .type = FS_TYPE_EXTERNAL_BASE,
+
+        };
+        rc = fs_mount(&zsw_fs_mount);
+    }
+
+    return rc;
 }
 
 SYS_INIT(zsw_decoder_init, APPLICATION, 99);

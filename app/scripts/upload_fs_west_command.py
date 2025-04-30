@@ -77,6 +77,12 @@ class UploadFsWestCommand(WestCommand):
             help="Upload using RTT, needed for v3 watches without QSPI flash",
         )
 
+        parser.add_argument(
+            "--generate_only",
+            action="store_true",
+            help="Only generate the image, do not upload it.",
+        )
+
         return parser
 
     def prompt_for_serial_number(self):
@@ -207,4 +213,8 @@ class UploadFsWestCommand(WestCommand):
             )
         else:
             speed = None if args.speed == 'auto' else int(args.speed)
-            sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, args.ini_file, speed))
+            if (args.generate_only):
+                print(f"Generated {hex_file} with size {os.path.getsize(hex_file)}")
+                return 0
+            else:
+                sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, args.ini_file, speed))
