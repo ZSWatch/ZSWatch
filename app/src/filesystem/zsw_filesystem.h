@@ -18,3 +18,5 @@
 int zsw_filesytem_get_num_rawfs_files(void);
 
 int zsw_filesytem_get_total_size(void);
+
+int zsw_filesytem_erase(void);

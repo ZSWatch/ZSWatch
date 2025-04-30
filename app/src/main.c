@@ -287,13 +287,6 @@ static void run_wdt_work(struct k_work *item)
 
 int main(void)
 {
-    if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
-        int ret = usb_enable(NULL);
-        if (ret) {
-            return 0;
-        }
-        LOG_INF("USB stack enabled");
-    }
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (bootmode_check(ZSW_BOOT_MODE_RTT_FLASH_LOADER)) {
         LOG_WRN("SPI Flash Loader Boot Mode");
@@ -550,7 +543,8 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                         open_application_manager_page("Settings");
                         break;
                     case WATCHFACE_APP_EVT_CLICK_FLASHLIGHT:
-                        open_application_manager_page("Flashlight");
+                        zsw_filesytem_erase();
+                        //open_application_manager_page("Flashlight");
                         break;
                     default:
                         break;

@@ -44,24 +44,28 @@ LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
-static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_slow_handler(struct k_work *item);
 static void update_conn_interval_short_handler(struct k_work *item);
+static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
+static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param);
+static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_len_info *info);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = ble_connected,
     .disconnected = ble_disconnected,
     .le_param_updated = param_updated,
+    .le_phy_updated = phy_updated,
+    .le_data_len_updated = le_data_length_updated
 };
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE,
-                  (CONFIG_BT_DEVICE_APPEARANCE >> 0) & 0xff,
-                  (CONFIG_BT_DEVICE_APPEARANCE >> 8) & 0xff),
+    (CONFIG_BT_DEVICE_APPEARANCE >> 0) & 0xff,
+    (CONFIG_BT_DEVICE_APPEARANCE >> 8) & 0xff),
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA_BYTES(BT_DATA_UUID16_ALL,
-                  BT_UUID_16_ENCODE(BT_UUID_DIS_VAL)),
+    BT_UUID_16_ENCODE(BT_UUID_DIS_VAL)),
 #ifdef CONFIG_BT_ANCS_CLIENT
     BT_DATA_BYTES(BT_DATA_SOLICIT128, BT_UUID_ANCS_VAL),
 #endif
@@ -362,6 +366,33 @@ static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t late
 {
     LOG_INF("Updated => Interval: %d, latency: %d, timeout: %d", interval, latency, timeout);
     ble_chronos_connection_update();
+}
+
+static const char *phy2str(uint8_t phy)
+{
+    switch (phy) {
+        case 0:
+            return "No packets";
+        case BT_GAP_LE_PHY_1M:
+            return "LE 1M";
+        case BT_GAP_LE_PHY_2M:
+            return "LE 2M";
+        case BT_GAP_LE_PHY_CODED:
+            return "LE Coded";
+        default:
+            return "Unknown";
+    }
+}
+
+static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_len_info *info)
+{
+    LOG_INF("LE data len updated: TX (len: %d time: %d)" " RX (len: %d time: %d)\n", info->tx_max_len, info->tx_max_time,
+            info->rx_max_len, info->rx_max_time);
+}
+
+static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param)
+{
+    LOG_INF("LE PHY updated: TX PHY %s, RX PHY %s", phy2str(param->tx_phy), phy2str(param->rx_phy));
 }
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len)
