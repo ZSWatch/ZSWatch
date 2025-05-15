@@ -96,7 +96,7 @@ target_sources(app PRIVATE src/ui/watchfaces/zsw_watchface_dropdown_ui.c)
 
 target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_flash_loader.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
-target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_lvgl_spi_decoder.c)
+target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_custom_fs.c)
 
 target_sources_ifdef(CONFIG_RTC_ALARM app PRIVATE src/zsw_alarm.c)
 

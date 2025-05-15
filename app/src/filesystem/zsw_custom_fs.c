@@ -449,7 +449,6 @@ static int zsw_fs_seek(struct fs_file_t *zfp, off_t offset, int whence)
         }
     }
 
-
     return 0;
 }
 
