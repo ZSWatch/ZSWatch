@@ -3,6 +3,7 @@ build*
 *.code-workspace
 *__pycache__*
 nrf/
+lvgl_resources
 
 # Zephyr workspace
 /.west
