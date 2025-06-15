@@ -112,7 +112,7 @@ static void sensor_fusion_timeout(struct k_work *)
 
     ret = zsw_imu_fetch_accel_f(&accelerometer.axis.x, &accelerometer.axis.y, &accelerometer.axis.z);
     if (ret != 0) {
-        LOG_ERR("zsw_imu_fetch_gyro_f err: %d", ret);
+        LOG_ERR("zsw_imu_fetch_accel_f err: %d", ret);
     }
     // IMU driver converts to m/s2 by multiplying to 10, convert back to g-force
     accelerometer.axis.x /= SENSOR_GF;
@@ -121,7 +121,7 @@ static void sensor_fusion_timeout(struct k_work *)
 
     ret = zsw_magnetometer_get_all(&magnetometer.axis.x, &magnetometer.axis.y, &magnetometer.axis.z);
     if (ret != 0) {
-        LOG_ERR("zsw_imu_fetch_gyro_f err: %d", ret);
+        LOG_ERR("zsw_magnetometer_get_all err: %d", ret);
     }
 
     // Apply calibration
