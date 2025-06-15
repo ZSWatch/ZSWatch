@@ -1,0 +1,3 @@
+littlefs-python==0.7.1
+littlefs-tools==1.1.3
+pynrfjprog==10.24.2

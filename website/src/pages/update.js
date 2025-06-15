@@ -476,6 +476,9 @@ const FirmwareUpdateApp = () => {
   const renderFileSystemUpload = () => (
     <div>
       <h2>Upload Filesystem</h2>
+      <Admonition type="tip" icon="💡" title="How to...">
+        Select the <strong>lvgl_resources_raw.bin</strong> file found in previously downloaded zip.<br></br>
+      </Admonition>
       <input
         type="file"
         ref={fileFsInputRef}
@@ -781,7 +784,7 @@ const FirmwareUpdateApp = () => {
                 To fix this you need to use the <strong>mcumgr over USB</strong> method.
               </Admonition>
             </details>
-{renderFileSystemUpload()}
+            {renderFileSystemUpload()}
           </div>
         </div>
       );

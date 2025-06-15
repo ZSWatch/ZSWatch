@@ -162,6 +162,8 @@ class UploadFsWestCommand(WestCommand):
         attr_max = 0
         disk_version = "2.0"
         filename = "lvgl_resources"
+        if (args.generate_only):
+            filename = filename + "_" + args.type
         partition = args.partition
         zephyr_base = Path(os.environ.get("ZEPHYR_BASE"))
         images_path = f"{zephyr_base.parent.absolute()}/app/src/images/binaries"

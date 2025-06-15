@@ -35,7 +35,10 @@ jobs:
           west config manifest.group-filter +bsec2
           west update -o=--depth=1 -n
           mkdir -p fw_images
+
+          python -m pip install --upgrade pip
           pip install -r nrf/scripts/requirements-build.txt
+          pip install -r app/scripts/requirements.txt
       
       - name: Style
         working-directory: ZSWatch
@@ -51,6 +54,18 @@ jobs:
           # and only needs to be calculated once.
           BUILD_DIR=${{ matrix.board }}_${{ matrix.built_type }}
           echo "BUILD_DIR=${BUILD_DIR}" | sed 's/\//_/g' >> $GITHUB_ENV
+
+      - name: Generate external filesystem images
+        working-directory: ZSWatch
+        run: |
+          west upload_fs --type raw --generate_only
+          west upload_fs --type lfs --generate_only
+
+          # Copy the filesystem images into the firmware zip
+          mv lvgl_resources_lfs fw_images/lvgl_resources_lfs.bin
+          mv lvgl_resources_lfs.hex fw_images/lvgl_resources_lfs.hex
+          mv lvgl_resources_raw fw_images/lvgl_resources_raw.bin
+          mv lvgl_resources_raw.hex fw_images/lvgl_resources_raw.hex
 
       - name: Build firmware
         if: ${{ matrix.board != 'native_posix/native' }}
