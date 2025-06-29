@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf5340_cpuapp_qkaa.dtsi>
+#include "nrf5340_cpuapp_common.dtsi"
+
+/ {
+    model = "ZSWatch WatchDK nRF5340 Application";
+    compatible = "zswatch,zswatch-nrf5340-cpuapp";
+
+    chosen {
+        zephyr,sram = &sram0_image;
+        zephyr,flash = &flash0;
+        zephyr,code-partition = &slot0_partition;
+        zephyr,sram-secure-partition = &sram0_s;
+        zephyr,sram-non-secure-partition = &sram0_ns;
+    };
+
+    aliases {
+        watchdog0 = &wdt0;
+    };
+};
