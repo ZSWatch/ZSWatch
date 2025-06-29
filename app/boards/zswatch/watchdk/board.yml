@@ -1,0 +1,14 @@
+board:
+  name: Watch-DK
+  vendor: ZSWatch
+  socs:
+  - name: 'nrf5340'
+    variants:
+    - name: 'ns'
+      cpucluster: 'cpuapp'
+  revision:
+    format: number
+    default: "1"
+    exact: false
+    revisions:
+    - name: "1"
