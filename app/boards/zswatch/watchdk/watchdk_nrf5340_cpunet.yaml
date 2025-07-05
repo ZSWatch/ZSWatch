@@ -1,5 +1,5 @@
-identifier: zswatch/nrf5340/cpunet
-name: ZSWATCH-NRF5340-network-MCU
+identifier: watchdk/nrf5340/cpunet
+name: WatchDK-nRF5340-Network-MCU
 type: mcu
 arch: arm
 toolchain:
@@ -11,4 +11,4 @@ flash: 256
 supported:
   - watchdog
   - gpio
-vendor: jakkra
+vendor: zswatch

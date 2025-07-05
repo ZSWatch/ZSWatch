@@ -1,3 +1,4 @@
+# Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
 # Enable MPU
@@ -9,19 +10,17 @@ CONFIG_HW_STACK_PROTECTION=y
 # Enable TrustZone-M
 CONFIG_ARM_TRUSTZONE_M=y
 
-# This Board implies building Non-Secure firmware
-CONFIG_TRUSTED_EXECUTION_NONSECURE=y
-
-# enable GPIO
+# Enable GPIO
 CONFIG_GPIO=y
 
-# Disable uart driver
+# Disable UART driver
 CONFIG_SERIAL=n
 
-# disable console
+# Disable console
 CONFIG_CONSOLE=n
 CONFIG_UART_CONSOLE=n
 
 CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
+
 # Ensure GPIO P0.01 and P0.00 can be used
 CONFIG_SOC_ENABLE_LFXO=n

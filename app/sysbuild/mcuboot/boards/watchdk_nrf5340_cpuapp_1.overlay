@@ -4,13 +4,13 @@
 };
 
 &bmi270 {
-	status = "disabled";
+    status = "disabled";
 };
 
 &npm1300_pmic {
-	status = "disabled";
+    status = "disabled";
 };
 
 &npm1300_gpio {
-	status = "disabled";
+    status = "disabled";
 };

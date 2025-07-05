@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023 Jakob Krantz
- *
+ * Copyright (c) 2025 ZSWatch Project
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,20 +20,20 @@
  * the beginning of the Non-Secure image (not its size).
  */
 
- &slot0_partition {
-	reg = <0x00010000 0x40000>;
+&slot0_partition {
+    reg = <0x00010000 0x40000>;
 };
 
 &slot0_ns_partition {
-	reg = <0x00050000 0x30000>;
+    reg = <0x00050000 0x30000>;
 };
 
 &slot1_partition {
-	reg = <0x00080000 0x40000>;
+    reg = <0x00080000 0x40000>;
 };
 
 &slot1_ns_partition {
-	reg = <0x000c0000 0x30000>;
+    reg = <0x000c0000 0x30000>;
 };
 
 /* Default SRAM planning when building for nRF5340 with
@@ -45,17 +44,16 @@
  *   (see nrf5340_shared_sram_planning_conf.dts)
  */
 &sram0_image {
-	reg = <0x20000000 DT_SIZE_K(448)>;
+    reg = <0x20000000 DT_SIZE_K(448)>;
 };
 
 &sram0_s {
-	reg = <0x20000000 0x40000>;
+    reg = <0x20000000 0x40000>;
 };
 
 &sram0_ns {
-	reg = <0x20040000 0x30000>;
+    reg = <0x20040000 0x30000>;
 };
-
 
 /* Include shared RAM configuration file */
 #include "nrf5340_shared_sram_planning_conf.dtsi"

@@ -1,5 +1,5 @@
-identifier: zswatch/nrf5340/cpuapp/ns
-name: ZSWatch-NRF5340-application-MCU-Non-Secure
+identifier: watchdk/nrf5340/cpuapp/ns
+name: WatchDK-nRF5340-Application-MCU-Non-Secure
 type: mcu
 arch: arm
 toolchain:
@@ -18,4 +18,4 @@ supported:
   - netif:openthread
   - gpio
   - spi
-vendor: nordic
+vendor: zswatch

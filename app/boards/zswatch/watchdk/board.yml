@@ -1,6 +1,6 @@
 board:
-  name: zswatch
-  vendor: nordic
+  name: watchdk
+  vendor: zswatch
   socs:
   - name: 'nrf5340'
     variants:
@@ -8,9 +8,7 @@ board:
       cpucluster: 'cpuapp'
   revision:
     format: number
-    default: "5"
+    default: "1"
     exact: false
     revisions:
-    - name: "3"
-    - name: "4"
-    - name: "5"
+    - name: "1"

@@ -1,5 +1,5 @@
 identifier: zswatch/nrf5340/cpuapp
-name: ZSWATCH-NRF5340-application-MCU
+name: ZSWatch-nRF5340-Application-MCU
 type: mcu
 arch: arm
 toolchain:
@@ -20,4 +20,4 @@ supported:
   - netif:openthread
   - gpio
   - spi
-vendor: jakkra
+vendor: ZSWatch
