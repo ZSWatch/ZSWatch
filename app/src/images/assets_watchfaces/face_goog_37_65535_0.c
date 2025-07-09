@@ -13,13 +13,14 @@
 #endif
 
 const LV_ATTRIBUTE_MEM_ALIGN uint8_t face_goog_37_65535_data_0[] = {
-	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-    };
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    0xFF,0xFF,0xFF,0xFF,
+}; // LVGL_9 compatible
 
 const lv_img_dsc_t face_goog_37_65535_0 = {
-    .header.always_zero = 0,
+    .header.magic = LV_IMAGE_HEADER_MAGIC,
     .header.w = 4,
     .header.h = 1,
     .data_size = sizeof(face_goog_37_65535_data_0),
-    .header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA,
+    .header.cf = LV_COLOR_FORMAT_NATIVE_WITH_ALPHA,
     .data = face_goog_37_65535_data_0};

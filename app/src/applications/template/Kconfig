@@ -1,3 +1,0 @@
-module = ZSW_TEMPLATE_APP
-module-str = ZSW_TEMPLATE_APP
-source "subsys/logging/Kconfig.template.log_config"

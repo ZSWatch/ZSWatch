@@ -1,4 +1,5 @@
 #include "ppt_remote_ui.h"
+#include "assert.h"
 
 static void next_event_cb(lv_event_t *e);
 static void prev_event_cb(lv_event_t *e);
@@ -50,7 +51,7 @@ void ppt_remote_ui_show(lv_obj_t *root, on_button_press_cb_t next_cb, on_button_
     static lv_style_t style_def;
     lv_style_init(&style_def);
     lv_style_set_radius(&style_def, 80);
-    lv_style_set_size(&style_def, 80);
+    lv_style_set_size(&style_def, 80, 80);
     lv_style_set_transition(&style_def, &transition_dsc_def);
 
     /*Add the transition and some transformation to the presses state.*/

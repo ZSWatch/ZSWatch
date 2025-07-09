@@ -1,5 +1,6 @@
 #include <sensor_fusion/fusion_ui.h>
 #include <lvgl.h>
+#include "assert.h"
 
 static lv_obj_t *root_page = NULL;
 

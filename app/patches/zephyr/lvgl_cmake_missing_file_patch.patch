@@ -1,0 +1,12 @@
+diff --git a/modules/lvgl/CMakeLists.txt b/modules/lvgl/CMakeLists.txt
+index 5ef568e6b89..54291e918ad 100644
+--- a/modules/lvgl/CMakeLists.txt
++++ b/modules/lvgl/CMakeLists.txt
+@@ -218,6 +218,7 @@ zephyr_library_sources(
+     ${LVGL_DIR}/src/misc/lv_event.c
+     ${LVGL_DIR}/src/misc/lv_fs.c
+     ${LVGL_DIR}/src/misc/lv_iter.c
++    ${LVGL_DIR}/src/misc/lv_circle_buf.c
+     ${LVGL_DIR}/src/misc/lv_ll.c
+     ${LVGL_DIR}/src/misc/lv_log.c
+     ${LVGL_DIR}/src/misc/lv_lru.c

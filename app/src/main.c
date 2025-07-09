@@ -87,8 +87,7 @@ static void run_init_work(struct k_work *item);
 static void run_wdt_work(struct k_work *item);
 static void enable_bluetooth(void);
 static void print_retention_ram(void);
-static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
-static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e);
+static void enocoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void open_notification_popup(void *data);
 static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
@@ -107,7 +106,6 @@ static int kernal_wdt_id;
 static lv_group_t *input_group;
 static lv_group_t *temp_group;
 
-static lv_indev_drv_t enc_drv;
 static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 
@@ -227,21 +225,21 @@ static void run_init_work(struct k_work *item)
     pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(buttons)), PM_DEVICE_ACTION_RESUME);
     INPUT_CALLBACK_DEFINE(NULL, on_input_subsys_callback, NULL);
 
-    lv_indev_drv_init(&enc_drv);
-    enc_drv.type = LV_INDEV_TYPE_ENCODER;
-    enc_drv.read_cb = enocoder_read;
-    enc_drv.feedback_cb = click_feedback;
-    enc_indev = lv_indev_drv_register(&enc_drv);
+    enc_indev = lv_indev_create();
+    lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);
+    lv_indev_set_read_cb(enc_indev, enocoder_read);
+    lv_indev_set_group(enc_indev, input_group);
 
     input_group = lv_group_create();
-    temp_group = lv_group_create();
     lv_group_set_default(input_group);
     lv_indev_set_group(enc_indev, input_group);
+    temp_group = lv_group_create();
 
     touch_indev = lv_indev_get_next(NULL);
     while (touch_indev) {
         if (lv_indev_get_type(touch_indev) == LV_INDEV_TYPE_POINTER) {
-            // TODO First fix so not all presses everywhere are registered as clicks and cause vibration
+            // TODO First fix so not all presses everyw
+            //here are registered as clicks and cause vibration
             // Clicking anywehere with this below added right now will cause a vibration, which
             // is not what we want
             // touch_indev->driver->feedback_cb = click_feedback;
@@ -386,7 +384,7 @@ static void close_popup_notification(lv_timer_t *timer)
 {
     uint32_t id;
 
-    id = (uint32_t)timer->user_data;
+    id = (uint32_t)lv_timer_get_user_data(timer);
     // Notification was dismissed, hence consider it read.
     zsw_notification_manager_remove(id);
 
@@ -478,7 +476,7 @@ static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
     }
 }
 
-static void enocoder_read(struct _lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
+static void enocoder_read(lv_indev_t *indev, lv_indev_data_t *data)
 {
     if (!is_buttons_for_lvgl) {
         return;
@@ -574,13 +572,6 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 #endif
                 break;
         }
-    }
-}
-
-static void click_feedback(struct _lv_indev_drv_t *drv, uint8_t e)
-{
-    if (e == LV_EVENT_CLICKED) {
-        zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
     }
 }
 

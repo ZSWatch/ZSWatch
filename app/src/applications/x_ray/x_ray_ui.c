@@ -1,5 +1,6 @@
 #include <x_ray/x_ray_ui.h>
 #include <lvgl.h>
+#include <assert.h>
 
 static lv_obj_t *root_page = NULL;
 

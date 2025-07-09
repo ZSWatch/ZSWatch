@@ -95,7 +95,6 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     lv_obj_clear_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN);
 
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
     lv_obj_set_size(root_page, 240, 240);

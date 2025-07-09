@@ -1,4 +1,5 @@
 #include <time.h>
+#include <stdio.h>
 
 #include "../notification_ui.h"
 #include "ui/zsw_ui.h"
@@ -258,7 +259,7 @@ void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
     */
 
     // Update the notifications position manually firt time.
-    lv_event_send(main_page, LV_EVENT_SCROLL, NULL);
+    lv_obj_send_event(main_page, LV_EVENT_SCROLL, NULL);
 
     timer = lv_timer_create(label_on_timer_callback, 5000UL, NULL);
 }

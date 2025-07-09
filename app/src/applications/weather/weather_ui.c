@@ -1,6 +1,7 @@
 #include <weather/weather_ui.h>
 #include <lvgl.h>
 #include <ui/zsw_ui.h>
+#include <assert.h>
 
 typedef struct {
     lv_obj_t *ui_day;
@@ -56,7 +57,8 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_add_flag(ui_bg_img, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(ui_bg_img, LV_OBJ_FLAG_SCROLLABLE);
 
-    ui_loading_spinner = lv_spinner_create(root_page, 1000, 90);
+    ui_loading_spinner = lv_spinner_create(root_page);
+    lv_spinner_set_anim_params(ui_loading_spinner, 5000, 400);
     lv_obj_set_width(ui_loading_spinner, 60);
     lv_obj_set_height(ui_loading_spinner, 60);
     lv_obj_set_align(ui_loading_spinner, LV_ALIGN_CENTER);

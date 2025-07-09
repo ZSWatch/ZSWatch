@@ -1,4 +1,4 @@
-if(CONFIG_APPLICATIONS_USE_CHRONOS)
+if(0)
     FILE(GLOB app_sources *.c)
     target_sources(app PRIVATE ${app_sources})
     add_subdirectory(assets)

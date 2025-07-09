@@ -5440,9 +5440,8 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_SNOOPY ui
 };
 
 const lv_img_dsc_t snoopy = {
-  .header.cf = LV_IMG_CF_RAW_CHROMA_KEYED,
-  .header.always_zero = 0,
-  .header.reserved = 0,
+  .header.cf = LV_COLOR_FORMAT_RAW,
+  .header.magic = LV_IMAGE_HEADER_MAGIC,
   .header.w = 74,
   .header.h = 54,
   .data_size = 70393,

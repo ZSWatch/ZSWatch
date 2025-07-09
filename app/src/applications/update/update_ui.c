@@ -1,6 +1,7 @@
 #include "update_ui.h"
 #include "ui/zsw_ui.h"
 #include "filesystem/zsw_filesystem.h"
+#include <assert.h>
 
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *status_label = NULL;

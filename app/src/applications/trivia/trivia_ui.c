@@ -1,4 +1,8 @@
 #include "trivia_ui.h"
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <lvgl.h>
 
 #define CLOSE_TXT "Close"
 
@@ -6,6 +10,8 @@ static lv_obj_t *root_page = NULL;
 static lv_obj_t *question_lb;
 static lv_obj_t *mbox;
 static on_button_press_cb_t click_callback;
+static lv_obj_t *more_btn;
+static lv_obj_t *close_btn;
 
 static void click_event_cb(lv_event_t *e);
 static void click_popup_event_cb(lv_event_t *e);
@@ -74,33 +80,38 @@ void trivia_ui_close_popup(void)
 void trivia_ui_guess_feedback(bool correct)
 {
     char msg[sizeof("Your answer is correct!")];
-    static const char *btns[] = {"More", CLOSE_TXT, ""};
 
     sprintf(msg, "Your answer is %s!", correct ? "Correct" : "Wrong");
 
-    mbox = lv_msgbox_create(NULL, NULL, msg, btns, false);
-    lv_obj_add_event_cb(mbox, click_popup_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    mbox = lv_msgbox_create(NULL);
+    lv_msgbox_add_text(mbox, msg);
+    more_btn = lv_msgbox_add_footer_button(mbox, "More");
+    close_btn = lv_msgbox_add_footer_button(mbox, CLOSE_TXT);
+    lv_obj_add_event_cb(more_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(close_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_center(mbox);
 }
 
 void trivia_ui_not_supported()
 {
-    static const char *btns[] = {CLOSE_TXT, NULL};
-
-    mbox = lv_msgbox_create(NULL, NULL, "Your phone does not support this app", btns, false);
-    lv_obj_add_event_cb(mbox, click_popup_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    mbox = lv_msgbox_create(NULL);
+    lv_msgbox_add_text(mbox, "Your phone does not support this app");
+    close_btn = lv_msgbox_add_footer_button(mbox, CLOSE_TXT);
+    lv_obj_add_event_cb(close_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_center(mbox);
 }
 
 static void click_popup_event_cb(lv_event_t *e)
 {
-    lv_obj_t *obj = lv_event_get_current_target(e);
+    lv_obj_t *obj = lv_event_get_target_obj(e);
     trivia_button_t trivia_button;
 
-    if (strcmp(lv_msgbox_get_active_btn_text(obj), CLOSE_TXT) == 0) {
+    if (obj == close_btn) {
         trivia_button = CLOSE_BUTTON;
-    } else {
+    } else if (obj == more_btn) {
         trivia_button = PLAY_MORE_BUTTON;
+    } else {
+        return;
     }
 
     click_callback(trivia_button);

@@ -249,7 +249,7 @@ menu "ZSWatch"
         rsource "src/sensor_fusion/Kconfig"
         rsource "src/ble/Kconfig"
         rsource "src/applications/settings/Kconfig"
-        rsource "src/applications/template/Kconfig"
+
         rsource "src/applications/iaq/Kconfig"
         rsource "src/applications/notification/Kconfig"
         rsource "src/applications/trivia/Kconfig"
