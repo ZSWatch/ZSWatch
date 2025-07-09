@@ -248,7 +248,7 @@ void settings_ui_remove(void)
 bool settings_ui_back(void)
 {
     if ((_menu != NULL) && ((lv_menu_t *)_menu)->cur_depth > 1) {
-        lv_event_send(lv_menu_get_main_header_back_btn(_menu), LV_EVENT_CLICKED, NULL);
+        lv_obj_send_event(lv_menu_get_main_header_back_btn(_menu), LV_EVENT_CLICKED, NULL);
         return true;
     } else {
         return false;

@@ -166,7 +166,7 @@ int ble_comm_init(void)
     }
 
     struct bt_le_adv_param adv_param = {
-        .options = BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME,
+        .options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_USE_NAME,
         .interval_min = BT_GAP_ADV_SLOW_INT_MIN,
         .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
     };

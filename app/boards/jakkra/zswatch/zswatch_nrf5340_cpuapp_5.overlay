@@ -273,8 +273,8 @@
 			term-current-percent = <10>; // then 4.4V CV(constant voltage) charge till charge current decline to ≤ 0.02C
 			dischg-limit-microamp = <1000000>;
 			vbus-limit-microamp = <500000>;
-			thermistor-ohms = <10000>; // Not used
-			thermistor-beta = <3380>; // Not used
+			thermistor-ohms = <0>; // Don't use thermistor
+			thermistor-beta = <0>; // Not used
 			charging-enable;
 		};
 

@@ -2,6 +2,7 @@
 #include "battery_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
+#include <assert.h>
 
 // Common
 static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);

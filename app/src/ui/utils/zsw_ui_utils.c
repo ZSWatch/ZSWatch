@@ -126,7 +126,7 @@ const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *ic
                     return &cloudy;
             }
         default: {
-            printf("Unhandled weather code: %d", code);
+            printk("Unhandled weather code: %d", code);
             return &unknown;
         }
     }
