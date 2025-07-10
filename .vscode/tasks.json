@@ -46,7 +46,7 @@
         {
             "label": "Disable BT",
             "type": "shell",
-            "command": "sudo btmgmt --index 0 power off"
+            "command": "btmgmt --index 0 power off"
         }
     ]
 }
