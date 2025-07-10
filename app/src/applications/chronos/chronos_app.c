@@ -6,7 +6,7 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
-LOG_MODULE_REGISTER(chronos_app, CONFIG_ZSW_TEMPLATE_APP_LOG_LEVEL);
+LOG_MODULE_REGISTER(chronos_app, LOG_LEVEL_INF);
 
 // Functions needed for all applications
 static void chronos_app_start(lv_obj_t *root, lv_group_t *group);

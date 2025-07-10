@@ -2,6 +2,7 @@
 #include <lvgl.h>
 #include <utils/zsw_ui_utils.h>
 #include <zsw_coredump.h>
+#include "assert.h"
 
 static void seconds_to_time_chunks(uint32_t time_seconds, int *days, int *hours, int *minutes, int *seconds);
 

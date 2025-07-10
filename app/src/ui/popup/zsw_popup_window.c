@@ -39,7 +39,7 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
     on_close_cb = close_cb;
     lv_obj_t *close_btn = NULL;
 
-    mbox = lv_msgbox_create(lv_layer_top());//, title, body, display_yes_no ? btns : NULL, true);
+    mbox = lv_msgbox_create(lv_layer_top());
     lv_msgbox_add_title(mbox, title);
     lv_msgbox_add_text(mbox, body);
     if (display_yes_no) {
@@ -48,8 +48,7 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
         lv_obj_add_event_cb(yes_btn, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
         lv_obj_add_event_cb(no_btn, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
     } else {
-        close_btn = lv_msgbox_add_close_button(mbox);
-        lv_obj_remove_event_cb(close_btn, NULL);
+        close_btn = lv_msgbox_add_header_button(mbox, LV_SYMBOL_CLOSE);
         lv_obj_add_event_cb(close_btn, on_popup_close_button_pressed, LV_EVENT_CLICKED, NULL);
     }
 

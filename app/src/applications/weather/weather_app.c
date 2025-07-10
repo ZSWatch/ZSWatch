@@ -10,6 +10,7 @@
 #include <ble/ble_http.h>
 #include "weather_ui.h"
 #include <zsw_clock.h>
+#include <stdio.h>
 
 LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 
@@ -161,7 +162,7 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
         LOG_DBG("GPS data is too old, request GPS\n");
         int res = ble_comm_request_gps_status(true);
         if (res != 0) {
-            LOG_ERR("Failed to request GPS data");
+            LOG_ERR("Failed to request GPS data: %d",res);
             weather_ui_set_error("Failed to get GPS data");
         }
         // TODO Show GPS fetching in progress in app

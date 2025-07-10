@@ -1,6 +1,7 @@
 #include <music_control/music_control_ui.h>
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
+#include "assert.h"
 
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *track_name_label;
@@ -143,7 +144,6 @@ void music_control_ui_show(lv_obj_t *root, on_music_control_ui_event_cb_t evt_cb
     lv_label_set_long_mode(track_name_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_width(track_name_label, LV_PCT(50));
     lv_label_set_text(track_name_label, "No music playing...");
-    lv_obj_set_style_anim_speed(track_name_label, 10, 0);
 
     artist_name_label = lv_label_create(root_page);
     lv_obj_align(artist_name_label, LV_ALIGN_TOP_MID, 0, 45);
@@ -151,7 +151,6 @@ void music_control_ui_show(lv_obj_t *root, on_music_control_ui_event_cb_t evt_cb
     lv_label_set_long_mode(artist_name_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_width(artist_name_label, LV_PCT(50));
     lv_label_set_text(artist_name_label, "Artist...");
-    lv_obj_set_style_anim_speed(artist_name_label, 10, 0);
 
     time_label = lv_label_create(root_page);
     lv_obj_align(time_label, LV_ALIGN_TOP_MID, 0, -5);
