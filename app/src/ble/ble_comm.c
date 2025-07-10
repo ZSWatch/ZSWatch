@@ -183,10 +183,22 @@ int ble_comm_init(void)
 
 int ble_comm_send(uint8_t *data, uint16_t len)
 {
-    if (len > max_send_len) {
-        return -EMSGSIZE;
+    uint16_t offset = 0;
+    int ret = 0;
+
+    while (offset < len) {
+        uint16_t chunk_len = len - offset;
+        if (chunk_len > max_send_len) {
+            chunk_len = max_send_len;
+        }
+
+        ret = ble_transport_send(current_conn, data + offset, chunk_len);
+        if (ret < 0) {
+            return ret;
+        }
+        offset += chunk_len;
     }
-    return ble_transport_send(current_conn, data, len);
+    return 0;
 }
 
 void ble_comm_set_pairable(bool pairable)
