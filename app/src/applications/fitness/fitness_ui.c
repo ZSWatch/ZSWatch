@@ -18,6 +18,9 @@ static void event_cb(lv_event_t *e)
     if (code == LV_EVENT_VALUE_CHANGED) {
         lv_obj_invalidate(chart);
     } else if (code == LV_EVENT_DRAW_POST_END) {
+        lv_layer_t * draw_layer = lv_event_get_layer(e);
+        if(!draw_layer) return;
+
         lv_chart_series_t *ser = lv_chart_get_series_next(chart, NULL);
         if (!ser) {
             return;
@@ -36,15 +39,18 @@ static void event_cb(lv_event_t *e)
             lv_draw_label_dsc_init(&draw_label_dsc);
             draw_label_dsc.color = zsw_color_red();
             draw_label_dsc.align = LV_TEXT_ALIGN_CENTER;
+            draw_label_dsc.text = buf;
+            draw_label_dsc.font = &lv_font_montserrat_12;
 
             lv_area_t a;
-            a.x1 = chart->coords.x1 + p.x - 15;
-            a.x2 = chart->coords.x1 + p.x + 17;
-            a.y1 = chart->coords.y1 + 20 - 30;
-            a.y2 = chart->coords.y1 + 20 - 10;
+            lv_area_t obj_coords;
+            lv_obj_get_coords(chart, &obj_coords);
+            a.x1 = obj_coords.x1 + p.x - 15;
+            a.x2 = obj_coords.x1 + p.x + 17;
+            a.y1 = obj_coords.y1;
+            a.y2 = obj_coords.y1 + 20;
 
-            lv_draw_ctx_t *draw_ctx = lv_event_get_draw_ctx(e);
-            lv_draw_label(draw_ctx, &draw_label_dsc, &a, buf, NULL);
+            lv_draw_label(draw_layer, &draw_label_dsc, &a);
 
             // Draw a vertical line to separate the bars
             lv_draw_rect_dsc_t draw_rect_dsc;
@@ -54,13 +60,13 @@ static void event_cb(lv_event_t *e)
             draw_rect_dsc.border_width = 1;
             draw_rect_dsc.border_side = LV_BORDER_SIDE_RIGHT;
 
-            // Note thise values are not dynamic, so needs change if graph size changes.
-            a.y1 = chart->coords.y1 + 20 - 30;
-            a.y2 = chart->coords.y1 + 20 + 99;
+            // Note these values are not dynamic, so needs change if graph size changes.
+            a.y1 = obj_coords.y1 + 20 - 30;
+            a.y2 = obj_coords.y1 + 20 + 99;
 
             // Don't draw a line after the last bar
             if (id != num_points - 1) {
-                lv_draw_rect(draw_ctx, &draw_rect_dsc, &a);
+                lv_draw_rect(draw_layer, &draw_rect_dsc, &a);
             }
         }
 
@@ -85,17 +91,18 @@ static void event_cb(lv_event_t *e)
             draw_rect_dsc.bg_color = lv_color_white();
             draw_rect_dsc.bg_opa = LV_OPA_70;
             draw_rect_dsc.radius = 5;
-            draw_rect_dsc.bg_img_src = buf;
-            draw_rect_dsc.bg_img_recolor = lv_color_black();
+            draw_rect_dsc.bg_image_src = buf;
+            draw_rect_dsc.bg_image_recolor = lv_color_black();
 
             lv_area_t a;
-            a.x1 = chart->coords.x1 + p.x - 20;
-            a.x2 = chart->coords.x1 + p.x + 20;
-            a.y1 = chart->coords.y1 + p.y - 30;
-            a.y2 = chart->coords.y1 + p.y - 10;
+            lv_area_t obj_coords;
+            lv_obj_get_coords(chart, &obj_coords);
+            a.x1 = obj_coords.x1 + p.x - 20;
+            a.x2 = obj_coords.x1 + p.x + 20;
+            a.y1 = obj_coords.y1 + p.y - 30;
+            a.y2 = obj_coords.y1 + p.y - 10;
 
-            lv_draw_ctx_t *draw_ctx = lv_event_get_draw_ctx(e);
-            lv_draw_rect(draw_ctx, &draw_rect_dsc, &a);
+            lv_draw_rect(draw_layer, &draw_rect_dsc, &a);
         }
     }
 }
@@ -123,9 +130,15 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_chart_set_range(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_Y, 0, 12000);
     lv_chart_set_range(ui_weekly_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 0);
     lv_chart_set_div_line_count(ui_weekly_chart, 0, 0);
-    lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_X, 1, 1, 1, 1, false, 50);
-    lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_PRIMARY_Y, 1, 1, 1, 1, false, 50);
-    lv_chart_set_axis_tick(ui_weekly_chart, LV_CHART_AXIS_SECONDARY_Y, 1, 1, 1, 1, false, 25);
+
+    // Create a scale for the Y axis (steps)
+    lv_obj_t *scale_y = lv_scale_create(ui_root_container);
+    lv_scale_set_mode(scale_y, LV_SCALE_MODE_VERTICAL_LEFT);
+    lv_scale_set_range(scale_y, 0, 12000);
+    lv_scale_set_label_show(scale_y, true);
+    lv_obj_set_height(scale_y, 120);
+    lv_obj_align_to(scale_y, ui_weekly_chart, LV_ALIGN_OUT_LEFT_MID, -4, 0);
+
     ui_weekly_chart_series_1 = lv_chart_add_series(ui_weekly_chart, zsw_color_blue(),
                                                    LV_CHART_AXIS_PRIMARY_Y);
 
@@ -176,6 +189,7 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_align(ui_last_7_days_title_label, LV_ALIGN_BOTTOM_MID);
     lv_label_set_text(ui_last_7_days_title_label, "Steps per day");
 
+    lv_obj_add_flag(ui_weekly_chart, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
     lv_obj_add_event_cb(ui_weekly_chart, event_cb, LV_EVENT_ALL, NULL);
 }
 
