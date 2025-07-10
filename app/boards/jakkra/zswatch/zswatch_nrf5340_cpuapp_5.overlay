@@ -218,9 +218,6 @@
 		compatible = "avago,apds9306";
 		reg = <0x52>;
 		status = "okay";
-		gain = <0>;
-		resolution = <0>;
-		frequency = <0>;
 	};
 
 	npm1300_pmic: pmic@6b {
