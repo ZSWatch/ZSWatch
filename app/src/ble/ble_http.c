@@ -11,7 +11,7 @@ LOG_MODULE_REGISTER(ble_http, LOG_LEVEL_DBG);
 
 #define GB_HTTP_REQUEST_FMT "{\"t\":\"http\", \"url\":\"%s\", id:\"%d\"} \n"
 
-#define HTTP_TIMEOUT_SECONDS 5
+#define HTTP_TIMEOUT_SECONDS 10
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void ble_http_timeout_handler(struct k_work *work);
@@ -85,8 +85,9 @@ int zsw_ble_http_get(char *url, ble_http_callback cb)
 
     request_id++;
 
-    request = k_malloc(strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1);
+    request = k_calloc(1, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1);
     __ASSERT(request, "Failed to allocate memory for request URL");
+    memset(request, 0, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1);
 
     snprintf(request, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1, GB_HTTP_REQUEST_FMT, url, request_id);
     ret = ble_comm_send(request, strlen(request));
