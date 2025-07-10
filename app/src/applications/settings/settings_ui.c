@@ -1,5 +1,7 @@
 #include "settings_ui.h"
 #include "lvgl.h"
+#include "assert.h"
+#include <stdio.h>
 
 #define LV_SETTINGS_ANIM_TIME   300 /*[ms]*/
 #define LV_SETTINGS_MAX_WIDTH   250
@@ -11,10 +13,11 @@
 static on_close_cb_t close_callback;
 
 static lv_obj_t *_menu = NULL;
+static lv_obj_t *_mainPage;
 
 static void close_button_pressed(lv_event_t *e)
 {
-    if (lv_menu_back_btn_is_root(_menu, lv_event_get_target(e))) {
+    if (lv_menu_back_button_is_root(_menu, lv_event_get_target(e))) {
         lv_obj_del(_menu);
         _menu = NULL;
         close_callback();
@@ -158,7 +161,6 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     lv_obj_t *label;
     lv_obj_t *cont;
     lv_settings_item_t *item;
-    lv_obj_t *_mainPage;
     lv_obj_t *obj;
     lv_obj_t *sub_page = NULL;
     static lv_style_t outline_primary;
@@ -166,7 +168,7 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     // Border around selected menu row when focused
     lv_style_init(&outline_primary);
     lv_style_set_border_color(&outline_primary, lv_color_hex(0xF99B7D));
-    lv_style_set_border_width(&outline_primary, lv_disp_dpx(lv_disp_get_next(NULL), 3));
+    lv_style_set_border_width(&outline_primary, lv_display_dpx(lv_disp_get_next(NULL), 3));
     lv_style_set_border_opa(&outline_primary, LV_OPA_50);
     lv_style_set_border_side(&outline_primary, LV_BORDER_SIDE_BOTTOM);
 
@@ -184,7 +186,7 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     lv_obj_set_style_bg_opa(_menu, LV_OPA_TRANSP, LV_PART_MAIN);
 
     // Disable the back button
-    lv_menu_set_mode_root_back_btn(_menu, LV_MENU_ROOT_BACK_BTN_DISABLED);
+    lv_menu_set_mode_root_back_button(_menu, LV_MENU_ROOT_BACK_BUTTON_DISABLED);
     lv_obj_t *header = lv_menu_get_main_header(_menu);
     lv_obj_set_size(header, 0, 0);
 
@@ -247,8 +249,9 @@ void settings_ui_remove(void)
 
 bool settings_ui_back(void)
 {
-    if ((_menu != NULL) && ((lv_menu_t *)_menu)->cur_depth > 1) {
-        lv_obj_send_event(lv_menu_get_main_header_back_btn(_menu), LV_EVENT_CLICKED, NULL);
+    lv_menu_get_cur_main_page(_menu);
+    if ((_menu != NULL) && lv_menu_get_cur_main_page(_menu) != _mainPage) {
+        lv_obj_send_event(lv_menu_get_main_header_back_button(_menu), LV_EVENT_CLICKED, NULL);
         return true;
     } else {
         return false;
