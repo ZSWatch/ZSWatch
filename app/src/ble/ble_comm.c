@@ -44,6 +44,7 @@ LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
+static void ble_recycled(void);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_slow_handler(struct k_work *item);
 static void update_conn_interval_short_handler(struct k_work *item);
@@ -54,6 +55,7 @@ static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = ble_connected,
     .disconnected = ble_disconnected,
+    .recycled = ble_recycled,
     .le_param_updated = param_updated,
     .le_phy_updated = phy_updated,
     .le_data_len_updated = le_data_length_updated
@@ -74,6 +76,12 @@ static const struct bt_data ad[] = {
 static const struct bt_data ad_nus[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UUID_TRANSPORT_VAL),
+};
+
+static struct bt_le_adv_param adv_param = {
+    .options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_USE_NAME,
+    .interval_min = BT_GAP_ADV_SLOW_INT_MIN,
+    .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
 };
 
 K_WORK_DELAYABLE_DEFINE(conn_interval_slow_work, update_conn_interval_slow_handler);
@@ -164,12 +172,6 @@ int ble_comm_init(void)
         LOG_ERR("Failed to initialize UART service (err: %d)", err);
         return err;
     }
-
-    struct bt_le_adv_param adv_param = {
-        .options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_USE_NAME,
-        .interval_min = BT_GAP_ADV_SLOW_INT_MIN,
-        .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
-    };
 
     err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
     if (err) {
@@ -372,6 +374,16 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
     }
 
     ble_chronos_state(false);
+}
+
+static void ble_recycled(void)
+{
+    int err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
+    if (err) {
+        LOG_ERR("Advertising failed to start (err %d)", err);
+    } else {
+        LOG_DBG("Advertising successfully started");
+    }
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
