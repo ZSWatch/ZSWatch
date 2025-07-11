@@ -646,6 +646,9 @@ static int zsw_decoder_init(void)
 
         };
         rc = fs_mount(&zsw_fs_mount);
+    } else {
+        LOG_ERR("Failed to register ZSWatch file system: %d", rc);
+        return rc;
     }
 
     return rc;

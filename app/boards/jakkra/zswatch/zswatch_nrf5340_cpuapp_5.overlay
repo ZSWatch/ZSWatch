@@ -358,19 +358,19 @@
 		#size-cells = <1>;
 		
 		// For Nordic Partition manager to work it has to have this name.
-		littlefs_storage: partition@0 {
+		littlefs_storage: partition@320000 {
 			label = "littlefs_storage";
-			reg = <0x00000000 0x00200000>;
+			reg = <0x320000 0x200000>;
 		};
 
-		lvgl_raw_partition: partition@200000 {
+		lvgl_raw_partition: partition@520000 {
 			label = "lvgl_raw_partition";
-			reg = <0x00200000 0x00200000>;
+			reg = <0x520000 0x800000>;
 		};
 
-		storage_partition: partition@400000 {
+		storage_partition: partition@D20000 {
 			label = "storage_partition";
-			reg = <0x400000 0x100000 >;
+			reg = <0xD20000 0x100000 >;
 		};
 	};
 };
