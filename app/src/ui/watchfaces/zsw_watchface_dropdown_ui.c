@@ -77,14 +77,16 @@ static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
                 }
                 break;
             }
+            default:
+                break;
         }
     }
 }
 
 void ui_event_button(lv_event_t *e)
 {
-    lv_obj_t *button = e->current_target;
-    if (e->code == LV_EVENT_CLICKED) {
+    lv_obj_t *button = lv_event_get_target_obj(e);
+    if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
         if (button == ui_flashlight_button)
             evt_cb((watchface_app_evt_t) {
             WATCHFACE_APP_EVENT_OPEN_APP, .data.app = WATCHFACE_APP_EVT_CLICK_FLASHLIGHT
@@ -119,6 +121,8 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
                 }
                 break;
             }
+            default:
+                break;
         }
     }
 }
@@ -168,7 +172,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_width(ui_music_info_label, 150);
     lv_obj_set_style_text_font(ui_music_info_label, &lv_font_montserrat_14_full, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_long_mode(ui_music_info_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_set_style_anim_speed(ui_music_info_label, 15, 0);
+    //lv_obj_set_style_anim_speed(ui_music_info_label, 15, 0);
 
     ui_music_button = lv_btn_create(ui_down_bg_panel);
     lv_obj_set_width(ui_music_button, 50);

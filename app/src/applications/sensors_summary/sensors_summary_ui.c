@@ -1,5 +1,6 @@
 #include <sensors_summary/sensors_summary_ui.h>
 #include <lvgl.h>
+#include "assert.h"
 
 static void event_set_reference_button(lv_event_t *e);
 

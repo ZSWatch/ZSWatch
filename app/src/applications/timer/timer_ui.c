@@ -1,6 +1,7 @@
 #include "timer_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
+#include "assert.h"
 
 typedef struct {
     uint32_t timer_id;

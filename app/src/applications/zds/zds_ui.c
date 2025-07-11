@@ -1,6 +1,7 @@
 #include <zds/zds_ui.h>
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
+#include <assert.h>
 
 static void on_button_pressed(lv_event_t *e);
 static void set_img_rotation(void *obj, int32_t v);

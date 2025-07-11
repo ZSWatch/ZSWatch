@@ -53,12 +53,12 @@ EMPTY_1:
   size: 0xc000
 mcuboot_primary_2:
   address: 0x120000
-  end_address: 0x160000
+  end_address: 0x220000
   orig_span: &id003
   - mcuboot_primary_2_pad
   - mcuboot_primary_2_app
   region: external_flash
-  size: 0x40000
+  size: 0x100000
   span: *id003
 mcuboot_primary_2_pad:
   address: 0x120000
@@ -67,27 +67,27 @@ mcuboot_primary_2_pad:
   size: 0x200
 mcuboot_primary_2_app:
   address: 0x120200
-  end_address: 0x40000
+  end_address: 0x220000
   region: external_flash
-  size: 0x3FE00
+  size: 0xFFE00
 mcuboot_secondary_2:
-  address: 0x160000
-  end_address: 0x1a0000
+  address: 0x220000
+  end_address: 0x320000
   region: external_flash
-  size: 0x40000
+  size: 0x100000
 littlefs_storage:
-  address: 0x1a0000
-  end_address: 0x3A0000
+  address: 0x320000
+  end_address: 0x520000
   region: external_flash
   size: 0x200000
 lvgl_raw_partition:
-  address: 0x3A0000
-  end_address: 0xBA0000
+  address: 0x520000
+  end_address: 0xD20000
   region: external_flash
   size: 0x800000
 settings_storage:
-  address: 0xBA0000
-  end_address: 0xCA0000
+  address: 0xD20000
+  end_address: 0xE20000
   size: 0x100000
   region: external_flash
 otp:

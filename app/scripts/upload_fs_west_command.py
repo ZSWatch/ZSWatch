@@ -177,11 +177,12 @@ class UploadFsWestCommand(WestCommand):
                 source_dir = f"{images_path}/S"
                 partition = partition if partition else "lvgl_raw_partition"
                 create_custom_raw_fs_image(filename, source_dir, block_size)
-                qspi_flash_address = qspi_flash_address + 0x3A0000
+                qspi_flash_address = qspi_flash_address + 0x520000
+                print("lvgl_raw_partition partition address:", qspi_flash_address)
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"
                 partition = partition if partition else "littlefs_storage"
-                qspi_flash_address = qspi_flash_address + 0x1a0000
+                qspi_flash_address = qspi_flash_address + 0x320000
                 create_littlefs_fs_image(
                     filename,
                     img_size,

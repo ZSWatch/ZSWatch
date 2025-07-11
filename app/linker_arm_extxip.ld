@@ -49,7 +49,7 @@ MEMORY
       * The size of this region is size of mcuboot_primary_2 reduced by the
       * image header size.
       */
-     EXTFLASH (wx) : ORIGIN = 0x10120200, LENGTH = 0x3FE00
+     EXTFLASH (wx) : ORIGIN = 0x10120200, LENGTH = 0x7FE00
 #endif
 }
 
