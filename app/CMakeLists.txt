@@ -116,14 +116,39 @@ message("Number of external filesystem files:" ${num_ext_fs_files})
 set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
 zephyr_compile_options(-Wno-double-promotion)
 
+
 # XIP Code Relocation
 # Placing the mcumgr code in external flash causes QSPI assert. For now keeping it in iinternal flash.
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__smp LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__transport LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__img_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__smp LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__transport LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__img_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
 
 zephyr_code_relocate(LIBRARY modules__lvgl LOCATION EXTFLASH_TEXT NOCOPY)
 zephyr_code_relocate(LIBRARY modules__lvgl LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION RAM_DATA)
+
+#zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION EXTFLASH_TEXT NOCOPY)
+#zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__usb__common__nrf_usbd_common LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__usb__common__nrf_usbd_common LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__sensor__bosch__bme680 LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__sensor__bosch__bme680 LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__sensor__st__lis2mdl LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__sensor__st__lis2mdl LOCATION RAM_DATA)
+
+zephyr_code_relocate(LIBRARY drivers__sensor__st__stmemsc LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY drivers__sensor__st__stmemsc LOCATION RAM_DATA)
