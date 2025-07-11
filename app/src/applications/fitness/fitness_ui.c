@@ -18,8 +18,10 @@ static void event_cb(lv_event_t *e)
     if (code == LV_EVENT_VALUE_CHANGED) {
         lv_obj_invalidate(chart);
     } else if (code == LV_EVENT_DRAW_POST_END) {
-        lv_layer_t * draw_layer = lv_event_get_layer(e);
-        if(!draw_layer) return;
+        lv_layer_t *draw_layer = lv_event_get_layer(e);
+        if (!draw_layer) {
+            return;
+        }
 
         lv_chart_series_t *ser = lv_chart_get_series_next(chart, NULL);
         if (!ser) {

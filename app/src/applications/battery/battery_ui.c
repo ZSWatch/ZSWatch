@@ -701,17 +701,25 @@ static void chart_event(lv_event_t *e)
 
 static void scale_event(lv_event_t *e)
 {
-    lv_draw_task_t * draw_task = lv_event_get_draw_task(e);
+    lv_draw_task_t *draw_task = lv_event_get_draw_task(e);
 
-    if(!draw_task) return;
+    if (!draw_task) {
+        return;
+    }
 
-    lv_draw_dsc_base_t * base_dsc = (lv_draw_dsc_base_t *)lv_draw_task_get_draw_dsc(draw_task);
-    if(!base_dsc || base_dsc->part != LV_PART_INDICATOR) return;
+    lv_draw_dsc_base_t *base_dsc = (lv_draw_dsc_base_t *)lv_draw_task_get_draw_dsc(draw_task);
+    if (!base_dsc || base_dsc->part != LV_PART_INDICATOR) {
+        return;
+    }
 
-    lv_draw_label_dsc_t * label_dsc = lv_draw_task_get_label_dsc(draw_task);
-    if(!label_dsc || !label_dsc->text) return;
+    lv_draw_label_dsc_t *label_dsc = lv_draw_task_get_label_dsc(draw_task);
+    if (!label_dsc || !label_dsc->text) {
+        return;
+    }
 
-    if(label_dsc->text_local) lv_free((void *)label_dsc->text);
+    if (label_dsc->text_local) {
+        lv_free((void *)label_dsc->text);
+    }
 
     char tmp_buffer[20] = {0};
     lv_snprintf(tmp_buffer, sizeof(tmp_buffer), "%.1f", (float) label_dsc->base.id2 / 1000.0);

@@ -38,9 +38,9 @@ LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_WRN);
 
 /* nPM1300 CHARGER.BCHGCHARGESTATUS register bitmasks */
 #define NPM1300_CHG_STATUS_COMPLETE_MASK BIT(1)
-#define NPM1300_CHG_STATUS_TRICKLE_MASK	 BIT(2)
-#define NPM1300_CHG_STATUS_CC_MASK	 BIT(3)
-#define NPM1300_CHG_STATUS_CV_MASK	 BIT(4)
+#define NPM1300_CHG_STATUS_TRICKLE_MASK  BIT(2)
+#define NPM1300_CHG_STATUS_CC_MASK   BIT(3)
+#define NPM1300_CHG_STATUS_CV_MASK   BIT(4)
 
 static void zbus_activity_event_callback(const struct zbus_channel *chan);
 static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan);
@@ -113,27 +113,27 @@ static void check_battery_voltage_cutoff(int mV)
 
 static int charge_status_inform(int32_t chg_status)
 {
-	union nrf_fuel_gauge_ext_state_info_data state_info;
+    union nrf_fuel_gauge_ext_state_info_data state_info;
 
-	if (chg_status & NPM1300_CHG_STATUS_COMPLETE_MASK) {
-		printk("Charge complete\n");
-		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
-	} else if (chg_status & NPM1300_CHG_STATUS_TRICKLE_MASK) {
-		printk("Trickle charging\n");
-		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_TRICKLE;
-	} else if (chg_status & NPM1300_CHG_STATUS_CC_MASK) {
-		printk("Constant current charging\n");
-		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CC;
-	} else if (chg_status & NPM1300_CHG_STATUS_CV_MASK) {
-		printk("Constant voltage charging\n");
-		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CV;
-	} else {
-		printk("Charger idle\n");
-		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_IDLE;
-	}
+    if (chg_status & NPM1300_CHG_STATUS_COMPLETE_MASK) {
+        printk("Charge complete\n");
+        state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
+    } else if (chg_status & NPM1300_CHG_STATUS_TRICKLE_MASK) {
+        printk("Trickle charging\n");
+        state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_TRICKLE;
+    } else if (chg_status & NPM1300_CHG_STATUS_CC_MASK) {
+        printk("Constant current charging\n");
+        state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CC;
+    } else if (chg_status & NPM1300_CHG_STATUS_CV_MASK) {
+        printk("Constant voltage charging\n");
+        state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CV;
+    } else {
+        printk("Charger idle\n");
+        state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_IDLE;
+    }
 
-	return nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_STATE_CHANGE,
-					       &state_info);
+    return nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_STATE_CHANGE,
+                                           &state_info);
 }
 
 static void zbus_periodic_slow_10s_callback(const struct zbus_channel *chan)
@@ -232,7 +232,7 @@ static void event_callback(const struct device *dev, struct gpio_callback *cb, u
 int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 {
     static int32_t chg_status_prev;
-    
+
     int ret;
     int error;
     float voltage;
@@ -251,23 +251,23 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     }
 
     ret = nrf_fuel_gauge_ext_state_update(
-		vbus_connected ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
-			       : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED,
-		NULL);
-	if (ret < 0) {
-		printk("Error: Could not inform of state\n");
-		return ret;
-	}
+              vbus_connected ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
+              : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED,
+              NULL);
+    if (ret < 0) {
+        printk("Error: Could not inform of state\n");
+        return ret;
+    }
 
-	if (chg_status != chg_status_prev) {
-		chg_status_prev = chg_status;
+    if (chg_status != chg_status_prev) {
+        chg_status_prev = chg_status;
 
-		ret = charge_status_inform(chg_status);
-		if (ret < 0) {
-			printk("Error: Could not inform of charge status\n");
-			return ret;
-		}
-	}
+        ret = charge_status_inform(chg_status);
+        if (ret < 0) {
+            printk("Error: Could not inform of charge status\n");
+            return ret;
+        }
+    }
 
     delta = (float) k_uptime_delta(&ref_time) / 1000.f;
 
