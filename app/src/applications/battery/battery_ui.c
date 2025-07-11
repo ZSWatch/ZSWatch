@@ -272,6 +272,8 @@ void ui_Screen1_screen_init(lv_obj_t *ui_Screen1)
     lv_scale_set_range(scale_y2, 3000, 4300);
     lv_scale_set_total_tick_count(scale_y2, 5);
     lv_scale_set_major_tick_every(scale_y2, 1);
+    lv_obj_set_style_line_width(scale_y2, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_line_width(scale_y2, 0, LV_PART_MAIN);
     lv_scale_set_label_show(scale_y2, true);
     lv_obj_set_height(scale_y2, 146);
     lv_obj_align_to(scale_y2, ui_charge_chart, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
