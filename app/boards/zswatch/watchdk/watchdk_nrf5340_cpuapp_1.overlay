@@ -22,64 +22,51 @@
 
     pwm1_default: pwm1_default {
         group1 {
-            psels = <NRF_PSEL(PWM_OUT0, 1, 5)>;
+            psels = <NRF_PSEL(PWM_OUT0, 1, 15)>;
         };
     };
 
     pwm1_sleep: pwm1_sleep {
         group1 {
-            psels = <NRF_PSEL(PWM_OUT0, 1, 5)>;
-            low-power-enable;
-        };
-    };
-
-    pwm2_default: pwm2_default {
-        group1 {
-            psels = <NRF_PSEL(PWM_OUT0, 0, 1)>;
-        };
-    };
-
-    pwm2_sleep: pwm2_sleep {
-        group1 {
-            psels = <NRF_PSEL(PWM_OUT0, 0, 1)>;
+            psels = <NRF_PSEL(PWM_OUT0, 1, 15)>;
             low-power-enable;
         };
     };
 
     i2c1_default: i2c1_default {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
-                <NRF_PSEL(TWIM_SCL, 0, 7)>;
+            psels = <NRF_PSEL(TWIM_SDA, 0, 27)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 25)>;
         };
     };
 
     i2c1_sleep: i2c1_sleep {
         group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
-                <NRF_PSEL(TWIM_SCL, 0, 7)>;
+            psels = <NRF_PSEL(TWIM_SDA, 0, 27)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 25)>;
             low-power-enable;
         };
     };
 
     qspi_default: qspi_default {
         group1 {
-            psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
-                <NRF_PSEL(QSPI_IO0, 0, 13)>,
-                <NRF_PSEL(QSPI_IO1, 0, 14)>,
-                <NRF_PSEL(QSPI_IO2, 0, 15)>,
-                <NRF_PSEL(QSPI_IO3, 0, 16)>,
-                <NRF_PSEL(QSPI_CSN, 0, 18)>;
+            psels = <NRF_PSEL(QSPI_IO0, 0, 13)>,
+                    <NRF_PSEL(QSPI_IO1, 0, 14)>,
+                    <NRF_PSEL(QSPI_IO2, 0, 15)>,
+                    <NRF_PSEL(QSPI_IO3, 0, 16)>,
+                    <NRF_PSEL(QSPI_SCK, 0, 17)>,
+                    <NRF_PSEL(QSPI_CSN, 0, 18)>;
             nordic,drive-mode = <NRF_DRIVE_H0H1>;
         };
     };
 
     qspi_sleep: qspi_sleep {
         group1 {
-            psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
-                <NRF_PSEL(QSPI_IO0, 0, 13)>,
-                <NRF_PSEL(QSPI_IO1, 0, 14)>,
-                <NRF_PSEL(QSPI_IO2, 0, 15)>,
-                <NRF_PSEL(QSPI_IO3, 0, 16)>;
+            psels = <NRF_PSEL(QSPI_IO0, 0, 13)>,
+                    <NRF_PSEL(QSPI_IO1, 0, 14)>,
+                    <NRF_PSEL(QSPI_IO2, 0, 15)>,
+                    <NRF_PSEL(QSPI_IO3, 0, 16)>,
+                    <NRF_PSEL(QSPI_SCK, 0, 17)>;
             low-power-enable;
         };
 
@@ -102,10 +89,17 @@
     };
 };
 
-&pwm2 {
+&pwm0 {
     status = "okay";
-    pinctrl-0 = <&pwm2_default>;
-    pinctrl-1 = <&pwm2_sleep>;
+    pinctrl-0 = <&pwm0_default>;
+    pinctrl-1 = <&pwm0_sleep>;
+    pinctrl-names = "default", "sleep";
+};
+
+&pwm1 {
+    status = "okay";
+    pinctrl-0 = <&pwm1_default>;
+    pinctrl-1 = <&pwm1_sleep>;
     pinctrl-names = "default", "sleep";
 };
 
@@ -119,8 +113,24 @@
 
     aliases {
         spi-flash0 = &mx25u51245g;
-        buzzer-pwm = &buzzer_pwm;
         rtc = &rv_8263_c8;
+		touch-enable = &touch_gpio;
+    };
+
+    fstab {
+        compatible = "zephyr,fstab";
+
+        lvgl_lfs: lvgl_lfs {
+            compatible = "zephyr,fstab,littlefs";
+            mount-point = "/lvgl_lfs";
+            partition = <&littlefs_storage>;
+            automount;
+            read-size = <512>;
+            prog-size = <512>;
+            cache-size = <512>;
+            lookahead-size = <4096>;
+            block-cycles = <512>;
+        };
     };
 
     longpress: longpress {
@@ -137,20 +147,20 @@
 
         button1: button_1 {
             label = "top-right";
-            gpios = <&gpio0 27 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            gpios = <&gpio0 19 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_1>;
         };
 
         button2: button_2 {
-            label = "bottom-left";
-            gpios = <&gpio1 10 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_2>;
+            label = "bottom-right";
+            gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_KP0>;
         };
 
         button3: button_3 {
-            label = "bottom-right";
-            gpios = <&gpio0 31 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_KP0>;
+            label = "bottom-left";
+            gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_2>;
         };
 
         button4: button_4 {
@@ -163,19 +173,22 @@
     vib_pwr: vib-pwr-ctrl {
         compatible = "regulator-fixed";
         regulator-name = "vib-pwr-ctrl";
-        enable-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
+        enable-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
     };
 
     mic_pwr: mic-pwr-ctrl {
         compatible = "regulator-fixed";
         regulator-name = "mic-pwr-ctrl";
-        enable-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+        enable-gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
     };
 
-    buzzer_pwr: buzzer-pwr-ctrl {
-        compatible = "regulator-fixed";
-        regulator-name = "buzzer-pwr-ctrl";
-        enable-gpios = <&gpio0 1 0>;
+    leds {
+        status = "okay";
+        compatible = "gpio-leds";
+
+        touch_gpio: led_0 {
+            gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+        };
     };
 
     pwmleds {
@@ -188,15 +201,7 @@
         vibrator_pwm: pwm_led_1 {
             pwms = <&pwm1 0 PWM_MSEC(20) 0>;
         };
-
-        buzzer_pwm: pwm_led_2 {
-            pwms = <&pwm2 0 PWM_HZ(880) PWM_POLARITY_NORMAL>;
-        };
     };
-};
-
-&uart0 {
-    status = "disabled";
 };
 
 &i2c1 {
@@ -208,7 +213,7 @@
         compatible = "st,lis2mdl";
         reg = <0x1e>;
         status = "okay";
-        irq-gpios = <&gpio0 24 0>;
+        irq-gpios = <&gpio0 21 0>;
         cancel-offset;
     };
 
@@ -216,7 +221,6 @@
         compatible = "bosch,zsw_bmp581";
         reg = <0x47>;
         status = "okay";
-        int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };
 
     rv_8263_c8: rv-8263-c8@51 {
@@ -224,14 +228,14 @@
         reg = <0x51>;
         status = "okay";
         clkout = <0>;
-        int-gpios = <&gpio1 13 (GPIO_PULL_UP)>;
+        int-gpios = <&gpio1 3 (GPIO_PULL_UP)>;
     };
 
     bmi270: bmi270@68 {
         compatible = "bosch,bmi270-plus";
         reg = <0x68>;
         status = "okay";
-        int-gpios = <&gpio1 4 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+        int-gpios = <&gpio1 0 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
         // NOTE: The swap is performed AFTER the axis inversion. So we have to invert the y axis of the sensor
         // to get the x axis of the watch coordinate system.
         swap-xy;
@@ -241,7 +245,7 @@
     apds9306: apds9306@52 {
         compatible = "avago,apds9306";
         reg = <0x52>;
-        status = "okay";
+        status = "disabled";
         gain = <0>;
         resolution = <0>;
         frequency = <0>;
@@ -250,8 +254,8 @@
     npm1300_pmic: pmic@6b {
         compatible = "nordic,npm1300";
         reg = <0x6b>;
-        host-int-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
-        pmic-int-pin	= <4>;
+        host-int-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+        pmic-int-pin = <4>;
 
         npm1300_gpio: gpio-controller {
             compatible = "nordic,npm1300-gpio";
@@ -276,11 +280,9 @@
                 regulator-init-microvolt = <3000000>;
             };
 
-            regulator_3v3: LDO1 {
-                regulator-min-microvolt = <3300000>;
-                regulator-max-microvolt = <3300000>;
-                regulator-initial-mode = <NPM1300_LDSW_MODE_LDO>;
-                regulator-boot-on;
+            // LDO1 is not used
+            npm1300_ldo1: LDO1 {
+                status = "disabled";
             };
 
             // LDO2 is not used
@@ -318,8 +320,8 @@
         compatible = "hynitron,cst816s";
         reg = <0x15>;
         status = "okay";
-        irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
-        rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+        irq-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+        rst-gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
     };
 };
 
@@ -329,7 +331,7 @@
     pinctrl-0 = <&spi4_default>;
     pinctrl-1 = <&spi4_sleep>;
     pinctrl-names = "default", "sleep";
-    cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+    cs-gpios = <&gpio0 11 GPIO_ACTIVE_LOW>;
 
     gc9a01: gc9a01@0 {
         compatible = "buydisplay,gc9a01";
@@ -338,9 +340,9 @@
         reg = <0>;
         width = <240>;
         height = <240>;
-        bl-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
+        bl-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>; // TODO: Can we remove this?
         reset-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-        dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+        dc-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
     };
 };
 
@@ -369,24 +371,6 @@
         writeoc = "pp4io";
         readoc = "read4io";
         quad-enable-requirements = "S1B6";
-    };
-};
-
-/ {
-    fstab {
-        compatible = "zephyr,fstab";
-
-        lvgl_lfs: lvgl_lfs {
-            compatible = "zephyr,fstab,littlefs";
-            mount-point = "/lvgl_lfs";
-            partition = <&littlefs_storage>;
-            automount;
-            read-size = <512>;
-            prog-size = <512>;
-            cache-size = <512>;
-            lookahead-size = <4096>;
-            block-cycles = <512>;
-        };
     };
 };
 

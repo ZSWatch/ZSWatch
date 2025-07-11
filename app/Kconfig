@@ -12,37 +12,37 @@ menu "ZSWatch"
         config APPLICATIONS_USE_2048
             bool
         prompt "Activate the application '2048'"
-        default y
+        default n
 
         config APPLICATIONS_USE_ACCELEROMETER
             bool
         prompt "Activate the application 'Accelerometer'"
-        default y
+        default n
 
         config APPLICATIONS_USE_COMPASS
             bool
         prompt "Activate the application 'Compass'"
-        default y
+        default yn
 
         config APPLICATIONS_USE_INFO
             bool
         prompt "Activate the application 'Info'"
-        default y
+        default n
 
         config APPLICATIONS_USE_QR_CODE
             bool
         prompt "Activate the application 'QR-Code'"
-        default y if LV_Z_USE_FILESYSTEM
+        default n if LV_Z_USE_FILESYSTEM
 
         config APPLICATIONS_USE_SENSORS_SUMMARY
             bool
         prompt "Activate the application 'Sensors Summary'"
-        default y
+        default n
 
         config APPLICATIONS_USE_X_RAY
             bool
         prompt "Activate the application 'X-Ray'"
-        default y if LV_Z_USE_FILESYSTEM
+        default n if LV_Z_USE_FILESYSTEM
 
         config APPLICATIONS_USE_ZDS
             bool
@@ -59,7 +59,7 @@ menu "ZSWatch"
         config APPLICATIONS_USE_TRIVIA
             bool
         prompt "Activate the application 'Trivia'"
-        default y
+        default n
 
         config APPLICATIONS_USE_PPT_REMOTE
             bool
@@ -69,7 +69,7 @@ menu "ZSWatch"
         config APPLICATIONS_USE_CHRONOS
             bool
         prompt "Activate the application 'Chronos'"
-        default y
+        default n
 
         menu "Configuration"
             menu "Compass"

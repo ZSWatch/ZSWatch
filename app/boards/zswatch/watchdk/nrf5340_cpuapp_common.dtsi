@@ -18,23 +18,12 @@
         zephyr,display = &gc9a01;
     };
 
-    pwmleds {
-        compatible = "pwm-leds";
-        display_blk: pwm_led_0 {
-            pwms = <&pwm0 0 PWM_USEC(15) PWM_POLARITY_INVERTED>;
-        };
-        vibrator_pwm: pwm_led_1 {
-            pwms = <&pwm1 0 PWM_MSEC(20) 0>;
-        };
-    };
-
     lvgl_pointer_input: lvgl_pointer {
         compatible = "zephyr,lvgl-pointer-input";
         input = <&cst816s>;
         swap-xy;
         invert-x;
     };
-
 
     aliases {
         display-blk = &display_blk;
@@ -60,22 +49,16 @@
     status = "okay";
 };
 
-&pwm0 {
-    status = "okay";
-    pinctrl-0 = <&pwm0_default>;
-    pinctrl-1 = <&pwm0_sleep>;
-    pinctrl-names = "default", "sleep";
-};
-
-&pwm1 {
-    status = "okay";
-    pinctrl-0 = <&pwm1_default>;
-    pinctrl-1 = <&pwm1_sleep>;
-    pinctrl-names = "default", "sleep";
+&pwm2 {
+    status = "disabled";
 };
 
 &adc {
-    status = "okay";
+    status = "disabled";
+};
+
+&uart0 {
+    status = "disabled";
 };
 
 &gpiote {
@@ -89,6 +72,10 @@
 
 &gpio1 {
     status = "okay";
+};
+
+&spi3 {
+    status = "disabled";
 };
 
 &i2c1 {
@@ -180,9 +167,7 @@ zephyr_udc0: &usbd {
             /* Non-Secure image memory */
         };
     };
-};
 
-/ {
     sram@2006E000 {
         compatible = "zephyr,memory-region", "mmio-sram";
         reg = <0x2006E000 0x2000>;
@@ -222,10 +207,9 @@ zephyr_udc0: &usbd {
     };
 
     chosen {
-            zephyr,boot-mode = &retention1;
+        zephyr,boot-mode = &retention1;
     };
 };
-
 
 /*
 * Reduce SRAM0 usage by 256 bytes to account for non-init area.
