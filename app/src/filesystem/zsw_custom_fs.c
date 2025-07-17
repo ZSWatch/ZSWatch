@@ -38,13 +38,13 @@ LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
 
 #define ZSW_FS_MOUNT_POINT "/S"
 
-#include LV_MEM_CUSTOM_INCLUDE
+//#include LV_MEM_CUSTOM_INCLUDE
 
 #define TABLE_HEADER_MAGIC 0x0A0A0A0A
 
-#define SPI_FLASH_SECTOR_SIZE        4096
+#define SPI_FLASH_SECTOR_SIZE   4096
 
-#define FLASH_PARTITION_NAME            lvgl_raw_partition
+#define FLASH_PARTITION_NAME    lvgl_raw_partition
 
 #define FLASH_PARTITION_ID      FIXED_PARTITION_ID(FLASH_PARTITION_NAME)
 #define FLASH_PARTITION_DEVICE  FIXED_PARTITION_DEVICE(FLASH_PARTITION_NAME)
@@ -476,7 +476,7 @@ static void *lvgl_fs_dir_open(struct _lv_fs_drv_t *drv, const char *path)
     return NULL;
 }
 
-static lv_fs_res_t lvgl_fs_dir_read(struct _lv_fs_drv_t *drv, void *dir, char *fn)
+static lv_fs_res_t lvgl_fs_dir_read(struct _lv_fs_drv_t *drv, void *dir, char *fn, uint32_t fn_len)
 {
     return LV_FS_RES_NOT_IMP;
 }
@@ -646,6 +646,9 @@ static int zsw_decoder_init(void)
 
         };
         rc = fs_mount(&zsw_fs_mount);
+    } else {
+        LOG_ERR("Failed to register ZSWatch file system: %d", rc);
+        return rc;
     }
 
     return rc;

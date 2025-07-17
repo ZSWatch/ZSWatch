@@ -18,6 +18,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
+#include <assert.h>
 
 #include "ui/zsw_ui.h"
 #include "managers/zsw_app_manager.h"
@@ -206,8 +207,8 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, LV_PART_MAIN);
 
-    lv_img_header_t header;
-    lv_img_decoder_get_info(icon, &header);
+    lv_image_header_t header;
+    lv_image_decoder_get_info(icon, &header);
 
     lv_obj_set_size(cont, LV_PCT(100), header.h + 6);
     lv_obj_clear_flag(cont,
@@ -277,7 +278,7 @@ static void draw_application_picker(void)
     lv_group_focus_obj(lv_obj_get_child(grid, apps[last_index]->private_list_index));
 
     /* Update the notifications position manually firt time */
-    lv_event_send(grid, LV_EVENT_SCROLL, NULL);
+    lv_obj_send_event(grid, LV_EVENT_SCROLL, NULL);
 
     /* Be sure the fist notification is in the middle */
     lv_obj_scroll_to_view(lv_obj_get_child(grid, apps[last_index]->private_list_index), LV_ANIM_OFF);

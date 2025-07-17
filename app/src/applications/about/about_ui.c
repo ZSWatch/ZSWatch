@@ -1,5 +1,6 @@
 #include "about_ui.h"
 #include "ui/zsw_ui.h"
+#include "assert.h"
 
 static lv_obj_t *root_page = NULL;
 

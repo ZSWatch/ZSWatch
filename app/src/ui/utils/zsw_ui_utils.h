@@ -18,6 +18,7 @@
 #pragma once
 
 #include <lvgl.h>
+#include <string.h>
 #include "managers/zsw_notification_manager.h"
 
 #define CONCATINATE_(a, b) a##b

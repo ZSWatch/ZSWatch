@@ -7,7 +7,7 @@ ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
 
 static void delete_event(lv_event_t *e)
 {
-    k_free(e->user_data);
+    k_free(lv_event_get_user_data(e));
 }
 
 zsw_ui_notification_area_t *zsw_ui_notification_area_add(lv_obj_t *parent)
