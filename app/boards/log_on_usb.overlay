@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-&chosen {
-    zephyr,console = &cdc_acm_uart0;
-    zephyr,shell-uart = &cdc_acm_uart0;
-    zephyr,uart-mcumgr = &cdc_acm_uart0;
+/ {
+    chosen {
+        zephyr,console = &cdc_acm_uart0;
+        zephyr,shell-uart = &cdc_acm_uart0;
+        zephyr,uart-mcumgr = &cdc_acm_uart0;
+    };
 };
