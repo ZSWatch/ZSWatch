@@ -37,6 +37,8 @@
 
 #if CONFIG_RTC
 static const struct device *const rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
+// Needed to get rid of strptime warning
+char *strptime(const char *buf, const char *format, struct tm *tm);
 #else
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
@@ -137,9 +139,23 @@ static int zsw_clock_init(void)
 
     memset(&tm, 0, sizeof(struct rtc_time));
     if (rtc_get_time(rtc, &tm) == -ENODATA) {
-        LOG_WRN("RTC has no valid time, setting to 0");
-        memset(&tm, 0, sizeof(struct rtc_time));
-        tm.tm_year = 100;
+        // Parse __DATE__ and __TIME__ to set RTC to build time
+        struct tm build_tm = {0};
+        char build_time_str[32];
+        snprintf(build_time_str, sizeof(build_time_str), "%s %s", __DATE__, __TIME__);
+        strptime(build_time_str, "%b %d %Y %H:%M:%S", &build_tm);
+
+        tm.tm_sec  = build_tm.tm_sec;
+        tm.tm_min  = build_tm.tm_min;
+        tm.tm_hour = build_tm.tm_hour;
+        tm.tm_mday = build_tm.tm_mday;
+        tm.tm_mon  = build_tm.tm_mon;
+        tm.tm_year = build_tm.tm_year - 1900; // RTC expects year since 1900
+        tm.tm_wday = build_tm.tm_wday;
+        tm.tm_yday = build_tm.tm_yday;
+        tm.tm_isdst = build_tm.tm_isdst;
+
+        rtc_set_time(rtc, &tm);
 #ifdef CONFIG_BOARD_NATIVE_POSIX
         struct tm *tp;
         time_t t;

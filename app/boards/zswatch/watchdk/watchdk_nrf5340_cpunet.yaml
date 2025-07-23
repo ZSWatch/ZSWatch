@@ -1,0 +1,14 @@
+identifier: watchdk/nrf5340/cpunet
+name: WatchDK-nRF5340-Network-MCU
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 64
+flash: 256
+supported:
+  - watchdog
+  - gpio
+vendor: zswatch
