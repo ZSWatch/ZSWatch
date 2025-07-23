@@ -37,6 +37,8 @@
 
 #if CONFIG_RTC
 static const struct device *const rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
+// Needed to get rid of strptime warning
+char *strptime(const char *buf, const char *format, struct tm *tm);
 #else
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
