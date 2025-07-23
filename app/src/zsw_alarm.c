@@ -44,7 +44,10 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_dat
     }
 
     ret = rtc_get_time(rtc, &current_time);
-    __ASSERT(ret == 0, "Failed to get current time");
+    if (ret != 0) {
+        LOG_ERR("Failed to get current time: %d", ret);
+        return ret;
+    }
 
     // If year, month or day is not set, set it to current date.
     // alarms must have a fully valid date.
