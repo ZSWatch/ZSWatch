@@ -156,7 +156,7 @@ static int zsw_clock_init(void)
         tm.tm_isdst = build_tm.tm_isdst;
 
         rtc_set_time(rtc, &tm);
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
         struct tm *tp;
         time_t t;
         t = time(NULL);

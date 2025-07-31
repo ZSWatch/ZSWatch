@@ -193,7 +193,7 @@ int zsw_display_control_pwr_ctrl(bool on)
                 LOG_DBG("Display sleeping, power off");
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_POWERED_OFF;
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#ifndef CONFIG_ARCH_POSIX
                     regulator_disable(reg_dev);
 #endif
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_OFF);
@@ -209,7 +209,7 @@ int zsw_display_control_pwr_ctrl(bool on)
                 LOG_DBG("Display is off, power already on");
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_SLEEPING;
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#ifndef CONFIG_ARCH_POSIX
                     regulator_enable(reg_dev);
 #endif
                     // As the device pm state after TURN_ON is SUSPENDED
@@ -264,7 +264,7 @@ static void lvgl_render(struct k_work *item)
 {
     // Workaround due to https://github.com/zephyrproject-rtos/zephyr/issues/71410
     // we need to run lv_task_handler from main thread and disable CONFIG_LV_Z_FLUSH_THREAD
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#ifndef CONFIG_ARCH_POSIX
     const int64_t next_update_in_ms = lv_task_handler();
     if (first_render_since_poweron) {
         zsw_display_control_set_brightness(last_brightness);

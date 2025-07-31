@@ -12,7 +12,7 @@
 #include <zephyr/drivers/regulator.h>
 #include <zephyr/logging/log.h>
 
-#if (CONFIG_ZSWATCH_PCB_REV >= 5 || CONFIG_BOARD_NATIVE_POSIX)
+#if (CONFIG_ZSWATCH_PCB_REV >= 5 || CONFIG_ARCH_POSIX)
 
 LOG_MODULE_REGISTER(zsw_buzzer, LOG_LEVEL_WRN);
 

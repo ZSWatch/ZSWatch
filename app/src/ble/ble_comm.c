@@ -21,6 +21,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <string.h>
+#include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>

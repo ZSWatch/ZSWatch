@@ -32,7 +32,7 @@ void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_ve
     lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *ui_logo_img = lv_img_create(root_page);
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
     lv_img_set_src(ui_logo_img, ZSW_LV_IMG_USE(zswatch_text));
 #else
     lv_img_set_src(ui_logo_img, "S:zswatch_text.bin");
@@ -93,7 +93,7 @@ void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_ve
     lv_obj_set_style_text_font(ui_hw_revision, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_t *icon_img = lv_img_create(root_page);
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
     lv_img_set_src(icon_img, ZSW_LV_IMG_USE(ZSWatch_logo_small));
 #else
     lv_img_set_src(icon_img, "S:ZSWatch_logo_small.bin");

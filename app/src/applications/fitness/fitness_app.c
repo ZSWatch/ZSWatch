@@ -111,7 +111,7 @@ static void step_sample_work(struct k_work *work)
     int next_sample_seconds;
 
     if (zsw_imu_fetch_num_steps(&sample.steps) != 0) {
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
         sample.steps = rand() % 1000;
 #else
         LOG_WRN("Error during fetching of steps!");

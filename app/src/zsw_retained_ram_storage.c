@@ -17,7 +17,7 @@
 
 #include <zephyr/kernel.h>
 #include "zsw_retained_ram_storage.h"
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#ifndef CONFIG_ARCH_POSIX
 #include <stdlib.h>
 #include <zephyr/device.h>
 #include <zephyr/retention/retention.h>

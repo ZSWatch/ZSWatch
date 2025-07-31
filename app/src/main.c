@@ -262,7 +262,7 @@ static void run_init_work(struct k_work *item)
     }
 #endif
 
-#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_BOARD_NATIVE_POSIX)
+#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_ARCH_POSIX)
     const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
     if (!device_is_ready(hw_wdt_dev)) {
         LOG_DBG("Hardware watchdog %s is not ready; ignoring it.",
@@ -302,7 +302,7 @@ int main(void)
 
     // Workaround due to https://github.com/zephyrproject-rtos/zephyr/issues/71410
     // we need to run lv_task_handler from main thread and disable CONFIG_LV_Z_FLUSH_THREAD
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
     int64_t next_update_in_ms;
     while (true) {
         next_update_in_ms = lv_task_handler();
@@ -317,7 +317,7 @@ static void enable_bluetooth(void)
 {
     int err;
 
-#ifdef CONFIG_BOARD_NATIVE_POSIX
+#ifdef CONFIG_ARCH_POSIX
     bt_addr_le_t addr;
 
     err = bt_addr_le_from_str("DE:AD:BE:EF:BA:11", "random", &addr);

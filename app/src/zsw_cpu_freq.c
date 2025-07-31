@@ -17,7 +17,7 @@
 
 #include <zsw_cpu_freq.h>
 #include <zephyr/kernel.h>
-#ifndef CONFIG_BOARD_NATIVE_POSIX
+#ifndef CONFIG_ARCH_POSIX
 #include <nrfx_clock.h>
 
 //#define CPU_CLOCK_PROFILING

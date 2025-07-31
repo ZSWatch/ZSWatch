@@ -1,0 +1,78 @@
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/{
+    sdl_dc {
+        compatible = "zephyr,sdl-dc";
+        height = <240>;
+        width = <240>;
+    };
+};
+
+// Map "Enter, Backspace, Arrow down and Arrow up" to gpio
+// Check https://docs.zephyrproject.org/latest/build/dts/api/bindings/gpio/zephyr,gpio-emul-sdl.html for additional informations
+&gpio0 {
+    ngpios = <4>;
+
+    sdl_gpio {
+        compatible = "zephyr,gpio-emul-sdl";
+        scancodes = <40 81 42 82>;
+    };
+};
+
+/ {
+	buttons: buttons {
+        compatible = "gpio-keys";
+        polling-mode; // Use polling, as none polling generates at boot buttons releases for each button. Which is not desired. Maybe a bug in Zephyr?
+
+        key1: key1 {
+            label = "top-right";
+            gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
+            zephyr,code = <INPUT_KEY_1>;
+        };
+        key2: key2 {
+            label = "bottom-left";
+            gpios = <&gpio0 1 GPIO_ACTIVE_HIGH>;
+            zephyr,code = <INPUT_KEY_2>;
+        };
+        key3: key3 {
+            label = "bottom-right";
+            gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+            zephyr,code = <INPUT_KEY_3>;
+        };
+        key4: key4 {
+            label = "top-left";
+            gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+            zephyr,code = <INPUT_KEY_4>;
+        };
+    };
+};
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+		lvgl_lfs: lvgl_lfs {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lvgl_lfs";
+			partition = <&littlefs_storage>;
+			automount;
+			read-size = <1024>;
+			prog-size = <512>;
+			cache-size = <4096>;
+			lookahead-size = <4096>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+&flash0 {
+    partitions {
+        littlefs_storage: partition@100000 {
+			label = "littlefs_storage";
+			reg = <0x00100000 0x000f0000>;
+		};
+        lvgl_raw_partition: partition@1f0000 {
+			label = "lvgl_raw_partition";
+			reg = <0x001f0000 0x0000d000>;
+		};
+    };
+};

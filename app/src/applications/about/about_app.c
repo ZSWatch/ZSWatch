@@ -1,5 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <stdio.h>
 #include "app_version.h"
 #include <version.h>
 #include <ncs_version.h>
