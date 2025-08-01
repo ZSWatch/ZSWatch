@@ -116,9 +116,7 @@ message("Number of external filesystem files:" ${num_ext_fs_files})
 set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
 zephyr_compile_options(-Wno-double-promotion)
 
-
 # XIP Code Relocation
-# Placing the mcumgr code in external flash causes QSPI assert. For now keeping it in iinternal flash.
 if (CONFIG_MCUMGR)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
@@ -128,10 +126,10 @@ if (CONFIG_MCUMGR)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
 endif()
 
-# This Works:
-#zephyr_code_relocate(LIBRARY modules__lvgl LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY modules__lvgl LOCATION RAM_DATA)
-
+# Relocate some LVGL sources to external flash.
+# More can be added here if needed.
+# Note code running from external flash is slower than internal flash.
+# So choose wisely...
 set (LVGL_RELOCATE_SOURCES
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_10.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_12.c

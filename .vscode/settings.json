@@ -22,8 +22,4 @@
     "[c]": {
         "editor.defaultFormatter": "chiehyu.vscode-astyle"
     },
-    "files.associations": {
-        "zsw_ui_utils.h": "c",
-        "zsw_ui.h": "c"
-    }
 }
