@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         built_type: [debug, release]
-        board: [zswatch@3/nrf5340/cpuapp, zswatch@4/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_posix/native, nrf5340dk/nrf5340/cpuapp]
+        board: [watchdk@1/nrf5340/cpuapp, zswatch@3/nrf5340/cpuapp, zswatch@4/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_sim/native/64, nrf5340dk/nrf5340/cpuapp]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
           mv lvgl_resources_raw.hex fw_images/lvgl_resources_raw.hex
 
       - name: Build firmware
-        if: ${{ matrix.board != 'native_posix/native' }}
+        if: ${{ matrix.board != 'native_sim/native/64' }}
         working-directory: ZSWatch
         run: |
           EXTRA_ARGS=""
@@ -76,14 +76,14 @@ jobs:
             EXTRA_ARGS="-DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf"
           fi
           export EXTRA_ARGS
-          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DEXTRA_CONF_FILE="boards/bsec.conf" -DBOARD_ROOT=${PWD}/app
+          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DBOARD_ROOT=${PWD}/app
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}.hex
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
           if [ -f "${{ env.BUILD_DIR }}/dfu_application.zip" ]; then
             mv ${{ env.BUILD_DIR }}/dfu_application.zip fw_images/dfu_application.zip
           fi
 
-          west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DEXTRA_CONF_FILE="boards/bsec.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
+          west build app --build-dir ${{ env.BUILD_DIR }}_rotated -p -b ${{ matrix.board }} -- ${EXTRA_ARGS} -DEXTRA_DTC_OVERLAY_FILE="boards/clockwise_rotation.overlay" -DBOARD_ROOT=${PWD}/app
           mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
           mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
           if [ -f "${{ env.BUILD_DIR }}_rotated/dfu_application.zip" ]; then
