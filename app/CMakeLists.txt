@@ -128,14 +128,31 @@ if (CONFIG_MCUMGR)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__grp__os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
 endif()
 
-zephyr_code_relocate(LIBRARY modules__lvgl LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(LIBRARY modules__lvgl LOCATION RAM_DATA)
+# This Works:
+#zephyr_code_relocate(LIBRARY modules__lvgl LOCATION EXTFLASH_TEXT NOCOPY)
+#zephyr_code_relocate(LIBRARY modules__lvgl LOCATION RAM_DATA)
+
+set (LVGL_RELOCATE_SOURCES
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_10.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_12.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_14.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_16.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_20.c
+    ../modules/lib/gui/lvgl/src/widgets/chart/lv_chart.c
+    ../modules/lib/gui/lvgl/src/widgets/scale/lv_scale.c
+    ../modules/lib/gui/lvgl/src/widgets/dropdown/lv_dropdown.c
+    ../modules/lib/gui/lvgl/src/widgets/buttonmatrix/lv_buttonmatrix.c
+)
+
+zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION EXTFLASH_RODATA NOCOPY)
+zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION RAM_DATA)
 
 zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION EXTFLASH_TEXT NOCOPY)
 zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION RAM_DATA)
 
-#zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION EXTFLASH_TEXT NOCOPY)
-#zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION RAM_DATA)
+zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION RAM_DATA)
 
 zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION EXTFLASH_TEXT NOCOPY)
 zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION RAM_DATA)

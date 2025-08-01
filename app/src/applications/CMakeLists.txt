@@ -19,4 +19,13 @@ FOREACH(subdir ${SUBDIRS})
     message(STATUS ${subdir})
 ENDFOREACH()
 
+# Collect RELOCATE_FILES from all subdirectories and relocate them
+if(RELOCATE_FILES)
+  zephyr_code_relocate(FILES ${RELOCATE_FILES} LOCATION EXTFLASH_TEXT NOCOPY)
+  zephyr_code_relocate(FILES ${RELOCATE_FILES} LOCATION EXTFLASH_RODATA NOCOPY)
+  zephyr_code_relocate(FILES ${RELOCATE_FILES} LOCATION RAM_DATA)
+endif()
+
+set(RELOCATE_FILES ${RELOCATE_FILES} ${app_sources} PARENT_SCOPE)
+
 target_sources(app PRIVATE ${app_sources})

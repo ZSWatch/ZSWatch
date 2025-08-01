@@ -14,6 +14,9 @@ static lv_obj_t *ui_sdk_versions;
 ZSW_LV_IMG_DECLARE(ZSWatch_logo_small);
 ZSW_LV_IMG_DECLARE(zswatch_text);
 
+LV_FONT_DECLARE(lv_font_montserrat_10);
+LV_FONT_DECLARE(lv_font_montserrat_12);
+
 void about_ui_show(lv_obj_t *root, int hw_version, char *fw_version, char *fw_version_info, char *sdk_version,
                    char *fs_stats, int num_apps)
 {
