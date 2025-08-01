@@ -5,42 +5,42 @@
     "tasks": [
         {
             "label": "Generate Raw FS",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type raw --generate_only"
         },
         {
             "label": "Generate LittleFS",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type lfs --generate_only"
         },
         {
             "label": "Upload Raw FS v5",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type raw --ini_file app/qspi_mx25u51245.ini"
         },
         {
             "label": "Upload Raw FS v4",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type raw --ini_file app/qspi_at25sl128a.ini"
         },
         {
             "label": "Upload LittleFS v5",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type lfs --ini_file app/qspi_mx25u51245.ini"
         },
         {
             "label": "Upload LittleFS v4",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --type lfs --ini_file app/qspi_at25sl128a.ini"
         },
         {
             "label": "Erase external flash v5",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --erase --ini_file app/qspi_mx25u51245.ini"
         },
         {
             "label": "Erase external flash v4",
-            "type": "shell",
+            "type": "nrf-connect-shell",
             "command": "west upload_fs --erase --ini_file app/qspi_at25sl128a.ini"
         },
         {
