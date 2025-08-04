@@ -255,11 +255,11 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_set_x(ui_bri_slider, -10);
     lv_obj_set_y(ui_bri_slider, 35);
     lv_obj_set_align(ui_bri_slider, LV_ALIGN_TOP_RIGHT);
-    lv_obj_set_style_radius(ui_bri_slider, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_bri_slider, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(ui_bri_slider, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_bri_slider, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    lv_obj_set_style_radius(ui_bri_slider, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_bri_slider, 5, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
     lv_obj_set_style_bg_color(ui_bri_slider, lv_color_hex(0x000000), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_bri_slider, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
