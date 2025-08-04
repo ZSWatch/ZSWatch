@@ -1,22 +1,25 @@
 import time
 import logging
 import utils
+import yaml
 
 log = logging.getLogger()
 
 
-def test_flash():
-    """Test flashing, don't need to assert as failing to flash throws exception"""
-    utils.flash()
-
-
-def test_reset():
-    """Test Reset, don't need to assert as failing to reset throws exception"""
-    utils.reset()
-
-
-def test_boot():
-    search_string = "Enter inactive"
-    log.info("Booting...")
-    log.info("Check for \'{}\' string".format(search_string))
-    assert utils.read_rtt(timeout_ms=60000).find(search_string) != -1
+def test_boot(device_config):
+    search_string = "Disable Pairable"
+    log.info("Check for '{}' string".format(search_string))
+    timeout_s = 10
+    start_time = time.time()
+    output = ""
+    found = False
+    while time.time() - start_time < timeout_s:
+        chunk = utils.read_serial(device_config["serial"], timeout_ms=500)
+        output += chunk
+        if search_string in output:
+            found = True
+            break
+    log.info(output)
+    assert (
+        found
+    ), f"'{search_string}' not found in serial output within {timeout_s} seconds"

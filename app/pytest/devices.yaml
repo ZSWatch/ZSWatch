@@ -1,0 +1,7 @@
+devices:
+  watchdk@1:
+    jlink_serial: "1057713387"
+    serial_port: "/dev/ttyUSB0"
+    mac: "EE:3E:1E:D6:BF:FA"
+  native_sim:
+    mac: "EE:3E:1E:D6:BF:FA"

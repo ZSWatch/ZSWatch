@@ -275,6 +275,8 @@ static void run_init_work(struct k_work *item)
 
     k_work_schedule(&wdt_work, K_NO_WAIT);
 #endif
+
+    LOG_INF("ZSWatch application started");
 }
 
 static void run_wdt_work(struct k_work *item)

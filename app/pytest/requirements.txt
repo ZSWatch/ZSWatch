@@ -23,3 +23,10 @@ python-can>=4.3.0
 
 # RTT connection
 pylink-square
+
+pytest
+pytest-html
+
+bleak
+pytest-asyncio
+smpclient

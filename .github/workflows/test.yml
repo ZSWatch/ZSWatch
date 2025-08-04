@@ -2,37 +2,50 @@ on: [workflow_call]
 
 jobs:
   test:
-    runs-on: self-hosted
-    container: 
-      image: ghcr.io/zephyrproject-rtos/zephyr-build:v0.26.2
-      volumes:
-        - /dev/bus/usb/:/dev/bus/usb
-      options: --privileged
+    runs-on: [self-hosted, x64]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
       - name: Install dependencies
-        continue-on-error: true # JLink install will fail
+        continue-on-error: true # JLink install may fail
         run: |
           if [ ! -f "`which JLinkExe`" ]; then
             echo "Installing JLink tools..."
-            wget -q --post-data 'accept_license_agreement=accepted&non_emb_ctr=confirmed&submit=Download+software' https://www.segger.com/downloads/jlink/JLink_Linux_V796t_x86_64.deb
+            sudo apt-get update
+            sudo apt-get install -y udev
+            wget -q --post-data 'accept_license_agreement=accepted&non_emb_ctr=confirmed&submit=Download+software' https://www.segger.com/downloads/jlink/JLink_Linux_V856a_x86_64.deb
             sudo apt -qq update
-            sudo apt -y install ./JLink_Linux_V796t_x86_64.deb &>/dev/null
+            sudo apt -y install ./JLink_Linux_V856a_x86_64.deb &>/dev/null
           fi
 
           if [ ! -f "`which nrfjprog`" ]; then
             echo "Installing Nordic command line tools..."
             wget -q https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/desktop-software/nrf-command-line-tools/sw/versions-10-x-x/10-24-2/nrf-command-line-tools_10.24.2_amd64.deb
-            sudo apt -y install ./nrf-command-line-tools_10.24.2_amd64.deb &>/dev/null
+            sudo apt -y install ./nrf-command-line-tools_10.24.2_amd64.deb
             export PATH=$PATH:/opt
           fi
+
+          if [ ! -f "`which nrfutil`" ]; then
+            echo "Installing nrfutil udev rules..."
+            sudo apt install -y libusb-1.0-0
+            wget -q https://github.com/NordicSemiconductor/nrf-udev/releases/download/v1.0.1/nrf-udev_1.0.1-all.deb
+            sudo dpkg -i nrf-udev_1.0.1-all.deb
+
+            echo "Installing nrfutil..."
+            wget -q https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil -o nrfutil
+            sudo mv nrfutil /opt/nrfutil
+            sudo chmod +x /opt/nrfutil
+
+            echo "nrfutil self-upgrade..."
+            /opt/nrfutil self-upgrade
+            /opt/nrfutil install device
+            export PATH=$PATH:/opt
+          fi
+
+          sudo apt-get install -y bluez
+          sudo apt-get install xvfb
+          sudo apt-get install imagemagick
 
           python -m pip install --upgrade pip
           pip install -r app/pytest/requirements.txt
@@ -40,12 +53,58 @@ jobs:
       - name: 'Download image'
         uses: actions/download-artifact@v4
         with:
-          name: zswatch_nrf5340_cpuapp@3_debug
+          name: watchdk@1_nrf5340_cpuapp_debug
+          path: app/pytest/
+
+      - name: 'Download image'
+        uses: actions/download-artifact@v4
+        with:
+          name: native_sim_native_64_debug
+          path: app/pytest/
 
       - name: Display structure of downloaded files
-        run: ls
+        run: |
+          ls
+          ls app/pytest
 
       - name: Test with pytest
         run: |
-          pip install pytest
-          pytest app/pytest/
+          set +e
+          cd app/pytest
+          ls -l
+          pytest \
+            --junitxml=report_target.xml -v \
+            -m 'not linux_only' \
+            --html=report_target.html \
+            --self-contained-html
+
+          pytest \
+            --board=native_sim \
+            -m 'linux_only' --board=native_sim \
+            --junitxml=report_linux.xml -v \
+            --html=report_linux.html \
+            --self-contained-html
+
+      - name: Upload test reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            app/pytest/report_*.xml
+            app/pytest/report_*.html
+
+      - name: Annotate test failures in PR
+        if: success() || failure()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: 'app/pytest/report_*.xml'
+          include_passed: true
+          detailed_summary: true
+          job_summary: true
+          comment: true
+          updateComment: true
+          annotate_notice: true
+          annotations_limit: 50
+          fail_on_failure: false # Until test setup is stable, let it fail gracefully
+

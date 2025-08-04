@@ -1,13 +1,13 @@
 &bt_hci_controller {
-    status = "okay";
+    status = "disabled";
 };
 
 &bt_hci_sdc {
-    status = "disabled";
+    status = "okay";
 };
 
 / {
     chosen {
-        zephyr,bt-hci = &bt_hci_controller;
+        zephyr,bt-hci = &bt_hci_sdc;
     };
 };

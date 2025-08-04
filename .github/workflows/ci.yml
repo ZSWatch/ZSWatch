@@ -2,11 +2,15 @@ on:
     pull_request:
     workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
 
-  # Temporary disable until we have a fixed HW test setup
-  #test:
-  #  needs: [build]
-  #  uses: ./.github/workflows/test.yml
+  test:
+    needs: [build]
+    uses: ./.github/workflows/test.yml
