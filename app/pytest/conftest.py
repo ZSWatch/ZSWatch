@@ -4,8 +4,18 @@ import logging
 import yaml
 import serial
 import time
+from ppk2_helper import setup_ppk2
 
 logging.basicConfig(level=logging.INFO)
+
+
+@pytest.fixture(scope="function")
+def ppk2_instance(device_config, prepare_device):
+    """Fixture to provide PPK2 instance for power measurement tests"""
+    if "ppk2" not in device_config:
+        pytest.skip("PPK2 not available for this device")
+
+    return device_config["ppk2"]
 
 
 def get_all_devices():
@@ -26,9 +36,13 @@ def pytest_generate_tests(metafunc):
     - Automatically injects test cases for multiple boards.
     - Supports filtering via the --board CLI option.
     - Skips devices like 'native_sim' based on test markers (e.g., -m 'not linux_only').
+    - Skips devices without PPK2 for tests marked with @pytest.mark.ppk2.
     """
-    if "device_param" not in metafunc.fixturenames:
-        return  # Only handle tests requesting device_param
+    if (
+        "device_param" not in metafunc.fixturenames
+        and "device_config" not in metafunc.fixturenames
+    ):
+        return  # Only handle tests requesting device_param or device_config
 
     board_option = metafunc.config.getoption("--board")
     devices = get_all_devices()
@@ -38,6 +52,13 @@ def pytest_generate_tests(metafunc):
         metafunc.config.option.markexpr
         and "not linux_only" in metafunc.config.option.markexpr
     )
+
+    # Check if this test requires PPK2
+    requires_ppk2 = False
+    for mark in metafunc.definition.iter_markers():
+        if mark.name == "ppk2":
+            requires_ppk2 = True
+            break
 
     # Build list of devices to parametrize
     param_devices = []
@@ -50,12 +71,16 @@ def pytest_generate_tests(metafunc):
         if skip_native_sim and board_name == "native_sim":
             continue  # Skip native_sim if requested
 
+        # Skip devices without PPK2 if test requires it
+        if requires_ppk2 and "ppk2_port" not in device_cfg:
+            continue
+
         device = dict(device_cfg)
         param_devices.append(device)
         ids.append(board_name)
 
     if not param_devices:
-        raise ValueError("No devices match the selection criteria")
+        return
 
     metafunc.parametrize("device_param", param_devices, ids=ids)
 
@@ -67,12 +92,10 @@ def device_config(device_param):
     board = device.get("board", None) or next(
         (k for k, v in get_all_devices().items() if v == device), None
     )
-    logging.info(f"Using device configuration for board: {board}")
 
     serial_device = None
     if "serial_port" in device:
         serial_device = serial.Serial(device["serial_port"], baudrate=115200, timeout=5)
-        print(f"Connected to serial port: {device['serial_port']}")
 
     cfg = dict(device)
     cfg["board"] = str(board)
@@ -81,8 +104,22 @@ def device_config(device_param):
     yield cfg
 
     if serial_device and serial_device.is_open:
-        logging.info("Closing serial connection")
         serial_device.close()
+
+
+# Track PPK2 instances for session cleanup
+_ppk2_instances = []
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ppk2_session_cleanup():
+    """Session-scoped fixture to cleanup all PPK2 instances at the end of the session"""
+    yield  # Let all tests run first
+
+    # Cleanup all PPK2 instances
+    for ppk2_manager in _ppk2_instances:
+        ppk2_manager.cleanup()
+    _ppk2_instances.clear()
 
 
 def pytest_addoption(parser):
@@ -96,32 +133,37 @@ _flashed_boards = set()
 @pytest.fixture(autouse=True)
 def prepare_device(device_config):
     board = device_config["board"]
-    if board in _flashed_boards:
-        return
+
+    # Setup PPK2 power if available (always needed for PPK2 tests)
+    if "ppk2_port" in device_config and "ppk2" not in device_config:
+        ppk2_manager = setup_ppk2(device_config)
+        # Store PPK2 manager in device_config for access by ppk2_instance fixture
+        if ppk2_manager:
+            device_config["ppk2"] = ppk2_manager
+            _ppk2_instances.append(ppk2_manager)
+            time.sleep(2)  # Allow PPK2 to settle after setup
+
     if "jlink_serial" in device_config:
+        # Flash only once per board
+        if board in _flashed_boards:
+            return
         try:
-            print(f"\n Recovering device: {board}")
             utils.recover(device_config)
-            print(f"\n Flashing device: {board}")
             utils.flash(device_config)
-            time.sleep(1)
             _flashed_boards.add(board)
         except Exception as e:
             logging.error(f"Error preparing device {board}: {e}")
+            if "ppk2" in device_config:
+                device_config["ppk2"].cleanup()
             pytest.skip(
                 "Skipping tests: flashing failed (device not ready or connected?)"
             )
             raise
-    else:
-        logging.info(f"No jlink_serial for {board}, skipping recover/flash.")
 
 
 # Reset before each test
 @pytest.fixture(autouse=True)
 def reset_device(device_config):
     if "jlink_serial" in device_config:
-        print(f"\n Resetting device: {device_config['board']}")
         utils.reset(device_config)
         time.sleep(1)
-    else:
-        logging.info(f"No jlink_serial for {device_config['board']}, skipping reset.")

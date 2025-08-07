@@ -30,3 +30,5 @@ pytest-html
 bleak
 pytest-asyncio
 smpclient
+
+ppk2-api

@@ -71,7 +71,8 @@ jobs:
         run: |
           set +e
           cd app/pytest
-          ls -l
+          # Make sure bt hci adapter is on.
+          sudo btmgmt --index 0 power on
           pytest \
             --junitxml=report_target.xml -v \
             -m 'not linux_only' \
