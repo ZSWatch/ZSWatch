@@ -68,17 +68,20 @@ jobs:
           ls app/pytest
 
       - name: Test with pytest
+        id: pytest_run
         run: |
           set +e
           cd app/pytest
+
           # Make sure bt hci adapter is on.
+          sudo btmgmt --index 0 power off
           sudo btmgmt --index 0 power on
+
           pytest \
             --junitxml=report_target.xml -v \
             -m 'not linux_only' \
             --html=report_target.html \
             --self-contained-html
-
           pytest \
             --board=native_sim \
             -m 'linux_only' --board=native_sim \
@@ -94,6 +97,7 @@ jobs:
           path: |
             app/pytest/report_*.xml
             app/pytest/report_*.html
+            app/pytest/power_results.json
 
       - name: Annotate test failures in PR
         if: success() || failure()
@@ -109,3 +113,34 @@ jobs:
           annotations_limit: 50
           fail_on_failure: false # Until test setup is stable, let it fail gracefully
 
+      - name: Create/Update Power Consumption Comment
+        if: github.event_name == 'pull_request' && (success() || failure())
+        continue-on-error: true
+        run: |
+          cd app/pytest
+          if [ -f "power_results.json" ]; then
+            echo "Generating power consumption comment..."
+            python power_logger.py > power_comment.md
+          else
+            echo "## ⚡ Power Consumption" > power_comment.md
+            echo "" >> power_comment.md
+            echo "❌ No power consumption tests were run in this build." >> power_comment.md
+          fi
+
+      - name: Find existing power consumption comment
+        if: github.event_name == 'pull_request' && (success() || failure())
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '⚡ Power Consumption'
+
+      - name: Create or update power consumption comment
+        if: github.event_name == 'pull_request' && (success() || failure())
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: app/pytest/power_comment.md
+          edit-mode: replace

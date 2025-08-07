@@ -85,8 +85,8 @@ def generate_power_comment() -> str:
         return "## ⚡ Power Consumption\n\n❌ No power measurements found."
     
     comment = "## ⚡ Power Consumption Results\n\n"
-    comment += "| Test | Average Current | Range | Battery Life* |\n"
-    comment += "|------|----------------|-------|---------------|\n"
+    comment += "| Test | Average Current | Range |\n"
+    comment += "|------|----------------|-------|\n"
     
     for m in measurements:
         test_name = m["test"].replace("_", " ").title()
@@ -98,18 +98,7 @@ def generate_power_comment() -> str:
         else:
             range_str = "N/A"
         
-        # Calculate battery life (200mAh battery)
-        battery_life = "N/A"
-        if m["average_ma"] > 0:
-            hours = 200 / m["average_ma"]
-            if hours > 24:
-                battery_life = f"{hours / 24:.1f} days"
-            else:
-                battery_life = f"{hours:.1f} hours"
-        
-        comment += f"| {test_name} | {avg_current} | {range_str} | {battery_life} |\n"
-    
-    comment += "\n*Estimated with 200mAh battery\n"
+        comment += f"| {test_name} | {avg_current} | {range_str} |\n"
     
     return comment
 
