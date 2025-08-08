@@ -1,0 +1,152 @@
+/*
+ * Copyright (c) 2023 Jakob Krantz
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+    /delete-node/ buttons;
+    
+    chosen {
+        nordic,pm-ext-flash = &mx25r64;
+        zephyr,console = &cdc_acm_uart0;
+        zephyr,shell-uart = &cdc_acm_uart0;
+        zephyr,uart-mcumgr = &cdc_acm_uart0;
+    };
+
+    aliases {
+        mcuboot-button0 = &button1;
+        sw0 = &button4;
+    };
+
+    buttons: buttons {
+        compatible = "gpio-keys";
+        button1: button_1 {
+            label = "top-right";
+            gpios = <&gpio0 23 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_1>;
+        };
+        button2: button_2 {
+            label = "bottom-left";
+            gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_2>;
+        };
+        button3: button_3 {
+            label = "bottom-right";
+            gpios = <&gpio0 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_3>;
+        };
+        button4: button_4 {
+            label = "top-left";
+            gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            zephyr,code = <INPUT_KEY_KP0>;
+        };
+    };
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&uart0 {
+    status = "disabled";
+};
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+		lvgl_lfs: lvgl_lfs {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lvgl_lfs";
+			partition = <&littlefs_storage>;
+			automount;
+			read-size = <1024>;
+			prog-size = <512>;
+			cache-size = <4096>;
+			lookahead-size = <4096>;
+			block-cycles = <512>;
+		};
+	};
+};
+
+/delete-node/ &storage_partition;
+
+&mx25r64 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+        
+        // For Nordic Partition manager to work it has to have this name.
+        littlefs_storage: partition@320000 {
+            label = "littlefs_storage";
+            reg = <0x320000 0x10000>;
+        };
+
+        lvgl_raw_partition: partition@330000 {
+            label = "lvgl_raw_partition";
+            reg = <0x330000 0x4C8000>;
+        };
+
+        storage_partition: partition@7F8000 {
+            label = "storage_partition";
+            reg = <0x7F8000 0x8000>;
+        };
+    };
+};
+
+
+/ {
+    sram@2006E000 {
+        compatible = "zephyr,memory-region", "mmio-sram";
+        reg = <0x2006E000 0x2000>;
+        zephyr,memory-region = "RetainedMem";
+        status = "okay";
+
+        retainedmem {
+            compatible = "zephyr,retained-ram";
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            retention_coredump: retention@0 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x0 0x1F00>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+
+            retention0: retention@1F00 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1F00 0xFB>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+            // Last byte in RAM is for boot mode.
+            // Du to debugger only supports writing 4 bytes at a time
+            // we need to leave a 3 byte gap between the two retention areas.
+            retention1: retention@1FFF {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1FFF 0x1>;
+            };
+        };
+    };
+
+    chosen {
+            zephyr,boot-mode = &retention1;
+            zephyr,console = &uart0;
+    };
+};
+
+/*
+* Reduce SRAM0 usage by 256 bytes to account for non-init area.
+* The last 256 bytes of SRAM0 are used for retention memory.
+*/
+&sram0 {
+    //reg = <0x20000000 0x7DFFF>;
+};

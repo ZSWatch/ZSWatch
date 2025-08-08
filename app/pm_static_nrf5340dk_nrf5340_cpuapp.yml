@@ -77,18 +77,18 @@ mcuboot_secondary_2:
   size: 0x100000
 littlefs_storage:
   address: 0x320000
-  end_address: 0x520000
+  end_address: 0x330000
   region: external_flash
-  size: 0x200000
+  size: 0x10000
 lvgl_raw_partition:
-  address: 0x520000
-  end_address: 0xD20000
+  address: 0x330000
+  end_address: 0x7F8000
   region: external_flash
-  size: 0x800000
+  size: 0x4C8000
 settings_storage:
-  address: 0xD20000
-  end_address: 0xE20000
-  size: 0x100000
+  address: 0x7F8000
+  end_address: 0x800000
+  size: 0x8000
   region: external_flash
 otp:
   address: 0xff8100

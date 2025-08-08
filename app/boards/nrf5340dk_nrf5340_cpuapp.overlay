@@ -243,25 +243,57 @@
 
 /delete-node/ &storage_partition;
 
-&mx25r64 {
-	partitions {
-		compatible = "fixed-partitions";
-		#address-cells = <1>;
-		#size-cells = <1>;
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
 
-		littlefs_storage: partition@0 {
-			label = "littlefs_storage";
-			reg = <0x00000000 0x00200000>;
-		};
-		lvgl_raw_partition: partition@200000 {
-			label = "lvgl_raw_partition";
-			reg = <0x00200000 0x00200000>;
-		};
-        storage_partition: partition@400000 {
-            label = "storage_partition";
-            reg = <0x400000 0x100000 >;
+        boot_partition: partition@0 {
+            label = "mcuboot";
+            reg = <0x00000000 0x00010000>;
         };
-	};
+        slot0_partition: partition@10000 {
+            label = "image-0";
+        };
+        slot0_ns_partition: partition@50000 {
+            label = "image-0-nonsecure";
+        };
+        slot1_partition: partition@80000 {
+            label = "image-1";
+        };
+        slot1_ns_partition: partition@c0000 {
+            label = "image-1-nonsecure";
+        };
+        scratch_partition: partition@f0000 {
+            label = "image-scratch";
+            reg = <0x000f0000 0xa000>;
+        };
+    };
+};
+
+&mx25r64 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+        
+        // For Nordic Partition manager to work it has to have this name.
+        littlefs_storage: partition@320000 {
+            label = "littlefs_storage";
+            reg = <0x320000 0x10000>;
+        };
+
+        lvgl_raw_partition: partition@330000 {
+            label = "lvgl_raw_partition";
+            reg = <0x330000 0x4C8000>;
+        };
+
+        storage_partition: partition@7F8000 {
+            label = "storage_partition";
+            reg = <0x7F8000 0x8000>;
+        };
+    };
 };
 
 / {
