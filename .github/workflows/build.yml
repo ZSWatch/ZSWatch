@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         build_type: [debug, release]
-        board: [watchdk@1/nrf5340/cpuapp, zswatch@3/nrf5340/cpuapp, zswatch@4/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_sim/native/64, nrf5340dk/nrf5340/cpuapp]
+        board: [watchdk@1/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_sim/native/64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -60,7 +60,7 @@ async def test_smp_echo(device_config):
         matched_server is not None
     ), f"Device with MAC {mac} not found among SMP servers!"
 
-    log.info("Connecting to the first SMP server...")
+    log.info("Connecting to the SMP server...")
     async with SMPClient(SMPBLETransport(), matched_server.address) as client:
         log.info("OK")
 

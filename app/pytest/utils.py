@@ -125,12 +125,11 @@ def recover(device_config):
     )
 
 
-def read_rtt(target_device="nRF5340_XXAA", timeout_ms=10000):
+def read_rtt(serial_number, timeout_ms=10000, target_device="nRF5340_XXAA",):
     """Read Segger RTT output"""
     jlink = pylink.JLink()
-    logging.getLogger("pylink.jlink").setLevel(logging.WARNING)
     log.info("Connecting to JLink...")
-    jlink.open(serial_no=SERIAL_NUMBER)
+    jlink.open(serial_no=serial_number)
     log.info("Connecting to %s..." % target_device)
     jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
     jlink.connect(target_device)
@@ -168,3 +167,13 @@ def read_serial(serial_device, timeout_ms=10000):
     print(read_data)
     log.debug(read_data)
     return read_data
+
+def read_log(device_config, timeout_ms=10000):
+    """Read from either RTT or serial based on device configuration"""
+    if "serial_port" in device_config:
+        return read_serial(device_config["serial"], timeout_ms)
+    elif "jlink_serial" in device_config and device_config["jlink_serial"]:
+        return read_rtt(device_config["jlink_serial"], timeout_ms)
+    else:
+        log.error("No valid communication method found in device configuration.")
+        return ""

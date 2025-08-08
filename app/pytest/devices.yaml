@@ -1,8 +1,12 @@
 devices:
   watchdk@1:
     jlink_serial: "1057713387"
-    serial_port: "/dev/ttyUSB0"
+    serial_port: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B0031VW0-if00-port0"
     mac: "EE:3E:1E:D6:BF:FA"
-    ppk2_port: "/dev/ttyACM0"
+    ppk2_port: "/dev/serial/by-id/usb-Nordic_Semiconductor_PPK2_E01C7386A791-if01"
   native_sim:
-    mac: "EE:3E:1E:D6:BF:FA"
+    mac: "DE:AD:BE:EF:BA:11"
+  zswatch@5:
+    jlink_serial: "760208515"
+    serial_port: "/dev/serial/by-id/usb-SEGGER_J-Link_000760208515-if00"
+    mac: "D1:09:65:51:46:FA"

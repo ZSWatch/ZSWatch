@@ -14,7 +14,7 @@ def test_boot(device_config):
     output = ""
     found = False
     while time.time() - start_time < timeout_s:
-        chunk = utils.read_serial(device_config["serial"], timeout_ms=500)
+        chunk = utils.read_log(device_config, timeout_ms=1000)
         output += chunk
         if search_string in output:
             found = True

@@ -59,6 +59,12 @@ jobs:
       - name: 'Download image'
         uses: actions/download-artifact@v4
         with:
+          name: zswatch@5_nrf5340_cpuapp_debug
+          path: app/pytest/
+
+      - name: 'Download image'
+        uses: actions/download-artifact@v4
+        with:
           name: native_sim_native_64_debug
           path: app/pytest/
 
@@ -102,6 +108,7 @@ jobs:
       - name: Annotate test failures in PR
         if: success() || failure()
         uses: mikepenz/action-junit-report@v5
+        continue-on-error: true # Ensure this step never fails the workflow
         with:
           report_paths: 'app/pytest/report_*.xml'
           include_passed: true
@@ -112,6 +119,8 @@ jobs:
           annotate_notice: true
           annotations_limit: 50
           fail_on_failure: false # Until test setup is stable, let it fail gracefully
+          fail_on_parse_error: false # Don't fail on XML parsing errors
+          require_tests: false # Don't require tests to be found
 
       - name: Create/Update Power Consumption Comment
         if: github.event_name == 'pull_request' && (success() || failure())

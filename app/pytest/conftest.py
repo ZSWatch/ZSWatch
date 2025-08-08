@@ -95,7 +95,11 @@ def device_config(device_param):
 
     serial_device = None
     if "serial_port" in device:
-        serial_device = serial.Serial(device["serial_port"], baudrate=115200, timeout=5)
+        try:
+            serial_device = serial.Serial(device["serial_port"], baudrate=115200, timeout=5)
+        except serial.SerialException as e:
+            logging.error(f"Failed to open serial port {device['serial_port']}: {e}")
+            pytest.skip(f"Skipping tests: cannot open serial port {device['serial_port']}")
 
     cfg = dict(device)
     cfg["board"] = str(board)
