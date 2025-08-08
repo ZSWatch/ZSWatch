@@ -1,5 +1,7 @@
 import time
 import logging
+
+import pytest
 import utils
 import yaml
 
@@ -7,9 +9,12 @@ log = logging.getLogger()
 
 
 def test_boot(device_config):
+    if "serial_port" not in device_config:
+        pytest.skip("No serial port configured for device, RTT not supported right now")
     search_string = "Disable Pairable"
     log.info("Check for '{}' string".format(search_string))
     timeout_s = 10
+    utils.reset(device_config)
     start_time = time.time()
     output = ""
     found = False

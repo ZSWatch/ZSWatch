@@ -8,5 +8,4 @@ devices:
     mac: "DE:AD:BE:EF:BA:11"
   zswatch@5:
     jlink_serial: "760208515"
-    serial_port: "/dev/serial/by-id/usb-SEGGER_J-Link_000760208515-if00"
     mac: "D1:09:65:51:46:FA"

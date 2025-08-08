@@ -125,7 +125,11 @@ def recover(device_config):
     )
 
 
-def read_rtt(serial_number, timeout_ms=10000, target_device="nRF5340_XXAA",):
+def read_rtt(
+    serial_number,
+    timeout_ms=10000,
+    target_device="nRF5340_XXAA",
+):
     """Read Segger RTT output"""
     jlink = pylink.JLink()
     log.info("Connecting to JLink...")
@@ -167,6 +171,7 @@ def read_serial(serial_device, timeout_ms=10000):
     print(read_data)
     log.debug(read_data)
     return read_data
+
 
 def read_log(device_config, timeout_ms=10000):
     """Read from either RTT or serial based on device configuration"""
