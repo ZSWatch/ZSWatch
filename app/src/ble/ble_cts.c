@@ -134,13 +134,17 @@ static void discover_completed_cb(struct bt_gatt_dm *dm, void *ctx)
     } else {
         has_cts = true;
 
-        if (bt_conn_get_security(cts_c.conn) >= BT_SECURITY_L2) {
+        err = bt_conn_get_security(cts_c.conn);
+
+        if (err >= BT_SECURITY_L2) {
             enable_notifications();
 
             err = bt_cts_read_current_time(&cts_c, read_current_time_cb);
             if (err) {
                 LOG_ERR("Failed reading current time (err: %d)", err);
             }
+        } else {
+            LOG_WRN("Link not secured (security %d), enable pairing and try again", err);
         }
     }
 
