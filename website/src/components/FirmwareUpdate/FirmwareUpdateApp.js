@@ -142,7 +142,7 @@ const FirmwareUpdateApp = () => {
                   <span className={`text-sm font-medium ${
                     bluetoothAvailable ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
                   }`}>
-                    Bluetooth {bluetoothAvailable ? 'Available' : 'Not Available'}
+                    Bluetooth {bluetoothAvailable ? 'Available' : 'Not Available. Check Browser Support.'}
                   </span>
                 </div>
               </div>
@@ -239,9 +239,9 @@ const FirmwareUpdateApp = () => {
                     <span className="group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
-                    <p>• Forget device in OS Bluetooth settings</p>
-                    <p>• Ensure watch is in DFU mode</p>
-                    <p>• Use supported browser</p>
+                    <p className="m-0">• Forget device in OS Bluetooth settings</p>
+                    <p className="m-0">• Ensure watch is on</p>
+                    <p className="m-0">• Use supported browser</p>
                   </div>
                 </details>
                 
@@ -251,9 +251,9 @@ const FirmwareUpdateApp = () => {
                     <span className="group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
-                    <p>• Reset watch and reconnect</p>
-                    <p>• Check file format (.zip or .bin)</p>
-                    <p>• Try USB method if persistent</p>
+                    <p className="m-0">• Reset watch, reload page and reconnect</p>
+                    <p className="m-0">• Check file format (.zip or .bin)</p>
+                    <p className="m-0">• Fallback to USB (TBD instructions)</p>
                   </div>
                 </details>
               </div>
