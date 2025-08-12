@@ -326,6 +326,33 @@ static void request_mtu_exchange(void)
     }
 }
 
+static void on_pair_request_confirm(bool yes_pressed)
+{
+    if (!yes_pressed) {
+        return;
+    }
+
+    struct bt_conn *conn = NULL;
+    int rc;
+
+    // if the connection is still active, current_con is not null
+    // then we can update the security level
+    if (current_conn) {
+        conn = bt_conn_ref(current_conn);
+    }
+    if (!conn) {
+        LOG_WRN("Pairing accepted but no active connection");
+        return;
+    }
+
+    rc = bt_conn_set_security(conn, BT_SECURITY_L2);
+    if (rc != 0) {
+        LOG_ERR("Failed to set security: %d", rc);
+        bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
+    }
+    bt_conn_unref(conn);
+}
+
 static void ble_connected(struct bt_conn *conn, uint8_t err)
 {
     char addr[BT_ADDR_LE_STR_LEN];
@@ -351,11 +378,10 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
 
     if (pairing_enabled) {
-        int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
-        if (rc != 0) {
-            LOG_ERR("Failed to set security: %d", rc);
-            bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
-        }
+        zsw_popup_show("Pairing Request. Address:", addr, on_pair_request_confirm, 10, true);
+    } else {
+        zsw_popup_show("Connected", "If pairing is needed,"
+                       "\nenable Pairable\nin Bluetooth Settings\nand re-connect", NULL, 5, false);
     }
     ble_chronos_state(true);
 }
