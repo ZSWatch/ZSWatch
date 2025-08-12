@@ -29,6 +29,11 @@ const config = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 
+  // Custom fields for environment variables
+  customFields: {
+    githubToken: process.env.REACT_APP_GITHUB_TOKEN || '',
+  },
+
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
