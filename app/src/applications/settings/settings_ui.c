@@ -49,8 +49,8 @@ static lv_obj_t *create_text(lv_obj_t *parent, const char *icon, const char *txt
     lv_obj_t *label = NULL;
 
     if (icon) {
-        img = lv_img_create(obj);
-        lv_img_set_src(img, icon);
+        img = lv_image_create(obj);
+        lv_image_set_src(img, icon);
     }
 
     if (txt) {
@@ -168,7 +168,7 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     // Border around selected menu row when focused
     lv_style_init(&outline_primary);
     lv_style_set_border_color(&outline_primary, lv_color_hex(0xF99B7D));
-    lv_style_set_border_width(&outline_primary, lv_display_dpx(lv_disp_get_next(NULL), 3));
+    lv_style_set_border_width(&outline_primary, lv_display_dpx(lv_display_get_next(NULL), 3));
     lv_style_set_border_opa(&outline_primary, LV_OPA_50);
     lv_style_set_border_side(&outline_primary, LV_BORDER_SIDE_BOTTOM);
 

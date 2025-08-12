@@ -142,7 +142,7 @@ static lv_settings_item_t bluetooth_page_items[] = {
     },
     {
         .type = LV_SETTINGS_TYPE_SWITCH,
-        .icon = "",
+        .icon = NULL,
         .change_callback = on_aoa_enable_changed,
         .item = {
             .sw = {
