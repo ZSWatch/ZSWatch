@@ -112,9 +112,9 @@ const FirmwareUpdateApp = () => {
     const isConnecting = screen === SCREENS.CONNECTING;
     
     return (
-      <div className="grid grid-cols-1 xl:grid-cols-11 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-8 xl:grid-cols-11 gap-6">
         {/* Left Column - Sidebar with Connection, Browser Support & Troubleshooting */}
-        <div className="xl:col-span-3 space-y-6">
+        <div className="lg:col-span-2 xl:col-span-3 space-y-6">
           {/* Connection Status & Controls */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Connection</h2>
@@ -262,7 +262,7 @@ const FirmwareUpdateApp = () => {
         </div>
 
         {/* Middle Column - Manual Upload & File System */}
-        <div className="xl:col-span-4 space-y-6">
+        <div className="lg:col-span-3 xl:col-span-4 space-y-6">
           {/* Manual Firmware Upload */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Manual Upload</h2>
@@ -305,7 +305,7 @@ const FirmwareUpdateApp = () => {
         </div>
 
         {/* Right Column - Prebuilt Firmware & Images */}
-        <div className="xl:col-span-4 space-y-6">
+        <div className="lg:col-span-3 xl:col-span-4 space-y-6">
           {/* Prebuilt Firmware */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Prebuilt Firmware</h2>
