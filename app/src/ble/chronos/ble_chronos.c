@@ -348,9 +348,7 @@ void ble_chronos_extract_notification(const char *input, char **title, char **me
     // Check title conditions
     if (title_length >= 30 || (newline_pos && newline_pos < colon_pos)) {
         // Title is too long or contains a newline before ':'
-        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, (int)colon_pos,
-                (int)input,
-                (int)(colon_pos - input));
+        LOG_INF("Title is too long %zu or contains a newline before ':'", title_length);
         *message = strdup(input);
         return;
     }
@@ -625,6 +623,7 @@ void ble_chronos_data_received()
             case 0x7E:
                 // weather data received
                 // contains daily forecast
+            {
                 struct tm tm_info = ble_chronos_get_time_struct();
                 chronos_time_t time = {
                     .hour = tm_info.tm_hour,
@@ -647,7 +646,8 @@ void ble_chronos_data_received()
                 if (configuration_callback != NULL) {
                     configuration_callback(CH_CONFIG_WEATHER, 1, 0);
                 }
-                break;
+            }
+            break;
             case 0x7F:
                 // sleep settings
                 // bool enabled = incoming.data[6];
@@ -694,6 +694,7 @@ void ble_chronos_data_received()
                 // hour; incoming.data[11]
                 // minute; incoming.data[12]
                 // seconds; incoming.data[13]
+            {
                 struct tm t = {0, 0, 0, 0, 0, 0, 0, 0, 0};      // Initalize to all 0's
                 t.tm_year = (incoming.data[7] * 256) + incoming.data[8] - 1900;    // This is year-1900, so 121 = 2021
                 t.tm_mon = incoming.data[9] - 1;
@@ -703,8 +704,8 @@ void ble_chronos_data_received()
                 t.tm_sec = incoming.data[13];
                 time_t epoch = mktime(&t);
                 parse_time((uint32_t)epoch);
-
-                break;
+            }
+            break;
             case 0x9C:
                 // watchface font style and color settings
                 // uint32_t colorRGB = ((uint32_t)incoming.data[5] << 16) | ((uint32_t)incoming.data[6] << 8) | (uint32_t)incoming.data[7]
@@ -840,6 +841,7 @@ void ble_chronos_data_received()
                 case 0x01:
                     // weather city name
                     // incoming.data[7:len]
+                {
                     char city[512] = {0};
 
                     for (int i = 7; i < len; i++) {
@@ -855,10 +857,11 @@ void ble_chronos_data_received()
                     if (configuration_callback != NULL) {
                         configuration_callback(CH_CONFIG_WEATHER, 0, 1);
                     }
-
-                    break;
+                }
+                break;
                 case 0x02:
                     // hourly weather forecsat
+                {
                     int size = incoming.data[6]; // data size
                     int hour = incoming.data[7]; // current hour
                     struct tm tm_info = ble_chronos_get_time_struct();
@@ -877,7 +880,8 @@ void ble_chronos_data_received()
                         hourly_forecast[hour + z].icon = icon;
                         hourly_forecast[hour + z].temp = temp;
                     }
-                    break;
+                }
+                break;
             }
         }
     }

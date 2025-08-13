@@ -92,7 +92,7 @@ static struct k_work_sync cancel_work_sync;
 static uint8_t up_buffer[UP_BUFFER_SIZE];
 #endif
 
-static void sensor_fusion_timeout(struct k_work *)
+static void sensor_fusion_timeout(struct k_work *work)
 {
     int ret = 0;
 
