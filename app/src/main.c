@@ -30,7 +30,6 @@
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/settings/settings.h>
-#include <zephyr/task_wdt/task_wdt.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/retention/bootmode.h>
 
@@ -76,12 +75,9 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
-#define TASK_WDT_FEED_INTERVAL_MS  3000
-
 struct input_event last_input_event;
 
 static void run_init_work(struct k_work *item);
-static void run_wdt_work(struct k_work *item);
 static void enable_bluetooth(void);
 static void print_retention_ram(void);
 static void open_notification_popup(void *data);
@@ -89,9 +85,6 @@ static void on_popup_notifcation_closed(uint32_t id);
 static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 
-static int kernal_wdt_id;
-
-K_WORK_DELAYABLE_DEFINE(wdt_work, run_wdt_work);
 K_WORK_DEFINE(init_work, run_init_work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -124,27 +117,7 @@ static void run_init_work(struct k_work *item)
     }
 #endif
 
-#if defined(CONFIG_TASK_WDT) && !defined(CONFIG_ARCH_POSIX)
-    const struct device *hw_wdt_dev = DEVICE_DT_GET(DT_ALIAS(watchdog0));
-    if (!device_is_ready(hw_wdt_dev)) {
-        LOG_DBG("Hardware watchdog %s is not ready; ignoring it.",
-                hw_wdt_dev->name);
-        hw_wdt_dev = NULL;
-    }
-
-    task_wdt_init(hw_wdt_dev);
-    kernal_wdt_id = task_wdt_add(TASK_WDT_FEED_INTERVAL_MS * 5, NULL, NULL);
-
-    k_work_schedule(&wdt_work, K_NO_WAIT);
-#endif
-
     LOG_INF("ZSWatch application started");
-}
-
-static void run_wdt_work(struct k_work *item)
-{
-    task_wdt_feed(kernal_wdt_id);
-    k_work_schedule(&wdt_work, K_MSEC(TASK_WDT_FEED_INTERVAL_MS));
 }
 
 int main(void)
