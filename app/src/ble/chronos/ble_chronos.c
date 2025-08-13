@@ -348,9 +348,7 @@ void ble_chronos_extract_notification(const char *input, char **title, char **me
     // Check title conditions
     if (title_length >= 30 || (newline_pos && newline_pos < colon_pos)) {
         // Title is too long or contains a newline before ':'
-        LOG_INF("Title is too long %d or contains a newline before ':' at %d - %d = %d", title_length, (int)colon_pos,
-                (int)input,
-                (int)(colon_pos - input));
+        LOG_INF("Title is too long %zu or contains a newline before ':'", title_length);
         *message = strdup(input);
         return;
     }
@@ -625,27 +623,29 @@ void ble_chronos_data_received()
             case 0x7E:
                 // weather data received
                 // contains daily forecast
-                struct tm tm_info = ble_chronos_get_time_struct();
-                chronos_time_t time = {
-                    .hour = tm_info.tm_hour,
-                    .minute = tm_info.tm_min
-                };
-                weather_info.time = time;
-                weather_info.size = 0;
-                for (int k = 0; k < (len - 6) / 2; k++) {
-                    int sign = (incoming.data[(k * 2) + 6] & 1) ? -1 : 1;
+                {
+                    struct tm tm_info = ble_chronos_get_time_struct();
+                    chronos_time_t time = {
+                        .hour = tm_info.tm_hour,
+                        .minute = tm_info.tm_min
+                    };
+                    weather_info.time = time;
+                    weather_info.size = 0;
+                    for (int k = 0; k < (len - 6) / 2; k++) {
+                        int sign = (incoming.data[(k * 2) + 6] & 1) ? -1 : 1;
 
-                    int icon = incoming.data[(k * 2) + 6] >> 4; // icon id; See WEATHER ICONS
-                    int temp = ((int)incoming.data[(k * 2) + 7]) * sign;
+                        int icon = incoming.data[(k * 2) + 6] >> 4; // icon id; See WEATHER ICONS
+                        int temp = ((int)incoming.data[(k * 2) + 7]) * sign;
 
-                    int dy = tm_info.tm_wday + k;
-                    weather[k].day = dy % 7;
-                    weather[k].icon = icon;
-                    weather[k].temp = temp;
-                    weather_info.size++;
-                }
-                if (configuration_callback != NULL) {
-                    configuration_callback(CH_CONFIG_WEATHER, 1, 0);
+                        int dy = tm_info.tm_wday + k;
+                        weather[k].day = dy % 7;
+                        weather[k].icon = icon;
+                        weather[k].temp = temp;
+                        weather_info.size++;
+                    }
+                    if (configuration_callback != NULL) {
+                        configuration_callback(CH_CONFIG_WEATHER, 1, 0);
+                    }
                 }
                 break;
             case 0x7F:
@@ -694,16 +694,17 @@ void ble_chronos_data_received()
                 // hour; incoming.data[11]
                 // minute; incoming.data[12]
                 // seconds; incoming.data[13]
-                struct tm t = {0, 0, 0, 0, 0, 0, 0, 0, 0};      // Initalize to all 0's
-                t.tm_year = (incoming.data[7] * 256) + incoming.data[8] - 1900;    // This is year-1900, so 121 = 2021
-                t.tm_mon = incoming.data[9] - 1;
-                t.tm_mday = incoming.data[10];
-                t.tm_hour = incoming.data[11];
-                t.tm_min = incoming.data[12];
-                t.tm_sec = incoming.data[13];
-                time_t epoch = mktime(&t);
-                parse_time((uint32_t)epoch);
-
+                {
+                    struct tm t = {0, 0, 0, 0, 0, 0, 0, 0, 0};      // Initalize to all 0's
+                    t.tm_year = (incoming.data[7] * 256) + incoming.data[8] - 1900;    // This is year-1900, so 121 = 2021
+                    t.tm_mon = incoming.data[9] - 1;
+                    t.tm_mday = incoming.data[10];
+                    t.tm_hour = incoming.data[11];
+                    t.tm_min = incoming.data[12];
+                    t.tm_sec = incoming.data[13];
+                    time_t epoch = mktime(&t);
+                    parse_time((uint32_t)epoch);
+                }
                 break;
             case 0x9C:
                 // watchface font style and color settings
@@ -840,42 +841,45 @@ void ble_chronos_data_received()
                 case 0x01:
                     // weather city name
                     // incoming.data[7:len]
-                    char city[512] = {0};
+                    {
+                        char city[512] = {0};
 
-                    for (int i = 7; i < len; i++) {
-                        strncat(city, (char *)&incoming.data[i], 1);
+                        for (int i = 7; i < len; i++) {
+                            strncat(city, (char *)&incoming.data[i], 1);
+                        }
+
+                        if (weather_info.city) {
+                            free(weather_info.city);
+                        }
+
+                        weather_info.city = strdup(city);
+
+                        if (configuration_callback != NULL) {
+                            configuration_callback(CH_CONFIG_WEATHER, 0, 1);
+                        }
                     }
-
-                    if (weather_info.city) {
-                        free(weather_info.city);
-                    }
-
-                    weather_info.city = strdup(city);
-
-                    if (configuration_callback != NULL) {
-                        configuration_callback(CH_CONFIG_WEATHER, 0, 1);
-                    }
-
                     break;
                 case 0x02:
                     // hourly weather forecsat
-                    int size = incoming.data[6]; // data size
-                    int hour = incoming.data[7]; // current hour
-                    struct tm tm_info = ble_chronos_get_time_struct();
-                    for (int z = 0; z < size; z++) {
+                    {
+                        int size = incoming.data[6]; // data size
+                        int hour = incoming.data[7]; // current hour
+                        struct tm tm_info = ble_chronos_get_time_struct();
+                        for (int z = 0; z < size; z++) {
 
-                        int sign = (incoming.data[8 + (6 * z)] & 1) ? -1 : 1;
+                            int sign = (incoming.data[8 + (6 * z)] & 1) ? -1 : 1;
 
-                        int icon = incoming.data[8 + (6 * z)] >> 4; // See WEATHER ICONS
-                        int temp = ((int)incoming.data[9 + (6 * z)]) * sign;
+                            int icon = incoming.data[8 + (6 * z)] >> 4; // See WEATHER ICONS
+                            int temp = ((int)incoming.data[9 + (6 * z)]) * sign;
 
-                        hourly_forecast[hour + z].day = tm_info.tm_yday;
-                        hourly_forecast[hour + z].hour = hour + z;
-                        hourly_forecast[hour + z].wind = (incoming.data[10 + (6 * z)] * 256) + incoming.data[11 + (6 * z)];
-                        hourly_forecast[hour + z].humidity = incoming.data[12 + (6 * z)];
-                        hourly_forecast[hour + z].uv = incoming.data[13 + (6 * z)];
-                        hourly_forecast[hour + z].icon = icon;
-                        hourly_forecast[hour + z].temp = temp;
+                            hourly_forecast[hour + z].day = tm_info.tm_yday;
+                            hourly_forecast[hour + z].hour = hour + z;
+                            hourly_forecast[hour + z].wind = (incoming.data[10 + (6 * z)] * 256) + incoming.data[11 + (6 * z)];
+                            hourly_forecast[hour + z].humidity = incoming.data[12 + (6 * z)];
+                            hourly_forecast[hour + z].uv = incoming.data[13 + (6 * z)];
+                            hourly_forecast[hour + z].icon = icon;
+                            hourly_forecast[hour + z].temp = temp;
+                        }
                     }
                     break;
             }

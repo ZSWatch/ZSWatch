@@ -69,7 +69,7 @@ menu "ZSWatch"
         config APPLICATIONS_USE_CHRONOS
             bool
         prompt "Activate the application 'Chronos'"
-        default y
+        default n
 
         menu "Configuration"
             menu "Compass"
