@@ -75,13 +75,10 @@
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
-struct input_event last_input_event;
-
 static void run_init_work(struct k_work *item);
 static void enable_bluetooth(void);
 static void print_retention_ram(void);
 static void open_notification_popup(void *data);
-static void on_popup_notifcation_closed(uint32_t id);
 static void on_zbus_notification_callback(const struct zbus_channel *chan);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 
@@ -96,11 +93,14 @@ static bool pending_not_open = false;
 static void run_init_work(struct k_work *item)
 {
     zsw_coredump_init();
+
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);
-    print_retention_ram();
+
     zsw_notification_manager_init();
+
     enable_bluetooth();
+
     zsw_imu_init();
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
@@ -109,6 +109,7 @@ static void run_init_work(struct k_work *item)
 
     zsw_ui_controller_init();
 
+    print_retention_ram();
 #ifdef CONFIG_SPI_FLASH_LOADER
     if (NUM_RAW_FS_FILES != zsw_filesytem_get_num_rawfs_files()) {
         LOG_ERR("Number of rawfs files does not match the number of files in the file table: %d / %d",
@@ -189,32 +190,11 @@ static void enable_bluetooth(void)
 #endif
 }
 
-static void print_retention_ram(void)
+static void on_close_popup_notification(uint32_t id)
 {
-    LOG_DBG("Boot count: %u\n", retained.boots);
-    LOG_DBG("uptime_latest: %" PRIu64 "\n", retained.uptime_latest);
-    LOG_DBG("Active Ticks: %" PRIu64 "\n", retained.uptime_sum);
-}
-
-static void close_popup_notification(lv_timer_t *timer)
-{
-    uint32_t id = (uint32_t)(uintptr_t)lv_timer_get_user_data(timer);
-    // Notification was dismissed, hence consider it read.
     zsw_notification_manager_remove(id);
 
     zsw_ui_controller_clear_notification_mode();
-}
-
-static void on_popup_notifcation_closed(uint32_t id)
-{
-    lv_timer_t *timer;
-    // Changing back input group directly here causes LVGL
-    // to not remove the notifcation for some reason.
-    // Maybe a bug, or something done wrong.
-    // Anyway doing it after a while instead seems to fix
-    // the problem.
-    timer = lv_timer_create(close_popup_notification, 500,  (void *)(uintptr_t)id);
-    lv_timer_set_repeat_count(timer, 1);
 }
 
 static void open_notification_popup(void *data)
@@ -223,7 +203,7 @@ static void open_notification_popup(void *data)
     if (not != NULL) {
         zsw_ui_controller_set_notification_mode();
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
-        zsw_notification_popup_show(not->sender, not->body, not->src, not->id, on_popup_notifcation_closed, 10);
+        zsw_notification_popup_show(not->sender, not->body, not->src, not->id, on_close_popup_notification, 10);
     }
     pending_not_open = false;
 }
@@ -278,6 +258,13 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
         default:
             break;
     }
+}
+
+static void print_retention_ram(void)
+{
+    LOG_DBG("Boot count: %u\n", retained.boots);
+    LOG_DBG("uptime_latest: %" PRIu64 "\n", retained.uptime_latest);
+    LOG_DBG("Active Ticks: %" PRIu64 "\n", retained.uptime_sum);
 }
 
 #ifndef CONFIG_RESET_ON_FATAL_ERROR

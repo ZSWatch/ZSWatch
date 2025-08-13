@@ -31,6 +31,7 @@ typedef struct {
 static void on_notification_closed(lv_event_t *e);
 static void on_notification_expand(lv_event_t *e);
 static void close_notif_timer(lv_timer_t *timer);
+static void close_notification_async(lv_timer_t *timer);
 static void remove_notification(uint32_t notif_id);
 
 static on_close_notif_cb_t on_close_cb;
@@ -115,12 +116,28 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
 
 void zsw_notification_popup_remove(void)
 {
+    // To allow lvgl group modifications etc. without cusing issues in the callback,
+    // we make sure to call it in a fresh context switch.
+    // Core issue:
+    // Changing back input group directly here causes LVGL
+    // to not remove the notifcation for some reason.
+    // Maybe a bug, or something done wrong.
+    // Anyway doing it after a while instead seems to fix
+    // the problem.
+    lv_timer_t *timer = lv_timer_create(close_notification_async, 500,  (void *)(uintptr_t)active_notif_id);
+    lv_timer_set_repeat_count(timer, 1);
     remove_notification(active_notif_id);
 }
 
 bool zsw_notification_popup_is_shown(void)
 {
     return notif_box.panel != NULL;
+}
+
+static void close_notification_async(lv_timer_t *timer)
+{
+    uint32_t id = (uint32_t)(uintptr_t)lv_timer_get_user_data(timer);
+    remove_notification(id);
 }
 
 static void on_notification_closed(lv_event_t *e)
