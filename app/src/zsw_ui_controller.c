@@ -270,32 +270,37 @@ static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data)
     last_input_event.code = 0xFF;
 }
 
+static void handle_watchface_open_app_event(watchface_app_evt_open_app_t click)
+{
+    switch (click) {
+        case WATCHFACE_APP_EVT_CLICK_BATT:
+            open_application_manager_page("Battery");
+            break;
+        case WATCHFACE_APP_EVT_CLICK_STEP:
+            open_application_manager_page("Fitness");
+            break;
+        case WATCHFACE_APP_EVT_CLICK_WEATHER:
+            break;
+        case WATCHFACE_APP_EVT_CLICK_MUSIC:
+            open_application_manager_page("Music");
+            break;
+        case WATCHFACE_APP_EVT_CLICK_SETTINGS:
+            open_application_manager_page("Settings");
+            break;
+        case WATCHFACE_APP_EVT_CLICK_FLASHLIGHT:
+            open_application_manager_page("Flashlight");
+            break;
+        default:
+            break;
+    }
+}
+
 static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 {
     if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
         switch (evt.type) {
             case WATCHFACE_APP_EVENT_OPEN_APP:
-                switch (evt.data.app) {
-                    case WATCHFACE_APP_EVT_CLICK_BATT:
-                        open_application_manager_page("Battery");
-                        break;
-                    case WATCHFACE_APP_EVT_CLICK_STEP:
-                        open_application_manager_page("Fitness");
-                        break;
-                    case WATCHFACE_APP_EVT_CLICK_WEATHER:
-                        break;
-                    case WATCHFACE_APP_EVT_CLICK_MUSIC:
-                        open_application_manager_page("Music");
-                        break;
-                    case WATCHFACE_APP_EVT_CLICK_SETTINGS:
-                        open_application_manager_page("Settings");
-                        break;
-                    case WATCHFACE_APP_EVT_CLICK_FLASHLIGHT:
-                        open_application_manager_page("Flashlight");
-                        break;
-                    default:
-                        break;
-                }
+                handle_watchface_open_app_event(evt.data.app);
                 break;
             case WATCHFACE_APP_EVENT_SET_BRIGHTNESS:
                 zsw_display_control_set_brightness(evt.data.brightness);
