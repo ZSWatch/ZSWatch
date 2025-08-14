@@ -44,11 +44,25 @@ jobs:
           fi
 
           sudo apt-get install -y bluez
-          sudo apt-get install xvfb
-          sudo apt-get install imagemagick
+          sudo apt-get install -y xvfb
+          sudo apt-get install -y imagemagick
+          sudo apt-get install -y python-is-python3
+          sudo apt-get install -y python3-pip
+          sudo apt-get install -y python3-venv
 
+          python -m venv .venv
+          source .venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r app/pytest/requirements.txt
+
+          # Needed for running native_sim application in tests
+          sudo apt-get install -y build-essential
+          sudo apt-get install -y libsdl2-dev
+          sudo usermod -aG bluetooth $USER
+          sudo setcap cap_net_admin=eip $(which btmgmt)
+
+          # For UART
+          sudo usermod -aG dialout $USER
 
       - name: 'Download image'
         uses: actions/download-artifact@v4
@@ -77,6 +91,7 @@ jobs:
         id: pytest_run
         run: |
           set +e
+          source .venv/bin/activate
           cd app/pytest
 
           # Make sure bt hci adapter is on.
@@ -126,6 +141,7 @@ jobs:
         if: github.event_name == 'pull_request' && (success() || failure())
         continue-on-error: true
         run: |
+          source .venv/bin/activate
           cd app/pytest
           if [ -f "power_results.json" ]; then
             echo "Generating power consumption comment..."
