@@ -18,7 +18,8 @@ static application_t app = {
     .name = "About",
     .icon = ZSW_LV_IMG_USE(templates),
     .start_func = about_app_start,
-    .stop_func = about_app_stop
+    .stop_func = about_app_stop,
+    .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
 static void about_app_start(lv_obj_t *root, lv_group_t *group)

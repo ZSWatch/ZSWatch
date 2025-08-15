@@ -24,7 +24,8 @@ static application_t app = {
     .name = "Notification",
     .hidden = true,
     .start_func = notification_app_start,
-    .stop_func = notification_app_stop
+    .stop_func = notification_app_stop,
+    .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
 static void notification_app_zbus_notification_callback(const struct zbus_channel *chan)

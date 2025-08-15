@@ -18,7 +18,8 @@ static application_t app = {
     .name = "Chronos",
     .icon = ZSW_LV_IMG_USE(chronos_logo_icon),
     .start_func = chronos_app_start,
-    .stop_func = chronos_app_stop
+    .stop_func = chronos_app_stop,
+    .category = ZSW_APP_CATEGORY_RANDOM,
 };
 
 static void chronos_app_start(lv_obj_t *root, lv_group_t *group)

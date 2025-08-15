@@ -16,7 +16,8 @@ static application_t app = {
     .name = "X-ray",
     .icon = ZSW_LV_IMG_USE(circuit_icon),
     .start_func = x_ray_app_start,
-    .stop_func = x_ray_app_stop
+    .stop_func = x_ray_app_stop,
+    .category = ZSW_APP_CATEGORY_RANDOM
 };
 
 static uint8_t original_brightness;

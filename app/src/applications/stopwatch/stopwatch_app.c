@@ -47,7 +47,8 @@ static application_t app = {
     .name = "Stopwatch",
     .icon = ZSW_LV_IMG_USE(stopwatch_app_icon),
     .start_func = stopwatch_app_start,
-    .stop_func = stopwatch_app_stop
+    .stop_func = stopwatch_app_stop,
+    .category = ZSW_APP_CATEGORY_ROOT
 };
 
 static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group)

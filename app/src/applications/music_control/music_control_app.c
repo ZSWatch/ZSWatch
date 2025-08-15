@@ -34,7 +34,8 @@ static application_t app = {
     .name = "Music",
     .icon = ZSW_LV_IMG_USE(music),
     .start_func = music_control_app_start,
-    .stop_func = music_control_app_stop
+    .stop_func = music_control_app_stop,
+    .category = ZSW_APP_CATEGORY_ROOT,
 };
 
 static lv_timer_t *progress_timer;

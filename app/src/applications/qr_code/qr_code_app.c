@@ -16,7 +16,8 @@ static application_t app = {
     .name = "QR Code",
     .icon = ZSW_LV_IMG_USE(qr_code_icon),
     .start_func = qr_code_app_start,
-    .stop_func = qr_code_app_stop
+    .stop_func = qr_code_app_stop,
+    .category = ZSW_APP_CATEGORY_RANDOM,
 };
 
 static uint8_t original_brightness;

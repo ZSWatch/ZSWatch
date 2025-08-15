@@ -77,6 +77,7 @@ static application_t app = {
     .start_func = settings_app_start,
     .stop_func = settings_app_stop,
     .back_func = settings_app_back,
+    .category = ZSW_APP_CATEGORY_ROOT,
 };
 
 static lv_settings_item_t display_page_items[] = {
