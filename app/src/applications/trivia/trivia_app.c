@@ -47,7 +47,8 @@ static application_t app = {
     .name = "Trivia",
     .icon = ZSW_LV_IMG_USE(quiz),
     .start_func = trivia_app_start,
-    .stop_func = trivia_app_stop
+    .stop_func = trivia_app_stop,
+    .category = ZSW_APP_CATEGORY_GAMES
 };
 
 static void trivia_app_start(lv_obj_t *root, lv_group_t *group)

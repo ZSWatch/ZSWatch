@@ -47,7 +47,8 @@ static application_t app = {
     .name = "Weather",
     .icon = ZSW_LV_IMG_USE(weather_app_icon),
     .start_func = weather_app_start,
-    .stop_func = weather_app_stop
+    .stop_func = weather_app_stop,
+    .category = ZSW_APP_CATEGORY_ROOT
 };
 
 static void http_rsp_cb(ble_http_status_code_t status, char *response)

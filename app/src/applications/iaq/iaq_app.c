@@ -17,7 +17,8 @@ static application_t app = {
     .name = "IAQ",
     .icon = &move,
     .start_func = iaq_app_start,
-    .stop_func = iaq_app_stop
+    .stop_func = iaq_app_stop,
+    .category = ZSW_APP_CATEGORY_SENSORS,
 };
 
 static void iaq_app_update(void)

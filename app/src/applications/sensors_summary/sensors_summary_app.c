@@ -24,7 +24,8 @@ static application_t app = {
     .name = "Sensors",
     .icon = ZSW_LV_IMG_USE(move),
     .start_func = sensors_summary_app_start,
-    .stop_func = sensors_summary_app_stop
+    .stop_func = sensors_summary_app_stop,
+    .category = ZSW_APP_CATEGORY_SENSORS,
 };
 
 static lv_timer_t *refresh_timer;

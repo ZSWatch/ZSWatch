@@ -53,7 +53,8 @@ static application_t app = {
     .name = "Debug",
     .icon = ZSW_LV_IMG_USE(statistic_icon),
     .start_func = info_app_start,
-    .stop_func = info_app_stop
+    .stop_func = info_app_stop,
+    .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
 static lv_timer_t *refresh_timer;

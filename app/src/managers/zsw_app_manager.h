@@ -28,6 +28,18 @@ typedef bool(*application_back_fn)(void);
 
 typedef void(*on_app_manager_cb_fn)(void);
 
+typedef enum {
+    ZSW_APP_CATEGORY_ROOT = 0,
+    ZSW_APP_CATEGORY_TOOLS,
+    ZSW_APP_CATEGORY_FITNESS,
+    ZSW_APP_CATEGORY_SYSTEM,
+    ZSW_APP_CATEGORY_GAMES,
+    ZSW_APP_CATEGORY_SENSORS,
+    ZSW_APP_CATEGORY_RANDOM,
+    ZSW_APP_CATEGORY_COUNT,
+    ZSW_APP_CATEGORY_INVALID
+} zsw_app_category_t;
+
 typedef struct application_t {
     application_start_fn    start_func;
     application_stop_fn     stop_func;
@@ -35,6 +47,7 @@ typedef struct application_t {
     char                   *name;
     const void             *icon;
     bool                    hidden;
+    zsw_app_category_t      category;
     uint8_t                 private_list_index;
 } application_t;
 
@@ -63,11 +76,6 @@ void zsw_app_manager_app_close_request(application_t *app);
 /** @brief
 */
 void zsw_app_manager_exit_app(void);
-
-/** @brief
- *  @param index
-*/
-void zsw_app_manager_set_index(int index);
 
 /** @brief Get number of registrated applications
 */
