@@ -138,6 +138,7 @@ set (LVGL_RELOCATE_SOURCES
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_14.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_16.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_20.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_28.c
     ../modules/lib/gui/lvgl/src/widgets/chart/lv_chart.c
     ../modules/lib/gui/lvgl/src/widgets/scale/lv_scale.c
     ../modules/lib/gui/lvgl/src/widgets/dropdown/lv_dropdown.c
