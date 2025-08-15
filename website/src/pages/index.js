@@ -90,40 +90,12 @@ function SubscriptionForm() {
 }
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  
-  // Apply fixed gradient using CSS-in-JS approach
-  useEffect(() => {
-    const applyGradient = () => {
-      const gradientStyle = 'linear-gradient(135deg, #1a1f2e 0%, #30343F 30%, #2a2f3e 60%, #1a1f2e 100%)';
-      const backgroundStyles = {
-        background: gradientStyle,
-        backgroundAttachment: 'fixed',
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        minHeight: '100vh'
-      };
-      
-      // Apply to both html and body elements
-      [document.documentElement, document.body].forEach(element => {
-        Object.entries(backgroundStyles).forEach(([property, value]) => {
-          element.style.setProperty(property, value, 'important');
-        });
-      });
-    };
-    
-    applyGradient();
-    const timer = setTimeout(applyGradient, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
   return (
-    <div className="relative overflow-x-hidden">
+    <div className="relative overflow-hidden w-full">
       {/* Decorative background element */}
       <div className="absolute top-1/4 -right-10 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
       
-      <div className="relative z-10 px-8">
+      <div className="relative z-10 px-4 sm:px-6 lg:px-8 w-full">
         {/* Hero Section */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center py-4 px-5 min-h-[50vh] max-w-6xl mx-auto">
           <div className="space-y-3">
@@ -231,7 +203,7 @@ function FeaturesSection() {
   ];
 
   return (
-    <section className="py-6 bg-gray-800/30 min-h-[50vh]">
+    <section className="py-6 min-h-[50vh]">
       <div className="max-w-6xl mx-auto px-5">
         <p className="text-lg text-gray-300 text-center max-w-2xl mx-auto mb-6">
           Complete transparency from hardware design to firmware implementation. No black boxes, no proprietary blobs.
@@ -278,13 +250,15 @@ function FeaturesSection() {
 export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <Layout
-      title={siteConfig.title}
-      description="ZSWatch is an Open Source Smartwatch built from scratch.">
-      <HomepageHeader />
-      <main>
-        <FeaturesSection />
-      </main>
-    </Layout>
+    <div className="zswatch-background-gradient-always min-h-screen">
+      <Layout
+        title={siteConfig.title}
+        description="ZSWatch is an Open Source Smartwatch built from scratch.">
+        <HomepageHeader />
+        <main>
+          <FeaturesSection />
+        </main>
+      </Layout>
+    </div>
   );
 }

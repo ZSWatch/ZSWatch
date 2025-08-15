@@ -443,9 +443,7 @@ const FirmwareUpdateApp = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen" style={{
-        background: "linear-gradient(135deg, #1a1f2e 0%, var(--zswatch-darker) 30%, #2a2f3e 60%, #1a1f2e 100%)"
-      }}>
+      <div className="min-h-screen zswatch-background-gradient">
         <div className="container mx-auto px-2 py-8">
           {/* Header */}
           <div className="text-center mb-8">

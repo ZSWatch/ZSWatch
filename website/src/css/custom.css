@@ -13,6 +13,7 @@
   --zswatch-secondary: #9EC8F6;
   --zswatch-dark: #495060;
   --zswatch-darker: #30343F;
+  --zswatch-gradient: linear-gradient(135deg, #1a1f2e 0%, var(--zswatch-darker) 30%, #2a2f3e 60%, #1a1f2e 100%);
   --text-primary: var(--ifm-font-color-base);
   --ifm-navbar-background-color: var(--zswatch-primary);
   --ifm-navbar-link-color: var(--zswatch-darker);
@@ -20,8 +21,38 @@
 }
 
 body {
-  background: linear-gradient(135deg, #1a1f2e 0%, var(--zswatch-darker) 30%, #2a2f3e 60%, #1a1f2e 100%);
   color: var(--text-primary);
+}
+
+/* Apply gradient background to all pages */
+.main-wrapper,
+.docusaurus-wrapper {
+  background: white;
+  min-height: 100vh;
+}
+
+[data-theme='dark'] .main-wrapper,
+[data-theme='dark'] .docusaurus-wrapper {
+  background: var(--zswatch-gradient);
+  min-height: 100vh;
+}
+
+/* Override for front page - ensure it always shows gradient */
+.zswatch-background-gradient-always {
+  background: var(--zswatch-gradient) !important;
+}
+
+.zswatch-background-gradient-always .main-wrapper,
+.zswatch-background-gradient-always .docusaurus-wrapper {
+  background: transparent !important;
+}
+
+.zswatch-background-gradient {
+  background: white;
+}
+
+[data-theme='dark'] .zswatch-background-gradient {
+  background: var(--zswatch-gradient);
 }
 
 .hero--primary {
