@@ -39,7 +39,8 @@ static application_t app = {
     .name = "Timers",
     .icon = ZSW_LV_IMG_USE(timer_app_icon),
     .start_func = timer_app_start,
-    .stop_func = timer_app_stop
+    .stop_func = timer_app_stop,
+    .category = ZSW_APP_CATEGORY_ROOT
 };
 
 static void timer_app_start(lv_obj_t *root, lv_group_t *group)

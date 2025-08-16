@@ -24,7 +24,8 @@ static application_t app = {
     .name = "Ppt_remote",
     .icon = ZSW_LV_IMG_USE(remote_control),
     .start_func = ppt_remote_app_start,
-    .stop_func = ppt_remote_app_stop
+    .stop_func = ppt_remote_app_stop,
+    .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
 static lv_timer_t *counter_timer = NULL;

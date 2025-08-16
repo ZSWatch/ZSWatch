@@ -103,7 +103,8 @@ static application_t app = {
     .name = "Update",
     .icon = ZSW_LV_IMG_USE(templates),
     .start_func = update_app_start,
-    .stop_func = update_app_stop
+    .stop_func = update_app_stop,
+    .category = ZSW_APP_CATEGORY_SYSTEM
 };
 
 static void update_app_start(lv_obj_t *root, lv_group_t *group)

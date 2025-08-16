@@ -12,6 +12,7 @@ static application_t app = {
     .start_func = flashlight_app_start,
     .stop_func = flashlight_app_stop,
     .hidden = true,
+    .category = ZSW_APP_CATEGORY_TOOLS
 };
 
 static uint8_t original_brightness;

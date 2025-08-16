@@ -16,7 +16,8 @@ static application_t app = {
     .name = "2048",
     .icon = ZSW_LV_IMG_USE(icon_2048),
     .start_func = game_2048_app_start,
-    .stop_func = game_2048_app_stop
+    .stop_func = game_2048_app_stop,
+    .category = ZSW_APP_CATEGORY_GAMES
 };
 
 static void game_2048_app_start(lv_obj_t *root, lv_group_t *group)

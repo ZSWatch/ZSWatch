@@ -23,7 +23,8 @@ static application_t app = {
     .name = "Sensor Fusion",
     .icon = ZSW_LV_IMG_USE(imu_sensor_icon),
     .start_func = fusion_app_start,
-    .stop_func = fusion_app_stop
+    .stop_func = fusion_app_stop,
+    .category = ZSW_APP_CATEGORY_SENSORS,
 };
 
 static void fusion_app_start(lv_obj_t *root, lv_group_t *group)

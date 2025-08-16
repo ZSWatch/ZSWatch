@@ -52,6 +52,7 @@ static application_t app = {
     .start_func = fitness_app_start,
     .stop_func = fitness_app_stop,
     .icon = ZSW_LV_IMG_USE(fitness_app_icon),
+    .category = ZSW_APP_CATEGORY_FITNESS
 };
 
 static zsw_history_t fitness_history_context;

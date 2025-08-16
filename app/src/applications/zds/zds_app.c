@@ -22,7 +22,8 @@ static application_t app = {
     .name = "ZDS App",
     .icon = ZSW_LV_IMG_USE(zephyr_icon_round),
     .start_func = zds_app_start,
-    .stop_func = zds_app_stop
+    .stop_func = zds_app_stop,
+    .category = ZSW_APP_CATEGORY_RANDOM
 };
 
 static void zds_app_start(lv_obj_t *root, lv_group_t *group)
