@@ -35,3 +35,20 @@ import TabItem from '@theme/TabItem';
 
   </TabItem>
 </Tabs>
+
+  <details>
+    <summary><strong>Troubleshooting</strong></summary>
+
+    :::tip
+    If you see <code>No connected debuggers found</code> but <code>nrfjprog --ids</code> and JLink finds the debugger, try this fix:
+
+    ```sh
+    export LD_LIBRARY_PATH=/opt/nrf-command-line-tools/lib:$LD_LIBRARY_PATH
+    # or add it to your ~/.bashrc
+    ```
+    :::
+
+    :::tip
+    If you get missing pip packages make sure to run `pip install app/scripts/requirements.txt`. If you use VSCode Tasks:Run Task it uses the nRF Connect Terminal, so make sure to run the `pip install app/scripts/requirements.txt` using the nRF Connect Terminal instead.
+    :::
+  </details>

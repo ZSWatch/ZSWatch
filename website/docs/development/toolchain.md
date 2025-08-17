@@ -24,7 +24,7 @@ sidebar_position: 1
 
 ## 3. Initialize the Project
 
-Open an **nRF Connect Terminal** in VS Code and run:
+Open an **nRF Connect Terminal** (not a regular) in VS Code and run:
 
 ```bash
 pip install -r zephyr/scripts/requirements.txt
