@@ -47,11 +47,11 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     lv_obj_set_scrollbar_mode(ui.root_page, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(ui.root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(ui.root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_all(ui.root_page, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(ui.root_page, 0, LV_PART_MAIN);
 
     // Progress arc around the screen perimeter (1 second is one lap)
     ui.progress_arc = lv_arc_create(ui.root_page);
-    lv_obj_set_size(ui.progress_arc, LV_PCT(95), LV_PCT(95));
+    lv_obj_set_size(ui.progress_arc, LV_PCT(100), LV_PCT(100));
     lv_obj_center(ui.progress_arc);
     lv_arc_set_range(ui.progress_arc, 0, 1000);
     lv_arc_set_value(ui.progress_arc, 0);
@@ -126,10 +126,9 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     // Lap times container
     ui.lap_list = lv_obj_create(ui.root_page);
     lv_obj_set_size(ui.lap_list, LV_PCT(85), 90);
-    lv_obj_align(ui.lap_list, LV_ALIGN_BOTTOM_MID, 0, 5);
+    lv_obj_align(ui.lap_list, LV_ALIGN_BOTTOM_MID, 0, -15);
     lv_obj_set_style_bg_opa(ui.lap_list, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(ui.lap_list, 0, LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.lap_list, 15, LV_PART_MAIN);
     lv_obj_set_flex_flow(ui.lap_list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(ui.lap_list, 5, LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(ui.lap_list, LV_SCROLLBAR_MODE_OFF);
