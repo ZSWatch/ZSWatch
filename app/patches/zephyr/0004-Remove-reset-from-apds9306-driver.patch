@@ -1,0 +1,44 @@
+From 242f063cfa0383257a9ed86e22ff12bd6eba7f85 Mon Sep 17 00:00:00 2001
+From: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+Date: Fri, 23 May 2025 11:44:31 +0200
+Subject: [PATCH] drivers: sensor: Remove broken reset from apds9306 driver
+
+The reset may cause initialization issues. The exact reason is unclear
+and the reset process is not documented enough to make it work. So it is
+better to remove it.
+
+Closes #89850
+
+Signed-off-by: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+---
+ drivers/sensor/apds9306/apds9306.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/sensor/apds9306/apds9306.c b/drivers/sensor/apds9306/apds9306.c
+index 87723b21624..a307b11f93c 100644
+--- a/drivers/sensor/apds9306/apds9306.c
++++ b/drivers/sensor/apds9306/apds9306.c
+@@ -302,19 +302,12 @@ static int apds9306_sensor_setup(const struct device *dev)
+ 	}
+ 
+ 	/* Reset the sensor. */
+-	if (i2c_reg_write_byte_dt(&config->i2c, APDS9306_REGISTER_MAIN_CTRL,
+-				  APDS9306_BIT_SW_RESET)) {
+-		LOG_ERR("Can not reset the sensor!");
+-		return -EFAULT;
+-	}
++	i2c_reg_write_byte_dt(&config->i2c, APDS9306_REGISTER_MAIN_CTRL, APDS9306_BIT_SW_RESET);
+ 	k_msleep(10);
+ 
+ 	/* Perform a dummy read to avoid bus errors after the reset. See */
+ 	/* https://lore.kernel.org/lkml/ab1d9746-4d23-efcc-0ee1-d2b8c634becd@tweaklogic.com/ */
+-	if (i2c_reg_read_byte_dt(&config->i2c, APDS9306_REGISTER_PART_ID, &temp)) {
+-		LOG_ERR("Failed reading chip id!");
+-		return -EFAULT;
+-	}
++	i2c_reg_read_byte_dt(&config->i2c, APDS9306_REGISTER_PART_ID, &temp);
+ 
+ 	return 0;
+ }
+-- 
+2.34.1
