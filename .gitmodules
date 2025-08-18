@@ -4,12 +4,6 @@
 [submodule "app/src/applications/2048/2048_lib"]
 	path = app/src/applications/2048/2048_lib
 	url = https://github.com/100askTeam/lv_lib_100ask.git
-[submodule "hardware/ZSWatch-HW"]
-	path = hardware/ZSWatch-HW
-	url = https://github.com/jakkra/ZSWatch-HW.git
-[submodule "hardware/ZSWatch-Dock"]
-	path = hardware/ZSWatch-Dock
-	url = https://github.com/jakkra/ZSWatch-Dock.git
 [submodule "app/src/ext_drivers/BMI270-Sensor-API"]
 	path = app/src/ext_drivers/BMI270-Sensor-API
 	url = https://github.com/boschsensortec/BMI270-Sensor-API.git
@@ -21,4 +15,13 @@
 	url = https://github.com/xioTechnologies/Fusion.git
 [submodule "website/src/mcumgr-web"]
 	path = website/src/mcumgr-web
-	url = git@github.com:ZSWatch/mcumgr-web.git
+	url = https://github.com/ZSWatch/mcumgr-web.git
+[submodule "hardware/Heartrate-HW"]
+	path = hardware/Heartrate-HW
+	url = https://github.com/ZSWatch/Heartrate-HW.git
+[submodule "hardware/Dock-HW"]
+	path = hardware/Dock-HW
+	url = https://github.com/ZSWatch/Dock-HW.git
+[submodule "hardware/Watch-HW"]
+	path = hardware/Watch-HW
+	url = https://github.com/ZSWatch/Watch-HW.git
