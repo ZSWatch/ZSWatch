@@ -58,7 +58,6 @@
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_environment_sensor.h"
 
-#include "drivers/zsw_buzzer.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
 
@@ -92,7 +91,9 @@ static bool pending_not_open = false;
 
 static void run_init_work(struct k_work *item)
 {
+#ifdef CONFIG_DEBUG_COREDUMP
     zsw_coredump_init();
+#endif
 
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);

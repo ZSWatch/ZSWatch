@@ -1,3 +1,8 @@
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 menu "Zephyr Kernel"
     source "Kconfig.zephyr"
 endmenu
@@ -6,13 +11,13 @@ menu "ZSWatch"
     config ZSWATCH_PCB_REV
         int
     prompt "ZSWatch PCB revision"
-    default 5
+    default 1
 
     menu "Applications"
         config APPLICATIONS_USE_2048
             bool
         prompt "Activate the application '2048'"
-        default y
+        default n # Not working with LVGL 9.3 -> Fix later
 
         config APPLICATIONS_USE_ACCELEROMETER
             bool
@@ -165,9 +170,9 @@ menu "ZSWatch"
         prompt "Disable encryption required for BLE connection (pairing/bonding)"
         default n
         help
-            "Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes."
+            Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
     endmenu
-    
+
     menu "SPI RTT Flash Loader"
         config SPI_FLASH_LOADER
             bool
@@ -175,7 +180,7 @@ menu "ZSWatch"
         default n
         select USE_SEGGER_RTT
         help
-            "Enable SPI flash loader"
+            Enable SPI flash loader
 
         if SPI_FLASH_LOADER
             config ERASE_PROGRESSIVELY
@@ -184,7 +189,7 @@ menu "ZSWatch"
             prompt "Erase sectors one by one when writing instead of full partition before starting."
             default y
             help
-                "If not writing to the full partition this will be faster"
+                If not writing to the full partition this will be faster
 
             config RTT_TRANSFER_CHANNEL
                 int
@@ -192,7 +197,7 @@ menu "ZSWatch"
             prompt "The RTT channel to use for transfer of data to and form flash"
             default 2
             help
-                "If RTT logging is enabled, channel 0 is used for this, hence avoid 1 in this scenario."
+                If RTT logging is enabled, channel 0 is used for this, hence avoid 1 in this scenario.
         endif
     endmenu
 
@@ -202,14 +207,14 @@ menu "ZSWatch"
         prompt "Include Magnetometer reading in sensor fusion algorithm"
         default y
         help
-            "If the magnetometer is not well calibrated, you must disable this option."
+            If the magnetometer is not well calibrated, you must disable this option.
 
         config SEND_SENSOR_READING_OVER_RTT
             bool
         prompt "Log sensor fusion reading to RTT"
         default 1
         help
-            "Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading."
+            Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
 
         if SEND_SENSOR_READING_OVER_RTT
             config SENSOR_LOG_RTT_TRANSFER_CHANNEL
@@ -217,7 +222,7 @@ menu "ZSWatch"
             prompt "The RTT channel to use for transfer of sensor fusion reading"
             default 1
             help
-                "If RTT logging is enabled"
+                If RTT logging is enabled
         endif
     endmenu
 
@@ -243,7 +248,6 @@ menu "ZSWatch"
         module-str = ZSW_APP
         source "subsys/logging/Kconfig.template.log_config"
 
-        rsource "src/basic_battery/Kconfig"
         rsource "src/history/Kconfig"
         rsource "src/sensors/Kconfig"
         rsource "src/sensor_fusion/Kconfig"

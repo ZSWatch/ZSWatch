@@ -1,5 +1,5 @@
 identifier: zswatch/nrf5340/cpuapp
-name: ZSWatch-nRF5340-Application-MCU
+name: WatchDK-nRF5340-Application-MCU
 type: mcu
 arch: arm
 toolchain:

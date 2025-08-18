@@ -66,10 +66,12 @@ static void info_app_start(lv_obj_t *root, lv_group_t *group)
     bt_addr_le_t local_addr;
     char addr[BT_ADDR_LE_STR_LEN];
     size_t addr_count = 1;
-    zsw_coredump_sumary_t summary;
-    int num_read_dumps;
+    zsw_coredump_summary_t summary;
+    int num_read_dumps = 0;
 
+#ifdef CONFIG_DEBUG_COREDUMP
     zsw_coredump_get_summary(&summary, 1, &num_read_dumps);
+#endif
 
     info_ui_show(root, on_reset_pressed, &summary, num_read_dumps);
     info_ui_set_uptime_sec(k_uptime_get() / 1000);

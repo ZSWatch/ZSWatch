@@ -1,0 +1,41 @@
+&uart0 {
+    status = "disabled";
+};
+
+&lis2mdl {
+    status = "disabled";
+};
+
+&bmp581 {
+    status = "disabled";
+};
+
+&rv_8263_c8 {
+    status = "disabled";
+};
+
+&bmi270 {
+    status = "disabled";
+};
+
+&apds9306 {
+    status = "disabled";
+};
+
+&npm1300_gpio {
+    status = "disabled";
+};
+
+&npm1300_charger {
+    status = "disabled";
+};
+
+&cst816s {
+    status = "disabled";
+};
+
+&gpio0 {
+    display-en {
+        status = "disabled";
+    };
+};

@@ -11,8 +11,6 @@ ZSW_LV_IMG_DECLARE(ui_img_debugging_png);
 
 static lv_obj_t *root_page = NULL;
 static on_reset_ui_event_cb_t reset_callback;
-static zsw_coredump_sumary_t cached_coredumps[ZSW_COREDUMP_MAX_STORED];
-static int num_cached_coredumps;
 
 // Page 1
 static lv_obj_t *uptime_label;
@@ -29,11 +27,10 @@ static lv_obj_t *ble_remote_info_label;
 static lv_obj_t *ble_gatt_status_label;
 static lv_obj_t *ble_security_status_label;
 
+#ifdef CONFIG_DEBUG_COREDUMP
 // Page 3
 static lv_obj_t *ui_Image1;
 static lv_obj_t *ui_title;
-static lv_obj_t *ui_coredump_list;
-static lv_obj_t *ui_coredump_info_field;
 static lv_obj_t *ui_Container2;
 static lv_obj_t *ui_download;
 static lv_obj_t *ui_Label4;
@@ -42,6 +39,13 @@ static lv_obj_t *ui_Label1;
 static lv_obj_t *ui_create;
 static lv_obj_t *ui_Label2;
 static lv_obj_t *ui_Dropdown1;
+
+static lv_obj_t *ui_coredump_list;
+static lv_obj_t *ui_coredump_info_field;
+
+static zsw_coredump_summary_t cached_coredumps[ZSW_COREDUMP_MAX_STORED];
+static int num_cached_coredumps;
+#endif
 
 static void reset_btn_pressed(lv_event_t *e)
 {
@@ -155,6 +159,7 @@ static void create_page_ble_ui(lv_obj_t *parent)
     lv_obj_align_to(ble_gatt_status_label, ble_security_status_label, LV_ALIGN_BOTTOM_MID, 0, 15);
 }
 
+#ifdef CONFIG_DEBUG_COREDUMP
 static void on_coredump_button_pressed(lv_event_t *e)
 {
     lv_obj_t *btn = lv_event_get_target(e);
@@ -315,8 +320,9 @@ static void create_coredump_page_ui(lv_obj_t *parent, zsw_coredump_sumary_t *cor
     lv_obj_set_style_bg_color(ui_Dropdown1, lv_color_hex(0x495060), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Dropdown1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
+#endif
 
-void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb, zsw_coredump_sumary_t *coredumps, int num_coredumps)
+void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb, zsw_coredump_summary_t *coredumps, int num_coredumps)
 {
     assert(root_page == NULL);
 
@@ -336,10 +342,13 @@ void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb, zsw_coredump_
     // Remove scroolbar on tv
     lv_obj_set_scrollbar_mode(tv, LV_SCROLLBAR_MODE_OFF);
 
+#ifdef CONFIG_DEBUG_COREDUMP
     num_cached_coredumps = num_coredumps;
     memcpy(cached_coredumps, coredumps, num_coredumps * sizeof(zsw_coredump_sumary_t));
 
     create_coredump_page_ui(lv_tileview_add_tile(tv, 0, 0, LV_DIR_BOTTOM), cached_coredumps, num_cached_coredumps);
+#endif
+
     create_page_info_ui(lv_tileview_add_tile(tv, 0, 1, LV_DIR_VER));
     create_page_ble_ui(lv_tileview_add_tile(tv, 0, 2, LV_DIR_TOP));
 

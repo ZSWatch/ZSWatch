@@ -14,7 +14,6 @@ config DOMAIN_CPUNET_BOARD
       image application where one or more images should be located on
       another board. For example hci_ipc on the nRF5340_cpunet for
       Bluetooth applications.
-
 endif
 
 config DOMAIN_CPUAPP_BOARD

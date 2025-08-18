@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 cmake_minimum_required(VERSION 3.20.0)
 
 # Apply patches before build
@@ -43,7 +46,7 @@ endif()
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 macro(app_set_runner_args)
-    if (CONFIG_BOARD_ZSWATCH_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "5") 
+    if (CONFIG_BOARD_ZSWATCH_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "5")
         board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_mx25u51245.ini")
     elseif(CONFIG_BOARD_ZSWATCH_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "4")
         board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_at25sl128a.ini")
@@ -71,16 +74,21 @@ add_subdirectory(src/drivers)
 add_subdirectory(src/ble)
 add_subdirectory(src/images)
 
+# Add the legacy code used by Watch version 2.x
+if (CONFIG_ZSWATCH_LEGACY)
+    if (CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
+        add_subdirectory(src/fuel_gauge)
+    else()
+        add_subdirectory(src/basic_battery)
+    endif()
+else()
+    add_subdirectory(src/fuel_gauge)
+endif()
+
 include_directories(src/)
 include_directories(src/ui)
 include_directories(src/applications)
 include_directories(src/ui/watchfaces)
-
-if (CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
-    add_subdirectory(src/fuel_gauge)
-else()
-    add_subdirectory(src/basic_battery)
-endif()
 
 target_sources(app PRIVATE src/zsw_clock.c)
 target_sources(app PRIVATE src/main.c)
@@ -88,7 +96,8 @@ target_sources(app PRIVATE src/zsw_ui_controller.c)
 target_sources(app PRIVATE src/zsw_wdt.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)
 target_sources(app PRIVATE src/zsw_retained_ram_storage.c)
-target_sources(app PRIVATE src/zsw_coredump.c)
+
+target_sources_ifdef(CONFIG_DEBUG_COREDUMP app PRIVATE src/zsw_coredump.c)
 
 target_sources(app PRIVATE src/ui/notification/zsw_popup_notifcation.c)
 target_sources(app PRIVATE src/ui/popup/zsw_popup_window.c)
