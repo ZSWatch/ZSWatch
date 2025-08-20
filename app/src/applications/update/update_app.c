@@ -7,20 +7,23 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
-#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/logging/log.h>
+#include <zcbor_decode.h>
+#include <zephyr/usb/usb_device.h>
+#ifndef CONFIG_ARCH_POSIX
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
 #include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
-#include <zephyr/usb/usb_device.h>
-#include <zcbor_decode.h>
+#endif
 
 LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
-
-static bool dfu_in_progress = false;
 
 static void update_app_start(lv_obj_t *root, lv_group_t *group);
 static void start_fw_update(void);
 static void update_app_stop(void);
+
+#ifndef CONFIG_ARCH_POSIX
+static bool dfu_in_progress = false;
 
 static zcbor_state_t decode_img_data(const struct zcbor_string *img_data)
 {
@@ -97,6 +100,32 @@ static struct mgmt_callback started_callback = {
     .event_id = MGMT_EVT_OP_IMG_MGMT_DFU_STARTED,
 };
 
+static void fota_usb_state_changed(bool enabled)
+{
+    if (enabled) {
+        if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
+            int ret = usb_enable(NULL);
+            if (!ret) {
+                LOG_ERR("Failed to enable USB");
+                return;
+            }
+
+            LOG_INF("USB stack enabled");
+        }
+    } else {
+        if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
+            int ret = usb_disable();
+            if (ret) {
+                LOG_ERR("Failed to disable USB");
+                return;
+            }
+
+            LOG_INF("USB stack disabled");
+        }
+    }
+}
+#endif
+
 ZSW_LV_IMG_DECLARE(templates);
 
 static application_t app = {
@@ -121,57 +150,30 @@ static void start_fw_update(void)
 {
     // Trigger the DFU process
     update_ui_set_status("Status: Starting DFU...");
+#ifndef CONFIG_ARCH_POSIX
     int rc = smp_bt_register();
     if (rc != 0) {
         update_ui_set_status("Status: DFU Start Failed");
     } else {
         update_ui_set_status("Status: DFU Ready");
     }
-}
-
-static void fota_usb_state_changed(bool enabled)
-{
-    if (enabled) {
-        LOG_INF("FOTA over USB has been enabled");
-        if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
-            int ret = usb_enable(NULL);
-            if (ret) {
-                LOG_ERR("Failed to enable USB");
-                return;
-            }
-
-            // Suspend USB device
-            ret = usb_disable();
-            if (ret) {
-                LOG_ERR("Failed to disable USB");
-                return;
-            }
-            if (ret) {
-                return;
-            }
-            LOG_INF("USB stack enabled");
-        }
-    } else {
-        LOG_WRN("FOTA over USB disable not implemented");
-        // Add logic to disable FOTA over USB
-    }
+#endif
 }
 
 static int update_app_add(void)
 {
     zsw_app_manager_add_application(&app);
-
+#ifndef CONFIG_ARCH_POSIX
     mgmt_callback_register(&started_callback);
     mgmt_callback_register(&upload_callback);
     mgmt_callback_register(&stopped_callback);
 
     update_ui_set_fota_usb_callback(fota_usb_state_changed);
-
     int rc = smp_bt_unregister();
     if (rc != 0) {
         update_ui_set_status("Status: DFU failed to unregister");
     }
-
+#endif
     return 0;
 }
 
