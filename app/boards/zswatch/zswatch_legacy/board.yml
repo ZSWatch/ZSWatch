@@ -1,0 +1,15 @@
+board:
+  name: zswatch_legacy
+  vendor: zswatch
+  socs:
+  - name: 'nrf5340'
+    variants:
+    - name: 'ns'
+      cpucluster: 'cpuapp'
+  revision:
+    format: number
+    default: "5"
+    exact: false
+    revisions:
+    - name: "4"
+    - name: "5"

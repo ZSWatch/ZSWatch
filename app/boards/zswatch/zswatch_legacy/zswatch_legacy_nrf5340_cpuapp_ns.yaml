@@ -1,0 +1,21 @@
+identifier: zswatch_legacy/nrf5340/cpuapp/ns
+name: ZSWatch-nRF5340-application-MCU-Non-Secure
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 192
+flash: 192
+supported:
+  - i2c
+  - pwm
+  - watchdog
+  - usb_cdc
+  - usb_device
+  - usbd
+  - netif:openthread
+  - gpio
+  - spi
+vendor: ZSWatch

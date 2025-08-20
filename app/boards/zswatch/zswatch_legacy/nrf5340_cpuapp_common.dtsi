@@ -1,0 +1,277 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "nrf5340_cpuapp_common-pinctrl.dtsi"
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+        zephyr,shell-uart = &uart0;
+        zephyr,uart-mcumgr = &uart0;
+        zephyr,bt-mon-uart = &uart0;
+        zephyr,bt-c2h-uart = &uart0;
+        zephyr,bt-hci = &bt_hci_ipc0;
+        zephyr,ieee802154 = &ieee802154;
+        zephyr,display = &gc9a01;
+    };
+
+    pwmleds {
+        compatible = "pwm-leds";
+        display_blk: pwm_led_0 {
+            pwms = <&pwm0 0 PWM_USEC(15) PWM_POLARITY_INVERTED>;
+        };
+        vibrator_pwm: pwm_led_1 {
+            pwms = <&pwm1 0 PWM_MSEC(20) 0>;
+        };
+    };
+
+    lvgl_pointer_input: lvgl_pointer {
+        compatible = "zephyr,lvgl-pointer-input";
+        input = <&cst816s>;
+        swap-xy;
+        invert-x;
+    };
+
+
+    aliases {
+        display-blk = &display_blk;
+        vibrator-pwm = &vibrator_pwm;
+        sw1 = &button1;
+        sw2 = &button2;
+        sw3 = &button3;
+        sw4 = &button4;
+        watchdog0 = &wdt0;
+        mcuboot-button0 = &button1;
+    };
+};
+
+&vregmain {
+    regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&vregradio {
+    regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&vregh {
+    status = "okay";
+};
+
+&pwm0 {
+    status = "okay";
+    pinctrl-0 = <&pwm0_default>;
+    pinctrl-1 = <&pwm0_sleep>;
+    pinctrl-names = "default", "sleep";
+};
+
+&pwm1 {
+    status = "okay";
+    pinctrl-0 = <&pwm1_default>;
+    pinctrl-1 = <&pwm1_sleep>;
+    pinctrl-names = "default", "sleep";
+};
+
+&adc {
+    status = "okay";
+};
+
+&gpiote {
+    status = "okay";
+};
+
+&gpio0 {
+    status = "okay";
+    sense-edge-mask = <0xffffffff>;
+};
+
+&gpio1 {
+    status = "okay";
+};
+
+&i2c1 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_FAST>;
+    zephyr,concat-buf-size = <512>;
+
+    pinctrl-0 = <&i2c1_default>;
+    pinctrl-1 = <&i2c1_sleep>;
+    pinctrl-names = "default", "sleep";
+
+    bme688: bme688@76 {
+        compatible = "bosch,bme680";
+        reg = <0x76>;
+        status = "okay";
+    };
+
+    lis2mdl: lis2mdl@1e {
+        compatible = "st,lis2mdl";
+        reg = <0x1e>;
+        status = "okay";
+        irq-gpios = <&gpio0 24 0>;
+        cancel-offset;
+    };
+
+    bmp581: bmp581@47 {
+        compatible = "bosch,zsw_bmp581";
+        reg = <0x47>;
+        status = "okay";
+        int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+    };
+};
+
+&i2c2 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_FAST>;
+
+    pinctrl-0 = <&i2c2_default>;
+    pinctrl-1 = <&i2c2_sleep>;
+    pinctrl-names = "default", "sleep";
+
+    cst816s: cst816s@15 {
+        compatible = "hynitron,cst816s";
+        reg = <0x15>;
+        status = "okay";
+        irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
+        rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+    };
+};
+
+/* UART0 GPIOs can be configured for other use-cases */
+&uart0 {
+    current-speed = <115200>;
+    status = "okay";
+    pinctrl-0 = <&uart0_default>;
+    pinctrl-1 = <&uart0_sleep>;
+    pinctrl-names = "default", "sleep";
+};
+
+&timer0 {
+    status = "okay";
+};
+
+&timer1 {
+    status = "okay";
+};
+
+&timer2 {
+    status = "okay";
+};
+
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        boot_partition: partition@0 {
+            label = "mcuboot";
+            reg = <0x00000000 0x00010000>;
+        };
+        slot0_partition: partition@10000 {
+            label = "image-0";
+        };
+        slot0_ns_partition: partition@50000 {
+            label = "image-0-nonsecure";
+        };
+        slot1_partition: partition@80000 {
+            label = "image-1";
+        };
+        slot1_ns_partition: partition@c0000 {
+            label = "image-1-nonsecure";
+        };
+        scratch_partition: partition@f0000 {
+            label = "image-scratch";
+            reg = <0x000f0000 0xa000>;
+        };
+        storage_partition: partition@fa000 {
+            label = "storage";
+            reg = <0x000fa000 0x00006000>;
+        };
+    };
+};
+
+zephyr_udc0: &usbd {
+    compatible = "nordic,nrf-usbd";
+    status = "okay";
+};
+
+/ {
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+
+        sram0_image: image@20000000 {
+            /* Zephyr image(s) memory */
+        };
+
+        sram0_s: image_s@20000000 {
+            /* Secure image memory */
+        };
+
+        sram0_ns: image_ns@20040000 {
+            /* Non-Secure image memory */
+        };
+    };
+};
+
+/ {
+    sram@2006E000 {
+        compatible = "zephyr,memory-region", "mmio-sram";
+        reg = <0x2006E000 0x2000>;
+        zephyr,memory-region = "RetainedMem";
+        status = "okay";
+
+        retainedmem {
+            compatible = "zephyr,retained-ram";
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            retention_coredump: retention@0 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x0 0x1F00>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+
+            retention0: retention@1F00 {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1F00 0xFB>;
+                prefix = [04 fa];
+                checksum = <1>;
+            };
+            // Last byte in RAM is for boot mode.
+            // Du to debugger only supports writing 4 bytes at a time
+            // we need to leave a 3 byte gap between the two retention areas.
+            retention1: retention@1FFF {
+                compatible = "zephyr,retention";
+                status = "okay";
+                reg = <0x1FFF 0x1>;
+            };
+        };
+    };
+
+    chosen {
+            zephyr,boot-mode = &retention1;
+    };
+};
+
+
+/*
+* Reduce SRAM0 usage by 256 bytes to account for non-init area.
+* The last 256 bytes of SRAM0 are used for retention memory.
+*/
+&sram0 {
+    //reg = <0x20000000 0x7DFFF>;
+};
+
+/* Include partition configuration file */
+#include "nrf5340_cpuapp_partition_conf.dtsi"

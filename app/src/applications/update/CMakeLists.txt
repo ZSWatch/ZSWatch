@@ -1,4 +1,4 @@
-if(CONFIG_MCUMGR)
+if(CONFIG_MCUMGR AND SB_CONFIG_BOOTLOADER_MCUBOOT)
     FILE(GLOB app_sources *.c)
     target_sources(app PRIVATE ${app_sources})
 

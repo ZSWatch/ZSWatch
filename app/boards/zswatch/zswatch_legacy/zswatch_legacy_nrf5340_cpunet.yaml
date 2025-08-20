@@ -1,0 +1,14 @@
+identifier: zswatch_legacy/nrf5340/cpunet
+name: ZSWatch-nRF5340-network-MCU
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 64
+flash: 256
+supported:
+  - watchdog
+  - gpio
+vendor: ZSWatch
