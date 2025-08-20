@@ -15,6 +15,7 @@
         zephyr,ieee802154 = &ieee802154;
         zephyr,display = &gc9a01;
         nordic,pm-ext-flash = &mx25u51245g;
+        zephyr,uart-mcumgr = &cdc_acm_uart0;
     };
 
     lvgl_pointer_input: lvgl_pointer {

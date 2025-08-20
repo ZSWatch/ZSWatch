@@ -24,13 +24,19 @@ menu "ZSWatch"
         select BT_GATT_DYNAMIC_DB
         select MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION
         select MCUMGR_MGMT_NOTIFICATION_HOOKS
+        select MCUMGR_GRP_IMG
         select MCUMGR_GRP_IMG_UPLOAD_CHECK_HOOK
         select MCUMGR_GRP_IMG_IMAGE_SLOT_STATE_HOOK
         select MCUMGR_GRP_IMG_STATUS_HOOKS
         # Enable MCUMGR management for both OS and Images
-        select MCUMGR_GRP_OS
-        select MCUMGR_GRP_IMG
 
+        # Enable Shell over MCUmgr
+        select MCUMGR_GRP_SHELL
+        select SHELL
+        select SHELL_BACKEND_DUMMY
+
+        select BASE64
+        select MCUMGR_TRANSPORT_DUMMY
         select MCUMGR_TRANSPORT_BT
 
         # Dependencies
