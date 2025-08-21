@@ -30,16 +30,6 @@ endfunction()
 apply_patches("patches/zephyr" $ENV{ZEPHYR_BASE})
 apply_patches("patches/ext_drivers" ${CMAKE_SOURCE_DIR}/src/ext_drivers)
 
-# Get the target hardware
-string(REGEX MATCH "zswatch@([0-9]+)/nrf5340.*" ZSWATCH_BOARD "${BOARD}")
-if(ZSWATCH_BOARD)
-    string(CONCAT VERSION_STRING "\"" ${CMAKE_MATCH_1} "\"")
-    set(CONFIG_ZSWATCH_PCB_REV ${CMAKE_MATCH_1} CACHE INTERNAL "")
-    set(CONFIG_BT_DIS_HW_REV_STR ${VERSION_STRING} CACHE INTERNAL "")
-
-    message("PCB revision: " ${CONFIG_ZSWATCH_PCB_REV})
-endif()
-
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})

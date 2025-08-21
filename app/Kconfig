@@ -8,11 +8,6 @@ menu "Zephyr Kernel"
 endmenu
 
 menu "ZSWatch"
-    config ZSWATCH_PCB_REV
-        int
-    prompt "ZSWatch PCB revision"
-    default 1
-
     config ZSW_FW_UPDATE
         bool
     prompt "Enable firmware update"

@@ -29,7 +29,7 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group)
     char build_time[50];
     char fs_stats[50];
 
-#if CONFIG_ZSWATCH_PCB_REV > 3
+#if CONFIG_STORE_IMAGES_EXTERNAL_FLASH
     snprintf(fs_stats, sizeof(fs_stats), "%d Files (%.2f MB)", zsw_filesytem_get_num_rawfs_files(),
              zsw_filesytem_get_total_size() / 1000000.0);
 #else
@@ -38,7 +38,7 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group)
     snprintf(build_time, sizeof(build_time), "%s %s", __DATE__, __TIME__);
     snprintf(sdk_version, sizeof(sdk_version), "NCS: %s - Zephyr: %s", NCS_VERSION_STRING, KERNEL_VERSION_STRING);
     snprintf(version, sizeof(version), "v%s-%s", APP_VERSION_STRING, STRINGIFY(APP_BUILD_VERSION));
-    about_ui_show(root, CONFIG_ZSWATCH_PCB_REV, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
+    about_ui_show(root, CONFIG_BOARD_TARGET, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
 }
 
 static void about_app_stop(void)

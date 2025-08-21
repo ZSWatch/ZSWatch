@@ -69,7 +69,7 @@ static void run_input_work(struct k_work *item)
     switch (container->event.code) {
         // Button event
         case (INPUT_KEY_Y): {
-#if(CONFIG_MISC_ENABLE_SYSTEM_RESET && (CONFIG_ZSWATCH_PCB_REV < 5))
+#if(CONFIG_MISC_ENABLE_SYSTEM_RESET && !CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
             LOG_INF("Force restart");
 
             retained.off_count += 1;
