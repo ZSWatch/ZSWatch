@@ -40,51 +40,6 @@
 			low-power-enable;
 		};
 	};
-
-    i2c1_default: i2c1_default {
-		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
-				<NRF_PSEL(TWIM_SCL, 0, 7)>;
-		};
-	};
-
-	i2c1_sleep: i2c1_sleep {
-		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
-				<NRF_PSEL(TWIM_SCL, 0, 7)>;
-			low-power-enable;
-		};
-	};
-
-    qspi_default: qspi_default {
-		group1 {
-			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
-				<NRF_PSEL(QSPI_IO0, 0, 13)>,
-				<NRF_PSEL(QSPI_IO1, 0, 14)>,
-				<NRF_PSEL(QSPI_IO2, 0, 15)>,
-				<NRF_PSEL(QSPI_IO3, 0, 16)>,
-				<NRF_PSEL(QSPI_CSN, 0, 18)>;
-			nordic,drive-mode = <NRF_DRIVE_H0H1>;
-		};
-	};
-
-	qspi_sleep: qspi_sleep {
-		group1 {
-			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
-				<NRF_PSEL(QSPI_IO0, 0, 13)>,
-				<NRF_PSEL(QSPI_IO1, 0, 14)>,
-				<NRF_PSEL(QSPI_IO2, 0, 15)>,
-				<NRF_PSEL(QSPI_IO3, 0, 16)>;
-			low-power-enable;
-		};
-
-		group2 {
-			psels = <NRF_PSEL(QSPI_CSN, 0, 18)>;
-			low-power-enable;
-			bias-pull-up;
-		};
-	};
-
 };
 
 &uicr {
@@ -176,14 +131,6 @@
 	pwmleds {
         compatible = "pwm-leds";
 
-        display_blk: pwm_led_0 {
-            pwms = <&pwm0 0 PWM_USEC(15) PWM_POLARITY_INVERTED>;
-        };
-
-        vibrator_pwm: pwm_led_1 {
-            pwms = <&pwm1 0 PWM_MSEC(20) 0>;
-        };
-
 		buzzer_pwm: pwm_led_2 {
             pwms = <&pwm2 0 PWM_HZ(880) PWM_POLARITY_NORMAL>;
         };
@@ -212,12 +159,6 @@
 		// to get the x axis of the watch coordinate system.
 		swap-xy;
 		invert-y;
-	};
-
-	apds9306: apds9306@52 {
-		compatible = "avago,apds9306";
-		reg = <0x52>;
-		status = "okay";
 	};
 
 	npm1300_pmic: pmic@6b {
@@ -282,27 +223,6 @@
 	};
 };
 
-&spi4  {
-    status = "okay";
-    compatible = "nordic,nrf-spim";
-    pinctrl-0 = <&spi4_default>;
-    pinctrl-1 = <&spi4_sleep>;
-    pinctrl-names = "default", "sleep";
-    cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
-
-    gc9a01: gc9a01@0 {
-        compatible = "buydisplay,gc9a01";
-        status = "okay";
-        spi-max-frequency = <30000000>;
-        reg = <0>;
-        width = <240>;
-        height = <240>;
-        bl-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
-        reset-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-        dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
-    };
-};
-
 &qspi {
 	status = "okay";
 	pinctrl-0 = <&qspi_default>;
@@ -328,24 +248,6 @@
 		writeoc = "pp4io";
 		readoc = "read4io";
 		quad-enable-requirements = "S1B6";
-	};
-};
-
-/ {
-	fstab {
-		compatible = "zephyr,fstab";
-
-		lvgl_lfs: lvgl_lfs {
-			compatible = "zephyr,fstab,littlefs";
-			mount-point = "/lvgl_lfs";
-			partition = <&littlefs_storage>;
-			automount;
-			read-size = <512>;
-			prog-size = <512>;
-			cache-size = <512>;
-			lookahead-size = <4096>;
-			block-cycles = <512>;
-		};
 	};
 };
 

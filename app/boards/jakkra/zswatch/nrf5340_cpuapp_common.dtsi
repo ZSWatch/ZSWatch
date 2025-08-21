@@ -18,11 +18,13 @@
         zephyr,display = &gc9a01;
     };
 
-    pwmleds {
+	pwmleds {
         compatible = "pwm-leds";
+
         display_blk: pwm_led_0 {
             pwms = <&pwm0 0 PWM_USEC(15) PWM_POLARITY_INVERTED>;
         };
+
         vibrator_pwm: pwm_led_1 {
             pwms = <&pwm1 0 PWM_MSEC(20) 0>;
         };
@@ -121,6 +123,23 @@
         status = "okay";
         int-gpios = <&gpio0 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };
+
+    bmi270: bmi270@68 {
+        compatible = "bosch,bmi270-plus";
+        reg = <0x68>;
+        status = "okay";
+        int-gpios = <&gpio0 19 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
+        // NOTE: The swap is performed AFTER the axis inversion. So we have to invert the y axis of the sensor
+        // to get the x axis of the watch coordinate system.
+        swap-xy;
+        invert-y;
+    };
+
+    apds9306: apds9306@52 {
+        compatible = "avago,apds9306";
+        reg = <0x52>;
+        status = "okay";
+    };
 };
 
 &i2c2 {
@@ -138,6 +157,27 @@
         status = "okay";
         irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+    };
+};
+
+&spi4  {
+    status = "okay";
+    compatible = "nordic,nrf-spim";
+    pinctrl-0 = <&spi4_default>;
+    pinctrl-1 = <&spi4_sleep>;
+    pinctrl-names = "default", "sleep";
+    cs-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
+
+    gc9a01: gc9a01@0 {
+        compatible = "buydisplay,gc9a01";
+        status = "okay";
+        spi-max-frequency = <30000000>;
+        reg = <0>;
+        width = <240>;
+        height = <240>;
+        bl-gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+        dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
     };
 };
 
@@ -161,6 +201,26 @@
 &timer2 {
     status = "okay";
 };
+
+
+/ {
+	fstab {
+		compatible = "zephyr,fstab";
+
+		lvgl_lfs: lvgl_lfs {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lvgl_lfs";
+			partition = <&littlefs_storage>;
+			automount;
+			read-size = <512>;
+			prog-size = <512>;
+			cache-size = <512>;
+			lookahead-size = <4096>;
+			block-cycles = <512>;
+		};
+	};
+};
+
 
 &flash0 {
     partitions {

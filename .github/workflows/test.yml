@@ -138,7 +138,7 @@ jobs:
           require_tests: false # Don't require tests to be found
 
       - name: Create/Update Power Consumption Comment
-        if: github.event_name == 'pull_request' && (success() || failure())
+        if: github.event_name == 'pull_request_target' && (success() || failure())
         continue-on-error: true
         run: |
           source .venv/bin/activate
@@ -153,7 +153,7 @@ jobs:
           fi
 
       - name: Find existing power consumption comment
-        if: github.event_name == 'pull_request' && (success() || failure())
+        if: github.event_name == 'pull_request_target' && (success() || failure())
         uses: peter-evans/find-comment@v3
         id: fc
         with:
@@ -162,7 +162,7 @@ jobs:
           body-includes: '⚡ Power Consumption'
 
       - name: Create or update power consumption comment
-        if: github.event_name == 'pull_request' && (success() || failure())
+        if: github.event_name == 'pull_request_target' && (success() || failure())
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}

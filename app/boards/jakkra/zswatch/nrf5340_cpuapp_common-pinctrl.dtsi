@@ -6,13 +6,13 @@
  &pinctrl {
 	pwm0_default: pwm0_default {
 		group1 {
-			psels = <NRF_PSEL(PWM_OUT0, 0, 6)>;
+			psels = <NRF_PSEL(PWM_OUT0, 0, 23)>;
 		};
 	};
 
 	pwm0_sleep: pwm0_sleep {
 		group1 {
-			psels = <NRF_PSEL(PWM_OUT0, 0, 6)>;
+			psels = <NRF_PSEL(PWM_OUT0, 0, 23)>;
 			low-power-enable;
 		};
 	};
@@ -32,15 +32,15 @@
 
 	i2c1_default: i2c1_default {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 17)>,
-				<NRF_PSEL(TWIM_SCL, 0, 18)>;
+			psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
+				<NRF_PSEL(TWIM_SCL, 0, 7)>;
 		};
 	};
 
 	i2c1_sleep: i2c1_sleep {
 		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 0, 17)>,
-				<NRF_PSEL(TWIM_SCL, 0, 18)>;
+			psels = <NRF_PSEL(TWIM_SDA, 0, 10)>,
+				<NRF_PSEL(TWIM_SCL, 0, 7)>;
 			low-power-enable;
 		};
 	};
@@ -118,6 +118,34 @@
 		group1 {
 			psels = <NRF_PSEL(UART_TX, 1, 13)>;
 			low-power-enable;
+		};
+	};
+
+	qspi_default: qspi_default {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
+				<NRF_PSEL(QSPI_IO0, 0, 13)>,
+				<NRF_PSEL(QSPI_IO1, 0, 14)>,
+				<NRF_PSEL(QSPI_IO2, 0, 15)>,
+				<NRF_PSEL(QSPI_IO3, 0, 16)>,
+				<NRF_PSEL(QSPI_CSN, 0, 18)>;
+			nordic,drive-mode = <NRF_DRIVE_H0H1>;
+		};
+	};
+
+	qspi_sleep: qspi_sleep {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 17)>,
+				<NRF_PSEL(QSPI_IO0, 0, 13)>,
+				<NRF_PSEL(QSPI_IO1, 0, 14)>,
+				<NRF_PSEL(QSPI_IO2, 0, 15)>,
+				<NRF_PSEL(QSPI_IO3, 0, 16)>;
+			low-power-enable;
+		};
+		group2 {
+			psels = <NRF_PSEL(QSPI_CSN, 0, 18)>;
+			low-power-enable;
+			bias-pull-up;
 		};
 	};
 };
