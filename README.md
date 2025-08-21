@@ -189,3 +189,5 @@ Thanks to this the project will be much more approachable for persons without a 
 ## Miscellaneous stuff
 
 - [Watch my presentation at Zephyr Developer Summit 2023](https://www.youtube.com/watch?v=MmCzV0jV9hs)
+
+Just a test
