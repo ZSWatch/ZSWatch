@@ -68,7 +68,7 @@ class UploadFsWestCommand(WestCommand):
             "--ini_file",
             type=str,
             help="nrfjprog qspsi ini file",
-            default="app/qspi_mx25u51245.ini",
+            default="app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini",
         )
 
         parser.add_argument(

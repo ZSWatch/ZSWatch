@@ -6,6 +6,7 @@ if(CONFIG_BOARD_WATCHDK_NRF5340_CPUAPP_NS)
 endif()
 
 if(CONFIG_BOARD_WATCHDK_NRF5340_CPUAPP OR CONFIG_BOARD_WATCHDK_NRF5340_CPUAPP_NS)
+board_runner_args(nrfjprog "--qspiini=${BOARD_DIR}/support/qspi_mx25u51245.ini")
   board_runner_args(jlink "--device=nrf5340_xxaa_app" "--speed=4000")
 endif()
 

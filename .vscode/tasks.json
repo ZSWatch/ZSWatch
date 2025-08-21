@@ -14,34 +14,34 @@
             "command": "west upload_fs --type lfs --generate_only"
         },
         {
-            "label": "Upload Raw FS v5",
+            "label": "Upload Raw FS",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --type raw --ini_file app/qspi_mx25u51245.ini"
+            "command": "west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini"
         },
         {
-            "label": "Upload Raw FS v4",
+            "label": "Upload Raw FS Legacy v4",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --type raw --ini_file app/qspi_at25sl128a.ini"
+            "command": "west upload_fs --type raw --ini_file app/boards/zswatch/zswatch_legacy/support/qspi_at25sl128a.ini"
         },
         {
-            "label": "Upload LittleFS v5",
+            "label": "Upload LittleFS",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --type lfs --ini_file app/qspi_mx25u51245.ini"
+            "command": "west upload_fs --type lfs --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini"
         },
         {
-            "label": "Upload LittleFS v4",
+            "label": "Upload LittleFS Legacy v4",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --type lfs --ini_file app/qspi_at25sl128a.ini"
+            "command": "west upload_fs --type lfs --ini_file app/boards/zswatch/zswatch_legacy/support/qspi_at25sl128a.ini"
         },
         {
-            "label": "Erase external flash v5",
+            "label": "Erase external flash",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --erase --ini_file app/qspi_mx25u51245.ini"
+            "command": "west upload_fs --erase --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini"
         },
         {
-            "label": "Erase external flash v4",
+            "label": "Erase external flash Legacy v4",
             "type": "nrf-connect-shell",
-            "command": "west upload_fs --erase --ini_file app/qspi_at25sl128a.ini"
+            "command": "west upload_fs --erase --ini_file app/boards/zswatch/zswatch_legacy/support/qspi_at25sl128a.ini"
         },
         {
             "label": "Disable BT",

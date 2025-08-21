@@ -48,7 +48,7 @@ def flash(device_config):
                 "--qspisectorerase",
                 "--verify",
                 "--qspiini",
-                "../qspi_mx25u51245.ini",
+                "../boards/zswatch/watchdk/support/qspi_mx25u51245.ini",
             ],
             shell=False,
             stderr=subprocess.STDOUT,

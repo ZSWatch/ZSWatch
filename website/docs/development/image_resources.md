@@ -13,9 +13,9 @@ import TabItem from '@theme/TabItem';
   <TabItem value="vscode" label="In VSCode">
 
   Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> 
-  and run the following tasks (Choose the option for the ZSWatch version you have):
-  - `Erase external flash vX`
-  - `Upload Raw FS vX`
+  and run the following tasks (if using older legacy zswatch v4 use the other named Legacy):
+  - `Erase external flash`
+  - `Upload Raw FS`
 
   </TabItem>
   <TabItem value="ble" label="Over BLE">
@@ -27,10 +27,10 @@ import TabItem from '@theme/TabItem';
   </TabItem>
   <TabItem value="terminal" label="From terminal">
 
-  Below for ZSWatch v5. Take a look in [tasks.json](https://github.com/ZSWatch/ZSWatch/blob/main/.vscode/tasks.json) for the exact lines needed for specific ZSWatch version.
+  Below for later ZSWatch no need to specify anything else. But for older version sucn as legacy v4 take a look in [tasks.json](https://github.com/ZSWatch/ZSWatch/blob/main/.vscode/tasks.json) for the exact lines needed for specific ZSWatch version.
   ```sh
-  west upload_fs --erase --ini_file app/qspi_mx25u51245.ini
-  west upload_fs --type raw --ini_file app/qspi_mx25u51245.ini
+  west upload_fs --erase
+  west upload_fs --type raw
   ```
 
   </TabItem>

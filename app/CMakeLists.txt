@@ -42,17 +42,6 @@ endif()
 
 set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-# TODO: move to board files
-macro(app_set_runner_args)
-    if (CONFIG_BOARD_ZSWATCH_LEGACY_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "5")
-        board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_mx25u51245.ini")
-    elseif(CONFIG_BOARD_ZSWATCH_LEGACY_NRF5340_CPUAPP AND CONFIG_BOARD_REVISION STREQUAL "4")
-        board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_at25sl128a.ini")
-    else ()
-        board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/qspi_mx25u51245.ini")
-    endif()
-endmacro()
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ZSWatchFW)
 
