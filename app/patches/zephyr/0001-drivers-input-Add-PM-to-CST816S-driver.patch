@@ -1,0 +1,125 @@
+From 6e86b88d0abd0a7a4fdb8d1228906fde3760b8b2 Mon Sep 17 00:00:00 2001
+From: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+Date: Wed, 20 Aug 2025 13:44:02 +0000
+Subject: [PATCH] drivers: input: Add PM to CST816S driver
+
+- Add power management API to driver
+
+Signed-off-by: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+---
+ drivers/input/input_cst816s.c | 65 ++++++++++++++++++++++++++++++++---
+ 1 file changed, 61 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/input/input_cst816s.c b/drivers/input/input_cst816s.c
+index 84381bac4c2..9565ce5c72c 100644
+--- a/drivers/input/input_cst816s.c
++++ b/drivers/input/input_cst816s.c
+@@ -1,5 +1,6 @@
+ /*
+  * Copyright (c) 2021 Qingsong Gou <gouqs@hotmail.com>
++ * Copyright (c) 2025 Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+  *
+  * SPDX-License-Identifier: Apache-2.0
+  */
+@@ -11,6 +12,7 @@
+ #include <zephyr/drivers/i2c.h>
+ #include <zephyr/drivers/gpio.h>
+ #include <zephyr/logging/log.h>
++#include <zephyr/pm/device.h>
+ #include <zephyr/dt-bindings/input/cst816s-gesture-codes.h>
+ 
+ LOG_MODULE_REGISTER(cst816s, CONFIG_INPUT_LOG_LEVEL);
+@@ -84,9 +86,11 @@ LOG_MODULE_REGISTER(cst816s, CONFIG_INPUT_LOG_LEVEL);
+ /** cst816s configuration (DT). */
+ struct cst816s_config {
+ 	struct i2c_dt_spec i2c;
+-	const struct gpio_dt_spec rst_gpio;
++	struct gpio_dt_spec rst_gpio;
++	struct gpio_dt_spec supply;
++
+ #ifdef CONFIG_INPUT_CST816S_INTERRUPT
+-	const struct gpio_dt_spec int_gpio;
++	struct gpio_dt_spec int_gpio;
+ #endif
+ };
+ 
+@@ -248,6 +252,22 @@ static int cst816s_init(const struct device *dev)
+ 	struct cst816s_data *data = dev->data;
+ 	int ret;
+ 
++	if (config->supply.port) {
++		ret = gpio_pin_configure_dt(&config->supply,
++					    GPIO_OUTPUT_INACTIVE);
++		if (ret < 0) {
++			return ret;
++		}
++
++		if (!gpio_is_ready_dt(&config->supply)) {
++			LOG_ERR("Supply GPIO device not ready");
++			return -ENODEV;
++		}
++
++		gpio_pin_set_dt(&config->supply, 1);
++		k_msleep(100);
++	}
++
+ 	data->dev = dev;
+ 	k_work_init(&data->work, cst816s_work_handler);
+ 
+@@ -292,14 +312,51 @@ static int cst816s_init(const struct device *dev)
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_PM_DEVICE
++static int cst816s_pm_action(const struct device *dev, enum pm_device_action action)
++{
++	switch (action) {
++		case PM_DEVICE_ACTION_TURN_OFF:
++		case PM_DEVICE_ACTION_SUSPEND: {
++			LOG_DBG("State changed to inactive");
++
++			if (config->supply.port) {
++				gpio_pin_set_dt(&config->supply, 0);
++				k_msleep(100);
++			}
++
++			return 0;
++		}
++		case PM_DEVICE_ACTION_TURN_ON:
++		case PM_DEVICE_ACTION_RESUME: {
++			LOG_DBG("State changed to active");
++
++			if (config->supply.port) {
++				gpio_pin_set_dt(&config->supply, 1);
++				k_msleep(100);
++			}
++
++			return cst816s_chip_init(dev);
++		}
++		default: {
++			return -ENOTSUP;
++		}
++	}
++}
++#endif
++
+ #define CST816S_DEFINE(index)                                                                      \
++	static struct cst816s_data cst816s_data_##index;                                           \
+ 	static const struct cst816s_config cst816s_config_##index = {                              \
+ 		.i2c = I2C_DT_SPEC_INST_GET(index),                                                \
+ 		COND_CODE_1(CONFIG_INPUT_CST816S_INTERRUPT,                                        \
+-			    (.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),), ())           \
++		   (.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),), ())           \
+ 			.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(index, rst_gpios, {}),                \
++			.supply = GPIO_DT_SPEC_GET_OR(index, supply_gpios, {}),                         \
+ 	};                                                                                         \
+-	static struct cst816s_data cst816s_data_##index;                                           \
++																									\
++	PM_DEVICE_DT_INST_DEFINE(index, cst816s_pm_action);                                             \
++																									\
+ 	DEVICE_DT_INST_DEFINE(index, cst816s_init, NULL, &cst816s_data_##index,                    \
+ 			      &cst816s_config_##index, POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY,    \
+ 			      NULL);
+-- 
+2.34.1
+
