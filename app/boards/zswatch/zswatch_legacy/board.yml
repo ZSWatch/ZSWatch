@@ -1,6 +1,6 @@
 board:
-  name: zswatch
-  vendor: nordic
+  name: zswatch_legacy
+  vendor: zswatch
   socs:
   - name: 'nrf5340'
     variants:
@@ -11,6 +11,5 @@ board:
     default: "5"
     exact: false
     revisions:
-    - name: "3"
     - name: "4"
     - name: "5"

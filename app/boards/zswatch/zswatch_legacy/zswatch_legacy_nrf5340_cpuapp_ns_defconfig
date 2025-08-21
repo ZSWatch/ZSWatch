@@ -9,6 +9,9 @@ CONFIG_HW_STACK_PROTECTION=y
 # Enable TrustZone-M
 CONFIG_ARM_TRUSTZONE_M=y
 
+# This Board implies building Non-Secure firmware
+CONFIG_TRUSTED_EXECUTION_NONSECURE=y
+
 # enable GPIO
 CONFIG_GPIO=y
 

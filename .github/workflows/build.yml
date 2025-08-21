@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         build_type: [debug, release]
-        board: [watchdk@1/nrf5340/cpuapp, zswatch@4/nrf5340/cpuapp, zswatch@5/nrf5340/cpuapp, native_sim/native/64, nrf5340dk/nrf5340/cpuapp]
+        board: [watchdk@1/nrf5340/cpuapp, zswatch_legacy@4/nrf5340/cpuapp, zswatch_legacy@5/nrf5340/cpuapp, native_sim/native/64, nrf5340dk/nrf5340/cpuapp]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,10 +99,6 @@ jobs:
                 append_var EXTRA_CONF_FILE "boards/debug.conf;boards/log_on_rtt.conf"
                 ;;
             esac
-          fi
-
-          if [ "${{ matrix.board }}" = "zswatch@3/nrf5340/cpuapp" ]; then
-            SB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
           fi
 
           west build app --build-dir "${{ env.BUILD_DIR }}" -p -b "${{ matrix.board }}" -- \

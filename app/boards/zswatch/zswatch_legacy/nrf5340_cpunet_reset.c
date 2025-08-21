@@ -11,7 +11,7 @@
 #include <soc.h>
 #include <hal/nrf_reset.h>
 
-LOG_MODULE_REGISTER(nrf5340dk_nrf5340_cpuapp, CONFIG_LOG_DEFAULT_LEVEL);
+LOG_MODULE_REGISTER(zswatch_legacy_nrf5340_cpuapp, CONFIG_LOG_DEFAULT_LEVEL);
 
 #if defined(CONFIG_BT_CTLR_DEBUG_PINS_CPUAPP)
 #include <../subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/debug.h>

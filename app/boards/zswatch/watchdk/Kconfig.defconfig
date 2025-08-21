@@ -3,7 +3,7 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-if  BOARD_WATCHDK_NRF5340_CPUAPP || BOARD_WATCHDK_NRF5340_CPUAPP_NS
+if BOARD_WATCHDK_NRF5340_CPUAPP || BOARD_WATCHDK_NRF5340_CPUAPP_NS
     # Code Partition:
     #
     # For the secure version of the board the firmware is linked at the beginning

@@ -6,11 +6,11 @@
 
 /dts-v1/;
 #include <nordic/nrf5340_cpunet_qkaa.dtsi>
-#include "zswatch_nrf5340_cpunet-pinctrl.dtsi"
+#include "zswatch_legacy_nrf5340_cpunet-pinctrl.dtsi"
 
 / {
-	model = "ZSWatch NRF5340 Network";
-	compatible = "jakkra,zswatch-nrf5340-cpunet";
+	model = "ZSWatch Legacy NRF5340 Network";
+	compatible = "zswatch,zswatch-legacy-nrf5340-cpunet";
 
 	chosen {
 		zephyr,console = &uart0;

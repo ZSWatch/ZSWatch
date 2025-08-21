@@ -36,7 +36,6 @@ static void remoteproc_mgr_config(void)
 
 static int remoteproc_mgr_boot(void)
 {
-
     /* Secure domain may configure permissions for the Network MCU. */
     remoteproc_mgr_config();
 

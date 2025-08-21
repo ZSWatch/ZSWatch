@@ -1,3 +1,8 @@
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 menu "Zephyr Kernel"
     source "Kconfig.zephyr"
 endmenu
@@ -6,7 +11,7 @@ menu "ZSWatch"
     config ZSWATCH_PCB_REV
         int
     prompt "ZSWatch PCB revision"
-    default 5
+    default 1
 
     config ZSW_FW_UPDATE
         bool
@@ -225,7 +230,7 @@ menu "ZSWatch"
         prompt "Disable encryption required for BLE connection (pairing/bonding)"
         default n
         help
-            "Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes."
+            Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
     endmenu
     
     menu "SPI RTT Flash Loader"
@@ -244,7 +249,7 @@ menu "ZSWatch"
             prompt "Erase sectors one by one when writing instead of full partition before starting."
             default y
             help
-                "If not writing to the full partition this will be faster"
+                If not writing to the full partition this will be faster
 
             config RTT_TRANSFER_CHANNEL
                 int
@@ -252,7 +257,7 @@ menu "ZSWatch"
             prompt "The RTT channel to use for transfer of data to and form flash"
             default 2
             help
-                "If RTT logging is enabled, channel 0 is used for this, hence avoid 1 in this scenario."
+                If RTT logging is enabled, channel 0 is used for this, hence avoid 1 in this scenario.
         endif
     endmenu
 
@@ -269,7 +274,7 @@ menu "ZSWatch"
         prompt "Log sensor fusion reading to RTT"
         default 1
         help
-            "Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading."
+            Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
 
         if SEND_SENSOR_READING_OVER_RTT
             config SENSOR_LOG_RTT_TRANSFER_CHANNEL
@@ -277,7 +282,7 @@ menu "ZSWatch"
             prompt "The RTT channel to use for transfer of sensor fusion reading"
             default 1
             help
-                "If RTT logging is enabled"
+                If RTT logging is enabled
         endif
     endmenu
 
