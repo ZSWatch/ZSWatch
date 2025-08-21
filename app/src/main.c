@@ -58,7 +58,6 @@
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_environment_sensor.h"
 
-#include "drivers/zsw_buzzer.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
 
