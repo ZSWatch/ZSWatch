@@ -146,20 +146,15 @@ const void *face_84_2_dial_12_247724_group[] = {
 
 static int32_t getPlaceValue(int32_t num, int32_t place)
 {
+    if (num < 0) {
+        return -1;
+    }
+
     int32_t divisor = 1;
     for (uint32_t i = 1; i < place; i++) {
         divisor *= 10;
     }
     return (num / divisor) % 10;
-}
-
-static int32_t setPlaceValue(int32_t num, int32_t place, int32_t newValue)
-{
-    int32_t divisor = 1;
-    for (uint32_t i = 1; i < place; i++) {
-        divisor *= 10;
-    }
-    return num - ((num / divisor) % 10 * divisor) + (newValue * divisor);
 }
 
 static void watchface_84_2_dial_remove(void)
@@ -203,50 +198,46 @@ static void watchface_84_2_dial_set_datetime(int day_of_week, int date, int day,
     month += 1;
 
     if (getPlaceValue(last_hour, 1) != getPlaceValue(hour, 1)) {
-        last_hour = setPlaceValue(last_hour, 1, getPlaceValue(hour, 1));
         lv_img_set_src(face_84_2_dial_2_232486, face_84_2_dial_2_232486_group[(hour / 1) % 10]);
     }
 
     if (getPlaceValue(last_hour, 2) != getPlaceValue(hour, 2)) {
-        last_hour = setPlaceValue(last_hour, 2, getPlaceValue(hour, 2));
         lv_img_set_src(face_84_2_dial_3_232486, face_84_2_dial_2_232486_group[(hour / 10) % 10]);
     }
 
     if (getPlaceValue(last_minute, 1) != getPlaceValue(minute, 1)) {
-        last_minute = setPlaceValue(last_minute, 1, getPlaceValue(minute, 1));
         lv_img_set_src(face_84_2_dial_4_232486, face_84_2_dial_2_232486_group[(minute / 1) % 10]);
     }
 
     if (getPlaceValue(last_minute, 2) != getPlaceValue(minute, 2)) {
-        last_minute = setPlaceValue(last_minute, 2, getPlaceValue(minute, 2));
         lv_img_set_src(face_84_2_dial_5_232486, face_84_2_dial_2_232486_group[(minute / 10) % 10]);
     }
 
     if (getPlaceValue(last_month, 1) != getPlaceValue(month, 1)) {
-        last_month = setPlaceValue(last_month, 1, getPlaceValue(month, 1));
         lv_img_set_src(face_84_2_dial_7_231194, face_84_2_dial_7_231194_group[(month / 1) % 10]);
     }
 
     if (getPlaceValue(last_month, 2) != getPlaceValue(month, 2)) {
-        last_month = setPlaceValue(last_month, 2, getPlaceValue(month, 2));
         lv_img_set_src(face_84_2_dial_8_231194, face_84_2_dial_7_231194_group[(month / 10) % 10]);
     }
 
     if (getPlaceValue(last_day, 1) != getPlaceValue(day, 1)) {
-        last_day = setPlaceValue(last_day, 1, getPlaceValue(day, 1));
         lv_img_set_src(face_84_2_dial_9_231194, face_84_2_dial_7_231194_group[(day / 1) % 10]);
     }
 
     if (getPlaceValue(last_day, 2) != getPlaceValue(day, 2)) {
-        last_day = setPlaceValue(last_day, 2, getPlaceValue(day, 2));
         lv_img_set_src(face_84_2_dial_10_231194, face_84_2_dial_7_231194_group[(day / 10) % 10]);
     }
 
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
-        last_weekday = setPlaceValue(last_weekday, 1, getPlaceValue(weekday, 1));
         lv_img_set_src(face_84_2_dial_12_247724, face_84_2_dial_12_247724_group[((weekday + 6) / 1) % 7]);
     }
 
+    last_hour = hour;
+    last_minute = minute;
+    last_month = month;
+    last_day = day;
+    last_weekday = weekday;
 }
 
 static void watchface_84_2_dial_set_step(int32_t steps, int32_t distance, int32_t kcal)
