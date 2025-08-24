@@ -14,9 +14,22 @@ sidebar_position: 1
 
 ---
 
+
 ## 2. Set Up VS Code
 
 - Install the **nRF Connect VSCode Extension Pack**
+
+### Recommended Nordic VS Code Plugin Versions
+
+> **Note:** Newer updates of the Nordic plugins can cause issues. The latest versions have really weird behaviours in a specific version, so it is recommended to use the following versions:
+
+- **nRF Connect for VS Code**: `2025.5.152`
+- **nRF DeviceTree**: `2025.4.22`
+- **nRF Kconfig**: `2025.4.26`
+- **nRF Terminal**: `2024.9.14`
+
+If you experience problems, try downgrading to these versions.
+
 - In the extension:  
   <kbd>Install/Manage toolchain</kbd> → <kbd>Install SDK</kbd> → <kbd>Download 3.0.2</kbd>
 
