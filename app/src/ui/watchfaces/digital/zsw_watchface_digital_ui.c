@@ -154,14 +154,14 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_co2_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_co2_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_iaq_co2_text_image = lv_img_create(ui_co2_arc);
-    lv_img_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
+    ui_iaq_co2_text_image = lv_image_create(ui_co2_arc);
+    lv_image_set_src(ui_iaq_co2_text_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
     lv_obj_set_width(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_iaq_co2_text_image, LV_SIZE_CONTENT);
     lv_obj_set_pos(ui_iaq_co2_text_image, -80, -70);
     lv_obj_set_align(ui_iaq_co2_text_image, LV_ALIGN_CENTER);
-    lv_img_set_src(ui_iaq_co2_text_image, &ui_img_iaq_co2_text);
-    lv_img_set_angle(ui_iaq_co2_text_image, 300);
+    lv_image_set_src(ui_iaq_co2_text_image, &ui_img_iaq_co2_text);
+    lv_image_set_rotation(ui_iaq_co2_text_image, 300);
     lv_obj_add_flag(ui_iaq_co2_text_image, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(ui_iaq_co2_text_image,
                       LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC |
@@ -169,8 +169,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_img_recolor(ui_iaq_co2_text_image, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_iaq_co2_text_image, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 #else
-    ui_pressure_image = lv_img_create(ui_iaq_or_pressure_arc);
-    lv_img_set_src(ui_pressure_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
+    ui_pressure_image = lv_image_create(ui_iaq_or_pressure_arc);
+    lv_image_set_src(ui_pressure_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
     lv_obj_set_width(ui_pressure_image, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_pressure_image, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_pressure_image, -70);
@@ -206,8 +206,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_humidity_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_humidity_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_humidity_icon = lv_img_create(ui_humidity_arc);
-    lv_img_set_src(ui_humidity_icon, ZSW_LV_IMG_USE(ui_img_temperatures_png));
+    ui_humidity_icon = lv_image_create(ui_humidity_arc);
+    lv_image_set_src(ui_humidity_icon, ZSW_LV_IMG_USE(ui_img_temperatures_png));
     lv_obj_set_width(ui_humidity_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_humidity_icon, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_humidity_icon, 70);
@@ -331,8 +331,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_battery_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_battery_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_battery_arc_icon = lv_img_create(ui_battery_arc);
-    lv_img_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_charging_png));
+    ui_battery_arc_icon = lv_image_create(ui_battery_arc);
+    lv_image_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_charging_png));
     lv_obj_set_width(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_battery_arc_icon, LV_ALIGN_CENTER);
@@ -374,8 +374,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_step_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_step_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_step_arc_icon = lv_img_create(ui_step_arc);
-    lv_img_set_src(ui_step_arc_icon, ZSW_LV_IMG_USE(ui_img_running_png));
+    ui_step_arc_icon = lv_image_create(ui_step_arc);
+    lv_image_set_src(ui_step_arc_icon, ZSW_LV_IMG_USE(ui_img_running_png));
     lv_obj_set_width(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_step_arc_icon, LV_ALIGN_CENTER);
@@ -449,12 +449,12 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
                       LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE |
                       LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
 
-    ui_weather_icon = lv_img_create(ui_digital_watchface);
+    ui_weather_icon = lv_image_create(ui_digital_watchface);
     lv_color_t icon_color;
 
     // Just use a default dummy image by default
     const lv_img_dsc_t *icon = zsw_ui_utils_icon_from_weather_code(802, &icon_color);
-    lv_img_set_src(ui_weather_icon, icon);
+    lv_image_set_src(ui_weather_icon, icon);
     lv_obj_set_width(ui_weather_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_weather_icon, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_weather_icon, -12);
@@ -547,7 +547,7 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
 
     lv_label_set_text_fmt(ui_weather_temperature_label, "%d°", temperature);
     icon = zsw_ui_utils_icon_from_weather_code(weather_code, &icon_color);
-    lv_img_set_src(ui_weather_icon, icon);
+    lv_image_set_src(ui_weather_icon, icon);
 
     lv_obj_set_style_img_recolor_opa(ui_weather_icon, LV_OPA_COVER, 0);
     lv_obj_set_style_img_recolor(ui_weather_icon, icon_color, 0);

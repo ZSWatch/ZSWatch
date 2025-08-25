@@ -69,27 +69,27 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_clear_flag(ui_minimal_watchface, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
     lv_obj_set_style_bg_img_src(ui_minimal_watchface, global_watchface_bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_hour_img = lv_img_create(ui_minimal_watchface);
-    lv_img_set_src(ui_hour_img, &hour_minimal);
+    ui_hour_img = lv_image_create(ui_minimal_watchface);
+    lv_image_set_src(ui_hour_img, &hour_minimal);
     lv_obj_set_width(ui_hour_img, LV_SIZE_CONTENT);   /// 25
     lv_obj_set_height(ui_hour_img, LV_SIZE_CONTENT);    /// 89
     lv_obj_set_x(ui_hour_img, 0);
     lv_obj_set_y(ui_hour_img, -32);
     lv_obj_set_align(ui_hour_img, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_hour_img, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_img_set_pivot(ui_hour_img, 18, 82);
+    lv_image_set_pivot(ui_hour_img, 18, 82);
     lv_obj_set_style_img_recolor(ui_hour_img, lv_color_hex(0x0EA7FF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_hour_img, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_min_img = lv_img_create(ui_minimal_watchface);
-    lv_img_set_src(ui_min_img, &minute_minimal);
+    ui_min_img = lv_image_create(ui_minimal_watchface);
+    lv_image_set_src(ui_min_img, &minute_minimal);
     lv_obj_set_width(ui_min_img, LV_SIZE_CONTENT);   /// 12
     lv_obj_set_height(ui_min_img, LV_SIZE_CONTENT);    /// 104
     lv_obj_set_x(ui_min_img, 0);
     lv_obj_set_y(ui_min_img, -46);
     lv_obj_set_align(ui_min_img, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_min_img, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_img_set_pivot(ui_min_img, 11, 104);
+    lv_image_set_pivot(ui_min_img, 11, 104);
     lv_obj_set_style_img_recolor(ui_min_img, lv_color_hex(0xF0FFD5), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_min_img, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -103,8 +103,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_text_color(ui_day_data_label, lv_color_hex(0xCF9C60), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_day_data_label, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_second_img = lv_img_create(ui_minimal_watchface);
-    lv_img_set_src(ui_second_img, &second_minimal);
+    ui_second_img = lv_image_create(ui_minimal_watchface);
+    lv_image_set_src(ui_second_img, &second_minimal);
     lv_obj_set_width(ui_second_img, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_second_img, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_second_img, -1);
@@ -112,7 +112,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_align(ui_second_img, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_second_img, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
     lv_obj_clear_flag(ui_second_img, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_img_set_pivot(ui_second_img, 4, 108);
+    lv_image_set_pivot(ui_second_img, 4, 108);
     lv_obj_set_style_img_recolor(ui_second_img, lv_color_hex(0xFF4242), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_second_img, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -191,11 +191,11 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
     last_hour = hour_minute_offset + hour * (3600 / 12);
     last_minute = minute * (3600 / 60);
     last_second = second * (3600 / 60);
-    lv_img_set_angle(ui_hour_img, last_hour);
-    lv_img_set_angle(ui_min_img, last_minute);
+    lv_image_set_rotation(ui_hour_img, last_hour);
+    lv_image_set_rotation(ui_min_img, last_minute);
 
     last_second += lv_map(usec, 0, 999999, 0, 3600 / 60);
-    lv_img_set_angle(ui_second_img, last_second);
+    lv_image_set_rotation(ui_second_img, last_second);
 }
 
 static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)

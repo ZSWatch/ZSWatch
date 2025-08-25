@@ -20,7 +20,6 @@ LOG_MODULE_REGISTER(watchface_80_2_dial, LOG_LEVEL_WRN);
 #define USE_SLEEP       0
 #define USE_DISTANCE    0
 
-static lv_obj_t *face_80_2_dial;
 static lv_obj_t *face_80_2_dial = NULL;
 static watchface_app_evt_listener ui_80_2_dial_evt_cb;
 static zsw_ui_notification_area_t *zsw_ui_notifications_area;
@@ -264,20 +263,15 @@ const void *face_80_2_dial_weather[] = {
 
 static int32_t getPlaceValue(int32_t num, int32_t place)
 {
+    if (num < 0) {
+        return -1;
+    }
+
     int32_t divisor = 1;
     for (uint32_t i = 1; i < place; i++) {
         divisor *= 10;
     }
     return (num / divisor) % 10;
-}
-
-static int32_t setPlaceValue(int32_t num, int32_t place, int32_t newValue)
-{
-    int32_t divisor = 1;
-    for (uint32_t i = 1; i < place; i++) {
-        divisor *= 10;
-    }
-    return num - ((num / divisor) % 10 * divisor) + (newValue * divisor);
 }
 
 static void watchface_80_2_dial_remove(void)
@@ -321,70 +315,63 @@ static void watchface_80_2_dial_set_datetime(int day_of_week, int date, int day,
     month += 1;
 
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
-        last_weekday = setPlaceValue(last_weekday, 1, getPlaceValue(weekday, 1));
-        lv_img_set_src(face_80_2_dial_35_113802, face_80_2_dial_35_113802_group[((weekday + 6) / 1) % 7]);
+        lv_image_set_src(face_80_2_dial_35_113802, face_80_2_dial_35_113802_group[((weekday + 6) / 1) % 7]);
     }
 
     if (getPlaceValue(last_hour, 1) != getPlaceValue(hour, 1)) {
-        last_hour = setPlaceValue(last_hour, 1, getPlaceValue(hour, 1));
-        lv_img_set_src(face_80_2_dial_37_96394, face_80_2_dial_37_96394_group[(hour / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_37_96394, face_80_2_dial_37_96394_group[(hour / 1) % 10]);
     }
 
     if (getPlaceValue(last_hour, 2) != getPlaceValue(hour, 2)) {
-        last_hour = setPlaceValue(last_hour, 2, getPlaceValue(hour, 2));
-        lv_img_set_src(face_80_2_dial_38_96394, face_80_2_dial_37_96394_group[(hour / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_38_96394, face_80_2_dial_37_96394_group[(hour / 10) % 10]);
     }
 
     if (getPlaceValue(last_minute, 1) != getPlaceValue(minute, 1)) {
-        last_minute = setPlaceValue(last_minute, 1, getPlaceValue(minute, 1));
-        lv_img_set_src(face_80_2_dial_39_96394, face_80_2_dial_37_96394_group[(minute / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_39_96394, face_80_2_dial_37_96394_group[(minute / 1) % 10]);
     }
 
     if (getPlaceValue(last_minute, 2) != getPlaceValue(minute, 2)) {
-        last_minute = setPlaceValue(last_minute, 2, getPlaceValue(minute, 2));
-        lv_img_set_src(face_80_2_dial_40_96394, face_80_2_dial_37_96394_group[(minute / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_40_96394, face_80_2_dial_37_96394_group[(minute / 10) % 10]);
     }
 
     if (getPlaceValue(last_year, 1) != getPlaceValue(year, 1)) {
-        last_year = setPlaceValue(last_year, 1, getPlaceValue(year, 1));
-        lv_img_set_src(face_80_2_dial_43_86861, face_80_2_dial_43_86861_group[(year / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_43_86861, face_80_2_dial_43_86861_group[(year / 1) % 10]);
     }
 
     if (getPlaceValue(last_year, 2) != getPlaceValue(year, 2)) {
-        last_year = setPlaceValue(last_year, 2, getPlaceValue(year, 2));
-        lv_img_set_src(face_80_2_dial_44_86861, face_80_2_dial_43_86861_group[(year / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_44_86861, face_80_2_dial_43_86861_group[(year / 10) % 10]);
     }
 
     if (getPlaceValue(last_year, 3) != getPlaceValue(year, 3)) {
-        last_year = setPlaceValue(last_year, 3, getPlaceValue(year, 3));
-        lv_img_set_src(face_80_2_dial_45_86861, face_80_2_dial_43_86861_group[(year / 100) % 10]);
+        lv_image_set_src(face_80_2_dial_45_86861, face_80_2_dial_43_86861_group[(year / 100) % 10]);
     }
 
     if (getPlaceValue(last_year, 4) != getPlaceValue(year, 4)) {
-        last_year = setPlaceValue(last_year, 4, getPlaceValue(year, 4));
-        lv_img_set_src(face_80_2_dial_46_86861, face_80_2_dial_43_86861_group[(year / 1000) % 10]);
+        lv_image_set_src(face_80_2_dial_46_86861, face_80_2_dial_43_86861_group[(year / 1000) % 10]);
     }
 
     if (getPlaceValue(last_month, 1) != getPlaceValue(month, 1)) {
-        last_month = setPlaceValue(last_month, 1, getPlaceValue(month, 1));
-        lv_img_set_src(face_80_2_dial_47_86861, face_80_2_dial_43_86861_group[(month / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_47_86861, face_80_2_dial_43_86861_group[(month / 1) % 10]);
     }
 
     if (getPlaceValue(last_month, 2) != getPlaceValue(month, 2)) {
-        last_month = setPlaceValue(last_month, 2, getPlaceValue(month, 2));
-        lv_img_set_src(face_80_2_dial_48_86861, face_80_2_dial_43_86861_group[(month / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_48_86861, face_80_2_dial_43_86861_group[(month / 10) % 10]);
     }
 
     if (getPlaceValue(last_day, 1) != getPlaceValue(day, 1)) {
-        last_day = setPlaceValue(last_day, 1, getPlaceValue(day, 1));
-        lv_img_set_src(face_80_2_dial_49_86861, face_80_2_dial_43_86861_group[(day / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_49_86861, face_80_2_dial_43_86861_group[(day / 1) % 10]);
     }
 
     if (getPlaceValue(last_day, 2) != getPlaceValue(day, 2)) {
-        last_day = setPlaceValue(last_day, 2, getPlaceValue(day, 2));
-        lv_img_set_src(face_80_2_dial_50_86861, face_80_2_dial_43_86861_group[(day / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_50_86861, face_80_2_dial_43_86861_group[(day / 10) % 10]);
     }
 
+    last_hour = hour;
+    last_minute = minute;
+    last_year = year;
+    last_month = month;
+    last_day = day;
+    last_weekday = weekday;
 }
 
 static void watchface_80_2_dial_set_step(int32_t steps, int32_t distance, int32_t kcal)
@@ -394,65 +381,56 @@ static void watchface_80_2_dial_set_step(int32_t steps, int32_t distance, int32_
     }
 
     if (getPlaceValue(last_steps, 1) != getPlaceValue(steps, 1)) {
-        last_steps = setPlaceValue(last_steps, 1, getPlaceValue(steps, 1));
-        lv_img_set_src(face_80_2_dial_2_85197, face_80_2_dial_2_85197_group[(steps / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_2_85197, face_80_2_dial_2_85197_group[(steps / 1) % 10]);
     }
 
     if (getPlaceValue(last_steps, 2) != getPlaceValue(steps, 2)) {
-        last_steps = setPlaceValue(last_steps, 2, getPlaceValue(steps, 2));
-        lv_img_set_src(face_80_2_dial_3_85197, face_80_2_dial_2_85197_group[(steps / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_3_85197, face_80_2_dial_2_85197_group[(steps / 10) % 10]);
     }
 
     if (getPlaceValue(last_steps, 3) != getPlaceValue(steps, 3)) {
-        last_steps = setPlaceValue(last_steps, 3, getPlaceValue(steps, 3));
-        lv_img_set_src(face_80_2_dial_4_85197, face_80_2_dial_2_85197_group[(steps / 100) % 10]);
+        lv_image_set_src(face_80_2_dial_4_85197, face_80_2_dial_2_85197_group[(steps / 100) % 10]);
     }
 
     if (getPlaceValue(last_steps, 4) != getPlaceValue(steps, 4)) {
-        last_steps = setPlaceValue(last_steps, 4, getPlaceValue(steps, 4));
-        lv_img_set_src(face_80_2_dial_5_85197, face_80_2_dial_2_85197_group[(steps / 1000) % 10]);
+        lv_image_set_src(face_80_2_dial_5_85197, face_80_2_dial_2_85197_group[(steps / 1000) % 10]);
     }
 
     if (getPlaceValue(last_steps, 5) != getPlaceValue(steps, 5)) {
-        last_steps = setPlaceValue(last_steps, 5, getPlaceValue(steps, 5));
-        lv_img_set_src(face_80_2_dial_6_85197, face_80_2_dial_2_85197_group[(steps / 10000) % 10]);
+        lv_image_set_src(face_80_2_dial_6_85197, face_80_2_dial_2_85197_group[(steps / 10000) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 1) != getPlaceValue(kcal, 1)) {
-        last_kcal = setPlaceValue(last_kcal, 1, getPlaceValue(kcal, 1));
-        lv_img_set_src(face_80_2_dial_7_85197, face_80_2_dial_2_85197_group[(kcal / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_7_85197, face_80_2_dial_2_85197_group[(kcal / 1) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 2) != getPlaceValue(kcal, 2)) {
-        last_kcal = setPlaceValue(last_kcal, 2, getPlaceValue(kcal, 2));
-        lv_img_set_src(face_80_2_dial_8_85197, face_80_2_dial_2_85197_group[(kcal / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_8_85197, face_80_2_dial_2_85197_group[(kcal / 10) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 3) != getPlaceValue(kcal, 3)) {
-        last_kcal = setPlaceValue(last_kcal, 3, getPlaceValue(kcal, 3));
-        lv_img_set_src(face_80_2_dial_9_85197, face_80_2_dial_2_85197_group[(kcal / 100) % 10]);
+        lv_image_set_src(face_80_2_dial_9_85197, face_80_2_dial_2_85197_group[(kcal / 100) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 4) != getPlaceValue(kcal, 4)) {
-        last_kcal = setPlaceValue(last_kcal, 4, getPlaceValue(kcal, 4));
-        lv_img_set_src(face_80_2_dial_10_85197, face_80_2_dial_2_85197_group[(kcal / 1000) % 10]);
+        lv_image_set_src(face_80_2_dial_10_85197, face_80_2_dial_2_85197_group[(kcal / 1000) % 10]);
     }
 #if USE_DISTANCE
     if (getPlaceValue(last_distance, 1) != getPlaceValue(distance, 1)) {
-        last_distance = setPlaceValue(last_distance, 1, getPlaceValue(distance, 1));
-        lv_img_set_src(face_80_2_dial_23_85197, face_80_2_dial_2_85197_group[(distance / 1) % 10]);
+        lv_image_set_src(face_80_2_dial_23_85197, face_80_2_dial_2_85197_group[(distance / 1) % 10]);
     }
 
     if (getPlaceValue(last_distance, 2) != getPlaceValue(distance, 2)) {
-        last_distance = setPlaceValue(last_distance, 2, getPlaceValue(distance, 2));
-        lv_img_set_src(face_80_2_dial_24_85197, face_80_2_dial_2_85197_group[(distance / 10) % 10]);
+        lv_image_set_src(face_80_2_dial_24_85197, face_80_2_dial_2_85197_group[(distance / 10) % 10]);
     }
 
     if (getPlaceValue(last_distance, 3) != getPlaceValue(distance, 3)) {
-        last_distance = setPlaceValue(last_distance, 3, getPlaceValue(distance, 3));
-        lv_img_set_src(face_80_2_dial_25_85197, face_80_2_dial_2_85197_group[(distance / 100) % 10]);
+        lv_image_set_src(face_80_2_dial_25_85197, face_80_2_dial_2_85197_group[(distance / 100) % 10]);
     }
+    last_distance = distance;
 #endif
+    last_steps = steps;
+    last_kcal = kcal;
 }
 
 static void watchface_80_2_dial_set_hrm(int32_t bpm, int32_t oxygen)
@@ -461,9 +439,9 @@ static void watchface_80_2_dial_set_hrm(int32_t bpm, int32_t oxygen)
         return;
     }
 #if USE_HR
-    lv_img_set_src(face_80_2_dial_27_85197, face_80_2_dial_2_85197_group[(bpm / 1) % 10]);
-    lv_img_set_src(face_80_2_dial_28_85197, face_80_2_dial_2_85197_group[(bpm / 10) % 10]);
-    lv_img_set_src(face_80_2_dial_29_85197, face_80_2_dial_2_85197_group[(bpm / 100) % 10]);
+    lv_image_set_src(face_80_2_dial_27_85197, face_80_2_dial_2_85197_group[(bpm / 1) % 10]);
+    lv_image_set_src(face_80_2_dial_28_85197, face_80_2_dial_2_85197_group[(bpm / 10) % 10]);
+    lv_image_set_src(face_80_2_dial_29_85197, face_80_2_dial_2_85197_group[(bpm / 100) % 10]);
 #endif
 }
 
@@ -473,14 +451,14 @@ static void watchface_80_2_dial_set_weather(int8_t temp, int icon)
         return;
     }
 
-    lv_img_set_src(face_80_2_dial_53_86861, face_80_2_dial_43_86861_group[(temp / 1) % 10]);
-    lv_img_set_src(face_80_2_dial_54_86861, face_80_2_dial_43_86861_group[(temp / 10) % 10]);
+    lv_image_set_src(face_80_2_dial_53_86861, face_80_2_dial_43_86861_group[(temp / 1) % 10]);
+    lv_image_set_src(face_80_2_dial_54_86861, face_80_2_dial_43_86861_group[(temp / 10) % 10]);
     if (temp >= 0) {
         lv_obj_add_flag(face_80_2_dial_56_25742, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(face_80_2_dial_56_25742, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_img_set_src(face_80_2_dial_58_84569, face_80_2_dial_weather[icon % 8]);
+    lv_image_set_src(face_80_2_dial_58_84569, face_80_2_dial_weather[icon % 8]);
 
 }
 
@@ -541,8 +519,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_set_style_pad_top(face_80_2_dial, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(face_80_2_dial, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    face_80_2_dial_0_2768 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_0_2768, ZSW_LV_IMG_USE(face_80_2_dial_0_2768_0));
+    face_80_2_dial_0_2768 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_0_2768, ZSW_LV_IMG_USE(face_80_2_dial_0_2768_0));
     lv_obj_set_width(face_80_2_dial_0_2768, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_0_2768, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_0_2768, 9);
@@ -550,8 +528,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_0_2768, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_0_2768, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_1_24923 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_1_24923, ZSW_LV_IMG_USE(face_80_2_dial_1_24923_0));
+    face_80_2_dial_1_24923 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_1_24923, ZSW_LV_IMG_USE(face_80_2_dial_1_24923_0));
     lv_obj_set_width(face_80_2_dial_1_24923, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_1_24923, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_1_24923, 123);
@@ -559,8 +537,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_1_24923, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_1_24923, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_2_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_2_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_2_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_2_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_2_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_2_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_2_85197, 98);
@@ -568,8 +546,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_2_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_2_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_3_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_3_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_3_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_3_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_3_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_3_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_3_85197, 85);
@@ -577,8 +555,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_3_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_3_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_4_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_4_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_4_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_4_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_4_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_4_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_4_85197, 72);
@@ -586,8 +564,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_4_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_4_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_5_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_5_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_5_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_5_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_5_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_5_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_5_85197, 59);
@@ -595,8 +573,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_5_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_5_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_6_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_6_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_6_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_6_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_6_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_6_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_6_85197, 46);
@@ -604,8 +582,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_6_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_6_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_7_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_7_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_7_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_7_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_7_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_7_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_7_85197, 175);
@@ -613,8 +591,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_7_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_7_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_8_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_8_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_8_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_8_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_8_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_8_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_8_85197, 162);
@@ -622,8 +600,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_8_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_8_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_9_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_9_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_9_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_9_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_9_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_9_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_9_85197, 149);
@@ -631,8 +609,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_9_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_9_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_10_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_10_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_10_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_10_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_10_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_10_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_10_85197, 136);
@@ -641,8 +619,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_clear_flag(face_80_2_dial_10_85197, LV_OBJ_FLAG_SCROLLABLE);
 
 #if USE_SLEEP
-    face_80_2_dial_12_94522 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_12_94522, ZSW_LV_IMG_USE(face_80_2_dial_12_94522_0));
+    face_80_2_dial_12_94522 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_12_94522, ZSW_LV_IMG_USE(face_80_2_dial_12_94522_0));
     lv_obj_set_width(face_80_2_dial_12_94522, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_12_94522, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_12_94522, 26);
@@ -650,8 +628,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_12_94522, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_12_94522, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_14_89131 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_14_89131, ZSW_LV_IMG_USE(face_80_2_dial_14_89131_0));
+    face_80_2_dial_14_89131 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_14_89131, ZSW_LV_IMG_USE(face_80_2_dial_14_89131_0));
     lv_obj_set_width(face_80_2_dial_14_89131, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_14_89131, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_14_89131, 51);
@@ -659,8 +637,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_14_89131, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_14_89131, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_16_89866 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_16_89866, ZSW_LV_IMG_USE(face_80_2_dial_16_89866_0));
+    face_80_2_dial_16_89866 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_16_89866, ZSW_LV_IMG_USE(face_80_2_dial_16_89866_0));
     lv_obj_set_width(face_80_2_dial_16_89866, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_16_89866, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_16_89866, 87);
@@ -668,8 +646,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_16_89866, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_16_89866, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_17_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_17_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_17_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_17_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_17_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_17_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_17_85197, 39);
@@ -677,8 +655,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_17_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_17_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_18_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_18_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_18_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_18_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_18_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_18_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_18_85197, 27);
@@ -686,8 +664,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_18_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_18_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_19_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_19_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_19_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_19_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_19_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_19_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_19_85197, 75);
@@ -695,8 +673,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_19_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_19_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_20_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_20_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_20_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_20_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_20_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_20_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_20_85197, 63);
@@ -706,8 +684,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
 #endif
 
 #if USE_DISTANCE
-    face_80_2_dial_21_89292 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_21_89292, ZSW_LV_IMG_USE(face_80_2_dial_21_89292_0));
+    face_80_2_dial_21_89292 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_21_89292, ZSW_LV_IMG_USE(face_80_2_dial_21_89292_0));
     lv_obj_set_width(face_80_2_dial_21_89292, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_21_89292, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_21_89292, 58);
@@ -715,8 +693,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_21_89292, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_21_89292, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_22_89272 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_22_89272, ZSW_LV_IMG_USE(face_80_2_dial_22_89272_0));
+    face_80_2_dial_22_89272 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_22_89272, ZSW_LV_IMG_USE(face_80_2_dial_22_89272_0));
     lv_obj_set_width(face_80_2_dial_22_89272, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_22_89272, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_22_89272, 91);
@@ -724,8 +702,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_22_89272, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_22_89272, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_23_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_23_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_23_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_23_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_23_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_23_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_23_85197, 108);
@@ -733,8 +711,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_23_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_23_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_24_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_24_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_24_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_24_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_24_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_24_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_24_85197, 96);
@@ -742,8 +720,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_24_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_24_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_25_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_25_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_25_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_25_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_25_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_25_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_25_85197, 78);
@@ -753,8 +731,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
 #endif
 
 #if USE_HR
-    face_80_2_dial_26_88651 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_26_88651, ZSW_LV_IMG_USE(face_80_2_dial_26_88651_0));
+    face_80_2_dial_26_88651 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_26_88651, ZSW_LV_IMG_USE(face_80_2_dial_26_88651_0));
     lv_obj_set_width(face_80_2_dial_26_88651, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_26_88651, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_26_88651, 85);
@@ -762,8 +740,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_26_88651, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_26_88651, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_27_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_27_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_27_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_27_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_27_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_27_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_27_85197, 131);
@@ -771,8 +749,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_27_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_27_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_28_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_28_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_28_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_28_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_28_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_28_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_28_85197, 119);
@@ -780,8 +758,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_28_85197, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_28_85197, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_29_85197 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_29_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
+    face_80_2_dial_29_85197 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_29_85197, ZSW_LV_IMG_USE(face_80_2_dial_2_85197_0));
     lv_obj_set_width(face_80_2_dial_29_85197, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_29_85197, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_29_85197, 107);
@@ -790,8 +768,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_clear_flag(face_80_2_dial_29_85197, LV_OBJ_FLAG_SCROLLABLE);
 #endif
 
-    face_80_2_dial_35_113802 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_35_113802, ZSW_LV_IMG_USE(face_80_2_dial_35_113802_0));
+    face_80_2_dial_35_113802 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_35_113802, ZSW_LV_IMG_USE(face_80_2_dial_35_113802_0));
     lv_obj_set_width(face_80_2_dial_35_113802, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_35_113802, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_35_113802, 98);
@@ -799,8 +777,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_35_113802, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_35_113802, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_36_96224 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_36_96224, ZSW_LV_IMG_USE(face_80_2_dial_36_96224_0));
+    face_80_2_dial_36_96224 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_36_96224, ZSW_LV_IMG_USE(face_80_2_dial_36_96224_0));
     lv_obj_set_width(face_80_2_dial_36_96224, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_36_96224, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_36_96224, 117);
@@ -808,8 +786,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_36_96224, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_36_96224, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_37_96394 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_37_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
+    face_80_2_dial_37_96394 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_37_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
     lv_obj_set_width(face_80_2_dial_37_96394, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_37_96394, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_37_96394, 79);
@@ -817,8 +795,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_37_96394, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_37_96394, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_38_96394 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_38_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
+    face_80_2_dial_38_96394 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_38_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
     lv_obj_set_width(face_80_2_dial_38_96394, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_38_96394, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_38_96394, 50);
@@ -826,8 +804,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_38_96394, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_38_96394, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_39_96394 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_39_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
+    face_80_2_dial_39_96394 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_39_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
     lv_obj_set_width(face_80_2_dial_39_96394, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_39_96394, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_39_96394, 166);
@@ -835,8 +813,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_39_96394, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_39_96394, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_40_96394 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_40_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
+    face_80_2_dial_40_96394 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_40_96394, ZSW_LV_IMG_USE(face_80_2_dial_37_96394_0));
     lv_obj_set_width(face_80_2_dial_40_96394, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_40_96394, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_40_96394, 137);
@@ -844,8 +822,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_40_96394, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_40_96394, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_41_86829 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_41_86829, ZSW_LV_IMG_USE(face_80_2_dial_41_86829_0));
+    face_80_2_dial_41_86829 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_41_86829, ZSW_LV_IMG_USE(face_80_2_dial_41_86829_0));
     lv_obj_set_width(face_80_2_dial_41_86829, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_41_86829, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_41_86829, 172);
@@ -853,8 +831,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_41_86829, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_41_86829, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_42_86829 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_42_86829, ZSW_LV_IMG_USE(face_80_2_dial_41_86829_0));
+    face_80_2_dial_42_86829 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_42_86829, ZSW_LV_IMG_USE(face_80_2_dial_41_86829_0));
     lv_obj_set_width(face_80_2_dial_42_86829, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_42_86829, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_42_86829, 139);
@@ -862,8 +840,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_42_86829, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_42_86829, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_43_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_43_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_43_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_43_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_43_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_43_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_43_86861, 127);
@@ -871,8 +849,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_43_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_43_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_44_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_44_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_44_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_44_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_44_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_44_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_44_86861, 115);
@@ -880,8 +858,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_44_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_44_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_45_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_45_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_45_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_45_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_45_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_45_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_45_86861, 103);
@@ -889,8 +867,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_45_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_45_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_46_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_46_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_46_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_46_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_46_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_46_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_46_86861, 91);
@@ -898,8 +876,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_46_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_46_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_47_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_47_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_47_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_47_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_47_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_47_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_47_86861, 160);
@@ -907,8 +885,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_47_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_47_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_48_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_48_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_48_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_48_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_48_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_48_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_48_86861, 148);
@@ -916,8 +894,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_48_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_48_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_49_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_49_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_49_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_49_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_49_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_49_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_49_86861, 193);
@@ -925,8 +903,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_49_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_49_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_50_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_50_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_50_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_50_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_50_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_50_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_50_86861, 181);
@@ -934,8 +912,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_50_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_50_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_53_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_53_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_53_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_53_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_53_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_53_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_53_86861, 60);
@@ -943,8 +921,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_53_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_53_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_54_86861 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_54_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
+    face_80_2_dial_54_86861 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_54_86861, ZSW_LV_IMG_USE(face_80_2_dial_43_86861_0));
     lv_obj_set_width(face_80_2_dial_54_86861, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_54_86861, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_54_86861, 48);
@@ -952,8 +930,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_54_86861, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_54_86861, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_55_106772 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_55_106772, ZSW_LV_IMG_USE(face_80_2_dial_55_106772_0));
+    face_80_2_dial_55_106772 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_55_106772, ZSW_LV_IMG_USE(face_80_2_dial_55_106772_0));
     lv_obj_set_width(face_80_2_dial_55_106772, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_55_106772, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_55_106772, 72);
@@ -961,8 +939,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_55_106772, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_55_106772, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_56_25742 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_56_25742, ZSW_LV_IMG_USE(face_80_2_dial_51_25742_0));
+    face_80_2_dial_56_25742 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_56_25742, ZSW_LV_IMG_USE(face_80_2_dial_51_25742_0));
     lv_obj_set_width(face_80_2_dial_56_25742, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_56_25742, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_56_25742, 42);
@@ -970,8 +948,8 @@ void watchface_80_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_add_flag(face_80_2_dial_56_25742, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_80_2_dial_56_25742, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_80_2_dial_58_84569 = lv_img_create(face_80_2_dial);
-    lv_img_set_src(face_80_2_dial_58_84569, ZSW_LV_IMG_USE(face_80_2_dial_58_84569_0));
+    face_80_2_dial_58_84569 = lv_image_create(face_80_2_dial);
+    lv_image_set_src(face_80_2_dial_58_84569, ZSW_LV_IMG_USE(face_80_2_dial_58_84569_0));
     lv_obj_set_width(face_80_2_dial_58_84569, LV_SIZE_CONTENT);
     lv_obj_set_height(face_80_2_dial_58_84569, LV_SIZE_CONTENT);
     lv_obj_set_x(face_80_2_dial_58_84569, 20);

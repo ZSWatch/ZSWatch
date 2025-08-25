@@ -15,7 +15,6 @@
 
 LOG_MODULE_REGISTER(watchface_goog, LOG_LEVEL_WRN);
 
-static lv_obj_t *face_goog;
 static lv_obj_t *face_goog = NULL;
 static watchface_app_evt_listener ui_goog_evt_cb;
 
@@ -246,20 +245,15 @@ const void *face_goog_weather[] = {
 
 static int32_t getPlaceValue(int32_t num, int32_t place)
 {
+    if (num < 0) {
+        return -1;
+    }
+
     int32_t divisor = 1;
     for (uint32_t i = 1; i < place; i++) {
         divisor *= 10;
     }
     return (num / divisor) % 10;
-}
-
-static int32_t setPlaceValue(int32_t num, int32_t place, int32_t newValue)
-{
-    int32_t divisor = 1;
-    for (uint32_t i = 1; i < place; i++) {
-        divisor *= 10;
-    }
-    return num - ((num / divisor) % 10 * divisor) + (newValue * divisor);
 }
 
 static void watchface_goog_remove(void)
@@ -302,45 +296,42 @@ static void watchface_goog_set_datetime(int day_of_week, int date, int day, int 
     month += 1;
 
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
-        last_weekday = setPlaceValue(last_weekday, 1, getPlaceValue(weekday, 1));
-        lv_img_set_src(face_goog_22_72744, face_goog_22_72744_group[((weekday + 6) / 1) % 7]);
+        lv_image_set_src(face_goog_22_72744, face_goog_22_72744_group[((weekday + 6) / 1) % 7]);
     }
 
     if (getPlaceValue(last_day, 1) != getPlaceValue(day, 1)) {
-        last_day = setPlaceValue(last_day, 1, getPlaceValue(day, 1));
-        lv_img_set_src(face_goog_23_59114, face_goog_1_59114_group[(day / 1) % 10]);
+        lv_image_set_src(face_goog_23_59114, face_goog_1_59114_group[(day / 1) % 10]);
     }
 
     if (getPlaceValue(last_day, 2) != getPlaceValue(day, 2)) {
-        last_day = setPlaceValue(last_day, 2, getPlaceValue(day, 2));
-        lv_img_set_src(face_goog_24_59114, face_goog_1_59114_group[(day / 10) % 10]);
+        lv_image_set_src(face_goog_24_59114, face_goog_1_59114_group[(day / 10) % 10]);
     }
 
     if (getPlaceValue(last_month, 1) != getPlaceValue(month, 1)) {
-        last_month = setPlaceValue(last_month, 1, getPlaceValue(month, 1));
-        lv_img_set_src(face_goog_27_87610, face_goog_27_87610_group[(month / 1) % 12]);
+        lv_image_set_src(face_goog_27_87610, face_goog_27_87610_group[(month / 1) % 12]);
     }
 
     if (getPlaceValue(last_hour, 1) != getPlaceValue(hour, 1)) {
-        last_hour = setPlaceValue(last_hour, 1, getPlaceValue(hour, 1));
-        lv_img_set_src(face_goog_28_97966, face_goog_28_97966_group[(hour / 1) % 10]);
+        lv_image_set_src(face_goog_28_97966, face_goog_28_97966_group[(hour / 1) % 10]);
     }
 
     if (getPlaceValue(last_hour, 2) != getPlaceValue(hour, 2)) {
-        last_hour = setPlaceValue(last_hour, 2, getPlaceValue(hour, 2));
-        lv_img_set_src(face_goog_29_97966, face_goog_28_97966_group[(hour / 10) % 10]);
+        lv_image_set_src(face_goog_29_97966, face_goog_28_97966_group[(hour / 10) % 10]);
     }
 
     if (getPlaceValue(last_minute, 1) != getPlaceValue(minute, 1)) {
-        last_minute = setPlaceValue(last_minute, 1, getPlaceValue(minute, 1));
-        lv_img_set_src(face_goog_30_97966, face_goog_28_97966_group[(minute / 1) % 10]);
+        lv_image_set_src(face_goog_30_97966, face_goog_28_97966_group[(minute / 1) % 10]);
     }
 
     if (getPlaceValue(last_minute, 2) != getPlaceValue(minute, 2)) {
-        last_minute = setPlaceValue(last_minute, 2, getPlaceValue(minute, 2));
-        lv_img_set_src(face_goog_31_97966, face_goog_28_97966_group[(minute / 10) % 10]);
+        lv_image_set_src(face_goog_31_97966, face_goog_28_97966_group[(minute / 10) % 10]);
     }
 
+    last_hour = hour;
+    last_minute = minute;
+    last_month = month;
+    last_day = day;
+    last_weekday = weekday;
 }
 
 static void watchface_goog_set_step(int32_t steps, int32_t distance, int32_t kcal)
@@ -350,50 +341,43 @@ static void watchface_goog_set_step(int32_t steps, int32_t distance, int32_t kca
     }
 
     if (getPlaceValue(last_steps, 1) != getPlaceValue(steps, 1)) {
-        last_steps = setPlaceValue(last_steps, 1, getPlaceValue(steps, 1));
-        lv_img_set_src(face_goog_1_59114, face_goog_1_59114_group[(steps / 1) % 10]);
+        lv_image_set_src(face_goog_1_59114, face_goog_1_59114_group[(steps / 1) % 10]);
     }
 
     if (getPlaceValue(last_steps, 2) != getPlaceValue(steps, 2)) {
-        last_steps = setPlaceValue(last_steps, 2, getPlaceValue(steps, 2));
-        lv_img_set_src(face_goog_2_59114, face_goog_1_59114_group[(steps / 10) % 10]);
+        lv_image_set_src(face_goog_2_59114, face_goog_1_59114_group[(steps / 10) % 10]);
     }
 
     if (getPlaceValue(last_steps, 3) != getPlaceValue(steps, 3)) {
-        last_steps = setPlaceValue(last_steps, 3, getPlaceValue(steps, 3));
-        lv_img_set_src(face_goog_3_59114, face_goog_1_59114_group[(steps / 100) % 10]);
+        lv_image_set_src(face_goog_3_59114, face_goog_1_59114_group[(steps / 100) % 10]);
     }
 
     if (getPlaceValue(last_steps, 4) != getPlaceValue(steps, 4)) {
-        last_steps = setPlaceValue(last_steps, 4, getPlaceValue(steps, 4));
-        lv_img_set_src(face_goog_4_59114, face_goog_1_59114_group[(steps / 1000) % 10]);
+        lv_image_set_src(face_goog_4_59114, face_goog_1_59114_group[(steps / 1000) % 10]);
     }
 
     if (getPlaceValue(last_steps, 5) != getPlaceValue(steps, 5)) {
-        last_steps = setPlaceValue(last_steps, 5, getPlaceValue(steps, 5));
-        lv_img_set_src(face_goog_5_59114, face_goog_1_59114_group[(steps / 10000) % 10]);
+        lv_image_set_src(face_goog_5_59114, face_goog_1_59114_group[(steps / 10000) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 1) != getPlaceValue(kcal, 1)) {
-        last_kcal = setPlaceValue(last_kcal, 1, getPlaceValue(kcal, 1));
-        lv_img_set_src(face_goog_6_59114, face_goog_1_59114_group[(kcal / 1) % 10]);
+        lv_image_set_src(face_goog_6_59114, face_goog_1_59114_group[(kcal / 1) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 2) != getPlaceValue(kcal, 2)) {
-        last_kcal = setPlaceValue(last_kcal, 2, getPlaceValue(kcal, 2));
-        lv_img_set_src(face_goog_7_59114, face_goog_1_59114_group[(kcal / 10) % 10]);
+        lv_image_set_src(face_goog_7_59114, face_goog_1_59114_group[(kcal / 10) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 3) != getPlaceValue(kcal, 3)) {
-        last_kcal = setPlaceValue(last_kcal, 3, getPlaceValue(kcal, 3));
-        lv_img_set_src(face_goog_8_59114, face_goog_1_59114_group[(kcal / 100) % 10]);
+        lv_image_set_src(face_goog_8_59114, face_goog_1_59114_group[(kcal / 100) % 10]);
     }
 
     if (getPlaceValue(last_kcal, 4) != getPlaceValue(kcal, 4)) {
-        last_kcal = setPlaceValue(last_kcal, 4, getPlaceValue(kcal, 4));
-        lv_img_set_src(face_goog_9_59114, face_goog_1_59114_group[(kcal / 1000) % 10]);
+        lv_image_set_src(face_goog_9_59114, face_goog_1_59114_group[(kcal / 1000) % 10]);
     }
 
+    last_steps = steps;
+    last_kcal = kcal;
 }
 
 static void watchface_goog_set_hrm(int32_t bpm, int32_t oxygen)
@@ -402,9 +386,9 @@ static void watchface_goog_set_hrm(int32_t bpm, int32_t oxygen)
         return;
     }
 
-    lv_img_set_src(face_goog_13_59114, face_goog_1_59114_group[(bpm / 1) % 10]);
-    lv_img_set_src(face_goog_14_59114, face_goog_1_59114_group[(bpm / 10) % 10]);
-    lv_img_set_src(face_goog_15_59114, face_goog_1_59114_group[(bpm / 100) % 10]);
+    lv_image_set_src(face_goog_13_59114, face_goog_1_59114_group[(bpm / 1) % 10]);
+    lv_image_set_src(face_goog_14_59114, face_goog_1_59114_group[(bpm / 10) % 10]);
+    lv_image_set_src(face_goog_15_59114, face_goog_1_59114_group[(bpm / 100) % 10]);
 
 }
 
@@ -414,14 +398,14 @@ static void watchface_goog_set_weather(int8_t temp, int icon)
         return;
     }
 
-    lv_img_set_src(face_goog_34_59114, face_goog_1_59114_group[(temp / 1) % 10]);
-    lv_img_set_src(face_goog_35_59114, face_goog_1_59114_group[(temp / 10) % 10]);
+    lv_image_set_src(face_goog_34_59114, face_goog_1_59114_group[(temp / 1) % 10]);
+    lv_image_set_src(face_goog_35_59114, face_goog_1_59114_group[(temp / 10) % 10]);
     if (temp >= 0) {
         lv_obj_add_flag(face_goog_37_65535, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(face_goog_37_65535, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_img_set_src(face_goog_41_130994, face_goog_weather[icon % 8]);
+    lv_image_set_src(face_goog_41_130994, face_goog_weather[icon % 8]);
 
 }
 
@@ -439,15 +423,15 @@ static void watchface_goog_set_battery_percent(int32_t percent, int32_t battery)
         return;
     }
 
-    lv_img_set_src(face_goog_16_59114, face_goog_1_59114_group[(percent / 1) % 10]);
-    lv_img_set_src(face_goog_17_59114, face_goog_1_59114_group[(percent / 10) % 10]);
-    lv_img_set_src(face_goog_18_59114, face_goog_1_59114_group[(percent / 100) % 10]);
+    lv_image_set_src(face_goog_16_59114, face_goog_1_59114_group[(percent / 1) % 10]);
+    lv_image_set_src(face_goog_17_59114, face_goog_1_59114_group[(percent / 10) % 10]);
+    lv_image_set_src(face_goog_18_59114, face_goog_1_59114_group[(percent / 100) % 10]);
     if (percent < 100) {
         lv_obj_add_flag(face_goog_18_59114, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_clear_flag(face_goog_18_59114, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_img_set_src(face_goog_20_61728, face_goog_20_61728_group[lv_map(percent, 0, 100, 0, 6)]);
+    lv_image_set_src(face_goog_20_61728, face_goog_20_61728_group[lv_map(percent, 0, 100, 0, 6)]);
 }
 
 static void watchface_goog_set_num_notifcations(int32_t number)
@@ -489,8 +473,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_set_style_pad_top(face_goog, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(face_goog, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    face_goog_0_1004 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_0_1004, ZSW_LV_IMG_USE(face_goog_0_1004_0));
+    face_goog_0_1004 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_0_1004, ZSW_LV_IMG_USE(face_goog_0_1004_0));
     lv_obj_set_width(face_goog_0_1004, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_0_1004, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_0_1004, 0);
@@ -498,8 +482,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_0_1004, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_0_1004, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_1_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_1_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_1_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_1_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_1_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_1_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_1_59114, 118);
@@ -507,8 +491,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_1_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_1_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_2_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_2_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_2_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_2_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_2_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_2_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_2_59114, 111);
@@ -516,8 +500,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_2_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_2_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_3_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_3_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_3_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_3_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_3_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_3_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_3_59114, 104);
@@ -525,8 +509,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_3_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_3_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_4_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_4_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_4_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_4_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_4_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_4_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_4_59114, 96);
@@ -534,8 +518,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_4_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_4_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_5_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_5_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_5_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_5_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_5_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_5_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_5_59114, 89);
@@ -543,8 +527,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_5_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_5_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_6_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_6_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_6_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_6_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_6_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_6_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_6_59114, 146);
@@ -552,8 +536,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_6_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_6_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_7_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_7_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_7_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_7_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_7_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_7_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_7_59114, 139);
@@ -561,8 +545,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_7_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_7_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_8_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_8_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_8_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_8_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_8_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_8_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_8_59114, 132);
@@ -570,8 +554,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_8_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_8_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_9_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_9_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_9_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_9_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_9_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_9_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_9_59114, 124);
@@ -579,8 +563,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_9_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_9_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_12_60913 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_12_60913, ZSW_LV_IMG_USE(face_goog_12_60913_0));
+    face_goog_12_60913 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_12_60913, ZSW_LV_IMG_USE(face_goog_12_60913_0));
     lv_obj_set_width(face_goog_12_60913, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_12_60913, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_12_60913, 128);
@@ -588,8 +572,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_12_60913, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_12_60913, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_13_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_13_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_13_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_13_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_13_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_13_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_13_59114, 104);
@@ -597,8 +581,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_13_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_13_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_14_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_14_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_14_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_14_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_14_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_14_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_14_59114, 96);
@@ -606,8 +590,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_14_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_14_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_15_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_15_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_15_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_15_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_15_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_15_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_15_59114, 89);
@@ -615,8 +599,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_15_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_15_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_16_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_16_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_16_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_16_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_16_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_16_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_16_59114, 172);
@@ -624,8 +608,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_16_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_16_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_17_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_17_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_17_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_17_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_17_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_17_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_17_59114, 165);
@@ -633,8 +617,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_17_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_17_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_18_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_18_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_18_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_18_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_18_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_18_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_18_59114, 160);
@@ -642,8 +626,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_18_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_18_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_19_61460 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_19_61460, ZSW_LV_IMG_USE(face_goog_19_61460_0));
+    face_goog_19_61460 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_19_61460, ZSW_LV_IMG_USE(face_goog_19_61460_0));
     lv_obj_set_width(face_goog_19_61460, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_19_61460, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_19_61460, 180);
@@ -651,8 +635,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_19_61460, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_19_61460, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_20_61728 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_20_61728, ZSW_LV_IMG_USE(face_goog_20_61728_0));
+    face_goog_20_61728 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_20_61728, ZSW_LV_IMG_USE(face_goog_20_61728_0));
     lv_obj_set_width(face_goog_20_61728, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_20_61728, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_20_61728, 162);
@@ -660,8 +644,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_20_61728, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_20_61728, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_22_72744 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_22_72744, ZSW_LV_IMG_USE(face_goog_22_72744_0));
+    face_goog_22_72744 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_22_72744, ZSW_LV_IMG_USE(face_goog_22_72744_0));
     lv_obj_set_width(face_goog_22_72744, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_22_72744, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_22_72744, 44);
@@ -669,8 +653,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_22_72744, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_22_72744, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_23_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_23_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_23_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_23_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_23_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_23_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_23_59114, 120);
@@ -678,8 +662,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_23_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_23_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_24_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_24_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_24_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_24_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_24_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_24_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_24_59114, 113);
@@ -687,8 +671,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_24_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_24_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_27_87610 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_27_87610, ZSW_LV_IMG_USE(face_goog_27_87610_0));
+    face_goog_27_87610 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_27_87610, ZSW_LV_IMG_USE(face_goog_27_87610_0));
     lv_obj_set_width(face_goog_27_87610, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_27_87610, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_27_87610, 128);
@@ -696,8 +680,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_27_87610, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_27_87610, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_28_97966 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_28_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
+    face_goog_28_97966 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_28_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
     lv_obj_set_width(face_goog_28_97966, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_28_97966, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_28_97966, 74);
@@ -705,8 +689,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_28_97966, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_28_97966, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_29_97966 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_29_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
+    face_goog_29_97966 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_29_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
     lv_obj_set_width(face_goog_29_97966, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_29_97966, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_29_97966, 33);
@@ -714,8 +698,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_29_97966, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_29_97966, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_30_97966 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_30_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
+    face_goog_30_97966 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_30_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
     lv_obj_set_width(face_goog_30_97966, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_30_97966, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_30_97966, 165);
@@ -723,8 +707,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_30_97966, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_30_97966, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_31_97966 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_31_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
+    face_goog_31_97966 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_31_97966, ZSW_LV_IMG_USE(face_goog_28_97966_0));
     lv_obj_set_width(face_goog_31_97966, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_31_97966, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_31_97966, 124);
@@ -732,8 +716,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_31_97966, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_31_97966, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_34_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_34_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_34_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_34_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_34_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_34_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_34_59114, 60);
@@ -741,8 +725,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_34_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_34_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_35_59114 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_35_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
+    face_goog_35_59114 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_35_59114, ZSW_LV_IMG_USE(face_goog_1_59114_0));
     lv_obj_set_width(face_goog_35_59114, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_35_59114, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_35_59114, 52);
@@ -750,8 +734,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_35_59114, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_35_59114, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_36_130812 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_36_130812, ZSW_LV_IMG_USE(face_goog_36_130812_0));
+    face_goog_36_130812 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_36_130812, ZSW_LV_IMG_USE(face_goog_36_130812_0));
     lv_obj_set_width(face_goog_36_130812, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_36_130812, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_36_130812, 67);
@@ -759,8 +743,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_36_130812, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_36_130812, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_37_65535 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_37_65535, ZSW_LV_IMG_USE(face_goog_32_65535_0));
+    face_goog_37_65535 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_37_65535, ZSW_LV_IMG_USE(face_goog_32_65535_0));
     lv_obj_set_width(face_goog_37_65535, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_37_65535, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_37_65535, 46);
@@ -768,8 +752,8 @@ void watchface_goog_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zs
     lv_obj_add_flag(face_goog_37_65535, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(face_goog_37_65535, LV_OBJ_FLAG_SCROLLABLE);
 
-    face_goog_41_130994 = lv_img_create(face_goog);
-    lv_img_set_src(face_goog_41_130994, ZSW_LV_IMG_USE(face_goog_41_130994_0));
+    face_goog_41_130994 = lv_image_create(face_goog);
+    lv_image_set_src(face_goog_41_130994, ZSW_LV_IMG_USE(face_goog_41_130994_0));
     lv_obj_set_width(face_goog_41_130994, LV_SIZE_CONTENT);
     lv_obj_set_height(face_goog_41_130994, LV_SIZE_CONTENT);
     lv_obj_set_x(face_goog_41_130994, 50);
