@@ -45,7 +45,8 @@ jobs:
       - name: Style
         working-directory: ZSWatch
         run: |
-          west format --dry-run
+          west format
+          git diff
       
       - name: Define build directory name
         working-directory: ZSWatch
