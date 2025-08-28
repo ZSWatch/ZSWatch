@@ -1,5 +1,9 @@
+name: CI
+
 on:
-  pull_request_target:
+  pull_request:  # Internal PRs only
+    types: [opened, synchronize, reopened]
+  pull_request_target:  # External PRs only  
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
@@ -14,4 +18,24 @@ jobs:
 
   test:
     needs: [build]
+    # Dual trigger (pull_request, pull_request_target) approach is needed because:
+    # - Self-hosted runners with hardware are required for testing
+    # - Fork PRs can't access self-hosted runners with 'pull_request' trigger
+    # - Fork PRs need 'pull_request_target' for self-hosted runner access and test annotation.
+    # - Internal PRs need 'pull_request' to test updated workflow files
+    # - Both triggers have comment/annotation permissions in their respective contexts
+    #
+    # Logic ensures each PR type runs the tests exactly once:
+    # - Internal PRs: Only 'pull_request' runs (uses PR branch workflows, no approval needed)
+    # - External PRs: Only 'pull_request_target' runs (uses main branch workflows, requires approval)
+    #
+    # Note: Build job runs twice (once per trigger) but let it be because otherwise
+    # we would need complex cross-workflow artifact downloading logic.
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository)
     uses: ./.github/workflows/test.yml
+    with:
+      is-external-pr: ${{ github.event_name == 'pull_request_target' }}
+      pr-head-sha: ${{ github.event.pull_request.head.sha }}
+      pr-head-repo: ${{ github.event.pull_request.head.repo.full_name }}
