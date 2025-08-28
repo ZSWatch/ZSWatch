@@ -1,11 +1,42 @@
-on: [workflow_call]
+on:
+  workflow_call:
+    inputs:
+      is-external-pr:
+        description: 'Whether this is an external PR from a fork'
+        type: boolean
+        required: false
+        default: false
+      pr-head-sha:
+        description: 'PR head SHA for external PRs'
+        type: string
+        required: false
+        default: ''
+      pr-head-repo:
+        description: 'PR head repository for external PRs'
+        type: string
+        required: false
+        default: ''
 
 jobs:
   test:
     runs-on: [self-hosted, x64]
+    environment: ${{ inputs.is-external-pr && 'external-pr-approval' || null }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.is-external-pr && inputs.pr-head-sha || github.sha }}
+          repository: ${{ inputs.is-external-pr && inputs.pr-head-repo || github.repository }}
+
+      - name: PR Type Notice
+        run: |
+          if [ "${{ inputs.is-external-pr }}" = "true" ]; then
+            echo "::notice::External PR detected - using stable workflows from main branch"
+            echo "::notice::Testing code from: ${{ inputs.pr-head-repo }}@${{ inputs.pr-head-sha }}"
+          else
+            echo "::notice::Internal PR detected - using workflows from PR branch"
+          fi
 
       - name: Install dependencies
         continue-on-error: true # JLink install may fail

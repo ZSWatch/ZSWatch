@@ -1,5 +1,9 @@
+name: CI
+
 on:
-  pull_request_target:
+  pull_request:  # Internal PRs only
+    types: [opened, synchronize, reopened]
+  pull_request_target:  # External PRs only  
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
@@ -15,3 +19,7 @@ jobs:
   test:
     needs: [build]
     uses: ./.github/workflows/test.yml
+    with:
+      is-external-pr: ${{ github.event_name == 'pull_request_target' }}
+      pr-head-sha: ${{ github.event.pull_request.head.sha }}
+      pr-head-repo: ${{ github.event.pull_request.head.repo.full_name }}
