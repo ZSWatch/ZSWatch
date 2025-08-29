@@ -47,6 +47,13 @@ if BMI270_PLUS
                 Use a separate thread to process the interrupts from the BMI270.
     endchoice
 
+    config BMI270_PLUS_USE_INT1
+        bool "Use INT1 pin instead of INT2"
+        depends on BMI270_PLUS_TRIGGER
+        help
+            Enable the use of the INT1 pin for interrupts instead of INT2.
+            This is useful for hardware designs where only INT1 is connected.
+
     config BMI270_PLUS_TRIGGER
         bool
 

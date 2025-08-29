@@ -246,19 +246,22 @@ int bmi2_init_interrupt(const struct device *p_dev)
 
     //Uncomment when both int pins should get used
 //  int_cfg.pin_type = BMI2_INT_BOTH;
-/*
+
+#ifdef CONFIG_BMI270_PLUS_USE_INT1
     int_cfg.pin_type = BMI2_INT1;
     int_cfg.pin_cfg[0].lvl = BMI2_INT_ACTIVE_HIGH;
     int_cfg.pin_cfg[0].od = BMI2_INT_PUSH_PULL;
     int_cfg.pin_cfg[0].output_en = BMI2_INT_OUTPUT_ENABLE;
-*/
 
+    int_cfg.pin_cfg[1].output_en = BMI2_INT_NONE;
+#else
     int_cfg.pin_cfg[0].output_en = BMI2_INT_NONE;
 
     int_cfg.pin_type = BMI2_INT2;
     int_cfg.pin_cfg[1].lvl = BMI2_INT_ACTIVE_HIGH;
     int_cfg.pin_cfg[1].od = BMI2_INT_PUSH_PULL;
     int_cfg.pin_cfg[1].output_en = BMI2_INT_OUTPUT_ENABLE;
+#endif
 
     if (bmi2_set_int_pin_config(&int_cfg, &data->bmi2) != BMI2_OK) {
         return -EFAULT;
