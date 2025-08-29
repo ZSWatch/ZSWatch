@@ -335,7 +335,7 @@ zephyr_udc0: &usbd {
                 regulator-always-on;
             };
 
-            regulator_buzzer: BUCK2 {
+            regulator_3v3: BUCK2 {
                 regulator-min-microvolt = <3000000>;
                 regulator-max-microvolt = <3000000>;
                 regulator-init-microvolt = <3000000>;
