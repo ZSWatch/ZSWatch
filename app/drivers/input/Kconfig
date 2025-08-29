@@ -1,3 +1,0 @@
-if INPUT
-    rsource "cst816s/Kconfig"
-endif
