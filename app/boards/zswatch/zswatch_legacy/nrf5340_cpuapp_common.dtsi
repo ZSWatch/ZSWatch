@@ -4,7 +4,7 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 #include "nrf5340_cpuapp_common-pinctrl.dtsi"
-#include <common/nordic/nrf5340_cpuapp_partition.dtsi>
+#include <nordic/nrf5340_cpuapp_partition.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 / {
@@ -61,6 +61,10 @@
 
 &vregh {
     status = "okay";
+};
+
+&lfxo {
+    status = "disabled";
 };
 
 &pwm0 {

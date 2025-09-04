@@ -1,4 +1,4 @@
-#include <dt-bindings/regulator/npm1300.h>
+#include <dt-bindings/regulator/npm13xx.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 &pinctrl {
@@ -193,7 +193,7 @@
 			regulator_3v3: LDO1 {
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
-				regulator-initial-mode = <NPM1300_LDSW_MODE_LDO>;
+				regulator-initial-mode = <NPM13XX_LDSW_MODE_LDO>;
 				regulator-boot-on;
 			};
 

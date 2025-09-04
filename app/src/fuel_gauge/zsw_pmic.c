@@ -21,9 +21,9 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
-#include <zephyr/drivers/mfd/npm1300.h>
+#include <zephyr/drivers/mfd/npm13xx.h>
 #include <zephyr/drivers/regulator.h>
-#include <zephyr/drivers/sensor/npm1300_charger.h>
+#include <zephyr/drivers/sensor/npm13xx_charger.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 #include <events/activity_event.h>
@@ -173,12 +173,12 @@ static int read_sensors(const struct device *charger, float *voltage, float *cur
     *current = (float)value.val1 + ((float)value.val2 / 1000000);
 
     if (status != NULL) {
-        sensor_channel_get(charger, SENSOR_CHAN_NPM1300_CHARGER_STATUS, &value);
+        sensor_channel_get(charger, SENSOR_CHAN_NPM13XX_CHARGER_STATUS, &value);
         *status = value.val1;
     }
 
     if (error != NULL) {
-        sensor_channel_get(charger, SENSOR_CHAN_NPM1300_CHARGER_ERROR, &value);
+        sensor_channel_get(charger, SENSOR_CHAN_NPM13XX_CHARGER_ERROR, &value);
         *error = value.val1;
     }
 
@@ -213,18 +213,18 @@ static int fuel_gauge_init(const struct device *charger)
 static void event_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
     LOG_DBG("Event detected\n");
-    if (BIT(NPM1300_EVENT_CHG_COMPLETED) & pins) {
+    if (BIT(NPM13XX_EVENT_CHG_COMPLETED) & pins) {
         LOG_DBG("Charging completed\n");
     }
-    if (BIT(NPM1300_EVENT_VBUS_DETECTED) & pins) {
+    if (BIT(NPM13XX_EVENT_VBUS_DETECTED) & pins) {
         vbus_connected = true;
         LOG_DBG("VBUS detected\n");
     }
-    if (BIT(NPM1300_EVENT_VBUS_REMOVED) & pins) {
+    if (BIT(NPM13XX_EVENT_VBUS_REMOVED) & pins) {
         vbus_connected = false;
         LOG_DBG("VBUS removed\n");
     }
-    if (BIT(NPM1300_EVENT_CHG_ERROR) & pins) {
+    if (BIT(NPM13XX_EVENT_CHG_ERROR) & pins) {
         LOG_ERR("Charging error\n");
     }
 }
@@ -304,7 +304,7 @@ int zsw_pmic_power_down(void)
 
 int zsw_pmic_reset(void)
 {
-    return mfd_npm1300_reset(pmic);
+    return mfd_npm13xx_reset(pmic);
 }
 
 static int zsw_pmic_init(void)
@@ -324,10 +324,10 @@ static int zsw_pmic_init(void)
     LOG_DBG("PMIC device ok\n");
 
     gpio_init_callback(&event_cb, event_callback,
-                       BIT(NPM1300_EVENT_CHG_COMPLETED) | BIT(NPM1300_EVENT_VBUS_DETECTED) | BIT(NPM1300_EVENT_VBUS_REMOVED) | BIT(
-                           NPM1300_EVENT_CHG_ERROR));
+                       BIT(NPM13XX_EVENT_CHG_COMPLETED) | BIT(NPM13XX_EVENT_VBUS_DETECTED) | BIT(NPM13XX_EVENT_VBUS_REMOVED) | BIT(
+                           NPM13XX_EVENT_CHG_ERROR));
 
-    mfd_npm1300_add_callback(pmic, &event_cb);
+    mfd_npm13xx_add_callback(pmic, &event_cb);
 
     /* Initialise vbus detection status. */
     struct sensor_value val;

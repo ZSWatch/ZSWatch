@@ -4,9 +4,9 @@
  */
 
 #include "nrf5340_cpuapp_common-pinctrl.dtsi"
-#include <common/nordic/nrf5340_cpuapp_partition.dtsi>
+#include <nordic/nrf5340_cpuapp_partition.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-#include <dt-bindings/regulator/npm1300.h>
+#include <dt-bindings/regulator/npm13xx.h>
 
 / {
     chosen {
