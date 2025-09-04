@@ -126,6 +126,11 @@ menu "ZSWatch"
         prompt "Activate the application 'PPT remote'"
         default n
 
+        config APPLICATIONS_USE_MIC_TEST
+            bool
+        prompt "Activate the application 'Microphone Test'"
+        default y if AUDIO_DMIC
+
         config APPLICATIONS_USE_CHRONOS
             bool
         prompt "Activate the application 'Chronos'"

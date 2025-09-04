@@ -268,6 +268,13 @@ zephyr_udc0: &usbd {
     };
 };
 
+dmic_dev: &pdm0 {
+    status = "okay";
+    pinctrl-0 = <&pdm0_default>;
+    pinctrl-names = "default";
+    clock-source = "PCLK32M";
+    queue-size = <300>;   // Conservative buffer for processing rate
+};
 
 &i2c1 {
     pinctrl-0 = <&i2c1_default>;

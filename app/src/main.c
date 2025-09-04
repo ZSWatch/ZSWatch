@@ -71,6 +71,7 @@
 #include <filesystem/zsw_filesystem.h>
 
 #include "fuel_gauge/zsw_pmic.h"
+#include "managers/zsw_microphone_manager.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
@@ -107,6 +108,10 @@ static void run_init_work(struct k_work *item)
     zsw_environment_sensor_init();
 
     zsw_ui_controller_init();
+
+#ifdef CONFIG_AUDIO_DMIC
+    zsw_microphone_manager_init();
+#endif
 
     print_retention_ram();
 #ifdef CONFIG_SPI_FLASH_LOADER
