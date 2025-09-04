@@ -70,6 +70,9 @@
     nfct-pins-as-gpios;
 };
 
+&lfxo {
+    status = "disabled";
+};
 
 &uart0 {
     status = "okay";
