@@ -4,6 +4,7 @@
 #include <zephyr/logging/log.h>
 
 #include "mic_test_ui.h"
+#include "spectrum_analyzer.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_microphone_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
@@ -14,9 +15,16 @@ LOG_MODULE_REGISTER(mic_test_app, LOG_LEVEL_DBG);
 static void mic_test_app_start(lv_obj_t *root, lv_group_t *group);
 static void mic_test_app_stop(void);
 
-// UI work items for LVGL thread safety
+// UI work items for LVGL thread safety  
 static struct k_work_delayable ui_reset_work;
+static struct k_work spectrum_update_work;
 static void ui_reset_work_handler(struct k_work *work);
+static void spectrum_update_work_handler(struct k_work *work);
+
+// Spectrum analysis buffers (use max size for both modes)
+static uint8_t spectrum_magnitudes_circular[SPECTRUM_NUM_BARS_CIRCULAR];
+static uint8_t spectrum_magnitudes_linear[SPECTRUM_NUM_BARS_LINEAR];
+static int16_t audio_samples[SPECTRUM_FFT_SIZE];
 
 // Functions related to app functionality
 static void on_toggle_button_pressed(void);
@@ -32,19 +40,29 @@ static application_t app = {
 };
 
 static bool running = false;
+static size_t sample_buffer_index = 0;
 
 static void mic_test_app_start(lv_obj_t *root, lv_group_t *group)
 {
     k_work_init_delayable(&ui_reset_work, ui_reset_work_handler);
+    k_work_init(&spectrum_update_work, spectrum_update_work_handler);
+
+    // Initialize spectrum analyzer
+    int ret = spectrum_analyzer_init();
+    if (ret < 0) {
+        LOG_ERR("Failed to initialize spectrum analyzer: %d", ret);
+    }
 
     mic_test_ui_show(root, on_toggle_button_pressed);
     running = true;
+    sample_buffer_index = 0;
     LOG_INF("Microphone test app started");
 }
 
 static void mic_test_app_stop(void)
 {
     k_work_cancel_delayable(&ui_reset_work);
+    k_work_cancel(&spectrum_update_work);
 
     if (zsw_microphone_manager_is_recording()) {
         zsw_microphone_stop_recording();
@@ -85,7 +103,7 @@ static void on_toggle_button_pressed(void)
         zsw_mic_config_t config;
         zsw_microphone_manager_get_default_config(&config);
         config.duration_ms = 0;
-        config.output = ZSW_MIC_OUTPUT_RTT;
+        config.output = ZSW_MIC_OUTPUT_RAW; // Change to raw mode for real-time processing
 
         mic_test_ui_set_status("Starting...");
 
@@ -112,8 +130,29 @@ static void mic_event_callback(zsw_mic_event_t event, void *data, void *user_dat
         case ZSW_MIC_EVENT_RECORDING_DATA:
             if (data) {
                 zsw_mic_raw_block_t *block = (zsw_mic_raw_block_t *)data;
-                LOG_DBG("Received raw audio: %d bytes",
-                        block->size);
+                
+                // Process audio data for spectrum analysis
+                int16_t *samples = (int16_t *)block->data;
+                size_t num_samples = block->size / sizeof(int16_t);
+                
+                // Accumulate samples until we have enough for FFT
+                for (size_t i = 0; i < num_samples && sample_buffer_index < SPECTRUM_FFT_SIZE; i++) {
+                    audio_samples[sample_buffer_index++] = samples[i];
+                }
+                
+                // Process when buffer is full
+                if (sample_buffer_index >= SPECTRUM_FFT_SIZE) {
+                    // Process for both modes
+                    int ret1 = spectrum_analyzer_process(audio_samples, SPECTRUM_FFT_SIZE,
+                                                         spectrum_magnitudes_circular, SPECTRUM_NUM_BARS_CIRCULAR);
+                    int ret2 = spectrum_analyzer_process(audio_samples, SPECTRUM_FFT_SIZE,
+                                                         spectrum_magnitudes_linear, SPECTRUM_NUM_BARS_LINEAR);
+                    if (ret1 == 0 || ret2 == 0) {
+                        // Submit work to update UI from main thread
+                        k_work_submit(&spectrum_update_work);
+                    }
+                    sample_buffer_index = 0; // Reset buffer
+                }
             }
             break;
         case ZSW_MIC_EVENT_RECORDING_TIMEOUT:
@@ -130,6 +169,15 @@ static void ui_reset_work_handler(struct k_work *work)
 {
     if (running) {
         mic_test_ui_set_status("Ready");
+    }
+}
+
+static void spectrum_update_work_handler(struct k_work *work)
+{
+    if (running) {
+        // Update both modes - UI will pick the right one
+        mic_test_ui_update_spectrum(spectrum_magnitudes_circular, SPECTRUM_NUM_BARS_CIRCULAR);
+        mic_test_ui_update_spectrum(spectrum_magnitudes_linear, SPECTRUM_NUM_BARS_LINEAR);
     }
 }
 
