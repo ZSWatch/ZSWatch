@@ -13,7 +13,7 @@ static lv_obj_t *mode_button;
 static lv_obj_t *mode_label;
 static bool is_recording = false;
 static bool spectrum_ui_initialized = false;
-static spectrum_mode_t current_mode = SPECTRUM_MODE_LINEAR;
+static spectrum_mode_t current_mode = SPECTRUM_MODE_CIRCULAR;
 
 // Forward declarations
 static void show_demo_spectrum(void);
@@ -31,15 +31,15 @@ static void mode_button_event_cb(lv_event_t *e)
 {
     // Switch between visualization modes
     current_mode = (current_mode + 1) % SPECTRUM_MODE_COUNT;
-    
+
     // Update mode button text
     const char *mode_text = (current_mode == SPECTRUM_MODE_CIRCULAR) ? "○" : "|||";
     lv_label_set_text(mode_label, mode_text);
-    
+
     // Cleanup old mode and init new mode
     cleanup_spectrum_mode();
     init_spectrum_mode();
-    
+
     // Show demo in new mode
     show_demo_spectrum();
 }
@@ -105,7 +105,7 @@ void mic_test_ui_show(lv_obj_t *root, on_mic_test_ui_event_cb_t toggle_cb)
 void mic_test_ui_remove(void)
 {
     cleanup_spectrum_mode();
-    
+
     if (root_page) {
         lv_obj_del(root_page);
         root_page = NULL;
@@ -142,7 +142,7 @@ void mic_test_ui_update_spectrum(const uint8_t *magnitudes, size_t num_bars)
 static void init_spectrum_mode(void)
 {
     int ret = -1;
-    
+
     if (current_mode == SPECTRUM_MODE_CIRCULAR) {
         printk("Initializing CIRCULAR spectrum mode\n");
         ret = circular_spectrum_ui_init(root_page, 120, 120, 40, 100);
@@ -150,7 +150,7 @@ static void init_spectrum_mode(void)
         printk("Initializing LINEAR spectrum mode\n");
         ret = linear_spectrum_ui_init(root_page, 10, 70, 220, 100);
     }
-    
+
     if (ret == 0) {
         spectrum_ui_initialized = true;
         printk("Spectrum mode initialized successfully, showing demo\n");

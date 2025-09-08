@@ -84,18 +84,20 @@ int linear_spectrum_ui_init(lv_obj_t *parent, int16_t x, int16_t y,
 
     // Calculate bar width and spacing
     uint16_t bar_width = (width - 2) / LINEAR_SPECTRUM_BARS;
-    if (bar_width < 2) bar_width = 2;
+    if (bar_width < 2) {
+        bar_width = 2;
+    }
     uint16_t spacing = 1;
 
     // Create individual bars as rectangles
     for (int i = 0; i < LINEAR_SPECTRUM_BARS; i++) {
         linear_ui.bars[i] = lv_obj_create(linear_ui.container);
-        
+
         // Position bars horizontally with proper spacing
         int16_t bar_x = i * (bar_width + spacing);
         lv_obj_set_pos(linear_ui.bars[i], bar_x, height - 20); // Start from bottom
         lv_obj_set_size(linear_ui.bars[i], bar_width, 20); // Start with visible height
-        
+
         // Style the bars with very bright colors and borders for visibility
         lv_obj_set_style_bg_color(linear_ui.bars[i], lv_color_hex(0xFF0000), LV_PART_MAIN); // Bright red
         lv_obj_set_style_bg_opa(linear_ui.bars[i], LV_OPA_COVER, LV_PART_MAIN);
@@ -105,7 +107,7 @@ int linear_spectrum_ui_init(lv_obj_t *parent, int16_t x, int16_t y,
     }
 
     linear_ui.initialized = true;
-    LOG_INF("Linear spectrum UI initialized with %d bars (%dx%d)", 
+    LOG_INF("Linear spectrum UI initialized with %d bars (%dx%d)",
             LINEAR_SPECTRUM_BARS, width, height);
     return 0;
 }
@@ -125,7 +127,7 @@ void linear_spectrum_ui_update(const uint8_t *magnitudes, size_t num_bars)
     // Map input bars to our display bars
     for (int i = 0; i < LINEAR_SPECTRUM_BARS; i++) {
         uint8_t magnitude;
-        
+
         if (num_bars <= LINEAR_SPECTRUM_BARS) {
             // If we have fewer input bars, repeat/interpolate
             int src_index = (i * num_bars) / LINEAR_SPECTRUM_BARS;
@@ -136,7 +138,7 @@ void linear_spectrum_ui_update(const uint8_t *magnitudes, size_t num_bars)
             int end_idx = ((i + 1) * num_bars) / LINEAR_SPECTRUM_BARS;
             uint32_t sum = 0;
             int count = 0;
-            
+
             for (int j = start_idx; j < end_idx && j < num_bars; j++) {
                 sum += magnitudes[j];
                 count++;
@@ -149,10 +151,10 @@ void linear_spectrum_ui_update(const uint8_t *magnitudes, size_t num_bars)
         uint16_t bar_height = 5 + (magnitude * (max_height - 5)) / 255;
 
         // Update bar size and position (grow upward from bottom)
-        lv_obj_set_size(linear_ui.bars[i], 
+        lv_obj_set_size(linear_ui.bars[i],
                         lv_obj_get_width(linear_ui.bars[i]), bar_height);
-        lv_obj_set_pos(linear_ui.bars[i], 
-                       lv_obj_get_x(linear_ui.bars[i]), 
+        lv_obj_set_pos(linear_ui.bars[i],
+                       lv_obj_get_x(linear_ui.bars[i]),
                        linear_ui.height - bar_height);
 
         // Update bar color based on magnitude

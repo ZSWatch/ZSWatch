@@ -76,3 +76,15 @@
 		};
     };
 };
+
+
+/* DMIC emulator node for native_sim */
+/ {
+    dmic_dev: dmic-emulator {
+        compatible = "zephyr,dmic-emul";
+        status = "okay";
+        max-streams = <1>;
+        sine-freq = <440>;      /* 440Hz won't create perfect cycles */
+        amplitude = <20000>;    /* Higher amplitude for better visibility */
+    };
+};

@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(mic_test_app, LOG_LEVEL_DBG);
 static void mic_test_app_start(lv_obj_t *root, lv_group_t *group);
 static void mic_test_app_stop(void);
 
-// UI work items for LVGL thread safety  
+// UI work items for LVGL thread safety
 static struct k_work_delayable ui_reset_work;
 static struct k_work spectrum_update_work;
 static void ui_reset_work_handler(struct k_work *work);
@@ -130,16 +130,16 @@ static void mic_event_callback(zsw_mic_event_t event, void *data, void *user_dat
         case ZSW_MIC_EVENT_RECORDING_DATA:
             if (data) {
                 zsw_mic_raw_block_t *block = (zsw_mic_raw_block_t *)data;
-                
+
                 // Process audio data for spectrum analysis
                 int16_t *samples = (int16_t *)block->data;
                 size_t num_samples = block->size / sizeof(int16_t);
-                
+
                 // Accumulate samples until we have enough for FFT
                 for (size_t i = 0; i < num_samples && sample_buffer_index < SPECTRUM_FFT_SIZE; i++) {
                     audio_samples[sample_buffer_index++] = samples[i];
                 }
-                
+
                 // Process when buffer is full
                 if (sample_buffer_index >= SPECTRUM_FFT_SIZE) {
                     // Process for both modes

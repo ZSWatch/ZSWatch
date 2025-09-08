@@ -23,10 +23,10 @@
 
 LOG_MODULE_REGISTER(zsw_mic, LOG_LEVEL_INF);
 
-// 300ms of audio buffer
+// 64ms of audio buffer per block for more efficient processing
 #define AUDIO_FREQ          16000
 #define CHAN_SIZE           16
-#define PCM_BLK_SIZE_MS     ((AUDIO_FREQ/1000) * sizeof(int16_t))
+#define PCM_BLK_SIZE_MS     ((AUDIO_FREQ/1000) * sizeof(int16_t) * 64)  // 64ms blocks
 #define BUFFER_POOL_SIZE    300
 
 static struct {
@@ -93,15 +93,16 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 
     mic_state.enable_gpio = (struct gpio_dt_spec)GPIO_DT_SPEC_GET_OR(DT_NODELABEL(mic_pwr), enable_gpios, {});
 
-    if (!device_is_ready(mic_state.enable_gpio.port)) {
+    if (mic_state.enable_gpio.port && !device_is_ready(mic_state.enable_gpio.port)) {
         LOG_ERR("Microphone power GPIO not ready");
-        return -ENODEV;
     }
 
-    ret = gpio_pin_configure_dt(&mic_state.enable_gpio, GPIO_OUTPUT_LOW);
-    if (ret != 0) {
-        LOG_ERR("Failed to configure microphone power GPIO: %d", ret);
-        return ret;
+    if (mic_state.enable_gpio.port) {
+        ret = gpio_pin_configure_dt(&mic_state.enable_gpio, GPIO_OUTPUT_LOW);
+        if (ret != 0) {
+            LOG_ERR("Failed to configure microphone power GPIO: %d", ret);
+            return ret;
+        }
     }
 
     mic_state.mic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
@@ -259,7 +260,8 @@ static void audio_thread_entry(void *p1, void *p2, void *p3)
         k_mem_slab_free(&rx_mem_slab, rx_block_ptr);
         mic_state.total_blocks_processed++;
 
-        // Yield to let other threads run. May or may not actually be needed.
+        // Yield to let other threads run - no artificial sleep needed
+        // since emulator provides natural timing
         k_yield();
     }
 
@@ -271,6 +273,9 @@ static void audio_thread_entry(void *p1, void *p2, void *p3)
 
 static int power_on_microphone(void)
 {
+    if (mic_state.enable_gpio.port == NULL) {
+        return 0;
+    }
     int ret = gpio_pin_set_dt(&mic_state.enable_gpio, 1);
     if (ret == 0) {
         LOG_DBG("Microphone powered on");
@@ -281,6 +286,9 @@ static int power_on_microphone(void)
 
 static int power_off_microphone(void)
 {
+    if (mic_state.enable_gpio.port == NULL) {
+        return 0;
+    }
     int ret = gpio_pin_set_dt(&mic_state.enable_gpio, 0);
     if (ret == 0) {
         LOG_DBG("Microphone powered off");

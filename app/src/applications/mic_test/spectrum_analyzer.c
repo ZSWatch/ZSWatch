@@ -111,13 +111,15 @@ int spectrum_analyzer_process(const int16_t *samples, size_t num_samples,
     // Group frequency bins into display bars
     // Each bar represents multiple frequency bins for better visualization
     int bins_per_bar = (SPECTRUM_FFT_SIZE / 2) / num_bars;
-    if (bins_per_bar < 1) bins_per_bar = 1;
+    if (bins_per_bar < 1) {
+        bins_per_bar = 1;
+    }
 
     for (int bar = 0; bar < num_bars; bar++) {
         float32_t bar_magnitude = 0.0f;
         int start_bin = bar * bins_per_bar;
         int end_bin = start_bin + bins_per_bar;
-        
+
         if (end_bin > SPECTRUM_FFT_SIZE / 2) {
             end_bin = SPECTRUM_FFT_SIZE / 2;
         }
@@ -129,14 +131,16 @@ int spectrum_analyzer_process(const int16_t *samples, size_t num_samples,
         bar_magnitude /= (end_bin - start_bin);
 
         // Apply smoothing for better visual effect
-        smoothed_magnitudes[bar] = SMOOTHING_FACTOR * smoothed_magnitudes[bar] + 
+        smoothed_magnitudes[bar] = SMOOTHING_FACTOR * smoothed_magnitudes[bar] +
                                    (1.0f - SMOOTHING_FACTOR) * bar_magnitude;
 
         // Convert to 8-bit magnitude (0-255) with much higher sensitivity
         float32_t log_magnitude = logf(1.0f + smoothed_magnitudes[bar] * 100.0f); // 10x more sensitive
         uint8_t magnitude_8bit = (uint8_t)(log_magnitude * 25.0f); // Adjusted scaling
-        
-        if (magnitude_8bit > 255) magnitude_8bit = 255;
+
+        if (magnitude_8bit > 255) {
+            magnitude_8bit = 255;
+        }
         magnitudes[bar] = magnitude_8bit;
     }
 
@@ -151,7 +155,7 @@ uint32_t spectrum_get_bar_color(uint8_t bar_index, uint8_t magnitude)
 
     // Get base color for this frequency band
     uint32_t base_color = spectrum_colors[bar_index];
-    
+
     // Extract RGB components
     uint8_t red = (base_color >> 16) & 0xFF;
     uint8_t green = (base_color >> 8) & 0xFF;
@@ -159,7 +163,7 @@ uint32_t spectrum_get_bar_color(uint8_t bar_index, uint8_t magnitude)
 
     // Scale brightness based on magnitude (minimum 10% brightness, more dynamic range)
     float32_t brightness = 0.1f + (magnitude / 255.0f) * 0.9f;
-    
+
     red = (uint8_t)(red * brightness);
     green = (uint8_t)(green * brightness);
     blue = (uint8_t)(blue * brightness);

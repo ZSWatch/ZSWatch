@@ -68,7 +68,7 @@ int circular_spectrum_ui_init(lv_obj_t *parent, int16_t center_x, int16_t center
         lv_obj_set_style_line_width(spectrum_ui.bars[i], 5, LV_PART_MAIN);
         lv_obj_set_style_line_color(spectrum_ui.bars[i], lv_color_hex(0xFF0000), LV_PART_MAIN);
         lv_obj_set_style_line_opa(spectrum_ui.bars[i], LV_OPA_COVER, LV_PART_MAIN);
-        
+
         // Initialize with default line points (short line to make it visible)
         spectrum_ui.line_points[i][0].x = spectrum_ui.center_x;
         spectrum_ui.line_points[i][0].y = spectrum_ui.center_y;
@@ -98,7 +98,7 @@ void circular_spectrum_ui_update(const uint8_t *magnitudes, size_t num_bars)
     for (size_t i = 0; i < num_bars; i++) {
         // Calculate angle for this bar (evenly distributed around circle)
         float angle_rad = (float)i * (2.0f * M_PI) / (float)num_bars;
-        
+
         // Calculate bar length based on magnitude
         uint16_t bar_length = (magnitudes[i] * (spectrum_ui.outer_radius - spectrum_ui.inner_radius)) / 255;
         uint16_t bar_end_radius = spectrum_ui.inner_radius + bar_length;

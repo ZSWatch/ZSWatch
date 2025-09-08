@@ -20,7 +20,9 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/kernel.h>
+#if CONFIG_USE_SEGGER_RTT
 #include <SEGGER_RTT.h>
+#endif
 #include <string.h>
 #include <stdio.h>
 
@@ -60,6 +62,7 @@ K_WORK_DELAYABLE_DEFINE(timeout_work, timeout_work_handler);
 
 static int init_rtt_for_audio(void)
 {
+#if CONFIG_USE_SEGGER_RTT
     int ret = SEGGER_RTT_ConfigUpBuffer(CONFIG_RTT_TRANSFER_CHANNEL, "ZSW_MIC",
                                         rtt_buffer, RTT_BUFFER_SIZE,
                                         SEGGER_RTT_MODE_NO_BLOCK_TRIM);
@@ -69,6 +72,7 @@ static int init_rtt_for_audio(void)
     }
 
     LOG_DBG("RTT audio channel %d configured", CONFIG_RTT_TRANSFER_CHANNEL);
+#endif
     return 0;
 }
 
@@ -230,7 +234,7 @@ static void mic_audio_callback(void *audio_data, size_t size)
         return;
     }
 
-    if (size == 0 || size > 1024) {
+    if (size == 0 || size > 4096) {
         LOG_ERR("Invalid audio data size: %d", size);
         return;
     }
@@ -244,7 +248,9 @@ static void mic_audio_callback(void *audio_data, size_t size)
 
     switch (mic_manager.config.output) {
         case ZSW_MIC_OUTPUT_RTT:
+#if CONFIG_USE_SEGGER_RTT
             SEGGER_RTT_Write(CONFIG_RTT_TRANSFER_CHANNEL, audio_data, size);
+#endif
             break;
 
         case ZSW_MIC_OUTPUT_FILE:
