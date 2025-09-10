@@ -266,11 +266,10 @@ static void mic_audio_callback(void *audio_data, size_t size)
 
         case ZSW_MIC_OUTPUT_RAW:
             if (mic_manager.callback) {
-                zsw_mic_raw_block_t raw_block = {
-                    .data = audio_data,
-                    .size = size
-                };
-                mic_manager.callback(ZSW_MIC_EVENT_RECORDING_DATA, &raw_block,
+                zsw_mic_event_data_t data;
+                data.raw_block.data = audio_data;
+                data.raw_block.size = size;
+                mic_manager.callback(ZSW_MIC_EVENT_RECORDING_DATA, &data,
                                      mic_manager.user_data);
             }
             break;

@@ -61,14 +61,20 @@ typedef struct {
     size_t size;                    /**< Size of audio data in bytes */
 } zsw_mic_raw_block_t;
 
+typedef struct {
+    union {
+        zsw_mic_raw_block_t raw_block;
+    };
+} zsw_mic_event_data_t;
+
 /**
  * @brief Event callback function type
  *
  * @param event Current microphone event
- * @param data Additional data (zsw_mic_raw_block_t* for raw output, filename for file output)
+ * @param data Event
  * @param user_data User data passed to start_recording
  */
-typedef void (*zsw_mic_event_cb_t)(zsw_mic_event_t event, void *data, void *user_data);
+typedef void (*zsw_mic_event_cb_t)(zsw_mic_event_t event, zsw_mic_event_data_t *data, void *user_data);
 
 /**
  * @brief Initialize the microphone manager

@@ -1,4 +1,4 @@
-if(CONFIG_APPLICATIONS_USE_MIC_TEST)
+if(CONFIG_AUDIO_DMIC)
     FILE(GLOB app_sources *.c)
     target_sources(app PRIVATE ${app_sources})
 
