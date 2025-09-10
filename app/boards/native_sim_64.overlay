@@ -76,3 +76,13 @@
 		};
     };
 };
+
+/ {
+    dmic_dev: dmic-emulator {
+        compatible = "zephyr,dmic-emul";
+        status = "okay";
+        max-streams = <1>;
+        sine-freq = <440>;
+        amplitude = <20000>;
+    };
+};

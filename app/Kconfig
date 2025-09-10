@@ -68,6 +68,15 @@ menu "ZSWatch"
         select NORDIC_QSPI_NOR_XIP
     default n
 
+    config ZSW_MIC
+        bool
+    prompt "Enable Mic functionality"
+        select AUDIO
+        select AUDIO_DMIC
+        select CMSIS_DSP
+        select CMSIS_DSP_TRANSFORM
+    default n
+
     menu "Applications"
         config APPLICATIONS_USE_2048
             bool

@@ -1,0 +1,18 @@
+# DMIC Emulator Driver Configuration
+
+config AUDIO_DMIC_EMUL
+	bool "DMIC Emulator Driver"
+	default n
+	depends on AUDIO_DMIC
+	help
+	  Enable DMIC emulator driver for testing DMIC applications
+	  on platforms without real DMIC hardware. The driver generates
+	  a configurable sine wave for testing purposes.
+
+if AUDIO_DMIC_EMUL
+
+module = DMIC_EMUL
+module-str = dmic_emul
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # AUDIO_DMIC_EMUL

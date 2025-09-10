@@ -148,6 +148,7 @@ dmic_dev: &pdm0 {
 	pinctrl-0 = <&pdm0_default_alt>;
 	pinctrl-names = "default";
 	clock-source = "PCLK32M";
+	queue-size = <300>;   // Conservative buffer for processing rate
 };
 
 &uart0 {
