@@ -32,20 +32,19 @@ typedef void (*watch_ui_gain_change_cb_t)(float new_gain);
 typedef void (*watch_ui_rtt_output_cb_t)(bool rtt_output);
 
 /**
- * @brief Create the circular spectrum analyzer watch UI
  *
- * @param parent Parent LVGL object
+ * @param parent Parent object
  * @param toggle_cb Callback for start/stop button
  * @param gain_change_cb Callback for gain changes (can be NULL)
  * @param rtt_output_cb Callback for RTT output toggle (can be NULL)
  * @param initial_gain Initial gain value for the UI
  * @return lv_obj_t* Container object
  */
-lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
-                                            watch_ui_gain_change_cb_t gain_change_cb, 
-                                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain);
+lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
+                            watch_ui_gain_change_cb_t gain_change_cb,
+                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain);
 
-void circular_spectrum_watch_ui_remove(void);
+void mic_app_ui_remove(void);
 
 /**
  * @brief Update spectrum data with FFT magnitudes
@@ -53,21 +52,21 @@ void circular_spectrum_watch_ui_remove(void);
  * @param magnitudes Array of magnitude values [0-255]
  * @param count Number of magnitude values (shall be NUM_SPECTRUM_BARS)
  */
-void circular_spectrum_watch_ui_update_spectrum(const uint8_t *magnitudes, size_t count);
+void mic_app_ui_update_spectrum(const uint8_t *magnitudes, size_t count);
 
 /**
  * @brief Set the status text
  *
  * @param status Status string to display
  */
-void circular_spectrum_watch_ui_set_status(const char *status);
+void mic_app_ui_set_status(const char *status);
 
 /**
  * @brief Toggle the button state between Start/Stop
  *
  * @param is_recording true if recording, false if stopped
  */
-void circular_spectrum_watch_ui_set_recording(bool is_recording);
+void mic_app_ui_set_recording(bool is_recording);
 
 #ifdef __cplusplus
 }

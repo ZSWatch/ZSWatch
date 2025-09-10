@@ -15,13 +15,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "circular_spectrum_watch_ui.h"
+#include "mic_app_ui.h"
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(circular_spectrum_watch_ui, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(mic_app_ui, LOG_LEVEL_DBG);
 
 #define DECAY_UPDATE_INTERVAL     80
 #define PEAK_DECAY_PIXELS_PER_TICK     2.0f
@@ -55,9 +55,9 @@ static void gain_minus_event_cb(lv_event_t *e);
 static void rtt_checkbox_event_cb(lv_event_t *e);
 static inline float norm_to_px(float v, float max_px);
 
-lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
-                                            watch_ui_gain_change_cb_t gain_change_cb, 
-                                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain)
+lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
+                            watch_ui_gain_change_cb_t gain_change_cb,
+                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain)
 {
     if (!parent) {
         LOG_ERR("Parent object is NULL");
@@ -99,7 +99,7 @@ lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb
 
     lv_obj_t *toggle_button = lv_btn_create(app_root_container);
     lv_obj_set_size(toggle_button, 80, 30);
-    lv_obj_align(toggle_button, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_align(toggle_button, LV_ALIGN_BOTTOM_MID, 0, -17);
     lv_obj_add_event_cb(toggle_button, toggle_button_event_cb, LV_EVENT_CLICKED, NULL);
 
     button_label = lv_label_create(toggle_button);
@@ -109,7 +109,7 @@ lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb
 
     lv_obj_t *gain_minus_btn = lv_btn_create(app_root_container);
     lv_obj_set_size(gain_minus_btn, 30, 25);
-    lv_obj_align_to(gain_minus_btn, toggle_button, LV_ALIGN_OUT_LEFT_MID, -20, -25);
+    lv_obj_align_to(gain_minus_btn, toggle_button, LV_ALIGN_OUT_LEFT_MID, -25, -25);
     lv_obj_add_event_cb(gain_minus_btn, gain_minus_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *minus_label = lv_label_create(gain_minus_btn);
@@ -119,7 +119,7 @@ lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb
 
     lv_obj_t *gain_plus_btn = lv_btn_create(app_root_container);
     lv_obj_set_size(gain_plus_btn, 30, 25);
-    lv_obj_align_to(gain_plus_btn, toggle_button, LV_ALIGN_OUT_RIGHT_MID, 20, -25);
+    lv_obj_align_to(gain_plus_btn, toggle_button, LV_ALIGN_OUT_RIGHT_MID, 25, -25);
     lv_obj_add_event_cb(gain_plus_btn, gain_plus_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *plus_label = lv_label_create(gain_plus_btn);
@@ -144,7 +144,7 @@ lv_obj_t *circular_spectrum_watch_ui_create(lv_obj_t *parent, watch_ui_toggle_cb
     return app_root_container;
 }
 
-void circular_spectrum_watch_ui_remove(void)
+void mic_app_ui_remove(void)
 {
     if (spectrum_timer) {
         lv_timer_del(spectrum_timer);
@@ -165,7 +165,7 @@ void circular_spectrum_watch_ui_remove(void)
     rtt_output_callback = NULL;
 }
 
-void circular_spectrum_watch_ui_update_spectrum(const uint8_t *magnitudes, size_t count)
+void mic_app_ui_update_spectrum(const uint8_t *magnitudes, size_t count)
 {
     if (!spectrum_obj || !magnitudes || count != NUM_SPECTRUM_BARS) {
         return;
@@ -193,29 +193,27 @@ void circular_spectrum_watch_ui_update_spectrum(const uint8_t *magnitudes, size_
     lv_obj_invalidate(spectrum_obj);
 }
 
-void circular_spectrum_watch_ui_set_status(const char *status)
+void mic_app_ui_set_status(const char *status)
 {
     if (status_label && status) {
         lv_label_set_text(status_label, status);
     }
 }
 
-void circular_spectrum_watch_ui_set_recording(bool recording)
+void mic_app_ui_set_recording(bool recording)
 {
     is_recording = recording;
     if (button_label) {
         lv_label_set_text(button_label, recording ? "Stop" : "Start");
     }
 
-    // Clear spectrum when stopping recording
-    if (!recording) {
-        for (uint32_t i = 0; i < NUM_SPECTRUM_BARS; i++) {
-            current_bar_vals[i] = 0;
-            decay_peak_marker_vals[i] = 0;
-        }
-        if (spectrum_obj) {
-            lv_obj_invalidate(spectrum_obj);
-        }
+    // Clear spectrum when starting or stopping recording
+    for (uint32_t i = 0; i < NUM_SPECTRUM_BARS; i++) {
+        current_bar_vals[i] = 0;
+        decay_peak_marker_vals[i] = 0;
+    }
+    if (spectrum_obj) {
+        lv_obj_invalidate(spectrum_obj);
     }
 }
 

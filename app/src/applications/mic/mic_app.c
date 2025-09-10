@@ -3,7 +3,7 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 
-#include "circular_spectrum_watch_ui.h"
+#include "mic_app_ui.h"
 #include "spectrum_analyzer.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_microphone_manager.h"
@@ -48,7 +48,7 @@ static void mic_app_start(lv_obj_t *root, lv_group_t *group)
         LOG_ERR("Failed to initialize spectrum analyzer: %d", ret);
     }
 
-    circular_spectrum_watch_ui_create(root, on_play_stop_toggle, on_gain_changed, on_rtt_output_toggled, current_gain);
+    mic_app_ui_create(root, on_play_stop_toggle, on_gain_changed, on_rtt_output_toggled, current_gain);
     LOG_INF("Circular spectrum watch UI created");
 
     running = true;
@@ -64,7 +64,8 @@ static void mic_app_stop(void)
         zsw_microphone_stop_recording();
     }
 
-    circular_spectrum_watch_ui_remove();
+    mic_app_ui_remove();
+    spectrum_analyzer_cleanup();
 
     running = false;
     LOG_INF("Microphone app stopped");
@@ -78,14 +79,14 @@ static void on_play_stop_toggle(void)
 
     if (zsw_microphone_manager_is_recording()) {
         LOG_INF("Stopping microphone recording");
-        circular_spectrum_watch_ui_set_status("Stopping...");
+        mic_app_ui_set_status("Stopping...");
         int ret = zsw_microphone_stop_recording();
         if (ret < 0) {
             LOG_ERR("Failed to stop recording: %d", ret);
-            circular_spectrum_watch_ui_set_status("Stop Failed!");
+            mic_app_ui_set_status("Stop Failed!");
         } else {
-            circular_spectrum_watch_ui_set_status("Ready");
-            circular_spectrum_watch_ui_set_recording(false);
+            mic_app_ui_set_status("Ready");
+            mic_app_ui_set_recording(false);
             LOG_INF("Recording stopped successfully");
         }
     } else {
@@ -96,21 +97,24 @@ static void on_play_stop_toggle(void)
             return;
         }
 
+        sample_buffer_index = 0;
+        memset(audio_samples, 0, sizeof(audio_samples));
+
         int ret;
         zsw_mic_config_t config;
         zsw_microphone_manager_get_default_config(&config);
         config.duration_ms = 0; // Continuous recording
         config.output = rtt_output_enabled ? ZSW_MIC_OUTPUT_RTT : ZSW_MIC_OUTPUT_RAW;
 
-        circular_spectrum_watch_ui_set_status("Starting...");
+        mic_app_ui_set_status("Starting...");
 
         ret = zsw_microphone_manager_start_recording(&config, mic_event_callback, NULL);
         if (ret < 0) {
             LOG_ERR("Failed to start recording: %d", ret);
-            circular_spectrum_watch_ui_set_status("Start Failed!");
+            mic_app_ui_set_status("Start Failed!");
         } else {
-            circular_spectrum_watch_ui_set_status("Recording...");
-            circular_spectrum_watch_ui_set_recording(true);
+            mic_app_ui_set_status("Recording...");
+            mic_app_ui_set_recording(true);
             LOG_INF("Recording started successfully");
         }
     }
@@ -171,7 +175,7 @@ static void spectrum_update_work_handler(struct k_work *work)
 {
     (void)work;
     if (running) {
-        circular_spectrum_watch_ui_update_spectrum(spectrum_magnitudes, NUM_SPECTRUM_BARS);
+        mic_app_ui_update_spectrum(spectrum_magnitudes, NUM_SPECTRUM_BARS);
     }
 }
 

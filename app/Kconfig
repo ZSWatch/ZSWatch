@@ -73,8 +73,6 @@ menu "ZSWatch"
     prompt "Enable Mic functionality"
         select AUDIO
         select AUDIO_DMIC
-        select CMSIS_DSP
-        select CMSIS_DSP_TRANSFORM
     default n
 
     menu "Applications"

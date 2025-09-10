@@ -56,6 +56,22 @@ include_directories(src/ui)
 include_directories(src/applications)
 include_directories(src/ui/watchfaces)
 
+if(CONFIG_AUDIO_DMIC)
+target_sources(app PRIVATE
+    src/ext_drivers/kissfft/kiss_fft.c
+    src/ext_drivers/kissfft/kiss_fftr.c
+)
+
+target_include_directories(app PRIVATE src/ext_drivers/kissfft)
+
+target_compile_definitions(app PRIVATE
+    kiss_fft_scalar=float
+    KISS_FFT_MALLOC=k_malloc
+    KISS_FFT_FREE=k_free
+)
+
+endif()
+
 if (CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
     add_subdirectory(src/fuel_gauge)
 else()

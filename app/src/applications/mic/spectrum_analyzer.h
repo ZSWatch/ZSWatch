@@ -35,6 +35,11 @@ extern "C" {
 int spectrum_analyzer_init(void);
 
 /**
+ * @brief Cleanup the spectrum analyzer and free resources
+ */
+void spectrum_analyzer_cleanup(void);
+
+/**
  * @brief Process audio samples and compute frequency spectrum
  *
  * @param samples Pointer to 16-bit audio samples
