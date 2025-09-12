@@ -1,7 +1,8 @@
 {
     "nrf-connect.applications": [
         "${workspaceFolder}/app",
-        "${workspaceFolder}\\app"
+        "${workspaceFolder}\\app",
+        "${workspaceFolder}/production_test"
     ],
     "nrf-connect.boardRoots": [
         "${workspaceFolder}/app",
