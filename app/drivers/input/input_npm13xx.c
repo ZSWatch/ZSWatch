@@ -68,8 +68,10 @@ static int npm13xx_input_init(const struct device *dev)
         return -ENODEV;
     }
 
+    // For some reason, probably a bug in nPM1300 driver, to get INT from SHIPHOLD, we also need to trigger an INT from some other event.
     gpio_init_callback(&data->cb_data, npm13xx_input_callback,
-                       BIT(NPM13XX_EVENT_SHIPHOLD_PRESS) | BIT(NPM13XX_EVENT_SHIPHOLD_RELEASE));
+                       BIT(NPM13XX_EVENT_SHIPHOLD_PRESS) | BIT(NPM13XX_EVENT_SHIPHOLD_RELEASE) | BIT(NPM13XX_EVENT_CHG_COMPLETED) | BIT(
+                           NPM13XX_EVENT_VBUS_DETECTED) | BIT(NPM13XX_EVENT_VBUS_REMOVED));
 
     int ret = mfd_npm13xx_add_callback(cfg->mfd_dev, &data->cb_data);
     if (ret < 0) {

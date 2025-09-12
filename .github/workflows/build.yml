@@ -137,6 +137,19 @@ jobs:
           west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.exe fw_images/zswatch_native_sim_64.exe
 
+      - name: Build production_test native_sim
+        if: ${{ matrix.board == 'native_sim/native/64' }}
+        working-directory: ZSWatch
+        run: |
+          west build production_test --build-dir production_test/${{ env.BUILD_DIR }} --pristine --board ${{ matrix.board }}
+
+      - name: Build production_test watchdk
+        if: ${{ matrix.board == 'watchdk@1/nrf5340/cpuapp' }}
+        working-directory: ZSWatch
+        run: |
+          west build production_test --build-dir production_test/${{ env.BUILD_DIR }}_production --board ${{ matrix.board }} -- -DBOARD_ROOT="${PWD}/app"
+          mv production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex fw_images/production_test_watchdk.hex
+
       - name : Upload Firmware
         uses: actions/upload-artifact@v4.3.3
         with:

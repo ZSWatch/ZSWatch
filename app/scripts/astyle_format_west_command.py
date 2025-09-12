@@ -46,6 +46,8 @@ class FormatCodeWestCommand(WestCommand):
                 "{}/../app/src/*.c,*.h".format(os.environ["ZEPHYR_BASE"]),
                 "--recursive",
                 "{}/../app/drivers/*.c,*.h".format(os.environ["ZEPHYR_BASE"]),
+                "--recursive",
+                "{}/../production_test/src/*.c,*.h".format(os.environ["ZEPHYR_BASE"]),
             ]
         )
         with subprocess.Popen(
