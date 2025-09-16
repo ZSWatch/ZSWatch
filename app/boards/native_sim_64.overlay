@@ -25,7 +25,7 @@
 };
 
 / {
-	buttons: buttons {
+    buttons: buttons {
         compatible = "gpio-keys";
         polling-mode; // Use polling, as none polling generates at boot buttons releases for each button. Which is not desired. Maybe a bug in Zephyr?
 
@@ -53,32 +53,40 @@
 };
 
 / {
-	fstab {
-		compatible = "zephyr,fstab";
-		lvgl_lfs: lvgl_lfs {
-			compatible = "zephyr,fstab,littlefs";
-			mount-point = "/lvgl_lfs";
-			partition = <&littlefs_storage>;
-			automount;
-			read-size = <1024>;
-			prog-size = <512>;
-			cache-size = <4096>;
-			lookahead-size = <4096>;
-			block-cycles = <512>;
-		};
-	};
+    fstab {
+        compatible = "zephyr,fstab";
+        lvgl_lfs: lvgl_lfs {
+            compatible = "zephyr,fstab,littlefs";
+            mount-point = "/lvgl_lfs";
+            partition = <&littlefs_storage>;
+            automount;
+            read-size = <1024>;
+            prog-size = <512>;
+            cache-size = <4096>;
+            lookahead-size = <4096>;
+            block-cycles = <512>;
+        };
+    };
+};
+
+&i2c0 {
+    apds9306: apds9306@52 {
+        compatible = "avago,apds9306";
+        reg = <0x52>;
+        status = "okay";
+    };
 };
 
 &flash0 {
     partitions {
         littlefs_storage: partition@100000 {
-			label = "littlefs_storage";
-			reg = <0x00100000 0x000f0000>;
-		};
+            label = "littlefs_storage";
+            reg = <0x00100000 0x000f0000>;
+        };
         lvgl_raw_partition: partition@1f0000 {
-			label = "lvgl_raw_partition";
-			reg = <0x001f0000 0x0000d000>;
-		};
+            label = "lvgl_raw_partition";
+            reg = <0x001f0000 0x0000d000>;
+        };
     };
 };
 
