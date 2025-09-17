@@ -1,0 +1,17 @@
+# Device tree binding for NPM1300 input driver
+description: Nordic NPM1300 SHIPHOLD button input driver
+
+compatible: "nordic,npm13xx-input"
+
+include: base.yaml
+
+properties:
+  mfd-device:
+    type: phandle
+    required: true
+    description: Phandle to the NPM1300 MFD device
+
+  zephyr,code:
+    type: int
+    required: true
+    description: Key code to report for button press/release events

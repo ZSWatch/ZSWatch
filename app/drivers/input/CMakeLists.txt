@@ -7,3 +7,5 @@
 # -> target with the same name already exists.  The existing target is a static...
 #
 add_subdirectory_ifdef(CONFIG_INPUT_MODIFIED_CST816S cst816s)
+
+zephyr_sources_ifdef(CONFIG_INPUT_NPM13XX input_npm13xx.c)

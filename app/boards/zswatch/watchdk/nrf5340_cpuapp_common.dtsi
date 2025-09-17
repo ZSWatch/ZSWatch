@@ -30,7 +30,6 @@
         display-blk = &display_blk;
         vibrator-pwm = &vibrator_pwm;
         sw1 = &button1;
-        sw2 = &button2;
         sw3 = &button3;
         sw4 = &button4;
         watchdog0 = &wdt0;
@@ -130,8 +129,14 @@ zephyr_udc0: &usbd {
 };
 
 / {
+    npm13xx_input: npm13xx-input {
+        compatible = "nordic,npm13xx-input";
+        mfd-device = <&npm1300_pmic>;
+        zephyr,code = <INPUT_KEY_KP0>;
+        status = "okay";
+    };
+
     longpress: longpress {
-        input = <&buttons>;
         compatible = "zephyr,input-longpress";
         input-codes = <INPUT_KEY_KP0>;
         short-codes = <INPUT_KEY_3>;
@@ -146,12 +151,6 @@ zephyr_udc0: &usbd {
             label = "top-right";
             gpios = <&gpio0 19 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
             zephyr,code = <INPUT_KEY_1>;
-        };
-
-        button2: button_2 {
-            label = "bottom-right";
-            gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_KP0>;
         };
 
         button3: button_3 {
