@@ -262,16 +262,12 @@ void zsw_display_control_set_brightness(uint8_t percent)
 
 static void lvgl_render(struct k_work *item)
 {
-    // Workaround due to https://github.com/zephyrproject-rtos/zephyr/issues/71410
-    // we need to run lv_task_handler from main thread and disable CONFIG_LV_Z_FLUSH_THREAD
-#ifndef CONFIG_ARCH_POSIX
     const int64_t next_update_in_ms = lv_task_handler();
     if (first_render_since_poweron) {
         zsw_display_control_set_brightness(last_brightness);
         first_render_since_poweron = false;
     }
     k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
-#endif
 }
 
 static void set_brightness_level(uint8_t brightness)
