@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env python
 
 """Run AStyle on all code."""

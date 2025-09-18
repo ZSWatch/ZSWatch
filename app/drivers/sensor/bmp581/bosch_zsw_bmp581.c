@@ -1,9 +1,18 @@
-/* bosch_bmp581.c - Driver for Bosch BMP581 pressure sensor. */
-
 /*
- * Copyright (c) 2023, Daniel Kampert
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
  *
- * SPDX-License-Identifier: Apache-2.0
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <zephyr/device.h>
@@ -76,9 +85,9 @@ static void bmp5_delay_us(uint32_t period, void *p_intf)
     k_usleep(period);
 }
 
-/** @brief          
- *  @param p_cfg    
- *  @param p_dev    
+/** @brief
+ *  @param p_cfg
+ *  @param p_dev
  *  @return         0 when successful
 */
 static int8_t bmp5_set_config(struct bmp5_osr_odr_press_config *p_cfg, struct bmp5_dev *p_dev)
@@ -115,10 +124,10 @@ static int8_t bmp5_set_config(struct bmp5_osr_odr_press_config *p_cfg, struct bm
 }
 
 /** @brief
- *  @param p_dev        
- *  @param channel      
- *  @param attribute    
- *  @param p_value      
+ *  @param p_dev
+ *  @param channel
+ *  @param attribute
+ *  @param p_value
  *  @return             0 when successful
 */
 static int bmp581_attr_set(const struct device *p_dev, enum sensor_channel channel, enum sensor_attribute attribute,
@@ -169,11 +178,11 @@ static int bmp581_attr_set(const struct device *p_dev, enum sensor_channel chann
     return 0;
 }
 
-/** @brief              
- *  @param p_dev        
- *  @param channel      
- *  @param attribute    
- *  @param p_value      
+/** @brief
+ *  @param p_dev
+ *  @param channel
+ *  @param attribute
+ *  @param p_value
  *  @return             0 when successful
 */
 static int bmp581_attr_get(const struct device *p_dev, enum sensor_channel channel, enum sensor_attribute attribute,
@@ -218,9 +227,9 @@ static int bmp581_attr_get(const struct device *p_dev, enum sensor_channel chann
     return 0;
 }
 
-/** @brief          
- *  @param p_dev    
- *  @param channel  
+/** @brief
+ *  @param p_dev
+ *  @param channel
  *  @return         0 when successful
 */
 static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel channel)
@@ -246,10 +255,10 @@ static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel c
     return 0;
 }
 
-/** @brief          
- *  @param p_dev    
- *  @param channel  
- *  @param p_value  
+/** @brief
+ *  @param p_dev
+ *  @param channel
+ *  @param p_value
  *  @return         0 when successful
 */
 static int bmp581_channel_get(const struct device *p_dev, enum sensor_channel channel, struct sensor_value *p_value)
@@ -278,8 +287,8 @@ static const struct sensor_driver_api bmp581_driver_api = {
     .channel_get = bmp581_channel_get,
 };
 
-/** @brief          
- *  @param p_dev    
+/** @brief
+ *  @param p_dev
  *  @return         0 when successful
 */
 static int bmp581_init(const struct device *p_dev)

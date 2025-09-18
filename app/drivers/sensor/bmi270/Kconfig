@@ -1,7 +1,4 @@
-# BMI270 IMU configuration options.
-
-# Copyright (c) 2023, Daniel Kampert
-#
+# Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
 menuconfig BMI270_PLUS

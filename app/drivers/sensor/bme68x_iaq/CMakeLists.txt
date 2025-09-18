@@ -1,7 +1,5 @@
-# Copyright (c) 2023, Daniel Kampert
-#
+# Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
-#
 
 if(CONFIG_EXTERNAL_USE_BOSCH_BSEC)
     zephyr_compile_definitions_ifdef(CONFIG_BME68X_IAQ_SAMPLE_RATE_ULTRA_LOW_POWER

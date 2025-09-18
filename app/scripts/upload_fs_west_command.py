@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 from west.commands import WestCommand
 from west import log
 from create_custom_resource_image import create_custom_raw_fs_image
@@ -8,7 +11,6 @@ import os
 from pathlib import Path
 from pynrfjprog import HighLevel
 import intelhex
-
 
 class UploadFsWestCommand(WestCommand):
     def __init__(self):

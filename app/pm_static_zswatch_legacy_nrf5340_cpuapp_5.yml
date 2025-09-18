@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 app:
   address: 0x10200
   end_address: 0xe4000

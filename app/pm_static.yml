@@ -1,6 +1,7 @@
-#-------------------
-#  External partition
-# ------------------
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+# External partition
 # Place partitions at the same locations as when MCUBoot and XIP is used for simplicity
 EMPTY_1:
   address: 0x0

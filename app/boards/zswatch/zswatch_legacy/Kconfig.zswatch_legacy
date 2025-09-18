@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Zephyr Project members and individual contributors
+# Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
 config BOARD_ZSWATCH_LEGACY

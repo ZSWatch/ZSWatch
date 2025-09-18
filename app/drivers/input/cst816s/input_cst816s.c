@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2021 Qingsong Gou <gouqs@hotmail.com>
  * Copyright (c) 2022 Jakob Krantz <mail@jakobkrantz.se>
- * Copyright (c) 2023 Daniel Kampert <kontakt@daniel-kampert.de>
+ * Copyright (c) 2023 Daniel Kampert <kontakt@daniel-kampert.de>/*
+ * Copyright (c) 2025, ZSWatch Project
  *
  * SPDX-License-Identifier: Apache-2.0
  */

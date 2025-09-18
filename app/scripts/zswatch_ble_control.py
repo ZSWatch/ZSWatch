@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Commands over Nordic UART Service
 """
@@ -43,7 +46,7 @@ async def list_uart_devices(timeout=5.0):
 async def send_nus_commands(clients, command_list):
     def handle_rx(_: int, data: bytearray):
         print(client, "received:", data)
-    
+
     # Remove clients that are not connected using filter
     clients = list(filter(lambda item: item.is_connected, clients))
     print(clients)

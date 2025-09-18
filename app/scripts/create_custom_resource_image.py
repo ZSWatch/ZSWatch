@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import argparse
 from struct import *
@@ -17,7 +20,6 @@ offset:uint32
 len:uint32
 ...
 """
-
 
 def create_custom_raw_fs_image(img_filename, source_dir, block_size=4096):
     table = {}

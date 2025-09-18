@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 identifier: zswatch/nrf5340/cpuapp
 name: ZSWatch-nRF5340-Application-MCU
 type: mcu

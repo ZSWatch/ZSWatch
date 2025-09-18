@@ -1,6 +1,6 @@
 /*
- * This file is part of ZSWatch project <https://github.com/ZSWatch/ZSWatch/>.
- * Copyright (c) 2025 Jakob Krantz.
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

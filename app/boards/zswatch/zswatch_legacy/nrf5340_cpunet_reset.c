@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2019-2021 Nordic Semiconductor ASA.
- *
+ * Copyright (c) 2025 ZSWatch Project
  * SPDX-License-Identifier: Apache-2.0
  */
 

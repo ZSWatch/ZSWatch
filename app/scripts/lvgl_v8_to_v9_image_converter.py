@@ -1,8 +1,10 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import argparse
 from struct import *
 import re
-
 
 def convert_image_array(filename, file_data):
     print("--------------------")
@@ -50,7 +52,7 @@ def convert_image_array(filename, file_data):
         print("img_data_size", img_data_size.group(1))
 
     img_data = img_data_r.search(file_data)
-    
+
     if img_data:
         pass
         # print("img_data", img_data.group(1))

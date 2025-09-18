@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 if DISPLAY
     rsource "gc9a01/Kconfig"
 endif

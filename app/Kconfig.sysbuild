@@ -1,8 +1,5 @@
-#
-# Copyright (c) 2023 Nordic Semiconductor
-#
-# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-#
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
 
 source "share/sysbuild/Kconfig"
 

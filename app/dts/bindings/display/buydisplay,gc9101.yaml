@@ -1,9 +1,11 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 description: GC9A01 display controller
 
 compatible: "buydisplay,gc9a01"
 
 include: [spi-device.yaml, display-controller.yaml]
-
 
 properties:
     reset-gpios:

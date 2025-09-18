@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 west-commands:
   - file: scripts/upload_fs_west_command.py
     commands:

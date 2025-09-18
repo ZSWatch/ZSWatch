@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import pylink
 import argparse
 import sys
@@ -12,7 +15,6 @@ RAM_ADDR = 0x2007FFFC
 RTT_FLASH_LOAD_BOOT_MODE = 0x0A0A0A0A
 RTT_FLASH_ERASE_EXTERNAL_FLASH = 0xFFFFFFFF
 RTT_HEADER_MAGIC = 0x0A0A0A0A
-
 
 def read_rtt(jlink):
     """Reads the JLink RTT buffer #0 at 10Hz and prints to stdout.

@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import pylink
 import argparse
 import sys
@@ -14,7 +17,6 @@ from datetime import datetime
 logged_data = []
 
 num_discard = 5
-
 
 def run_fusion(data_list):
     sample_rate = 100  # 100 Hz

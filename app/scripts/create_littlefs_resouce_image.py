@@ -1,7 +1,9 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import argparse
 from littlefs import LittleFS
-
 
 def create_littlefs_fs_image(
     img_filename,

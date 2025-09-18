@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 target_sources(app PRIVATE zsw_app_manager.c)
 target_sources(app PRIVATE zsw_notification_manager.c)
 target_sources(app PRIVATE zsw_phone_app_publisher.c)

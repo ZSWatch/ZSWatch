@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/jakkra/ZSWatch/>.
- * Copyright (c) 2023 Leonardo Bispo, Jakob Krantz.
+ * Copyright (c) 2025 ZSWatch Project, Leonardo Bispo, Jakob Krantz.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

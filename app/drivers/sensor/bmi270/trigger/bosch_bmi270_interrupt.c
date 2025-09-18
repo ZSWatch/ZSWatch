@@ -1,9 +1,18 @@
-/* bosch_bmi270_interrupt.c - Driver for Bosch BMI270 IMU. */
-
 /*
- * Copyright (c) 2023, Daniel Kampert
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
  *
- * SPDX-License-Identifier: Apache-2.0
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <zephyr/logging/log.h>
@@ -19,9 +28,9 @@ static K_KERNEL_STACK_DEFINE(bmi2_thread_stack, CONFIG_BMI270_PLUS_THREAD_STACK_
 static struct k_thread bmi2_thread;
 #endif
 
-/** @brief          
- *  @param p_dev    
- *  @param enable   
+/** @brief
+ *  @param p_dev
+ *  @param enable
 */
 static inline void bmi2_enable_int(const struct device *p_dev, bool enable)
 {
@@ -32,8 +41,8 @@ static inline void bmi2_enable_int(const struct device *p_dev, bool enable)
     gpio_pin_interrupt_configure_dt(&config->int_gpio, flags);
 }
 
-/** @brief          
- *  @param p_dev	
+/** @brief
+ *  @param p_dev
 */
 static void bmi2_handle_int(const struct device *p_dev)
 {
@@ -48,10 +57,10 @@ static void bmi2_handle_int(const struct device *p_dev)
 #endif
 }
 
-/** @brief          
- *  @param p_dev    
- *  @param p_cb     
- *  @param pins     
+/** @brief
+ *  @param p_dev
+ *  @param p_cb
+ *  @param pins
 */
 static void bmi2_gpio_on_interrupt_callback(const struct device *p_dev, struct gpio_callback *p_cb, uint32_t pins)
 {
@@ -63,8 +72,8 @@ static void bmi2_gpio_on_interrupt_callback(const struct device *p_dev, struct g
     bmi2_handle_int(data->dev);
 }
 
-/** @brief          
- *  @param p_dev	
+/** @brief
+ *  @param p_dev
 */
 static void bmi2_process_int(const struct device *p_dev)
 {
@@ -98,7 +107,7 @@ static void bmi2_process_int(const struct device *p_dev)
     if (true || status & BMI270_STEP_CNT_STATUS_MASK) {
         if (status & BMI270_STEP_CNT_STATUS_MASK) {
             LOG_DBG("BMI270_STEP_CNT_STATUS_MASK");
-            
+
         }
 
         trigger->type = SENSOR_TRIG_STEP;
@@ -173,10 +182,10 @@ static void bmi2_process_int(const struct device *p_dev)
 }
 
 #ifdef CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD
-/** @brief          
- *  @param p_arg1   
- *  @param p_arg2   
- *  @param p_arg3   
+/** @brief
+ *  @param p_arg1
+ *  @param p_arg2
+ *  @param p_arg3
 */
 static void bmi2_worker_thread(void *p_arg1, void *p_arg2, void *p_arg3)
 {
@@ -192,8 +201,8 @@ static void bmi2_worker_thread(void *p_arg1, void *p_arg2, void *p_arg3)
     }
 }
 #else
-/** @brief          
- *  @param p_work   
+/** @brief
+ *  @param p_work
 */
 static void bmi2_worker(struct k_work *p_work)
 {
@@ -323,5 +332,5 @@ int bmi270_trigger_set(const struct device *p_dev, const struct sensor_trigger *
 
     LOG_DBG("Trigger for channel %u installed", p_trig->chan);
 
-    return 0;  
+    return 0;
 }

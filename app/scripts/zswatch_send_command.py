@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 from zswatch_ble_control import (
     zsw_send_nus_commands,
     zsw_disconnect,

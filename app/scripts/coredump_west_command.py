@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 from west.commands import WestCommand
 from west import log
 import sys
@@ -10,7 +13,6 @@ import pylink
 
 THIS_ZEPHYR = Path(__file__).parent.parent.parent / "zephyr"
 ZEPHYR_BASE = Path(os.environ.get("ZEPHYR_BASE", THIS_ZEPHYR))
-
 
 class CoredumpWestCommand(WestCommand):
     def __init__(self):

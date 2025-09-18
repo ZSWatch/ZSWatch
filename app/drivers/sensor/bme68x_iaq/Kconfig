@@ -1,11 +1,7 @@
-# BME68x encironmental sensor configuration options.
-
-#
+# Copyright (c) 2025 ZSWatch Project
 # Copyright (c) 2023, Nordic Semiconductor
 # Copyright (c) 2023, Daniel Kampert
-#
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
-#
 
 config BME68X_EXT_IAQ
 	bool "Bosch BSEC library"

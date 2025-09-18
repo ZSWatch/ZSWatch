@@ -1,8 +1,8 @@
 /* bosch_bme68x_iaq.h- Driver for Bosch BME68x encironmental sensor. */
 
 /*
+ * Copyright (c) 2025, ZSWatch Project
  * Copyright (c) 2023, Nordic Semiconductor
- * Copyright (c) 2023, Daniel Kampert
  *
  * SPDX-License-Identifier: Apache-2.0
  */

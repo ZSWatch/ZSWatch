@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <dt-bindings/regulator/npm13xx.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
@@ -272,7 +277,7 @@ dmic_dev: &pdm0 {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		
+
 		// For Nordic Partition manager to work it has to have this name.
 		littlefs_storage: partition@320000 {
 			label = "littlefs_storage";

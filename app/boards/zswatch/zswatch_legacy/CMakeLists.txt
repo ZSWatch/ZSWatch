@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Nordic Semiconductor ASA.
+# Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
 if ((CONFIG_BOARD_ZSWATCH_LEGACY_NRF5340_CPUAPP OR CONFIG_BOARD_ZSWATCH_LEGACY_NRF5340_CPUAPP_NS)

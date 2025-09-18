@@ -1,3 +1,6 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import pylink
 import argparse
 import sys
@@ -13,7 +16,6 @@ import wave
 
 logged_pcm_data = bytearray()
 num_discard = 5
-
 
 def read_from_rtt_log(jlink):
     global logged_pcm_data

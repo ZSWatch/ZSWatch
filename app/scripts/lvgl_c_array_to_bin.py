@@ -1,8 +1,10 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import argparse
 from struct import *
 import re
-
 
 def convert_image_array_file_to_bin(filename, file_data):
     print("--------------------")

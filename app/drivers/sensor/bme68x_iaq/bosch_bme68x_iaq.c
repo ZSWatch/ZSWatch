@@ -1,8 +1,6 @@
-/* bosch_bme68x_iaq.c- Driver for Bosch BME68x encironmental sensor IMU. */
-
 /*
+ * Copyright (c) 2025, ZSWatch Project
  * Copyright (c) 2023, Nordic Semiconductor
- * Copyright (c) 2023, Daniel Kampert
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -330,7 +328,7 @@ static size_t sensor_data_to_bsec_inputs(bsec_bme_settings_t settings,
 /** @brief			Convert and apply bme68x settings chosen by BSEC and transmit them to the sensor.
  *  @param p_dev	Pointer to device structure
  *  @param settings	Sensor settings
- *  @return			
+ *  @return
 */
 static int apply_sensor_settings(const struct device *p_dev, bsec_bme_settings_t settings)
 {
@@ -394,10 +392,10 @@ static int apply_sensor_settings(const struct device *p_dev, bsec_bme_settings_t
 	return 0;
 }
 
-/** @brief				
+/** @brief
  *  @param p_dev		Pointer to device structure
  *  @param p_settings	Pointer to sensor settings
- *  @param timestamp_ns	
+ *  @param timestamp_ns
 */
 static void fetch_and_process_output(const struct device *p_dev,
 				     bsec_bme_settings_t *p_settings,
@@ -539,7 +537,7 @@ static int bme68x_bsec_init(const struct device *p_dev)
 	}
 
     k_usleep(bme68x_get_meas_dur(BME68X_FORCED_MODE, &conf, &data->dev) + (heatr_conf.heatr_dur * 1000));
-	
+
 	if ((bme68x_get_data(BME68X_FORCED_MODE, &measurement, &n, &data->dev) != BME68X_OK) ||
 	    (bme68x_set_op_mode(BME68X_SLEEP_MODE, &data->dev))) {
 		return -EFAULT;

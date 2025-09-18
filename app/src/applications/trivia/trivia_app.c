@@ -1,16 +1,20 @@
-/**
- * @file trivia_app.c
- * @author Leonardo Bispo
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project, Leonardo Bispo.
  *
- * @brief Trivia game based using OpenTrivia DB
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
  *
- * @note Only works for Android
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
  *
- * @note Must be enabled first by clicking the gear icon next to the Bangle.js you're connected
- * to in Gadgetbridge, and then enabling Allow Internet Access
- *
- * @see https://opentdb.com/api_config.php
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
