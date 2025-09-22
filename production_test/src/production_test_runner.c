@@ -698,7 +698,25 @@ static void sensor_scan_step_enter(void)
 
     assert(count <= MAX_NUM_TEST_METADATA);
 
-    sensor_scan_screen_show(metadata, count);
+    // We want to show failed tests first in list, so "sort" the metadata array
+    test_metadata_t sorted_metadata[MAX_NUM_TEST_METADATA];
+    int sorted_count = 0;
+
+    // Pick all failed tests
+    for (int i = 0; i < count; i++) {
+        if (*metadata[i].result_ptr == TEST_RESULT_FAILED) {
+            sorted_metadata[sorted_count++] = metadata[i];
+        }
+    }
+
+    // Pick the rest
+    for (int i = 0; i < count; i++) {
+        if (*metadata[i].result_ptr != TEST_RESULT_FAILED) {
+            sorted_metadata[sorted_count++] = metadata[i];
+        }
+    }
+
+    sensor_scan_screen_show(sorted_metadata, sorted_count);
     advance_to_next_step(K_SECONDS(SENSOR_SUMMARY_DISPLAY_SEC));
 }
 
