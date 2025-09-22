@@ -37,3 +37,9 @@ void sensor_scan_screen_init(void);
  */
 void sensor_scan_screen_show(const test_metadata_t *metadata,
                              size_t num_tests);
+
+/**
+ * @brief Update the countdown display
+ * @param seconds_remaining Number of seconds remaining
+ */
+void sensor_scan_screen_update_countdown(int seconds_remaining);

@@ -27,6 +27,7 @@ static lv_obj_t *sensor_screen;
 static lv_obj_t *title_label;
 static lv_obj_t *test_list;
 static lv_obj_t *summary_label;
+static lv_obj_t *countdown_label;
 
 typedef struct {
     const char *name;
@@ -155,6 +156,13 @@ void sensor_scan_screen_init(void)
     lv_obj_set_style_text_font(summary_label, &lv_font_montserrat_14, LV_PART_MAIN);
     lv_obj_align(summary_label, LV_ALIGN_BOTTOM_MID, 0, -25);
 
+    // Countdown label
+    countdown_label = lv_label_create(sensor_screen);
+    lv_label_set_text(countdown_label, "");
+    lv_obj_set_style_text_color(countdown_label, lv_color_hex(0xCCCCCC), LV_PART_MAIN);
+    lv_obj_set_style_text_font(countdown_label, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_align(countdown_label, LV_ALIGN_BOTTOM_MID, 0, -10);
+
     LOG_DBG("Sensor scan screen initialized");
 }
 
@@ -194,7 +202,7 @@ void sensor_scan_screen_show(const test_metadata_t *metadata,
         lv_label_set_text(summary_label, "Scanning hardware...");
         lv_obj_set_style_text_color(summary_label, lv_color_hex(0x00AAFF), LV_PART_MAIN);
     } else {
-        snprintf(summary_text, sizeof(summary_text), "RESULT: %d/%d tests passed", passed_tests, total_tests);
+        snprintf(summary_text, sizeof(summary_text), "RESULT: %d/%d passed", passed_tests, total_tests);
         lv_label_set_text(summary_label, summary_text);
         lv_obj_set_style_text_color(summary_label,
                                     passed_tests == total_tests ? lv_color_hex(0x00AA00)
@@ -203,4 +211,9 @@ void sensor_scan_screen_show(const test_metadata_t *metadata,
     }
 
     lv_scr_load(sensor_screen);
+}
+
+void sensor_scan_screen_update_countdown(int seconds_remaining)
+{
+    lv_label_set_text_fmt(countdown_label, "%.2ds", seconds_remaining);
 }

@@ -104,6 +104,7 @@ static void microphone_step_on_timeout(void);
 static void microphone_step_on_exit(void);
 
 static void sensor_scan_step_enter(void);
+static void sensor_scan_step_on_timeout(void);
 
 static void final_result_step_enter(void);
 static void final_result_step_on_button(uint32_t button_code);
@@ -185,8 +186,9 @@ static const test_step_t test_steps[] = {
     {
         .state = TEST_STATE_SENSOR_SCAN,
         .name = "Sensor scan",
-        .timeout_sec = 0,
+        .timeout_sec = 10,
         .on_enter = sensor_scan_step_enter,
+        .on_timeout = sensor_scan_step_on_timeout,
     },
     {
         .state = TEST_STATE_FINAL_RESULT,
@@ -417,6 +419,9 @@ static void countdown_update_handler(struct k_work *work)
                 break;
             case TEST_STATE_MICROPHONE_TEST:
                 microphone_test_screen_update_countdown(test_context.countdown_seconds);
+                break;
+            case TEST_STATE_SENSOR_SCAN:
+                sensor_scan_screen_update_countdown(test_context.countdown_seconds);
                 break;
             default:
                 break;
@@ -717,7 +722,11 @@ static void sensor_scan_step_enter(void)
     }
 
     sensor_scan_screen_show(sorted_metadata, sorted_count);
-    advance_to_next_step(K_SECONDS(SENSOR_SUMMARY_DISPLAY_SEC));
+}
+
+static void sensor_scan_step_on_timeout(void)
+{
+    advance_to_next_step(K_NO_WAIT);
 }
 
 /* ------------------------------------------------------------------------- */

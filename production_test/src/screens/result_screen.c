@@ -147,7 +147,7 @@ void result_screen_show(production_test_runner_context_t *context, const char **
         lv_label_set_text(action_label, "Needs rework\nPress any button to retest");
         lv_obj_set_style_text_color(action_label, lv_color_hex(0xFF0000), LV_PART_MAIN);
 
-        LOG_ERR("PRODUCTION TEST FAILED - %d/%d tests passed", passed_tests, total_tests);
+        LOG_ERR("PRODUCTION TEST FAILED - %d/%d passed", passed_tests, total_tests);
     }
 
     lv_scr_load(result_screen);
