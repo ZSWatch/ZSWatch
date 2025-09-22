@@ -147,7 +147,6 @@ void sensor_scan_screen_init(void)
     lv_obj_set_flex_flow(test_list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(test_list, 4, LV_PART_MAIN);
     lv_obj_set_style_pad_gap(test_list, 1, LV_PART_MAIN);
-    lv_obj_clear_flag(test_list, LV_OBJ_FLAG_SCROLLABLE);
 
     // Summary label
     summary_label = lv_label_create(sensor_screen);
