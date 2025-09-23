@@ -26,11 +26,11 @@
 #include <zephyr/sys/byteorder.h>
 
 #include "bmp5.h"
-#include "bosch_zsw_bmp581.h"
+#include "zsw_bosch_bmp581.h"
 
-#define DT_DRV_COMPAT                   bosch_zsw_bmp581
+#define DT_DRV_COMPAT                   zswatch_bmp581
 
-LOG_MODULE_REGISTER(bosch_bmp581, CONFIG_BOSCH_ZSW_BMP581_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_bosch_bmp581, CONFIG_ZSW_BOSCH_BMP581_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "bmp581 driver enabled without any devices"
@@ -319,6 +319,7 @@ static int bmp581_init(const struct device *p_dev)
     }
 
     if (rslt == BMP5_OK) {
+        LOG_DBG("Reset successful! Set configuration...");
         if (bmp5_set_config(&bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
             return -EFAULT;
         }

@@ -25,17 +25,17 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
-#include "bosch_bmi270.h"
-#include "private/bosch_bmi270_config.h"
+#include "zsw_bosch_bmi270.h"
+#include "private/zsw_bosch_bmi270_config.h"
 
-#if CONFIG_BMI270_PLUS_TRIGGER
-#include "trigger/bosch_bmi270_interrupt.h"
+#if CONFIG_ZSW_BMI270_TRIGGER
+#include "trigger/zsw_bosch_bmi270_interrupt.h"
 #endif
 
-#define DT_DRV_COMPAT                   bosch_bmi270_plus
+#define DT_DRV_COMPAT                   zswatch_bmi270
 #define BMI2_READ_WRITE_LEN             UINT8_C(46)
 
-LOG_MODULE_REGISTER(bmi270, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_bosch_bmi270, CONFIG_ZSW_BOSCH_BMI270_LOG_LEVEL);
 
 #if(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0)
 #warning "bmi270 driver enabled without any devices"
@@ -250,7 +250,7 @@ static int bmi270_attr_set(const struct device *p_dev, enum sensor_channel chann
             case SENSOR_ATTR_FULL_SCALE:
                 return bmi2_set_accel_range(p_dev, p_value);
             /*
-            #if CONFIG_BMI270_PLUS_TRIGGER
+            #if CONFIG_ZSW_BMI270_TRIGGER
                     case SENSOR_ATTR_SLOPE_DUR:
                         return bmi270_write_anymo_duration(p_dev, p_value->val1);
                     case SENSOR_ATTR_SLOPE_TH:
@@ -439,7 +439,7 @@ static const struct sensor_driver_api bmi270_driver_api = {
     .attr_set = bmi270_attr_set,
     .sample_fetch = bmi270_sample_fetch,
     .channel_get = bmi270_channel_get,
-#ifdef CONFIG_BMI270_PLUS_TRIGGER
+#ifdef CONFIG_ZSW_BMI270_TRIGGER
     .trigger_set = bmi270_trigger_set,
 #endif
 };
@@ -491,7 +491,7 @@ static int bmi270_sensor_init(const struct device *p_dev)
         return -EFAULT;
     }
 
-#ifdef CONFIG_BMI270_PLUS_TRIGGER
+#ifdef CONFIG_ZSW_BMI270_TRIGGER
     if (config->int_gpio.port) {
         if (bmi2_init_interrupt(p_dev)) {
             LOG_ERR("Could not initialize interrupts!");
@@ -552,7 +552,7 @@ static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action ac
         .invert_x = DT_INST_PROP(inst, invert_x),                                   \
         .invert_y = DT_INST_PROP(inst, invert_y),                                   \
         .rotation = DT_INST_PROP(inst, rotation),                                   \
-        IF_ENABLED(CONFIG_BMI270_PLUS_TRIGGER,                                      \
+        IF_ENABLED(CONFIG_ZSW_BMI270_TRIGGER,                                      \
             (.int_gpio = GPIO_DT_SPEC_INST_GET_OR(inst, int_gpios, { 0 }),))        \
     };                                                                              \
                                                                                     \

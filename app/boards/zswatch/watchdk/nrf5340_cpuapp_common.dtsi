@@ -290,7 +290,7 @@ dmic_dev: &pdm0 {
     };
 
     bmp581: bmp581@47 {
-        compatible = "bosch,zsw_bmp581";
+        compatible = "zswatch,bmp581";
         reg = <0x47>;
         status = "okay";
     };
@@ -304,7 +304,7 @@ dmic_dev: &pdm0 {
     };
 
     bmi270: bmi270@68 {
-        compatible = "bosch,bmi270-plus";
+        compatible = "zswatch,bmi270";
         reg = <0x68>;
         status = "okay";
         int-gpios = <&gpio1 0 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;

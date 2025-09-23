@@ -3,16 +3,26 @@
 
 menuconfig ZSW_BMP581
     bool "Bosch BMP581 Sensor"
-    depends on DT_HAS_BOSCH_ZSW_BMP581_ENABLED
+    depends on DT_HAS_ZSWATCH_BMP581_ENABLED
     default y
     select I2C
     help
-        Enable the driver for the BMP581 pressure sensor.
+      Enable the driver for the BMP581 pressure sensor.
 
 if ZSW_BMP581
+    config ZSW_BMP581_EMUL
+        bool "Emulate a Bosch BMP581 pressure sensor"
+        default y
+        depends on EMUL
+        depends on ZSW_BMP581
+        help
+          This is an emulator for the Bosch BMP581 pressure sensor.
 
-module = BOSCH_ZSW_BMP581
-module-str = BOSCH_ZSW_BMP581
-source "subsys/logging/Kconfig.template.log_config"
+          It provides readings which follow a simple sequence, thus allowing
+          test code to check that things are working as expected.
+
+    module = ZSW_BOSCH_BMP581
+    module-str = ZSW_BOSCH_BMP581
+    source "subsys/logging/Kconfig.template.log_config"
 
 endif

@@ -1,5 +1,18 @@
-/* Copyright (c) 2025 Daniel Kampert
- * Author: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <zephyr/device.h>
@@ -42,7 +55,9 @@
 #define ADPS9306_BIT_ALS_INTERRUPT_STATUS BIT(0x03)
 #define APDS9306_BIT_POWER_ON_STATUS      BIT(0x05)
 
-#define APDS_9306_065_CHIP_ID 0xB3
+#define APDS_9306_065_CHIP_ID             0xB3
+
+#define DT_DRV_COMPAT                     avago_apds9306
 
 /* See datasheet for the values. Aligned with avago,apds9306.yaml */
 static const uint8_t avago_apds9306_gain[] = {1, 3, 6, 9, 18};
@@ -55,7 +70,7 @@ static const uint16_t avago_apds9306_integration_time_gain[] = {128, 64, 32, 16,
 static const uint16_t avago_apds9306_measurement_rate[] = {25, 50, 100, 200, 500, 1000, 2000};
 
 struct apds9306_emul_data {
-    uint8_t regs[40];
+    uint8_t regs[APDS9306_REGISTER_ALS_THRES_VAR + 1];
     uint32_t measurement_rate;
     uint8_t current_register;
 };
@@ -68,9 +83,7 @@ struct apds9306_worker_item_t {
     struct apds9306_emul_data *data;
 } apds9306_emul_worker_item;
 
-#define DT_DRV_COMPAT avago_apds9306
-
-LOG_MODULE_REGISTER(avago_apds9306_emul, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_avago_apds9306_emul, CONFIG_SENSOR_LOG_LEVEL);
 
 static void apds9306_emul_worker(struct k_work *p_work)
 {
@@ -119,7 +132,7 @@ static int apds9306_emul_reg_read(const struct emul *target, uint8_t reg, uint8_
 
     memcpy(out, data->regs + reg, length);
 
-    LOG_DBG("Read register %u with length %u", reg, length);
+    LOG_DBG("Read register 0x%02X with length %u", reg, length);
     for (uint8_t i = 0; i < length; i++) {
         LOG_DBG(" Value[%u]: 0x%02X", i, out[i]);
     }
@@ -133,7 +146,7 @@ static int apds9306_emul_reg_write(const struct emul *target, uint8_t reg, uint8
 
     data->regs[reg] = val;
 
-    LOG_DBG("Write register %u: 0x%02X", reg, data->regs[reg]);
+    LOG_DBG("Write register 0x%02X: 0x%02X", reg, data->regs[reg]);
 
     switch (reg)
     {

@@ -18,13 +18,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
 
-#include "../bosch_bmi270.h"
-#include "../private/bosch_bmi270_config.h"
+#include "../zsw_bosch_bmi270.h"
+#include "../private/zsw_bosch_bmi270_config.h"
 
-LOG_MODULE_REGISTER(bosch_bmi270_trigger, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_bosch_bmi270_trigger, CONFIG_ZSW_BOSCH_BMI270_LOG_LEVEL);
 
-#ifdef CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD
-static K_KERNEL_STACK_DEFINE(bmi2_thread_stack, CONFIG_BMI270_PLUS_THREAD_STACK_SIZE);
+#ifdef CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD
+static K_KERNEL_STACK_DEFINE(bmi2_thread_stack, CONFIG_ZSW_BMI270_THREAD_STACK_SIZE);
 static struct k_thread bmi2_thread;
 #endif
 
@@ -50,9 +50,9 @@ static void bmi2_handle_int(const struct device *p_dev)
 
     bmi2_enable_int(p_dev, false);
 
-#if defined(CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD)
+#if defined(CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD)
     k_sem_give(&data->sem);
-#elif defined(CONFIG_BMI270_PLUS_TRIGGER_GLOBAL_THREAD)
+#elif defined(CONFIG_ZSW_BMI270_TRIGGER_GLOBAL_THREAD)
     k_work_submit(&data->work);
 #endif
 }
@@ -181,7 +181,7 @@ static void bmi2_process_int(const struct device *p_dev)
     bmi2_enable_int(p_dev, true);
 }
 
-#ifdef CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD
+#ifdef CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD
 /** @brief
  *  @param p_arg1
  *  @param p_arg2
@@ -233,11 +233,11 @@ int bmi2_init_interrupt(const struct device *p_dev)
 
     data->dev = p_dev;
 
-#ifdef CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD
+#ifdef CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD
     k_sem_init(&data->sem, 0, K_SEM_MAX_LIMIT);
 
-    k_thread_create(&bmi2_thread, bmi2_thread_stack, CONFIG_BMI270_PLUS_THREAD_STACK_SIZE,
-                    bmi2_worker_thread, data, NULL, NULL, K_PRIO_COOP(CONFIG_BMI270_PLUS_THREAD_PRIORITY),
+    k_thread_create(&bmi2_thread, bmi2_thread_stack, CONFIG_ZSW_BMI270_THREAD_STACK_SIZE,
+                    bmi2_worker_thread, data, NULL, NULL, K_PRIO_COOP(CONFIG_ZSW_BMI270_THREAD_PRIORITY),
                     0, K_NO_WAIT);
 #else
     data->work.handler = bmi2_worker;
@@ -256,7 +256,7 @@ int bmi2_init_interrupt(const struct device *p_dev)
     //Uncomment when both int pins should get used
 //  int_cfg.pin_type = BMI2_INT_BOTH;
 
-#ifdef CONFIG_BMI270_PLUS_USE_INT1
+#ifdef CONFIG_ZSW_BMI270_USE_INT1
     int_cfg.pin_type = BMI2_INT1;
     int_cfg.pin_cfg[0].lvl = BMI2_INT_ACTIVE_HIGH;
     int_cfg.pin_cfg[0].od = BMI2_INT_PUSH_PULL;

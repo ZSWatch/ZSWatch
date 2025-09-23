@@ -20,7 +20,7 @@
 
 #include "zsw_clock.h"
 
-#include "../drivers/sensor/bmi270/bosch_bmi270.h"
+#include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 #include "events/accel_event.h"
 #include "sensors/zsw_imu.h"

@@ -18,9 +18,9 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
 
-#include "bosch_bmi270_config.h"
+#include "zsw_bosch_bmi270_config.h"
 
-LOG_MODULE_REGISTER(bmi270_config, CONFIG_BOSCH_BMI270_PLUS_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_bosch_bmi270_config, CONFIG_ZSW_BOSCH_BMI270_LOG_LEVEL);
 
 typedef void(*feature_config_func)(struct bmi2_sens_config *p_config, struct bmi270_data *p_data);
 
@@ -259,7 +259,7 @@ int bmi2_configure_enable_all(const struct device *p_dev, struct bmi270_data *p_
             if (bmi270_enabled_features[i].isr_disable) {
                 all_features[num_features].hw_int_pin = BMI2_INT_NONE;
             } else {
-#ifdef CONFIG_BMI270_PLUS_USE_INT1
+#ifdef CONFIG_ZSW_BMI270_USE_INT1
                 all_features[num_features].hw_int_pin = BMI2_INT1;
 #else
                 all_features[num_features].hw_int_pin = BMI2_INT2;
@@ -620,7 +620,7 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
     }
 
     if (int_en) {
-#ifdef CONFIG_BMI270_PLUS_USE_INT1
+#ifdef CONFIG_ZSW_BMI270_USE_INT1
         cfg.hw_int_pin = BMI2_INT1;
 #else
         cfg.hw_int_pin = BMI2_INT2;

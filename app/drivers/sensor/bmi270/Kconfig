@@ -1,61 +1,61 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig BMI270_PLUS
-    bool "Bosch BMI270 Plus Sensor"
-    depends on DT_HAS_BOSCH_BMI270_PLUS_ENABLED
+menuconfig ZSW_BMI270
+    bool "Bosch BMI270 Sensor"
+    depends on DT_HAS_ZSWATCH_BMI270_ENABLED
     default y
     select I2C
     help
-        Enable the advanced driver for the BMI270 IMU.
+      Enable the advanced driver for the BMI270 IMU.
 
-if BMI270_PLUS
-    config BMI270_PLUS_THREAD_STACK_SIZE
+if ZSW_BMI270
+    config ZSW_BMI270_THREAD_STACK_SIZE
         int "Sensor delayed work thread stack size"
-        depends on BMI270_PLUS_TRIGGER_OWN_THREAD
+        depends on ZSW_BMI270_TRIGGER_OWN_THREAD
         default 1024
 
-    config BMI270_PLUS_THREAD_PRIORITY
+    config ZSW_BMI270_THREAD_PRIORITY
         int "BMI270-Plus thread priority"
-        depends on BMI270_PLUS_TRIGGER_OWN_THREAD
+        depends on ZSW_BMI270_TRIGGER_OWN_THREAD
         default 10
 
     choice
         prompt "BMI270 trigger mode"
-        default BMI270_PLUS_TRIGGER_NONE
+        default ZSW_BMI270_TRIGGER_NONE
 
-        config BMI270_PLUS_TRIGGER_NONE
+        config ZSW_BMI270_TRIGGER_NONE
             bool "No trigger"
             help
                 Disable the trigger interface.
 
-        config BMI270_PLUS_TRIGGER_GLOBAL_THREAD
+        config ZSW_BMI270_TRIGGER_GLOBAL_THREAD
             depends on GPIO
-            select BMI270_PLUS_TRIGGER
+            select ZSW_BMI270_TRIGGER
             bool "Use workqueue"
             help
                 Use the global workqueue to process the interrupts from the BMI270.
 
-        config BMI270_PLUS_TRIGGER_OWN_THREAD
+        config ZSW_BMI270_TRIGGER_OWN_THREAD
             depends on GPIO
-            select BMI270_PLUS_TRIGGER
+            select ZSW_BMI270_TRIGGER
             bool "Use driver thread"
             help
                 Use a separate thread to process the interrupts from the BMI270.
     endchoice
 
-    config BMI270_PLUS_USE_INT1
+    config ZSW_BMI270_USE_INT1
         bool "Use INT1 pin instead of INT2"
-        depends on BMI270_PLUS_TRIGGER
+        depends on ZSW_BMI270_TRIGGER
         help
             Enable the use of the INT1 pin for interrupts instead of INT2.
             This is useful for hardware designs where only INT1 is connected.
 
-    config BMI270_PLUS_TRIGGER
+    config ZSW_BMI270_TRIGGER
         bool
 
-module = BOSCH_BMI270_PLUS
-module-str = BOSCH_BMI270_PLUS
+module = ZSW_BOSCH_BMI270
+module-str = ZSW_BOSCH_BMI270
 source "subsys/logging/Kconfig.template.log_config"
 
 endif

@@ -19,8 +19,8 @@
 
 #include "bmi2.h"
 #include "bmi270.h"
-#include "../bosch_bmi270.h"
-#include "bosch_bmi270_types.h"
+#include "../zsw_bosch_bmi270.h"
+#include "zsw_bosch_bmi270_types.h"
 
 #define BOSCH_BMI270_REG_CHIP_ID         0x00
 #define BOSCH_BMI270_REG_ERROR           0x02

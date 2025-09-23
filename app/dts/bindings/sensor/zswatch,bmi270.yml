@@ -5,7 +5,7 @@ description: |
     The BMI270 is an inertial measurement unit. See more info at:
     https://www.bosch-sensortec.com/products/motion-sensors/imus/bmi270.html
 
-compatible: "bosch,bmi270-plus"
+compatible: "zswatch,bmi270"
 
 include: [sensor-device.yaml, i2c-device.yaml]
 

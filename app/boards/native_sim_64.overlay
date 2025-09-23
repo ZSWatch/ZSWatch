@@ -75,6 +75,11 @@
         reg = <0x52>;
         status = "okay";
     };
+
+    bmp581: bmp581@47 {
+        compatible = "zswatch,bmp581";
+        reg = <0x47>;
+    };
 };
 
 &flash0 {

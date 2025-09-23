@@ -143,7 +143,7 @@
     pinctrl-names = "default", "sleep";
 
     bmi270: bmi270@68 {
-        compatible = "bosch,bmi270-plus";
+        compatible = "zswatch,bmi270";
         reg = <0x68>;
         int-gpios = <&gpio0 21 (GPIO_PULL_DOWN | GPIO_ACTIVE_HIGH)>;
         invert-x;
@@ -162,7 +162,7 @@
     };
 
     bmp581: bmp581@47 {
-        compatible = "bosch,zsw_bmp581";
+        compatible = "zswatch,bmp581";
         reg = <0x47>;
         int-gpios = <&gpio1 25 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
     };

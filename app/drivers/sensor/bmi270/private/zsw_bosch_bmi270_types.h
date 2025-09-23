@@ -29,7 +29,7 @@
 */
 struct bmi270_config {
     struct i2c_dt_spec i2c;
-#ifdef CONFIG_BMI270_PLUS_TRIGGER
+#ifdef CONFIG_ZSW_BMI270_TRIGGER
     struct gpio_dt_spec int_gpio;
 #endif
     bool swap_xy;
@@ -41,7 +41,7 @@ struct bmi270_config {
 /** @brief
 */
 struct bmi270_data {
-#ifdef CONFIG_BMI270_PLUS_TRIGGER
+#ifdef CONFIG_ZSW_BMI270_TRIGGER
     struct gpio_callback gpio_handler;
 
     const struct device *dev;
@@ -57,9 +57,9 @@ struct bmi270_data {
     sensor_trigger_handler_t motion;
 #endif
 
-#if defined(CONFIG_BMI270_PLUS_TRIGGER_OWN_THREAD)
+#if defined(CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD)
     struct k_sem sem;
-#elif defined(CONFIG_BMI270_PLUS_TRIGGER_GLOBAL_THREAD)
+#elif defined(CONFIG_ZSW_BMI270_TRIGGER_GLOBAL_THREAD)
     struct k_work work;
 #endif
 

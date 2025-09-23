@@ -40,6 +40,8 @@ static void zbus_periodic_10s_callback(const struct zbus_channel *chan)
         return;
     }
 
+    LOG_INF("Pressure: %.2f hPa, Temperature: %.2f C", pressure, temperature);
+
     struct pressure_event evt = {
         .pressure = pressure,
         .temperature = temperature
@@ -110,7 +112,7 @@ int zsw_pressure_sensor_get_temperature(float *temperature)
         return -ENODATA;
     }
 
-    if (sensor_channel_get(bmp581, SENSOR_CHAN_DIE_TEMP, &sensor_val) != 0) {
+    if (sensor_channel_get(bmp581, SENSOR_CHAN_AMBIENT_TEMP, &sensor_val) != 0) {
         return -ENODATA;
     }
 

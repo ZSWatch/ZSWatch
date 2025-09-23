@@ -19,7 +19,7 @@
 
 #include <zephyr/drivers/sensor.h>
 
-#include "../../drivers/sensor/bmi270/bosch_bmi270.h"
+#include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 typedef enum zsw_imu_feature_t {
     ZSW_IMU_FEATURE_ACCEL = BOSCH_BMI270_FEAT_ACCEL,

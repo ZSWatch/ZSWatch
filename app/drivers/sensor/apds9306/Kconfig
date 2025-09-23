@@ -3,7 +3,7 @@
 
 if APDS9306
 
-config EMUL_APDS9306
+config ZSW_APDS9306_EMUL
 	bool "Emulate an Avago APDS9306 light sensor"
 	default y
 	depends on EMUL
