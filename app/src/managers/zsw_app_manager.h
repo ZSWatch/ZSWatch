@@ -40,15 +40,27 @@ typedef enum {
     ZSW_APP_CATEGORY_INVALID
 } zsw_app_category_t;
 
+typedef enum {
+    ZSW_APP_STATE_STOPPED,      // App is not running
+    ZSW_APP_STATE_UI_VISIBLE,   // App UI is visible and safe to use
+    ZSW_APP_STATE_UI_HIDDEN     // App is running but UI is not safe to call
+} zsw_app_state_t;
+
+typedef void(*application_ui_unavailable_fn)(void);  // Called when UI becomes unavailable
+typedef void(*application_ui_available_fn)(void);    // Called when UI becomes available
+
 typedef struct application_t {
-    application_start_fn    start_func;
-    application_stop_fn     stop_func;
-    application_back_fn     back_func;
-    char                   *name;
-    const void             *icon;
-    bool                    hidden;
-    zsw_app_category_t      category;
-    uint8_t                 private_list_index;
+    application_start_fn        start_func;
+    application_stop_fn         stop_func;
+    application_back_fn         back_func;
+    application_ui_unavailable_fn   ui_unavailable_func;   // Optional UI unavailable callback
+    application_ui_available_fn     ui_available_func;     // Optional UI available callback
+    char                       *name;
+    const void                 *icon;
+    bool                        hidden;
+    zsw_app_category_t          category;
+    uint8_t                     private_list_index;
+    zsw_app_state_t             current_state;     // Current app state
 } application_t;
 
 /** @brief
@@ -80,3 +92,8 @@ void zsw_app_manager_exit_app(void);
 /** @brief Get number of registrated applications
 */
 int zsw_app_manager_get_num_apps(void);
+
+/** @brief Get current app state
+ *  @param app Application to check
+ */
+zsw_app_state_t zsw_app_manager_get_app_state(application_t *app);

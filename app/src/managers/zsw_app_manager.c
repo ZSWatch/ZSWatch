@@ -18,12 +18,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/zbus/zbus.h>
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
 
 #include "ui/zsw_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "events/activity_event.h"
 
 LOG_MODULE_REGISTER(app_manager, LOG_LEVEL_INF);
 
@@ -44,6 +46,12 @@ static void folder_clicked(lv_event_t *e);
 static void folder_back_clicked(lv_event_t *e);
 static void async_app_start(lv_timer_t *timer);
 static void async_app_close(lv_timer_t *timer);
+static void transition_app_to_ui_hidden(application_t *app);
+static void transition_app_to_ui_visible(application_t *app);
+static void zbus_activity_event_callback(const struct zbus_channel *chan);
+
+ZBUS_CHAN_DECLARE(activity_state_data_chan);
+ZBUS_LISTENER_DEFINE(app_manager_activity_state_event_lis, zbus_activity_event_callback);
 
 ZSW_LV_IMG_DECLARE(close_icon);
 ZSW_LV_IMG_DECLARE(folder_icon);
@@ -62,6 +70,7 @@ static bool is_deleting_app_picker;
 static lv_timer_t *async_app_start_timer;
 static lv_timer_t *async_app_close_timer;
 static zsw_app_category_t current_folder = ZSW_APP_CATEGORY_INVALID;
+static bool screen_is_on = true;
 
 // TODO: Add icons for app folders
 static const app_folder_t app_folders[ZSW_APP_CATEGORY_COUNT] = {
@@ -196,7 +205,12 @@ static void async_app_start(lv_timer_t *timer)
     async_app_start_timer = NULL;
     LOG_DBG("Start %d", current_app);
     delete_root_object();
-    apps[current_app]->start_func(root_obj, group_obj);
+    
+    application_t *app = apps[current_app];
+    __ASSERT(screen_is_on, "Screen expected to be on when starting app.");
+    app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+    
+    app->start_func(root_obj, group_obj);
 }
 
 static void async_app_close(lv_timer_t *timer)
@@ -209,6 +223,7 @@ static void async_app_close(lv_timer_t *timer)
         }
 
         if (!back_button_consumed) {
+            apps[current_app]->current_state = ZSW_APP_STATE_STOPPED;
             apps[current_app]->stop_func();
             current_app = INVALID_APP_ID;
             if (app_launch_only) {
@@ -236,6 +251,53 @@ static void async_app_close(lv_timer_t *timer)
         }
     }
     async_app_close_timer = NULL;
+}
+
+static void transition_app_to_ui_hidden(application_t *app)
+{
+    if (app && app->current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        app->current_state = ZSW_APP_STATE_UI_HIDDEN;
+        LOG_DBG("App '%s' UI now hidden", app->name);
+        
+        if (app->ui_unavailable_func) {
+            app->ui_unavailable_func();
+        }
+    }
+}
+
+static void transition_app_to_ui_visible(application_t *app)
+{
+    if (app && app->current_state == ZSW_APP_STATE_UI_HIDDEN) {
+        app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+        LOG_DBG("App '%s' UI now visible", app->name);
+        
+        if (app->ui_available_func) {
+            app->ui_available_func();
+        }
+    }
+}
+
+static void zbus_activity_event_callback(const struct zbus_channel *chan)
+{
+    const struct activity_state_event *event = zbus_chan_const_msg(chan);
+    bool new_screen_state = (event->state == ZSW_ACTIVITY_STATE_ACTIVE);
+    
+    if (screen_is_on == new_screen_state) {
+        return; // No change
+    }
+    
+    screen_is_on = new_screen_state;
+    
+    // Find currently running app and transition it
+    if (current_app < num_apps) {
+        application_t *running_app = apps[current_app];
+        
+        if (screen_is_on) {
+            transition_app_to_ui_visible(running_app);
+        } else {
+            transition_app_to_ui_hidden(running_app);
+        }
+    }
 }
 
 static void async_app_manager_close(lv_timer_t *timer)
@@ -481,6 +543,7 @@ void zsw_app_manager_delete(void)
 {
     if (current_app < num_apps) {
         LOG_DBG("Stop force %d", current_app);
+        apps[current_app]->current_state = ZSW_APP_STATE_STOPPED;
         apps[current_app]->stop_func();
     }
     delete_root_object();
@@ -490,6 +553,7 @@ void zsw_app_manager_add_application(application_t *app)
 {
     __ASSERT_NO_MSG(num_apps < MAX_APPS);
 
+    app->current_state = ZSW_APP_STATE_STOPPED;
     apps[num_apps] = app;
     num_apps++;
     if (!app->hidden) {
@@ -518,6 +582,12 @@ int zsw_app_manager_get_num_apps(void)
     return num_apps;
 }
 
+zsw_app_state_t zsw_app_manager_get_app_state(application_t *app)
+{
+    assert(app != NULL);
+    return app->current_state;
+}
+
 static int application_manager_init(void)
 {
     memset(apps, 0, sizeof(apps));
@@ -526,6 +596,11 @@ static int application_manager_init(void)
     async_app_start_timer = NULL;
     current_folder = ZSW_APP_CATEGORY_INVALID;
     last_index = 0;
+    screen_is_on = true;
+    
+    // Subscribe to activity events to track screen state
+    zbus_chan_add_obs(&activity_state_data_chan, &app_manager_activity_state_event_lis, K_MSEC(100));
+
     return 0;
 }
 
