@@ -6,5 +6,7 @@ if(CONFIG_APPLICATIONS_USE_INFO)
     target_sources(app PRIVATE ${app_sources})
 
     # Export none critical files for relocation to save flash
-    set(RELOCATE_FILES ${RELOCATE_FILES} ${app_sources} PARENT_SCOPE)
+    # App runs in background can only XIP ui.
+    FILE(GLOB xip_sources *_ui.c)
+    set(RELOCATE_FILES ${RELOCATE_FILES} ${xip_sources} PARENT_SCOPE)
 endif()

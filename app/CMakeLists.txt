@@ -38,6 +38,8 @@ set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ZSWatchFW)
 
+set(XIP_RELOCATE_SOURCES "")
+
 zephyr_compile_definitions(
   -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0 # Not allowing 128MHz CPU with QPSI at same time. We take the risk of this errata that may cause currupt QPSI data.
 )
@@ -119,6 +121,7 @@ zephyr_compile_options(-Wno-double-promotion)
 
 # XIP Code Relocation
 if (CONFIG_MCUMGR)
+    # Should work in XIP as we use update_app to enable FW update which forces XIP on during update.
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__smp LOCATION EXTFLASH_TEXT NOCOPY)
@@ -131,48 +134,35 @@ endif()
 # More can be added here if needed.
 # Note code running from external flash is slower than internal flash.
 # So choose wisely...
-set (LVGL_RELOCATE_SOURCES
+list(APPEND XIP_RELOCATE_SOURCES
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_10.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_12.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_14.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_16.c
+    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_18.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_20.c
     ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_28.c
     ../modules/lib/gui/lvgl/src/widgets/chart/lv_chart.c
     ../modules/lib/gui/lvgl/src/widgets/scale/lv_scale.c
     ../modules/lib/gui/lvgl/src/widgets/dropdown/lv_dropdown.c
     ../modules/lib/gui/lvgl/src/widgets/buttonmatrix/lv_buttonmatrix.c
+    ../modules/lib/gui/lvgl/src/widgets/slider/lv_slider.c
+    ../modules/lib/gui/lvgl/src/widgets/menu/lv_menu.c
+    ../modules/lib/gui/lvgl/src/widgets/imagebutton/lv_imagebutton.c
+    ../modules/lib/gui/lvgl/src/widgets/led/lv_led.c
+    ../modules/lib/gui/lvgl/src/widgets/checkbox/lv_checkbox.c
 )
 
-zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION EXTFLASH_RODATA NOCOPY)
-zephyr_code_relocate(FILES ${LVGL_RELOCATE_SOURCES} LOCATION RAM_DATA)
-
-zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(LIBRARY drivers__bluetooth LOCATION RAM_DATA)
-
-zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(LIBRARY subsys__bluetooth__host LOCATION RAM_DATA)
-
-zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(LIBRARY subsys__bluetooth__crypto LOCATION RAM_DATA)
+zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_RODATA NOCOPY)
+zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION RAM_DATA)
 
 if (CONFIG_USB_DEVICE_STACK)
+    # USB can work in XIP as when plugging in VBUS (nPM1300 notifies us) we turn on XIP always on. 
+    # Also in update_app we turn on XIP always on before enabling USB.
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION RAM_DATA)
 
     zephyr_code_relocate(LIBRARY drivers__usb__common__nrf_usbd_common LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY drivers__usb__common__nrf_usbd_common LOCATION RAM_DATA)
-endif()
-
-if (CONFIG_BME680)
-    zephyr_code_relocate(LIBRARY drivers__sensor__bosch__bme680 LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(LIBRARY drivers__sensor__bosch__bme680 LOCATION RAM_DATA)
-endif()
-
-if (CONFIG_LIS2MDL)
-    zephyr_code_relocate(LIBRARY drivers__sensor__st__lis2mdl LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(LIBRARY drivers__sensor__st__lis2mdl LOCATION RAM_DATA)
-    zephyr_code_relocate(LIBRARY drivers__sensor__st__stmemsc LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(LIBRARY drivers__sensor__st__stmemsc LOCATION RAM_DATA)
 endif()

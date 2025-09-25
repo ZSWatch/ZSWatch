@@ -6,5 +6,6 @@ if (CONFIG_RTC_ALARM)
     target_sources(app PRIVATE ${app_sources})
 
     # Export none critical files for relocation to save flash
-    set(RELOCATE_FILES ${RELOCATE_FILES} ${app_sources} PARENT_SCOPE)
+    # Export files not used when app runs in background to save flash
+    #set(RELOCATE_FILES ${RELOCATE_FILES} ${app_sources} PARENT_SCOPE)
 endif()

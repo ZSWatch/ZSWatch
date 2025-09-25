@@ -23,9 +23,18 @@ set(RELOCATE_FILES
     assets_watchfaces/face_75_2_dial_19_89191_0.c
     assets_watchfaces/face_75_2_dial_35_138999_0.c
     ui_img_iaq_co2_text.c
+    move.c
     hour_minimal.c
     minute_minimal.c
     second_minimal.c
+    foggy.c
+    rainy.c
+    snowy.c
+    stormy.c
+    sunny.c
+    cloudy.c
+    partly_cloudy.c
+    unknown.c
 )
 
 zephyr_code_relocate(FILES ${RELOCATE_FILES} LOCATION EXTFLASH_RODATA NOCOPY)

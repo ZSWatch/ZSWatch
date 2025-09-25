@@ -9,5 +9,11 @@ FILE(GLOB app_sources
 
 target_sources(app PRIVATE ${app_sources})
 
-# Export none critical files for relocation to save flash
-set(RELOCATE_FILES ${RELOCATE_FILES} ${app_sources} PARENT_SCOPE)
+
+# Relocate only UI to save flash as app runs in background
+FILE(GLOB relocate_sources
+    ui_export/screens/*
+    ui_export/images/*
+)
+
+set(RELOCATE_FILES ${RELOCATE_FILES} ${relocate_sources} PARENT_SCOPE)
