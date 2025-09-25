@@ -16,6 +16,7 @@
  */
 
 #include "drivers/zsw_display_control.h"
+#include "managers/zsw_xip_manager.h"
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/device.h>
@@ -134,12 +135,16 @@ int zsw_display_control_sleep_ctrl(bool on)
                 // Since the display will have been powered off, we need to tell LVGL
                 // to rerender the complete display.
                 lv_obj_invalidate(lv_scr_act());
+                // Disable XIP when display sleeps (no display-related XIP code will run)
+                zsw_xip_disable();
                 res = 0;
             }
             break;
         case DISPLAY_STATE_SLEEPING:
             if (on) {
                 LOG_DBG("Wake up display");
+                // Enable XIP before waking display (display code might be in XIP)
+                zsw_xip_enable();
                 display_state = DISPLAY_STATE_AWAKE;
                 // Resume the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_RESUME);

@@ -30,6 +30,7 @@
 #include "events/accel_event.h"
 #include "events/battery_event.h"
 #include "managers/zsw_power_manager.h"
+#include "managers/zsw_xip_manager.h"
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_vibration_motor.h"
 
