@@ -28,8 +28,6 @@ static lv_obj_t *btn_usb_fota = NULL;
 static bool (*ble_toggle_callback)(void) = NULL;
 static bool (*usb_toggle_callback)(void) = NULL;
 
-// Callback for the firmware update button (removed - no longer needed)
-
 static void btn_flash_erase_cb(lv_event_t *e)
 {
     // Perform the flash erase operation
@@ -45,14 +43,14 @@ static void btn_flash_erase_cb(lv_event_t *e)
 static void btn_fota_usb_cb(lv_event_t *e)
 {
     if (usb_toggle_callback) {
-        usb_toggle_callback(); // The app will handle button state updates
+        usb_toggle_callback();
     }
 }
 
 static void btn_fota_ble_cb(lv_event_t *e)
 {
     if (ble_toggle_callback) {
-        ble_toggle_callback(); // The app will handle button state updates
+        ble_toggle_callback();
     }
 }
 

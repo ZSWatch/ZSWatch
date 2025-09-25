@@ -21,7 +21,7 @@ int _zsw_xip_enable(const char *requester)
         LOG_ERR("QSPI device not ready");
         return -ENODEV;
     }
-    
+
     nrf_qspi_nor_xip_enable(qspi_dev, true);
     return 0;
 }
@@ -45,7 +45,7 @@ int _zsw_xip_disable(const char *requester)
         nrf_qspi_nor_xip_enable(qspi_dev, false);
         first_xip_disable_done = true;
     }
-    
+
     nrf_qspi_nor_xip_enable(qspi_dev, false);
     return 0;
 }

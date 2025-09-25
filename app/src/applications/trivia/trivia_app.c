@@ -45,7 +45,6 @@ typedef struct trivia_app_question {
 } trivia_app_question_t;
 
 static trivia_app_question_t trivia_app_question;
-static bool active;
 
 static application_t app = {
     .name = "Trivia",
@@ -58,14 +57,12 @@ static application_t app = {
 static void trivia_app_start(lv_obj_t *root, lv_group_t *group)
 {
     LOG_DBG("Trivia app start");
-    active = true;
     trivia_ui_show(root, on_button_click);
     request_new_question();
 }
 
 static void trivia_app_stop(void)
 {
-    active = false;
     trivia_ui_remove();
 }
 
@@ -78,7 +75,7 @@ static int trivia_app_add(void)
 
 static void http_rsp_cb(ble_http_status_code_t status, char *response)
 {
-    if (status == BLE_HTTP_STATUS_OK && active) {
+    if (status == BLE_HTTP_STATUS_OK && app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         cJSON *parsed_response = cJSON_Parse(response);
         if (parsed_response == NULL) {
             LOG_ERR("Failed to parse JSON rsp data from HTTP request");

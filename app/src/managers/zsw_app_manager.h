@@ -46,21 +46,21 @@ typedef enum {
     ZSW_APP_STATE_UI_HIDDEN     // App is running but UI is not safe to call
 } zsw_app_state_t;
 
-typedef void(*application_ui_unavailable_fn)(void);  // Called when UI becomes unavailable
-typedef void(*application_ui_available_fn)(void);    // Called when UI becomes available
+typedef void(*application_ui_unavailable_fn)(void);
+typedef void(*application_ui_available_fn)(void);
 
 typedef struct application_t {
-    application_start_fn        start_func;
-    application_stop_fn         stop_func;
-    application_back_fn         back_func;
-    application_ui_unavailable_fn   ui_unavailable_func;   // Optional UI unavailable callback
-    application_ui_available_fn     ui_available_func;     // Optional UI available callback
-    char                       *name;
-    const void                 *icon;
-    bool                        hidden;
-    zsw_app_category_t          category;
-    uint8_t                     private_list_index;
-    zsw_app_state_t             current_state;     // Current app state
+    application_start_fn            start_func;
+    application_stop_fn             stop_func;
+    application_back_fn             back_func;
+    application_ui_unavailable_fn   ui_unavailable_func;
+    application_ui_available_fn     ui_available_func;
+    char                            *name;
+    const void                      *icon;
+    bool                            hidden;
+    zsw_app_category_t              category;
+    uint8_t                         private_list_index;
+    zsw_app_state_t                 current_state;
 } application_t;
 
 /** @brief

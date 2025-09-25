@@ -205,11 +205,11 @@ static void async_app_start(lv_timer_t *timer)
     async_app_start_timer = NULL;
     LOG_DBG("Start %d", current_app);
     delete_root_object();
-    
+
     application_t *app = apps[current_app];
     __ASSERT(screen_is_on, "Screen expected to be on when starting app.");
     app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-    
+
     app->start_func(root_obj, group_obj);
 }
 
@@ -258,7 +258,7 @@ static void transition_app_to_ui_hidden(application_t *app)
     if (app && app->current_state == ZSW_APP_STATE_UI_VISIBLE) {
         app->current_state = ZSW_APP_STATE_UI_HIDDEN;
         LOG_DBG("App '%s' UI now hidden", app->name);
-        
+
         if (app->ui_unavailable_func) {
             app->ui_unavailable_func();
         }
@@ -270,7 +270,7 @@ static void transition_app_to_ui_visible(application_t *app)
     if (app && app->current_state == ZSW_APP_STATE_UI_HIDDEN) {
         app->current_state = ZSW_APP_STATE_UI_VISIBLE;
         LOG_DBG("App '%s' UI now visible", app->name);
-        
+
         if (app->ui_available_func) {
             app->ui_available_func();
         }
@@ -281,17 +281,17 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
 {
     const struct activity_state_event *event = zbus_chan_const_msg(chan);
     bool new_screen_state = (event->state == ZSW_ACTIVITY_STATE_ACTIVE);
-    
+
     if (screen_is_on == new_screen_state) {
         return; // No change
     }
-    
+
     screen_is_on = new_screen_state;
-    
+
     // Find currently running app and transition it
     if (current_app < num_apps) {
         application_t *running_app = apps[current_app];
-        
+
         if (screen_is_on) {
             transition_app_to_ui_visible(running_app);
         } else {
@@ -584,7 +584,7 @@ int zsw_app_manager_get_num_apps(void)
 
 zsw_app_state_t zsw_app_manager_get_app_state(application_t *app)
 {
-    assert(app != NULL);
+    __ASSERT_NO_MSG(app != NULL);
     return app->current_state;
 }
 
@@ -597,7 +597,7 @@ static int application_manager_init(void)
     current_folder = ZSW_APP_CATEGORY_INVALID;
     last_index = 0;
     screen_is_on = true;
-    
+
     // Subscribe to activity events to track screen state
     zbus_chan_add_obs(&activity_state_data_chan, &app_manager_activity_state_event_lis, K_MSEC(100));
 

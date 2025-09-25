@@ -52,7 +52,6 @@ K_WORK_DEFINE(weather_app_publish, publish_weather_data);
 
 ZSW_LV_IMG_DECLARE(weather_app_icon);
 
-static bool active;
 static uint64_t last_update_gps_time;
 static uint64_t last_update_weather_time;
 static double last_lat;
@@ -74,6 +73,8 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     weather_ui_current_weather_data_t current_weather;
     weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS];
     char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+
+    // TODO: We should cache the last successful weather data and populate it when app opens.
 
     if (status == BLE_HTTP_STATUS_OK) {
         zsw_clock_get_time(&time_now);
@@ -105,8 +106,9 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
                                                                         &forecasts[i].color, &forecasts[i].text);
             sprintf(forecasts[i].day, "%s", days[(time_now.tm.tm_wday + i) % 7]);
         }
-
-        weather_ui_set_weather_data(current_weather, forecasts, cJSON_GetArraySize(weather_code_list));
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            weather_ui_set_weather_data(current_weather, forecasts, cJSON_GetArraySize(weather_code_list));
+        }
 
         ble_comm_request_gps_status(false);
         last_weather.temperature_c = current_weather.temperature;
@@ -122,7 +124,9 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
         k_work_submit(&weather_app_publish);
     } else {
         LOG_ERR("HTTP request failed\n");
-        weather_ui_set_error(status == BLE_HTTP_STATUS_TIMEOUT ? "Timeout" : "Failed");
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            weather_ui_set_error(status == BLE_HTTP_STATUS_TIMEOUT ? "Timeout" : "Failed");
+        }
     }
 }
 
@@ -141,7 +145,9 @@ static void fetch_weather_data(double lat, double lon)
     int ret = zsw_ble_http_get(weather_url, http_rsp_cb);
     if (ret != 0 && ret != -EBUSY) {
         LOG_ERR("Failed to send HTTP request: %d", ret);
-        weather_ui_set_error("Failed fetching weather");
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            weather_ui_set_error("Failed fetching weather");
+        }
     }
 }
 
@@ -191,12 +197,10 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
     zsw_timeval_t time;
     zsw_clock_get_time(&time);
     weather_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
-    active = true;
 }
 
 static void weather_app_stop(void)
 {
-    active = false;
     weather_ui_remove();
     ble_comm_request_gps_status(false);
 }

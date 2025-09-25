@@ -66,7 +66,9 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
 {
     const struct accel_event *event = zbus_chan_const_msg(chan);
     if (event->data.data.gesture == ZSW_IMU_EVT_GESTURE_WRIST_SHAKE) {
-        zds_ui_reset_rotation();
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            zds_ui_reset_rotation();
+        }
     }
 }
 

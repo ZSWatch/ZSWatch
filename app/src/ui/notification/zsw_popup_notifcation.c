@@ -51,7 +51,7 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     // create panel
     notif_box.panel = lv_obj_create(lv_scr_act());
     lv_obj_set_width(notif_box.panel, 160);
-    lv_obj_set_height(notif_box.panel, LV_SIZE_CONTENT);
+    lv_obj_set_height(notif_box.panel, LV_PCT(50));
     lv_obj_set_align(notif_box.panel, LV_ALIGN_BOTTOM_MID);
     lv_obj_set_x(notif_box.panel, 0);
     lv_obj_set_y(notif_box.panel, -25);

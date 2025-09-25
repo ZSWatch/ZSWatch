@@ -111,9 +111,13 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
         }
 
         last_battery_sample_time = k_uptime_get();
-        battery_ui_add_measurement(event->percent, event->mV);
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            battery_ui_add_measurement(event->percent, event->mV);
+        }
     }
-    battery_ui_update(event->ttf, event->tte, event->status, event->error, event->is_charging);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        battery_ui_update(event->ttf, event->tte, event->status, event->error, event->is_charging);
+    }
 }
 
 static void on_battery_hist_clear_cb(void)

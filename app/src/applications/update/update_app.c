@@ -39,11 +39,6 @@ LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
 static void update_app_start(lv_obj_t *root, lv_group_t *group);
 static void update_app_stop(void);
 
-#ifndef CONFIG_ARCH_POSIX
-static bool dfu_in_progress = false;
-static bool ble_fota_enabled = false;
-static bool usb_fota_enabled = false;
-
 ZSW_LV_IMG_DECLARE(templates);
 
 static application_t app = {
@@ -53,6 +48,11 @@ static application_t app = {
     .stop_func = update_app_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM
 };
+
+#ifndef CONFIG_ARCH_POSIX
+static bool dfu_in_progress = false;
+static bool ble_fota_enabled = false;
+static bool usb_fota_enabled = false;
 
 static zcbor_state_t decode_img_data(const struct zcbor_string *img_data)
 {
@@ -181,14 +181,14 @@ static bool toggle_usb_fota(void)
 static bool toggle_ble_fota(void)
 {
     if (!ble_fota_enabled) {
-        // Enable XIP before enabling MCUmgr (MCUmgr code might be in XIP)
+        // Enable XIP before enabling MCUmgr as MCUmgr code is in XIP
         zsw_xip_enable();
         int rc = smp_bt_register();
         if (rc != 0) {
             LOG_ERR("Failed to register BLE SMP: %d", rc);
             update_ui_set_status("Status: BLE FOTA enable failed");
             update_ui_update_ble_button_state(false);
-            zsw_xip_disable(); // Disable XIP on failure
+            zsw_xip_disable();
             return false;
         }
         ble_fota_enabled = true;
@@ -201,7 +201,7 @@ static bool toggle_ble_fota(void)
         if (rc != 0) {
             LOG_ERR("Failed to unregister BLE SMP: %d", rc);
             update_ui_set_status("Status: BLE FOTA disable failed");
-            update_ui_update_ble_button_state(true); // Keep it showing as ON since disable failed
+            update_ui_update_ble_button_state(true);
             return false;
         }
         ble_fota_enabled = false;
@@ -248,7 +248,6 @@ static int update_app_add(void)
     mgmt_callback_register(&upload_callback);
     mgmt_callback_register(&stopped_callback);
 
-    // Initialize FOTA states as disabled
     ble_fota_enabled = false;
     usb_fota_enabled = false;
 

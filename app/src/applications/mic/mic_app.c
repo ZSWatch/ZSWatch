@@ -53,7 +53,6 @@ static application_t app = {
     .stop_func = mic_app_stop,
 };
 
-static bool running = false;
 static size_t sample_buffer_index = 0;
 
 static void mic_app_start(lv_obj_t *root, lv_group_t *group)
@@ -68,7 +67,6 @@ static void mic_app_start(lv_obj_t *root, lv_group_t *group)
     mic_app_ui_create(root, on_play_stop_toggle, on_gain_changed, on_rtt_output_toggled, current_gain);
     LOG_INF("Circular spectrum watch UI created");
 
-    running = true;
     sample_buffer_index = 0;
     LOG_INF("Microphone app started");
 }
@@ -84,16 +82,11 @@ static void mic_app_stop(void)
     mic_app_ui_remove();
     spectrum_analyzer_cleanup();
 
-    running = false;
     LOG_INF("Microphone app stopped");
 }
 
 static void on_play_stop_toggle(void)
 {
-    if (!running) {
-        return;
-    }
-
     if (zsw_microphone_manager_is_recording()) {
         LOG_INF("Stopping microphone recording");
         mic_app_ui_set_status("Stopping...");
@@ -150,7 +143,7 @@ static void on_rtt_output_toggled(bool rtt_output)
 
 static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data, void *user_data)
 {
-    if (!running) {
+    if (app.current_state == ZSW_APP_STATE_STOPPED) {
         return;
     }
 
@@ -190,8 +183,8 @@ static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data
 
 static void spectrum_update_work_handler(struct k_work *work)
 {
-    (void)work;
-    if (running) {
+    ARG_UNUSED(work);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         mic_app_ui_update_spectrum(spectrum_magnitudes, NUM_SPECTRUM_BARS);
     }
 }

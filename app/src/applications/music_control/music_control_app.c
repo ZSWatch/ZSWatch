@@ -35,6 +35,7 @@ static void timer_callback(lv_timer_t *timer);
 static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type);
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void handle_update_ui(struct k_work *item);
+static void app_on_ui_available(void);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
@@ -52,27 +53,31 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(music),
     .start_func = music_control_app_start,
     .stop_func = music_control_app_stop,
+    .ui_available_func = app_on_ui_available,
     .category = ZSW_APP_CATEGORY_ROOT,
 };
 
 static lv_timer_t *progress_timer;
 static int progress_seconds;
-static bool running;
 static bool playing;
 
 static void music_control_app_start(lv_obj_t *root, lv_group_t *group)
 {
     progress_timer = lv_timer_create(timer_callback, 1000,  NULL);
     music_control_ui_show(root, on_music_ui_evt_music);
-    running = true;
     handle_update_ui(NULL);
 }
 
 static void music_control_app_stop(void)
 {
     lv_timer_del(progress_timer);
-    running = false;
     music_control_ui_remove();
+}
+
+static void app_on_ui_available(void)
+{
+    // When UI becomes available, update it with the latest info.
+    handle_update_ui(NULL);
 }
 
 static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
@@ -86,7 +91,6 @@ static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
 
         zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
     }
-
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
@@ -106,7 +110,7 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 static void handle_update_ui(struct k_work *item)
 {
     char buf[5 * MAX_MUSIC_FIELD_LENGTH];
-    if (running) {
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         if (strlen(last_music_info.track_name) > 0) {
             snprintf(buf, sizeof(buf), "Track: %s", last_music_info.track_name);
             progress_seconds = 0;
@@ -138,7 +142,6 @@ static void timer_callback(lv_timer_t *timer)
 static int music_control_app_add(void)
 {
     zsw_app_manager_add_application(&app);
-    running = false;
 
     return 0;
 }

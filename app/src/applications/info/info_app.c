@@ -75,7 +75,6 @@ static application_t app = {
 };
 
 static lv_timer_t *refresh_timer;
-static bool running;
 static ble_connection_info_t ble_info;
 
 static void info_app_start(lv_obj_t *root, lv_group_t *group)
@@ -114,26 +113,26 @@ static void info_app_start(lv_obj_t *root, lv_group_t *group)
     }
 
     refresh_timer = lv_timer_create(timer_callback, INFO_REFRESH_INTERVAL_MS,  NULL);
-    running = true;
 }
 
 static void info_app_stop(void)
 {
     lv_timer_del(refresh_timer);
     info_ui_remove();
-    running = false;
 }
 
 static void timer_callback(lv_timer_t *timer)
 {
-    info_ui_set_uptime_sec(k_uptime_get() / 1000);
-    info_ui_set_total_uptime_sec(retained.uptime_sum / 1000);
-    info_ui_set_wakeup_time_sec(retained.wakeup_time / 1000, (retained.wakeup_time / (double)retained.uptime_sum) * 100);
-    info_ui_set_ref_off_time_sec(retained.display_off_time / 1000,
-                                 (retained.display_off_time / (double)retained.uptime_sum) * 100);
-    info_ui_set_time_to_inactive_sec(zsw_power_manager_get_ms_to_inactive() / 1000);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        info_ui_set_uptime_sec(k_uptime_get() / 1000);
+        info_ui_set_total_uptime_sec(retained.uptime_sum / 1000);
+        info_ui_set_wakeup_time_sec(retained.wakeup_time / 1000, (retained.wakeup_time / (double)retained.uptime_sum) * 100);
+        info_ui_set_ref_off_time_sec(retained.display_off_time / 1000,
+                                     (retained.display_off_time / (double)retained.uptime_sum) * 100);
+        info_ui_set_time_to_inactive_sec(zsw_power_manager_get_ms_to_inactive() / 1000);
 
-    info_ui_set_gatt_status(ble_info.notifications_enabled, ble_comm_get_mtu());
+        info_ui_set_gatt_status(ble_info.notifications_enabled, ble_comm_get_mtu());
+    }
 }
 
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
@@ -142,7 +141,7 @@ static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t late
     ble_info.connection_latency = latency;
     ble_info.connection_timeout = timeout;
 
-    if (!running) {
+    if (app.current_state == ZSW_APP_STATE_STOPPED) {
         return;
     }
 
@@ -165,7 +164,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
 
     ble_info.connected = true;
 
-    if (running) {
+    if (app.current_state != ZSW_APP_STATE_STOPPED) {
         info_app_ui_set_conn_mac(ble_info.remote_addr);
         info_app_ui_set_conn_params(info.le.interval, info.le.latency, info.le.timeout);
     }
@@ -174,7 +173,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 {
     memset(&ble_info, 0, sizeof(ble_connection_info_t));
-    if (running) {
+    if (app.current_state != ZSW_APP_STATE_STOPPED) {
         info_app_ui_set_conn_mac("Not connected");
     }
 }
@@ -184,7 +183,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
 
     ble_info.security_level = level;
 
-    if (running) {
+    if (app.current_state != ZSW_APP_STATE_STOPPED) {
         info_app_ui_set_conn_security_info(level, err);
     }
 }

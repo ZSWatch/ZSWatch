@@ -64,7 +64,9 @@ static void zbus_fetch_fusion_data_callback(const struct zbus_channel *chan)
 
     zsw_sensor_fusion_fetch_all(&fusion);
 
-    fusion_ui_set_values(fusion.roll, fusion.pitch, fusion.yaw);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        fusion_ui_set_values(fusion.roll, fusion.pitch, fusion.yaw);
+    }
 }
 
 static void on_close_fusion(void)

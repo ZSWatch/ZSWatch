@@ -216,13 +216,17 @@ static void zbus_periodic_1s_callback(const struct zbus_channel *chan)
         if (timers[i].used && timers[i].type == TYPE_TIMER && timers[i].state == TIMER_STATE_PLAYING) {
             zsw_alarm_get_remaining(timers[i].zsw_alarm_timer_id, &timers[i].remaining_hour, &timers[i].remaining_min,
                                     &timers[i].remaining_sec);
-            timer_ui_update_timer(timers[i]);
+            if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+                timer_ui_update_timer(timers[i]);
+            }
         }
     }
 
-    zsw_timeval_t time;
-    zsw_clock_get_time(&time);
-    timer_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        zsw_timeval_t time;
+        zsw_clock_get_time(&time);
+        timer_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
+    }
 }
 
 static int timers_settings_load_cb(const char *p_key, size_t len,

@@ -416,12 +416,14 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
             is_suspended = true;
             k_work_cancel_delayable_sync(&clock_work.work, &cancel_work_sync);
             k_work_cancel_delayable_sync(&date_work.work, &cancel_work_sync);
+            k_work_cancel_delayable_sync(&update_work.work, &cancel_work_sync);
         } else if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
             is_suspended = false;
             watchfaces[watchface_settings.watchface_index]->ui_invalidate_cached();
             refresh_ui();
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL clock_work");
+            __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL clock_work");
         }
     }
 }

@@ -65,7 +65,7 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(stopwatch_app_icon),
     .start_func = stopwatch_app_start,
     .stop_func = stopwatch_app_stop,
-    .category = ZSW_APP_CATEGORY_ROOT
+    .category = ZSW_APP_CATEGORY_ROOT,
 };
 
 static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group)
@@ -116,6 +116,7 @@ static void on_pause_cb(void)
     if (stopwatch_data.state == STOPWATCH_STATE_RUNNING) {
         stopwatch_data.pause_time_ms = k_uptime_get();
         stopwatch_data.state = STOPWATCH_STATE_PAUSED;
+
         stopwatch_ui_update_state(stopwatch_data.state);
         LOG_DBG("Stopwatch paused");
     }
@@ -141,8 +142,9 @@ static void on_lap_cb(void)
         uint32_t lap_time = current_elapsed - stopwatch_data.last_lap_time_ms;
 
         stopwatch_ui_add_lap_time(lap_time, current_elapsed);
-        stopwatch_data.last_lap_time_ms = current_elapsed;
+        // Note: We could store lap times in a cache for later display if needed
 
+        stopwatch_data.last_lap_time_ms = current_elapsed;
         LOG_DBG("Lap time %u ms (total: %u ms)", lap_time, current_elapsed);
     }
 }
@@ -153,7 +155,9 @@ static void update_elapsed_time(void)
         uint64_t current_time = k_uptime_get();
         stopwatch_data.elapsed_ms = (uint32_t)(current_time - stopwatch_data.start_time_ms);
 
-        stopwatch_ui_update_time(stopwatch_data.elapsed_ms);
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            stopwatch_ui_update_time(stopwatch_data.elapsed_ms);
+        }
     }
 }
 
