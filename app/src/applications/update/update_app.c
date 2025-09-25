@@ -22,6 +22,7 @@
 #include <ncs_version.h>
 #include "update_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "managers/zsw_xip_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 #include <zephyr/logging/log.h>
@@ -36,11 +37,22 @@
 LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
 
 static void update_app_start(lv_obj_t *root, lv_group_t *group);
-static void start_fw_update(void);
 static void update_app_stop(void);
 
 #ifndef CONFIG_ARCH_POSIX
 static bool dfu_in_progress = false;
+static bool ble_fota_enabled = false;
+static bool usb_fota_enabled = false;
+
+ZSW_LV_IMG_DECLARE(templates);
+
+static application_t app = {
+    .name = "Update",
+    .icon = ZSW_LV_IMG_USE(templates),
+    .start_func = update_app_start,
+    .stop_func = update_app_stop,
+    .category = ZSW_APP_CATEGORY_SYSTEM
+};
 
 static zcbor_state_t decode_img_data(const struct zcbor_string *img_data)
 {
@@ -68,16 +80,19 @@ static enum mgmt_cb_return upload_confirm_handler(uint32_t event, enum mgmt_cb_r
         zcbor_state_t state = decode_img_data(&img_data->req->img_data);
         LOG_INF("DFU started: Image %u, Offset %u, Size %llu", img_data->req->image, img_data->req->off,
                 img_data->action->size);
-        char status_msg[64];
-        snprintf(status_msg, sizeof(status_msg), "%s", state.payload);
-        update_ui_set_status(status_msg);
-
+        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            char status_msg[64];
+            snprintf(status_msg, sizeof(status_msg), "%s", state.payload);
+            update_ui_set_status(status_msg);
+        }
     } else {
         LOG_INF("DFU in progress: Image %u, Offset %u, Size %llu", img_data->req->image, img_data->req->off,
                 img_data->action->size);
     }
 
-    update_ui_set_progress((img_data->req->off * 100) / img_data->action->size);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        update_ui_set_progress((img_data->req->off * 100) / img_data->action->size);
+    }
 
     return MGMT_CB_OK;
 }
@@ -117,64 +132,112 @@ static struct mgmt_callback started_callback = {
     .event_id = MGMT_EVT_OP_IMG_MGMT_DFU_STARTED,
 };
 
-static void fota_usb_state_changed(bool enabled)
+static bool toggle_usb_fota(void)
 {
-    if (enabled) {
-        if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
-            int ret = usb_enable(NULL);
-            if (!ret) {
-                LOG_ERR("Failed to enable USB");
-                return;
-            }
+    usb_fota_enabled = !usb_fota_enabled;
 
-            LOG_INF("USB stack enabled");
+    if (usb_fota_enabled) {
+        if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
+            zsw_xip_enable();
+            int ret = usb_enable(NULL);
+            if (ret && ret != -EALREADY) {
+                LOG_ERR("Failed to enable USB: %d", ret);
+                update_ui_set_status("Status: USB enable failed");
+                usb_fota_enabled = false; // Revert state
+                zsw_xip_disable();
+                update_ui_update_usb_button_state(false);
+                return false;
+            }
+            if (ret == -EALREADY) {
+                LOG_INF("USB stack already enabled");
+            } else {
+                LOG_INF("USB stack enabled");
+            }
+            update_ui_set_status("Status: USB FOTA enabled - Ready for updates");
+            update_ui_update_usb_button_state(true);
+            return true;
         }
     } else {
         if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
             int ret = usb_disable();
             if (ret) {
                 LOG_ERR("Failed to disable USB");
-                return;
+                update_ui_set_status("Status: USB disable failed");
+                usb_fota_enabled = true; // Revert state
+                update_ui_update_usb_button_state(true);
+                return false;
             }
-
+            zsw_xip_disable();
+            update_ui_set_status("Status: USB FOTA disabled");
             LOG_INF("USB stack disabled");
+            update_ui_update_usb_button_state(false);
+            return true;
         }
     }
+    update_ui_update_usb_button_state(false);
+    return false;
+}
+
+static bool toggle_ble_fota(void)
+{
+    if (!ble_fota_enabled) {
+        // Enable XIP before enabling MCUmgr (MCUmgr code might be in XIP)
+        zsw_xip_enable();
+        int rc = smp_bt_register();
+        if (rc != 0) {
+            LOG_ERR("Failed to register BLE SMP: %d", rc);
+            update_ui_set_status("Status: BLE FOTA enable failed");
+            update_ui_update_ble_button_state(false);
+            zsw_xip_disable(); // Disable XIP on failure
+            return false;
+        }
+        ble_fota_enabled = true;
+        update_ui_set_status("Status: BLE FOTA enabled - Ready for updates");
+        LOG_INF("BLE FOTA enabled");
+        update_ui_update_ble_button_state(true);
+        return true;
+    } else {
+        int rc = smp_bt_unregister();
+        if (rc != 0) {
+            LOG_ERR("Failed to unregister BLE SMP: %d", rc);
+            update_ui_set_status("Status: BLE FOTA disable failed");
+            update_ui_update_ble_button_state(true); // Keep it showing as ON since disable failed
+            return false;
+        }
+        ble_fota_enabled = false;
+        // Disable XIP after disabling MCUmgr
+        zsw_xip_disable();
+        update_ui_set_status("Status: BLE FOTA disabled");
+        LOG_INF("BLE FOTA disabled");
+        update_ui_update_ble_button_state(false);
+        return true;
+    }
+}
+
+#else
+static bool toggle_ble_fota(void)
+{
+    update_ui_set_status("Status: BLE FOTA not available on POSIX");
+    update_ui_update_ble_button_state(false);
+    return false;
+}
+
+static bool toggle_usb_fota(void)
+{
+    update_ui_set_status("Status: USB FOTA not available on POSIX");
+    update_ui_update_usb_button_state(false);
+    return false;
 }
 #endif
 
-ZSW_LV_IMG_DECLARE(templates);
-
-static application_t app = {
-    .name = "Update",
-    .icon = ZSW_LV_IMG_USE(templates),
-    .start_func = update_app_start,
-    .stop_func = update_app_stop,
-    .category = ZSW_APP_CATEGORY_SYSTEM
-};
-
 static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    update_ui_show(root, start_fw_update);
+    update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
 }
 
 static void update_app_stop(void)
 {
     update_ui_remove();
-}
-
-static void start_fw_update(void)
-{
-    // Trigger the DFU process
-    update_ui_set_status("Status: Starting DFU...");
-#ifndef CONFIG_ARCH_POSIX
-    int rc = smp_bt_register();
-    if (rc != 0) {
-        update_ui_set_status("Status: DFU Start Failed");
-    } else {
-        update_ui_set_status("Status: DFU Ready");
-    }
-#endif
 }
 
 static int update_app_add(void)
@@ -185,10 +248,13 @@ static int update_app_add(void)
     mgmt_callback_register(&upload_callback);
     mgmt_callback_register(&stopped_callback);
 
-    update_ui_set_fota_usb_callback(fota_usb_state_changed);
+    // Initialize FOTA states as disabled
+    ble_fota_enabled = false;
+    usb_fota_enabled = false;
+
     int rc = smp_bt_unregister();
     if (rc != 0) {
-        update_ui_set_status("Status: DFU failed to unregister");
+        LOG_WRN("BLE SMP already unregistered or failed to unregister");
     }
 #endif
     return 0;
