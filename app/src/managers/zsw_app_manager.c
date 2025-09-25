@@ -27,7 +27,7 @@
 
 LOG_MODULE_REGISTER(app_manager, LOG_LEVEL_INF);
 
-#define MAX_APPS        20
+#define MAX_APPS        25
 #define INVALID_APP_ID  0xFF
 
 typedef struct {
