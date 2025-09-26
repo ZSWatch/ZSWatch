@@ -349,6 +349,7 @@ dmic_dev: &pdm0 {
                 regulator-min-microvolt = <3000000>;
                 regulator-max-microvolt = <3000000>;
                 regulator-init-microvolt = <3000000>;
+                regulator-boot-on;
             };
 
             npm1300_ldo1: LDO1 {
