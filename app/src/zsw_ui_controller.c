@@ -327,6 +327,18 @@ int zsw_ui_controller_init(void)
 
     root_screen = lv_scr_act();
 
+#ifdef CONFIG_ARCH_POSIX
+    // Create a round circle indficating edges on realk hardware round srceen
+    lv_obj_t *circle = lv_obj_create(root_screen);
+    lv_obj_set_size(circle, 240, 240);
+    lv_obj_center(circle);
+    lv_obj_set_style_radius(circle, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(circle, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(circle, lv_color_white(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    // Always draw on top
+    lv_obj_move_background(circle);
+#endif
+
     lv_obj_set_style_bg_color(root_screen, zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // Need to enable the gpio-keys as they are suspended by default
