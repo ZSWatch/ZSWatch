@@ -560,6 +560,7 @@ static int parse_gps_data(char *data, int len)
 
     cJSON *root = cJSON_Parse(data);
     if (root == NULL) {
+        LOG_ERR("Failed to parse GPS data");
         return -EINVAL;
     }
 
