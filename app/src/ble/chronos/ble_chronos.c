@@ -436,27 +436,44 @@ void ble_chronos_on_receive_data(const uint8_t *data, uint16_t len)
             if (incoming.length <= len) {
                 // complete packet assembled
                 ble_chronos_data_received();
+                // Reset state after processing complete packet
+                incoming.length = 0;
             } else {
                 // data is still being assembled
                 // LOG_INF("Incomplete");
             }
-        } else if (data[0] < 0x19) {
+        } else if (data[0] < 0x19 && incoming.length > 0) {
+            // Only process subsequent packets if we have a valid ongoing Chronos data stream
             // subsequent packets start with 0 (max anticipated is 25 -> 0x19)
             int j = 20 + (data[0] * 19); // data packet position
-            // copy data to incomingBuffer
-            for (int i = 0; i < len; i++) {
-                incoming.data[j + i] = data[i + 1];
-            }
 
-            if (incoming.length <= len + j - 1) {
-                // complete packet assembled
-                ble_chronos_data_received();
+            // Bounds check to prevent buffer overflow
+            if (j + len - 1 <= sizeof(incoming.data) && j + len <= incoming.length) {
+                // copy data to incomingBuffer
+                for (int i = 0; i < len; i++) {
+                    incoming.data[j + i] = data[i + 1];
+                }
+
+                if (incoming.length <= len + j - 1) {
+                    // complete packet assembled
+                    ble_chronos_data_received();
+                    // Reset state after processing complete packet
+                    incoming.length = 0;
+                } else {
+                    // data is still being assembled
+                    // LOG_INF("Incomplete");
+                }
             } else {
-                // data is still being assembled
-                // LOG_INF("Incomplete");
+                LOG_WRN("Buffer bounds check failed or invalid packet sequence, resetting");
+                incoming.length = 0;  // Reset to prevent further issues
             }
         } else {
-            LOG_INF("Not Chronos data");
+            // Not Chronos data or no active session
+            if (data[0] < 0x19 && incoming.length == 0) {
+                LOG_DBG("Ignoring packet - no active Chronos session");
+            } else {
+                LOG_DBG("Not Chronos data");
+            }
         }
     }
 }
