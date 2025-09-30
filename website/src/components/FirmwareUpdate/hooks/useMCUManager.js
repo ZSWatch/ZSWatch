@@ -9,35 +9,41 @@ import {
   OS_MGMT_ID_MPSTAT,
 } from "../../../mcumgr-web/js/mcumgr";
 import { SCREENS } from "../constants";
-import { hashArrayToString } from "../utils/helpers";
 
 export const useMCUManager = () => {
-  const [deviceName, setDeviceName] = useState('ZSWatch');
+  const [deviceName, setDeviceName] = useState("ZSWatch");
   const [screen, setScreen] = useState(SCREENS.INITIAL);
   const [images, setImages] = useState([]);
   const [bluetoothAvailable, setBluetoothAvailable] = useState(false);
+  const [serialAvailable, setSerialAvailable] = useState(!!navigator.serial);
+  const [transport, setTransport] = useState("ble");
 
   // Use useRef to create a stable mcumgr instance
-  const mcumgrRef = useRef(new MCUManager());
+  const mcumgrRef = useRef(new MCUManager({ transport: "ble" }));
   const mcumgr = mcumgrRef.current;
 
   useEffect(() => {
-    const isBluetoothAvailable = navigator?.bluetooth?.getAvailability() || false;
-    setBluetoothAvailable(isBluetoothAvailable);
+    // Check Bluetooth availability
+    const checkBluetoothAvailability = async () => {
+      try {
+        const available = await navigator.bluetooth?.getAvailability();
+        setBluetoothAvailable(!!available);
+      } catch {
+        setBluetoothAvailable(false);
+      }
+    };
 
-    // Load saved device name
-    const savedDeviceName = localStorage.getItem("deviceName");
-    if (savedDeviceName) {
-      setDeviceName(savedDeviceName);
-    }
+    checkBluetoothAvailability();
+  }, []);
 
+  useEffect(() => {
     // Set up mcumgr event listeners
     mcumgr.onConnecting(() => {
       setScreen(SCREENS.CONNECTING);
     });
 
     mcumgr.onConnect(() => {
-      setDeviceName(mcumgr.name);
+      setDeviceName(prevName => mcumgr.name || prevName);
       setScreen(SCREENS.CONNECTED);
       mcumgr.cmdImageState();
     });
@@ -47,11 +53,16 @@ export const useMCUManager = () => {
     });
 
     mcumgr.onMessage(({ group, id, data }) => {
+      console.log("MCU Manager message:", { group, id, data });
       switch (group) {
         case MGMT_GROUP_ID_OS:
           switch (id) {
             case OS_MGMT_ID_ECHO:
-              alert(data.r);
+              if (data?.rc && data.rc !== 0) {
+                alert(`Echo failed: Error code ${data.rc}`);
+              } else {
+                alert(data?.r ?? "");
+              }
               break;
             case OS_MGMT_ID_TASKSTAT:
               console.table(data.tasks);
@@ -75,14 +86,30 @@ export const useMCUManager = () => {
     });
   }, [mcumgr]);
 
-  const handleDeviceNameChange = (name) => {
+  useEffect(() => {
+    mcumgr.setTransport(transport);
+  }, [transport, mcumgr]);
+
+  const handleTransportChange = value => {
+    if (value !== "ble" && value !== "serial") {
+      return;
+    }
+    setTransport(value);
+    mcumgr.setTransport(value);
+  };
+
+  const handleDeviceNameChange = name => {
     setDeviceName(name);
-    localStorage.setItem("deviceName", name);
   };
 
   const handleConnect = async () => {
+    if (transport === "serial") {
+      await mcumgr.connect({ transport: "serial" });
+      return;
+    }
+
     const filters = deviceName ? [{ namePrefix: deviceName }] : null;
-    await mcumgr.connect(filters);
+    await mcumgr.connect({ transport: "ble", filters });
   };
 
   const handleDisconnect = async () => {
@@ -95,7 +122,10 @@ export const useMCUManager = () => {
     screen,
     images,
     bluetoothAvailable,
+    serialAvailable,
+    transport,
     setScreen,
+    handleTransportChange,
     handleDeviceNameChange,
     handleConnect,
     handleDisconnect,

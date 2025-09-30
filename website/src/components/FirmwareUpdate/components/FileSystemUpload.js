@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const FileSystemUpload = ({
   fileFsInputRef,
@@ -6,9 +6,11 @@ const FileSystemUpload = ({
   fileSystemUploadProgress,
   onFileSystemSelection,
   onFileSystemUploadStart,
-  isConnected = false
+  isConnected = false,
+  transport = 'ble'
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const isBle = transport === 'ble';
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -34,12 +36,13 @@ const FileSystemUpload = ({
   return (
     <div className="space-y-6">
       {/* Enhanced File System Drag & Drop Zone */}
-      <div className="relative">
+      <div className={`relative ${!isBle ? 'opacity-60 pointer-events-none' : ''}`}>
         <input 
           type="file" 
           ref={fileFsInputRef}
           onChange={onFileSystemSelection}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+          disabled={!isBle}
           accept=".bin"
         />
         <div 
@@ -59,11 +62,18 @@ const FileSystemUpload = ({
               {isDragOver ? 'Drop your file system file here' : 'Upload File System'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Drag and drop your .bin file here
+              Drag and drop your lvgl_resources_raw.bin file here to upload full filesystem
             </p>
           </div>
         </div>
       </div>
+
+      {/* BLE required message when not on BLE */}
+      {!isBle && (
+        <div className="text-xs text-gray-600 dark:text-gray-300">
+          ℹ️ Filesystem upload requires Bluetooth (BLE). Connect via BLE to use this feature.
+        </div>
+      )}
 
       {/* Upload Progress */}
       {fileSystemUploadProgress !== null && (
@@ -97,7 +107,7 @@ const FileSystemUpload = ({
           <div className="flex gap-3">
             <button 
               onClick={onFileSystemUploadStart}
-              disabled={!isConnected || fileSystemUploadProgress !== null}
+              disabled={!isConnected || fileSystemUploadProgress !== null || !isBle}
               className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="relative">

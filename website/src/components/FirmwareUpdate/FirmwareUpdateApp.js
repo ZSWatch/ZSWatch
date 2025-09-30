@@ -3,9 +3,6 @@ import Layout from "@theme/Layout";
 import "./mcumgr.css";
 
 // Components
-import BluetoothConnect from "./components/BluetoothConnect";
-import ConnectingScreen from "./components/ConnectingScreen"; 
-import DeviceControls from "./components/DeviceControls";
 import PrebuiltFirmwares from "./components/PrebuiltFirmwares";
 import FileUploadSection from "./components/FileUploadSection";
 import FileSystemUpload from "./components/FileSystemUpload";
@@ -28,11 +25,15 @@ const FirmwareUpdateApp = () => {
     screen,
     images,
     bluetoothAvailable,
-    setScreen,
+    serialAvailable,
+    transport,
+    handleTransportChange,
     handleDeviceNameChange,
     handleConnect,
     handleDisconnect,
   } = useMCUManager();
+
+  const isConnected = mcumgr?.isConnected?.() ?? false;
 
   const {
     fileUploadPercentage,
@@ -44,16 +45,16 @@ const FirmwareUpdateApp = () => {
     fileInputRef,
     handleFileChange,
     handleFileUpload,
-    clearFiles,
     setupUploadListeners,
-    setFileInfos,
+    showConfirmModal,
+    confirmMode,
+    handleConfirmationResponse,
   } = useFileUpload(mcumgr);
 
   const {
     fileSystemUploadProgress,
     fileSystemUploadStatus,
     fileFsInputRef,
-    selectedFile,
     handleFileSystemSelection,
     startFileSystemUpload,
     setupFileSystemListeners,
@@ -94,12 +95,22 @@ const FirmwareUpdateApp = () => {
     }
   };
 
-  const handleAdvancedMode = () => {
-    setScreen(SCREENS.CONNECTED_ADVANCED);
-  };
+  const handleConfirmImage = () => {
+    if (!mcumgr || !images || images.length === 0) {
+      alert("No images available to confirm");
+      return;
+    }
 
-  const handlePreviewDemo = () => {
-    setScreen(SCREENS.CONNECTED);
+    // Find images that are not yet confirmed
+    const unconfirmedImages = images.filter(img => img.confirmed === false);
+
+    // Confirm each image
+    unconfirmedImages.forEach(img => {
+      if (img.hash) {
+        console.log('Confirming unconfirmed image with hash:', img.hash);
+        mcumgr.cmdImageConfirm(img.hash);
+      }
+    });
   };
 
   const renderScreen = () => {
@@ -108,8 +119,9 @@ const FirmwareUpdateApp = () => {
   };
 
   const renderUnifiedInterface = () => {
-    const isConnected = screen === SCREENS.CONNECTED || screen === SCREENS.CONNECTED_ADVANCED;
     const isConnecting = screen === SCREENS.CONNECTING;
+    const selectedTransportAvailable = transport === 'ble' ? bluetoothAvailable : serialAvailable;
+    const transportLabel = transport === 'ble' ? 'BLE' : 'USB Serial';
     
     return (
       <div className="grid grid-cols-1 lg:grid-cols-8 xl:grid-cols-11 gap-6">
@@ -127,47 +139,95 @@ const FirmwareUpdateApp = () => {
                   isConnecting ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 animate-pulse' :
                   'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                 }`}>
-                  {isConnected ? 'Connected' : isConnecting ? 'Connecting...' : 'Disconnected'}
+                  {isConnected ? `Connected (${transportLabel})` : isConnecting ? 'Connecting...' : 'Disconnected'}
                 </div>
               </div>
-
-              {/* Bluetooth Availability Status */}
-              <div className={`p-3 rounded-lg mb-4 ${
-                bluetoothAvailable 
-                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
-                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-              }`}>
-                <div className="flex items-center">
-                  <span className="mr-2">{bluetoothAvailable ? '✅' : '❌'}</span>
-                  <span className={`text-sm font-medium ${
-                    bluetoothAvailable ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
-                  }`}>
-                    Bluetooth {bluetoothAvailable ? 'Available' : 'Not Available. Check Browser Support.'}
-                  </span>
-                </div>
-              </div>
-
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Connection method</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={isConnected || isConnecting}
+                      onClick={() => handleTransportChange('ble')}
+                      className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                        transport === 'ble'
+                          ? 'bg-zswatch-primary text-black border-zswatch-primary'
+                          : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
+                      }`}
+                    >
+                      Bluetooth (BLE)
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isConnected || isConnecting}
+                      onClick={() => handleTransportChange('serial')}
+                      className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                        transport === 'serial'
+                          ? 'bg-zswatch-primary text-black border-zswatch-primary'
+                          : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
+                      }`}
+                    >
+                      USB Serial (WebSerial)
+                    </button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <span className={bluetoothAvailable ? 'text-green-600 dark:text-green-300' : 'text-red-500 dark:text-red-400'}>
+                      BLE: {bluetoothAvailable ? 'Available' : 'Unavailable'}
+                    </span>
+                    <span className={serialAvailable ? 'text-green-600 dark:text-green-300' : 'text-red-500 dark:text-red-400'}>
+                      USB Serial: {serialAvailable ? 'Available' : 'Unavailable'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-lg border ${
+                  selectedTransportAvailable
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                }`}>
+                  <div className="flex items-center">
+                    <span className="mr-2">{selectedTransportAvailable ? '✅' : '❌'}</span>
+                    <span className={`text-sm font-medium ${
+                      selectedTransportAvailable ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+                    }`}>
+                      {transport === 'ble' ? 'Bluetooth (BLE)' : 'USB Serial (WebSerial)'} {selectedTransportAvailable ? 'Available' : 'Unavailable'}
+                    </span>
+                  </div>
+                  <p className={`mt-2 text-xs leading-relaxed ${
+                    selectedTransportAvailable ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    {transport === 'ble'
+                      ? 'Requires a browser with Web Bluetooth support (Chrome, Edge, Opera). Ensure the watch is advertising and not already connected to another device.'
+                      : 'Requires Web Serial support (Chrome or Edge) and watch is in MCUBoot. Enter MCUBoot by holding down top right button while resetting the watch. Or holding down two right buttons for 25 seconds.'}
+                  </p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Device name</label>
                   <input 
                     type="text" 
                     value={deviceName}
                     onChange={(e) => handleDeviceNameChange(e.target.value)}
-                    disabled={isConnected || !bluetoothAvailable}
+                    disabled={transport !== 'ble' || isConnected || !bluetoothAvailable}
                     className="w-full bg-white dark:bg-black/30 border border-gray-300 dark:border-white/20 rounded-lg px-3 py-2 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:border-zswatch-primary focus:outline-none focus:ring-2 focus:ring-zswatch-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     placeholder="ZSWatch"
                   />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {transport === 'ble'
+                      ? 'Optional prefix filter. Leave empty to scan for any compatible device.'
+                      : 'Not required when connecting over USB.'}
+                  </p>
                 </div>
                 
                 <div className="flex flex-col gap-2">
                   {!isConnected ? (
                     <button 
                       onClick={handleConnect}
-                      disabled={!bluetoothAvailable || isConnecting}
+                      disabled={!selectedTransportAvailable || isConnecting}
                       className="px-4 py-2 bg-zswatch-primary text-black rounded-lg font-medium hover:bg-zswatch-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isConnecting ? 'Connecting...' : 'Connect'}
+                      {isConnecting ? 'Connecting...' : transport === 'ble' ? 'Connect via BLE' : 'Connect via Serial'}
                     </button>
                   ) : (
                     <button 
@@ -216,6 +276,10 @@ const FirmwareUpdateApp = () => {
                 </li>
                 <li className="flex items-center">
                   <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                  Chrome, Edge (WebSerial / USB serial updates)
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
                   Chrome (Android)
                 </li>
                 <li className="flex items-center">
@@ -253,7 +317,7 @@ const FirmwareUpdateApp = () => {
                   <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
                     <p className="m-0">• Reset watch, reload page and reconnect</p>
                     <p className="m-0">• Check file format (.zip or .bin)</p>
-                    <p className="m-0">• Fallback to USB (TBD instructions)</p>
+                    <p className="m-0">• Try switching to USB serial mode.</p>
                   </div>
                 </details>
               </div>
@@ -280,8 +344,8 @@ const FirmwareUpdateApp = () => {
                 onFileUpload={handleFileUpload}
                 onEraseFiles={() => mcumgr && mcumgr.cmdImageErase()}
                 onConfirmFiles={() => mcumgr && mcumgr.cmdImageConfirm()}
-                onClearFiles={clearFiles}
                 isConnected={isConnected}
+                transport={transport}
               />
             </div>
           </div>
@@ -299,6 +363,7 @@ const FirmwareUpdateApp = () => {
                 onFileSystemSelection={handleFileSystemSelection}
                 onFileSystemUploadStart={startFileSystemUpload}
                 isConnected={isConnected}
+                transport={transport}
               />
             </div>
           </div>
@@ -403,30 +468,41 @@ const FirmwareUpdateApp = () => {
                     >
                       Refresh
                     </button>
-                    <button 
-                      onClick={() => mcumgr && mcumgr.cmdImageTest()}
-                      className="flex-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-2 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all"
-                    >
-                      Test
-                    </button>
-                    <button 
-                      onClick={() => mcumgr && mcumgr.cmdImageConfirm()}
-                      className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-2 rounded text-sm hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
-                    >
-                      Confirm
-                    </button>
-                    <button 
-                      onClick={() => mcumgr && mcumgr.cmdImageErase()}
-                      className="flex-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-2 rounded text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
-                    >
-                      Erase
-                    </button>
+                    {transport === 'ble' && (
+                      <>
+                        <button
+                          onClick={() => mcumgr && mcumgr.cmdImageTest()}
+                          className="flex-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-2 rounded text-sm hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all"
+                        >
+                          Test
+                        </button>
+                        <button
+                          onClick={handleConfirmImage}
+                          className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-2 rounded text-sm hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => mcumgr && mcumgr.cmdImageErase()}
+                          className="flex-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-2 rounded text-sm hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
+                        >
+                          Erase
+                        </button>
+                      </>
+                    )}
                   </div>
                   
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
-                    <span className="mr-1">🔗</span>
-                    Bluetooth connection required
-                  </div>
+                  {transport === 'ble' ? (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                      <span className="mr-1">🔗</span>
+                      Bluetooth connection required for test/confirm/erase
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
+                      <span className="mr-1">ℹ️</span>
+                      Serial updates flash directly. Just reset to boot new firmware.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-6">
@@ -463,6 +539,62 @@ const FirmwareUpdateApp = () => {
           {/* Information Cards - moved to sidebar in connected state */}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md mx-4">
+            {confirmMode === 'serial' ? (
+              <>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+                  Firmware Uploaded
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Update complete. Reset the device to boot the new firmware.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => handleConfirmationResponse(false)}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => { handleReset(); handleConfirmationResponse(false); }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Reset Now
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+                  Confirm Firmware Images
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Do you want to confirm the uploaded images and restart the device?
+                  After confirming, you need to restart the device to apply the changes.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => handleConfirmationResponse(false)}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleConfirmationResponse(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

@@ -27,5 +27,4 @@ export const SCREENS = {
   INITIAL: "initial",
   CONNECTING: "connecting", 
   CONNECTED: "connected",
-  CONNECTED_ADVANCED: "connected_advanced"
 };

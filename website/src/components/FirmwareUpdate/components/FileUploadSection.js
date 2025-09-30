@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { formatFileSize, copyToClipboard } from "../utils/helpers";
+import React from "react";
 
 const FileUploadSection = ({ 
   fileInputRef,
@@ -12,8 +11,8 @@ const FileUploadSection = ({
   onFileUpload,
   onEraseFiles,
   onConfirmFiles,
-  onClearFiles,
-  isConnected = false
+  isConnected = false,
+  transport = 'ble',
 }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
 
@@ -36,6 +35,10 @@ const FileUploadSection = ({
       };
       onFileChange(syntheticEvent);
     }
+  };
+
+  const formatFileSize = (bytes) => {
+    return (bytes / 1024).toFixed(1) + " KB";
   };
 
   return (
@@ -156,26 +159,28 @@ const FileUploadSection = ({
             {isFileUploadInProgress ? 'Uploading...' : 'Upload Firmware'}
           </div>
         </button>
-        
-        <button 
-          onClick={onEraseFiles}
-          disabled={!isConnected}
-          className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <div className="relative">
-            Erase Files
-          </div>
-        </button>
-        
-        <button 
-          onClick={onConfirmFiles}
-          disabled={!isConnected}
-          className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <div className="relative">
-            Confirm Files
-          </div>
-        </button>
+        {transport === 'ble' && (
+          <>
+            <button
+              onClick={onEraseFiles}
+              disabled={!isConnected}
+              className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30 hover:bg-red-100 dark:hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="relative">
+                Erase Files
+              </div>
+            </button>
+            <button
+              onClick={onConfirmFiles}
+              disabled={!isConnected}
+              className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="relative">
+                Confirm Files
+              </div>
+            </button>
+          </>
+        )}
       </div>
 
     </div>

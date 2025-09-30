@@ -1,5 +1,3 @@
-import React from "react";
-
 const ConnectingScreen = () => {
   return (
     <div className="text-center py-8">

@@ -8,6 +8,8 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [fileInfos, setFileInfos] = useState([]);
   const [fileStatus, setFileStatus] = useState("Select image files (.bin or .zip)");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMode, setConfirmMode] = useState('ble'); // 'ble' | 'serial'
 
   const fileInputRef = useRef(null);
   const uploadStartTimeRef = useRef(null);
@@ -204,17 +206,25 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
   };
 
   const promptForConfirmationOfFwImages = async () => {
-    const userConfirmed = window.confirm(
-      "Do you want to confirm the images and restart the device? After confirming, you need to restart the device to apply the changes.",
-    );
-    if (userConfirmed) {
+    // Show modal with different content depending on transport
+    const isSerial = mcumgr?._transport === 'serial';
+    setConfirmMode(isSerial ? 'serial' : 'ble');
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmationResponse = async (confirmed) => {
+    setShowConfirmModal(false);
+    if (!confirmed) return;
+    // BLE: confirm by hash
+    if (confirmMode === 'ble') {
       for (const fileInfo of fileInfos) {
         const hashArray = Uint8Array.from(
           fileInfo.hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)),
         );
-        await mcumgr.cmdImageTest(hashArray);
+        await mcumgr.cmdImageConfirm(hashArray);
       }
     }
+    // Serial: no-op here; reset handled from modal in UI
   };
 
   const clearFiles = () => {
@@ -236,5 +246,8 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
     clearFiles,
     setupUploadListeners,
     setFileInfos, // For updating file status from parent
+    showConfirmModal,
+    confirmMode,
+    handleConfirmationResponse,
   };
 };
