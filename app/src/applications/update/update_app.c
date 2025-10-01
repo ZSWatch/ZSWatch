@@ -233,11 +233,15 @@ static bool toggle_usb_fota(void)
 static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
     update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
+    ble_comm_set_fast_adv_interval();
+    ble_comm_set_short_connection_interval();
 }
 
 static void update_app_stop(void)
 {
     update_ui_remove();
+    ble_comm_set_default_adv_interval();
+    ble_comm_set_default_connection_interval();
 }
 
 static int update_app_add(void)

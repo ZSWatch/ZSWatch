@@ -144,16 +144,30 @@ void ble_comm_set_pairable(bool pairable);
 /** @brief
  *  @return 0 when successful
 */
-int ble_comm_short_connection_interval(void);
+int ble_comm_set_short_connection_interval(void);
 
 /** @brief
  *  @return 0 when successful
 */
-int ble_comm_long_connection_interval(void);
+int ble_comm_set_default_connection_interval(void);
 
 /** @brief
  *  @return The MTU for current connection. 0 If no connection.
 */
 int ble_comm_get_mtu(void);
 
+/** @brief
+ * @param enable true to ask phone for GPS data, false to disable
+ *  @return 0 when successful
+*/
 int ble_comm_request_gps_status(bool enable);
+
+/** @brief Set BLE advertising to fast interval (100ms - 150ms)
+ *  @return 0 when successful, negative error code otherwise
+*/
+int ble_comm_set_fast_adv_interval(void);
+
+/** @brief Set BLE advertising back to default slow interval (1000ms - 1200ms)
+ *  @return 0 when successful, negative error code otherwise
+*/
+int ble_comm_set_default_adv_interval(void);

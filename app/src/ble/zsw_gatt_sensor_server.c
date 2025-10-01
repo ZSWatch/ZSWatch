@@ -176,12 +176,12 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
     if (!notif_enabled && (value == BT_GATT_CCC_NOTIFY)) {
         notif_enabled = true;
         zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
-        ble_comm_short_connection_interval();
+        ble_comm_set_short_connection_interval();
         zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
     } else if (notif_enabled && (value != BT_GATT_CCC_NOTIFY)) {
         // If any char get notify off, then stop sending at all.
         // TODO Keep track of which ones have notify on.
-        ble_comm_long_connection_interval();
+        ble_comm_set_default_connection_interval();
         zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
         zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
         notif_enabled = false;

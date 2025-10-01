@@ -49,6 +49,7 @@ static void ble_recycled(void);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
 static void update_conn_interval_slow_handler(struct k_work *item);
 static void update_conn_interval_short_handler(struct k_work *item);
+static int update_adv_interval(uint16_t interval_min, uint16_t interval_max);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param);
 static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_len_info *info);
@@ -218,7 +219,7 @@ void ble_comm_set_pairable(bool pairable)
     pairing_enabled = pairable;
 }
 
-int ble_comm_short_connection_interval(void)
+int ble_comm_set_short_connection_interval(void)
 {
     int err;
     struct bt_le_conn_param param = {
@@ -250,7 +251,7 @@ int ble_comm_short_connection_interval(void)
     return err;
 }
 
-int ble_comm_long_connection_interval(void)
+int ble_comm_set_default_connection_interval(void)
 {
     int err;
     struct bt_le_conn_param param = {
@@ -270,6 +271,16 @@ int ble_comm_long_connection_interval(void)
     return err;
 }
 
+int ble_comm_set_fast_adv_interval(void)
+{
+    return update_adv_interval(BT_GAP_ADV_FAST_INT_MIN_1, BT_GAP_ADV_FAST_INT_MAX_1);
+}
+
+int ble_comm_set_default_adv_interval(void)
+{
+    return update_adv_interval(BT_GAP_ADV_SLOW_INT_MIN, BT_GAP_ADV_SLOW_INT_MAX);
+}
+
 int ble_comm_get_mtu(void)
 {
     if (current_conn == NULL) {
@@ -287,17 +298,51 @@ int ble_comm_request_gps_status(bool enable)
     return ble_comm_send(gps_status, len);
 }
 
+static int update_adv_interval(uint16_t interval_min, uint16_t interval_max)
+{
+    int err;
+
+    if (interval_min > interval_max) {
+        LOG_ERR("Invalid advertising interval: min (%d) > max (%d)", interval_min, interval_max);
+        return -EINVAL;
+    }
+
+    LOG_INF("Updating advertising interval: min=%d, max=%d", interval_min, interval_max);
+
+    adv_param.interval_min = interval_min;
+    adv_param.interval_max = interval_max;
+
+    // If currently advertising, restart with new parameters
+    if (current_conn == NULL) {
+        err = bt_le_adv_stop();
+        if (err) {
+            LOG_ERR("Failed to stop advertising (err %d)", err);
+            return err;
+        }
+
+        err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
+        if (err) {
+            LOG_ERR("Failed to restart advertising (err %d)", err);
+            return err;
+        }
+
+        LOG_DBG("Advertising restarted with new interval");
+    }
+
+    return 0;
+}
+
 static void update_conn_interval_slow_handler(struct k_work *item)
 {
     LOG_DBG("Change to long connection interval");
-    ble_comm_long_connection_interval();
+    ble_comm_set_default_connection_interval();
 }
 
 static void update_conn_interval_short_handler(struct k_work *item)
 {
     LOG_DBG("Change to fast connection interval");
     if (current_conn != NULL) {
-        ble_comm_short_connection_interval();
+        ble_comm_set_short_connection_interval();
     }
 }
 
