@@ -253,10 +253,12 @@ static int update_app_add(void)
 
     int rc = smp_bt_unregister();
     if (rc != 0) {
-        LOG_WRN("BLE SMP already unregistered or failed to unregister");
+        LOG_WRN("BLE SMP already unregistered or failed to unregister. Check init priority. Error: %d", rc);
     }
 #endif
     return 0;
 }
 
-SYS_INIT(update_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+// CONFIG_APPLICATION_INIT_PRIORITY + 1 as we can't call smp_bt before it has been initialized
+// which is done at CONFIG_APPLICATION_INIT_PRIORITY
+SYS_INIT(update_app_add, APPLICATION, 91);
