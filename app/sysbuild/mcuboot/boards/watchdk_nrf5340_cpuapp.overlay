@@ -4,7 +4,14 @@
  */
 
 &uart0 {
-    status = "disabled";
+    status = "okay";
+    disable-rx; // Allows logs but keeps power consumption down.
+};
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
 };
 
 &bmi270 {
