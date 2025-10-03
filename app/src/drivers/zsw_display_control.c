@@ -245,6 +245,37 @@ uint8_t zsw_display_control_get_brightness(void)
     return last_brightness;
 }
 
+int zsw_display_control_set_render_enabled(bool on)
+{
+    int res = -EALREADY;
+
+    k_mutex_lock(&display_mutex, K_FOREVER);
+
+    if (on) {
+        if (k_work_delayable_is_pending(&lvgl_work)) {
+            LOG_DBG("Rendering already enabled");
+            res = -EALREADY;
+        } else {
+            LOG_DBG("Enable rendering");
+            k_work_schedule(&lvgl_work, K_MSEC(100));
+            res = 0;
+        }
+    } else {
+        if (k_work_delayable_is_pending(&lvgl_work)) {
+            LOG_DBG("Disable rendering");
+            k_work_cancel_delayable_sync(&lvgl_work, &cancel_work_sync);
+            res = 0;
+        } else {
+            LOG_DBG("Rendering already disabled");
+            res = -EALREADY;
+        }
+    }
+
+    k_mutex_unlock(&display_mutex);
+
+    return res;
+}
+
 void zsw_display_control_set_brightness(uint8_t percent)
 {
     uint8_t level = 0;

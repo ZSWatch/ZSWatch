@@ -22,6 +22,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/util.h>
 #include <filesystem/zsw_filesystem.h>
+#include <drivers/zsw_display_control.h>
 #include <lvgl.h>
 #include "lv_conf.h"
 
@@ -209,15 +210,7 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
             return -EALREADY;
         }
         if (mode & FS_O_WRITE) {
-            // TODO: Erase whole image?
-            /*
-            LOG_INF("Erasing full fs image");
-            int rc = flash_area_erase(flash_area, 0, flash_area->fa_size);
-            LOG_INF("Flash area erased with rc: %d", rc);
-            if (rc != 0) {
-                LOG_ERR("Failed to erase flash area: %d", rc);
-                return -EIO;
-            }*/
+            zsw_display_control_set_render_enabled(false);
         }
         full_fs_file.opened = true;
         full_fs_file.index = 0;
@@ -251,6 +244,7 @@ static int zsw_fs_close(struct fs_file_t *zfp)
     if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
         full_fs_file.opened = false;
         full_fs_file.index = 0;
+        zsw_display_control_set_render_enabled(true);
         return 0;
     } else {
         lvgl_fs_close(NULL, zfp->filep);

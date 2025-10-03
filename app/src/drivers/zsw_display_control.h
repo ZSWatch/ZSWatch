@@ -25,3 +25,11 @@ int zsw_display_control_sleep_ctrl(bool on);
 int zsw_display_control_pwr_ctrl(bool on);
 void zsw_display_control_set_brightness(uint8_t percent);
 uint8_t zsw_display_control_get_brightness(void);
+
+/*
+* Set LVGL rendering on or off.
+* When rendering is off, lv_task_handler will not be called periodically.
+* Needed when working with the LVGL image resources so LVGL does not
+* try to render while the image data is being updated.
+*/
+int zsw_display_control_set_render_enabled(bool on);
