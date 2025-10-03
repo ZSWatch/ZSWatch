@@ -397,7 +397,9 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_image_header_t header;
     lv_image_decoder_get_info(icon, &header);
 
-    lv_obj_set_size(cont, LV_PCT(100), header.h + 6);
+    // If icon is not found, use default height of icons (32px)
+    int32_t height = header.h > 0 ? header.h + 6 : 32 + 6;
+    lv_obj_set_size(cont, LV_PCT(100), height);
     lv_obj_clear_flag(cont,
                       LV_OBJ_FLAG_SCROLLABLE); // Needed, otherwise indev will first focus on this cont before it's contents.
 
