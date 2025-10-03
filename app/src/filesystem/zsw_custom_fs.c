@@ -101,6 +101,63 @@ static const struct flash_area *flash_area;
 static lv_fs_drv_t fs_drv;
 
 static fullFsFile_t full_fs_file;
+static off_t full_fs_next_erase_offset;
+
+// Inspired by boot_erase_region from mcuboot
+// and erase_range from boot_serial
+// Erase flash sectors to cover the specified range
+static int zsw_fs_ensure_erased(off_t offset, size_t len)
+{
+    const struct device *flash_dev;
+    off_t erase_limit;
+    int rc;
+
+    erase_limit = offset + len;
+
+    if (full_fs_next_erase_offset < offset) {
+        full_fs_next_erase_offset = offset;
+    }
+
+    if (full_fs_next_erase_offset >= erase_limit) {
+        return 0;
+    }
+
+    flash_dev = flash_area_get_device(flash_area);
+    if (flash_dev == NULL) {
+        LOG_ERR("Failed to get flash device");
+        return -ENODEV;
+    }
+
+    struct flash_pages_info page_start;
+    struct flash_pages_info page_end;
+    off_t start_candidate = full_fs_next_erase_offset;
+    off_t abs_start = flash_area->fa_off + start_candidate;
+    off_t abs_end = flash_area->fa_off + erase_limit - 1;
+
+    rc = flash_get_page_info_by_offs(flash_dev, abs_start, &page_start);
+    __ASSERT_NO_MSG(rc == 0);
+
+    rc = flash_get_page_info_by_offs(flash_dev, abs_end, &page_end);
+    __ASSERT_NO_MSG(rc == 0);
+
+    off_t erase_start = page_start.start_offset - flash_area->fa_off;
+    off_t erase_end = (page_end.start_offset - flash_area->fa_off) + page_end.size;
+
+    __ASSERT_NO_MSG(erase_start >= 0);
+    __ASSERT_NO_MSG(erase_end <= flash_area->fa_size);
+    __ASSERT_NO_MSG(erase_end > erase_start);
+
+    rc = flash_area_erase(flash_area, erase_start, erase_end - erase_start);
+    if (rc != 0) {
+        LOG_ERR("Flash erase failed at 0x%llx (size %lld): %d",
+                (long long)erase_start, (long long)(erase_end - erase_start), rc);
+        return -EIO;
+    }
+
+    full_fs_next_erase_offset = erase_end;
+
+    return 0;
+}
 
 static file_header_t *find_file(const char *name)
 {
@@ -211,6 +268,7 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
         }
         if (mode & FS_O_WRITE) {
             zsw_display_control_set_render_enabled(false);
+            full_fs_next_erase_offset = 0;
         }
         full_fs_file.opened = true;
         full_fs_file.index = 0;
@@ -365,6 +423,13 @@ static ssize_t zsw_fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
 {
     if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
         int rc;
+
+        rc = zsw_fs_ensure_erased(full_fs_file.index, size);
+        if (rc != 0) {
+            LOG_ERR("Failed to erase before write: %d", rc);
+            return rc;
+        }
+
         rc = flash_area_write(flash_area, full_fs_file.index, ptr, size);
         LOG_DBG("W: %d => %d (%d)", full_fs_file.index, size, rc);
         if (rc != 0) {
@@ -422,6 +487,11 @@ static int zsw_fs_seek(struct fs_file_t *zfp, off_t offset, int whence)
                 break;
             default:
                 return -EINVAL;
+        }
+
+        // Rewind erase cursor so future writes back here trigger a new erase
+        if (full_fs_next_erase_offset > full_fs_file.index) {
+            full_fs_next_erase_offset = full_fs_file.index;
         }
     } else {
         switch (whence) {
@@ -546,6 +616,7 @@ int zsw_filesytem_erase(void)
     current_cached_file = NULL;
     full_fs_file.len = 0;
     full_fs_file.index = 0;
+    full_fs_next_erase_offset = 0;
 
     int num_opened_files = 0;
     for (int i = 0; i < MAX_OPENED_FILES; i++) {
