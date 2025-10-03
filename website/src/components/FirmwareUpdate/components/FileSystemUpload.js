@@ -4,6 +4,7 @@ const FileSystemUpload = ({
   fileFsInputRef,
   fileSystemUploadStatus,
   fileSystemUploadProgress,
+  fileSystemUploadSpeed,
   onFileSystemSelection,
   onFileSystemUploadStart,
   isConnected = false,
@@ -86,7 +87,14 @@ const FileSystemUpload = ({
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Upload Progress</span>
-            <span className="font-medium text-gray-900 dark:text-white">{fileSystemUploadProgress}%</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-900 dark:text-white">{fileSystemUploadProgress}%</span>
+              {fileSystemUploadSpeed && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  ({fileSystemUploadSpeed} KB/s)
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
             <div 

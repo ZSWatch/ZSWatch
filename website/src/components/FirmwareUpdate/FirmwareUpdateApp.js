@@ -21,7 +21,8 @@ const TROUBLESHOOTING_ITEMS = [
     title: "General issues",
     items: [
       "Press F12 and check console for errors",
-      "Reload the page",    ]
+      "Reload the page",
+    ]
   },
   {
     title: "Connection issues",
@@ -59,7 +60,7 @@ const FirmwareUpdateApp = () => {
     handleDisconnect,
   } = useMCUManager();
 
-  const isConnected = (mcumgr?.isConnected?.() && (screen == SCREENS.CONNECTED)) ?? false;
+  const isConnected = (mcumgr?.isConnected?.() && (screen === SCREENS.CONNECTED)) ?? false;
 
   const {
     fileUploadPercentage,
@@ -102,6 +103,7 @@ const FirmwareUpdateApp = () => {
 
   const {
     fileSystemUploadProgress,
+    fileSystemUploadSpeed,
     fileSystemUploadStatus,
     fileFsInputRef,
     handleFileSystemSelection,
@@ -254,7 +256,7 @@ const FirmwareUpdateApp = () => {
                     </span>
                   </div>
                   <p className="mt-2 mb-0 text-xs leading-relaxed text-blue-700 dark:text-blue-200">
-                    Go to ZSWatch <b>System -> Update App</b> and enable either USB or Bluetooth.
+                    Go to ZSWatch <b>System {`->`} Update App</b> and enable either USB or Bluetooth.
                     <b> USB is significantly faster than Bluetooth</b> due to Web Bluetooth API limitations.
                     <br />
                     <br />
@@ -409,6 +411,7 @@ const FirmwareUpdateApp = () => {
                 fileFsInputRef={fileFsInputRef}
                 fileSystemUploadStatus={fileSystemUploadStatus}
                 fileSystemUploadProgress={fileSystemUploadProgress}
+                fileSystemUploadSpeed={fileSystemUploadSpeed}
                 onFileSystemSelection={handleFileSystemSelection}
                 onFileSystemUploadStart={startFileSystemUpload}
                 isConnected={isConnected}
