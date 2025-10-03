@@ -6,6 +6,7 @@ import argparse
 from struct import *
 import re
 
+
 def convert_image_array(filename, file_data):
     print("--------------------")
     print(filename)
@@ -141,7 +142,7 @@ def replace_data_in_c_code(infile_content, rgb565_data, alpha_data):
     new_content = pattern.sub(
         f"[] = {{\n{hex_str}\n}}; // LVGL_9 compatible", infile_content
     )
-    #print(new_content)
+    # print(new_content)
     new_content = (
         new_content.replace(
             "LV_IMG_CF_TRUE_COLOR_ALPHA", "LV_COLOR_FORMAT_NATIVE_WITH_ALPHA"

@@ -18,6 +18,7 @@ logged_data = []
 
 num_discard = 5
 
+
 def run_fusion(data_list):
     sample_rate = 100  # 100 Hz
 

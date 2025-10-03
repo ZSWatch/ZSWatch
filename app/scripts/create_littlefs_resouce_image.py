@@ -5,6 +5,7 @@ import os
 import argparse
 from littlefs import LittleFS
 
+
 def create_littlefs_fs_image(
     img_filename,
     img_size,

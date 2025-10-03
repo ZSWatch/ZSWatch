@@ -101,7 +101,7 @@ class UIController:
 
             self.is_enabled = not self.is_enabled
             if self.is_enabled:
-                notify = "GB({t:\"notify\",id:15,src:\"Gmail\",title:\"jakob@mail.se\",sender:\"Jakob\",body:\"This is cool!\"})"
+                notify = 'GB({t:"notify",id:15,src:"Gmail",title:"jakob@mail.se",sender:"Jakob",body:"This is cool!"})'
                 print(self.clients)
                 zsw_send_nus_commands(self.clients, [(notify, 0)])
                 pass
@@ -202,8 +202,15 @@ if __name__ == "__main__":
 
     clients = zsw_connect_nus(addresses)
     print("Send reset state command to all devices")
-    weather = "GB({t:\"weather\",temp:296,hum:55,code:802,txt:\"slightly cloudy\",wind:2.0,wdir:14,loc:\"MALMO\"})"
-    zsw_send_nus_commands(clients, [("Control:4", 1), ("GB(setTime({}))".format(int(time.time())), 0), (weather, 1),])
+    weather = 'GB({t:"weather",temp:296,hum:55,code:802,txt:"slightly cloudy",wind:2.0,wdir:14,loc:"MALMO"})'
+    zsw_send_nus_commands(
+        clients,
+        [
+            ("Control:4", 1),
+            ("GB(setTime({}))".format(int(time.time())), 0),
+            (weather, 1),
+        ],
+    )
     print("Connected to {0} devices".format(len(clients)), clients)
 
     ui = UIController(clients)

@@ -58,18 +58,6 @@ def create_custom_raw_fs_image(img_filename, source_dir, block_size=4096):
     )
     print("header len", len(fake_header))
 
-    trailer_size = 4  # Size of trailer magic number
-    real_header = (
-        pack(
-            "<IIII",
-            TABLE_MAGIC,
-            len(fake_header),
-            len(fake_header) + len(files_image) + trailer_size,
-            len(table),
-        )
-        + header_images
-    )
-
     if len(header_images) > FILE_TABLE_MAX_LEN:
         print(
             "File table is to big, increase the size on target size",
@@ -79,11 +67,29 @@ def create_custom_raw_fs_image(img_filename, source_dir, block_size=4096):
         )
         exit(1)
 
+    # Calculate padding needed to make total size (header + files + padding + trailer) a multiple of 4
+    trailer_size = 4  # Size of trailer magic number
+    current_size = len(fake_header) + len(files_image) + trailer_size
+    padding_needed = (4 - (current_size % 4)) % 4
+
+    real_header = (
+        pack(
+            "<IIII",
+            TABLE_MAGIC,
+            len(fake_header),
+            len(fake_header) + len(files_image) + padding_needed + trailer_size,
+            len(table),
+        )
+        + header_images
+    )
+
     print(f"Creating Raw FS image: {len(table)} files, {len(files_image)} bytes")
 
     with open(img_filename, "wb") as f:
         f.write(real_header)
         f.write(files_image)
+        if padding_needed > 0:
+            f.write(b"\x00" * padding_needed)
         f.write(pack("<I", TABLE_MAGIC))
 
 

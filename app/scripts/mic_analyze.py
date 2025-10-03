@@ -17,6 +17,7 @@ import wave
 logged_pcm_data = bytearray()
 num_discard = 5
 
+
 def read_from_rtt_log(jlink):
     global logged_pcm_data
     try:

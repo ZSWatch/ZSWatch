@@ -12,6 +12,7 @@ from pathlib import Path
 from pynrfjprog import HighLevel
 import intelhex
 
+
 class UploadFsWestCommand(WestCommand):
     def __init__(self):
         super().__init__(
@@ -164,7 +165,7 @@ class UploadFsWestCommand(WestCommand):
         attr_max = 0
         disk_version = "2.0"
         filename = "lvgl_resources"
-        if (args.generate_only):
+        if args.generate_only:
             filename = filename + "_" + args.type
         partition = args.partition
         zephyr_base = Path(os.environ.get("ZEPHYR_BASE"))
@@ -217,9 +218,13 @@ class UploadFsWestCommand(WestCommand):
                 )
             )
         else:
-            speed = None if args.speed == 'auto' else int(args.speed)
-            if (args.generate_only):
+            speed = None if args.speed == "auto" else int(args.speed)
+            if args.generate_only:
                 print(f"Generated {hex_file} with size {os.path.getsize(hex_file)}")
                 return 0
             else:
-                sys.exit(self.write_to_qspi_flash(args.serial_number, hex_file, args.ini_file, speed))
+                sys.exit(
+                    self.write_to_qspi_flash(
+                        args.serial_number, hex_file, args.ini_file, speed
+                    )
+                )

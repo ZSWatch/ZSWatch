@@ -6,6 +6,7 @@ import argparse
 from struct import *
 import re
 
+
 def convert_image_array_file_to_bin(filename, file_data):
     print("--------------------")
     print(filename)

@@ -6,6 +6,7 @@ import argparse
 import re
 import struct
 
+
 class ColorFormat:
     # Minimal enum-like class for color formats
     ARGB8888 = 0x10
@@ -32,6 +33,7 @@ class ColorFormat:
     def from_string(cls, s):
         return getattr(cls, s, None)
 
+
 class LVGLImageHeader:
     def __init__(self, cf, w, h, stride, flags=0, reserved_2=0):
         self.magic = 0x19
@@ -45,7 +47,17 @@ class LVGLImageHeader:
     @property
     def binary(self):
         # <BBHHHH for little endian: magic, cf, flags, w, h, stride, reserved_2
-        return struct.pack('<BBHHHHH', self.magic, self.cf, self.flags, self.w, self.h, self.stride, self.reserved_2)
+        return struct.pack(
+            "<BBHHHHH",
+            self.magic,
+            self.cf,
+            self.flags,
+            self.w,
+            self.h,
+            self.stride,
+            self.reserved_2,
+        )
+
 
 class LVGLImage:
     def __init__(self):
@@ -55,7 +67,7 @@ class LVGLImage:
         self.stride = 0
         self.flags = 0
         self.reserved_2 = 0
-        self.data = b''
+        self.data = b""
 
     def set_data(self, cf, w, h, data, stride=0, flags=0, reserved_2=0):
         self.cf = cf
@@ -68,12 +80,15 @@ class LVGLImage:
 
     @property
     def header(self):
-        return LVGLImageHeader(self.cf, self.w, self.h, self.stride, self.flags, self.reserved_2).binary
+        return LVGLImageHeader(
+            self.cf, self.w, self.h, self.stride, self.flags, self.reserved_2
+        ).binary
 
     def to_bin(self, filename):
         with open(filename, "wb") as f:
             f.write(self.header)
             f.write(self.data)
+
 
 def get_stride(w, cf):
     bpp_map = {
@@ -91,7 +106,8 @@ def get_stride(w, cf):
 
     bpp = bpp_map.get(cf, 0)
 
-    return int (w * (bpp / 8))
+    return int(w * (bpp / 8))
+
 
 def parse_lvgl_c_array(file_data):
     img_header_cf_r = re.compile(r"\.header\.cf\s*=\s*(LV_COLOR_FORMAT_\w+)", re.S)
@@ -120,9 +136,12 @@ def parse_lvgl_c_array(file_data):
     data_str = data_match.group(1)
     data_str = re.sub(r"/\*.*?\*/", "", data_str)
     data_str = data_str.replace("\n", "").replace(" ", "")
-    data_bytes = bytearray(int(x, 16) for x in re.findall(r"0x([0-9a-fA-F]{2})", data_str))
+    data_bytes = bytearray(
+        int(x, 16) for x in re.findall(r"0x([0-9a-fA-F]{2})", data_str)
+    )
 
     return cf, w, h, stride, data_bytes
+
 
 def convert_c_array_file_to_bin(filepath, target_dir):
     filename = os.path.basename(filepath)
@@ -139,6 +158,7 @@ def convert_c_array_file_to_bin(filepath, target_dir):
         img.to_bin(bin_path)
         print(f"Converted {filename} -> {bin_path}")
 
+
 def convert_c_array_to_bin(source, target_dir):
     if os.path.isfile(source):
         if source.endswith(".c") and "font" not in source:
@@ -152,6 +172,7 @@ def convert_c_array_to_bin(source, target_dir):
                 convert_c_array_file_to_bin(path, target_dir)
     else:
         print(f"Error: {source} is not a valid file or directory")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

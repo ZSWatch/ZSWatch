@@ -14,6 +14,7 @@ import pylink
 THIS_ZEPHYR = Path(__file__).parent.parent.parent / "zephyr"
 ZEPHYR_BASE = Path(os.environ.get("ZEPHYR_BASE", THIS_ZEPHYR))
 
+
 class CoredumpWestCommand(WestCommand):
     def __init__(self):
         super().__init__(
@@ -188,7 +189,7 @@ class CoredumpWestCommand(WestCommand):
 
                 if start_index != -1 and end_index != -1:
                     print("Full coredump in same buffer")
-                    coredump_content += data[start_index:(end_index + len(cb_end))]
+                    coredump_content += data[start_index : (end_index + len(cb_end))]
                     break
                 elif start_index >= 0:
                     print("Found start")
@@ -196,7 +197,7 @@ class CoredumpWestCommand(WestCommand):
                     found_start = True
                 elif found_start and end_index >= 0:
                     print("Done got both start and end")
-                    coredump_content += data[:(end_index + len(cb_end))]
+                    coredump_content += data[: (end_index + len(cb_end))]
                     break
                 elif found_start and end_index == -1:
                     print("Found start but not end yet, fill content")
