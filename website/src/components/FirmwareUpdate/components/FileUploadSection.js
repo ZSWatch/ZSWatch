@@ -12,7 +12,7 @@ const FileUploadSection = ({
   onEraseFiles,
   onConfirmFiles,
   isConnected = false,
-  transport = 'ble',
+  isSerialRecoveryMode = true,
 }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
 
@@ -159,7 +159,7 @@ const FileUploadSection = ({
             {isFileUploadInProgress ? 'Uploading...' : 'Upload Firmware'}
           </div>
         </button>
-        {transport === 'ble' && (
+        {!isSerialRecoveryMode && (
           <>
             <button
               onClick={onEraseFiles}

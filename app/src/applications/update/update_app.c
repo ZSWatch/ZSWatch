@@ -53,6 +53,7 @@ static application_t app = {
 static bool dfu_in_progress = false;
 static bool ble_fota_enabled = false;
 static bool usb_fota_enabled = false;
+static int64_t last_ui_update_time = 0;
 
 static zcbor_state_t decode_img_data(const struct zcbor_string *img_data)
 {
@@ -74,6 +75,8 @@ static enum mgmt_cb_return upload_confirm_handler(uint32_t event, enum mgmt_cb_r
                                                   void *data, size_t data_size)
 {
     const struct img_mgmt_upload_check *img_data = (const struct img_mgmt_upload_check *)data;
+    int64_t current_time = k_uptime_get();
+    bool should_update_ui = (current_time - last_ui_update_time) >= 1000; // 1 second
 
     if (!dfu_in_progress) {
         dfu_in_progress = true;
@@ -84,14 +87,16 @@ static enum mgmt_cb_return upload_confirm_handler(uint32_t event, enum mgmt_cb_r
             char status_msg[64];
             snprintf(status_msg, sizeof(status_msg), "%s", state.payload);
             update_ui_set_status(status_msg);
+            last_ui_update_time = current_time;
         }
     } else {
-        LOG_INF("DFU in progress: Image %u, Offset %u, Size %llu", img_data->req->image, img_data->req->off,
+        LOG_DBG("DFU in progress: Image %u, Offset %u, Size %llu", img_data->req->image, img_data->req->off,
                 img_data->action->size);
     }
 
-    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE && should_update_ui) {
         update_ui_set_progress((img_data->req->off * 100) / img_data->action->size);
+        last_ui_update_time = current_time;
     }
 
     return MGMT_CB_OK;

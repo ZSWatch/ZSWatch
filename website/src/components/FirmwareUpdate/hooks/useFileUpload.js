@@ -1,15 +1,14 @@
 import { useState, useRef } from "react";
 import JSZip from "jszip";
-import { binaryFileNameToImageId } from "../constants";
+import { binaryFileNameToImageId, binaryFileNameToImageIdSerialRecovery } from "../constants";
 
-export const useFileUpload = (mcumgr, onImageStateUpdate) => {
+export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
   const [fileUploadPercentage, setFileUploadPercentage] = useState(null);
   const [fileUploadSpeed, setFileUploadSpeed] = useState(null);
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [fileInfos, setFileInfos] = useState([]);
   const [fileStatus, setFileStatus] = useState("Select image files (.bin or .zip)");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmMode, setConfirmMode] = useState('ble'); // 'ble' | 'serial'
 
   const fileInputRef = useRef(null);
   const uploadStartTimeRef = useRef(null);
@@ -37,25 +36,42 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
       }
     });
 
-    mcumgr.onImageUploadFinished(() => {
+    mcumgr.onImageUploadFinished(async () => {
       setFileStatus("Upload complete");
       setFileUploadSpeed(null);
       console.log("File upload finished", fileInfos);
       
-      const fileInfo = fileInfos.find((file) => !file.isUploaded && !file.isUploading);
-      if (fileInfo) {
-        doFwUpload(fileInfo);
-      } else {
-        console.log("All files uploaded");
-        mcumgr.cmdImageState();
-        promptForConfirmationOfFwImages();
-      }
+      // Find the file that was just uploaded
+      const uploadedFile = fileInfos.find((file) => file.isUploading);
 
+      // Update file status first
       setFileInfos((prevFileInfos) =>
         prevFileInfos.map((file) =>
           file.isUploading ? { ...file, isUploaded: true, isUploading: false } : file,
         ),
       );
+
+      // Check if we just uploaded net_core in serial recovery mode
+      if (isSerialRecoveryMode && uploadedFile && uploadedFile.name === "ipc_radio.bin") {
+        console.log("Net core uploaded, waiting 30 seconds for device to load it...");
+
+        for (let i = 30; i > 0; i--) {
+          setFileStatus(`Net core uploaded - waiting ${i}s for device to load...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        setFileStatus("Net core loaded, ready for next upload");
+      }
+
+      const fileInfo = fileInfos.find((file) => !file.isUploaded && !file.isUploading);
+      if (fileInfo) {
+        doFwUpload(fileInfo);
+      } else {
+        console.log("All files uploaded");
+        setFileStatus("Upload complete");
+        mcumgr.cmdImageState();
+        promptForConfirmationOfFwImages();
+      }
     });
   };
 
@@ -157,7 +173,6 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
       } else {
         await handleBinFileUpload(selectedUploadFile, reader);
       }
-      mcumgr.cmdImageState();
     };
     reader.readAsArrayBuffer(selectedUploadFile);
   };
@@ -167,6 +182,16 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
       setFileStatus("Ready to upload");
       return;
     }
+
+    // Determine the actual image number to use based on device mode
+    // In serial recovery mode (MCUBoot), we need to remap the image numbers
+    let actualImageNumber = fileInfo.imageNumber;
+    if (isSerialRecoveryMode && binaryFileNameToImageIdSerialRecovery[fileInfo.name] !== undefined) {
+      actualImageNumber = binaryFileNameToImageIdSerialRecovery[fileInfo.name];
+      console.log(`Serial recovery mode: Remapping ${fileInfo.name} from slot ${fileInfo.imageNumber} to slot ${actualImageNumber}`);
+    }
+
+    console.log("Starting upload for", fileInfo, "to image slot", actualImageNumber);
 
     setIsFileUploadInProgress(true);
     setFileUploadPercentage(0);
@@ -179,7 +204,7 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
     lastPercentageRef.current = 0;
 
     try {
-      await mcumgr.cmdUpload(fileInfo.fileData, fileInfo.imageNumber);
+      await mcumgr.cmdUpload(fileInfo.fileData, actualImageNumber);
       setIsFileUploadInProgress(false);
       setFileInfos((prevFileInfos) =>
         prevFileInfos.map((file) => (file === fileInfo ? { ...file, isUploading: true } : file)),
@@ -206,25 +231,27 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
   };
 
   const promptForConfirmationOfFwImages = async () => {
-    // Show modal with different content depending on transport
-    const isSerial = mcumgr?._transport === 'serial';
-    setConfirmMode(isSerial ? 'serial' : 'ble');
+    // Show modal after upload completes
     setShowConfirmModal(true);
   };
 
   const handleConfirmationResponse = async (confirmed) => {
     setShowConfirmModal(false);
     if (!confirmed) return;
-    // BLE: confirm by hash
-    if (confirmMode === 'ble') {
+
+    // Only confirm by hash if device is in full application mode (not serial recovery)
+    if (!isSerialRecoveryMode) {
       for (const fileInfo of fileInfos) {
         const hashArray = Uint8Array.from(
           fileInfo.hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)),
         );
         await mcumgr.cmdImageConfirm(hashArray);
       }
+      // Wait a bit for the confirm command to take effect
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Reset device after confirming images to use them
+      await mcumgr.cmdReset();
     }
-    // Serial: no-op here; reset handled from modal in UI
   };
 
   const clearFiles = () => {
@@ -247,7 +274,6 @@ export const useFileUpload = (mcumgr, onImageStateUpdate) => {
     setupUploadListeners,
     setFileInfos, // For updating file status from parent
     showConfirmModal,
-    confirmMode,
     handleConfirmationResponse,
   };
 };

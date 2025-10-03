@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Layout from "@theme/Layout";
 import "./mcumgr.css";
 
@@ -16,6 +16,31 @@ import { useFirmwareManagement } from "./hooks/useFirmwareManagement";
 // Constants
 import { SCREENS, useGithubConfig } from "./constants";
 
+const TROUBLESHOOTING_ITEMS = [
+  {
+    title: "General issues",
+    items: [
+      "Press F12 and check console for errors",
+      "Reload the page",    ]
+  },
+  {
+    title: "Connection issues",
+    items: [
+      "Forget device in OS Bluetooth settings",
+      "Ensure watch is on",
+      "Use supported browser"
+    ]
+  },
+  {
+    title: "Upload fails",
+    items: [
+      "Reset watch, reload page and reconnect",
+      "Check file format (.zip or .bin)",
+      "Try switching to USB serial mode."
+    ]
+  }
+];
+
 const FirmwareUpdateApp = () => {
   const githubConfig = useGithubConfig();
   
@@ -27,13 +52,14 @@ const FirmwareUpdateApp = () => {
     bluetoothAvailable,
     serialAvailable,
     transport,
+    isSerialRecoveryMode,
     handleTransportChange,
     handleDeviceNameChange,
     handleConnect,
     handleDisconnect,
   } = useMCUManager();
 
-  const isConnected = mcumgr?.isConnected?.() ?? false;
+  const isConnected = (mcumgr?.isConnected?.() && (screen == SCREENS.CONNECTED)) ?? false;
 
   const {
     fileUploadPercentage,
@@ -47,9 +73,32 @@ const FirmwareUpdateApp = () => {
     handleFileUpload,
     setupUploadListeners,
     showConfirmModal,
-    confirmMode,
     handleConfirmationResponse,
-  } = useFileUpload(mcumgr);
+    waitingForNetCore,
+    continueAfterNetCore,
+  } = useFileUpload(mcumgr, isSerialRecoveryMode);
+
+  const [netCoreCountdown, setNetCoreCountdown] = useState(0);
+
+  // Handle net core countdown when waiting
+  useEffect(() => {
+    if (!waitingForNetCore) return;
+
+    let countdown = 30;
+    setNetCoreCountdown(countdown);
+
+    const interval = setInterval(() => {
+      countdown--;
+      setNetCoreCountdown(countdown);
+
+      if (countdown <= 0) {
+        clearInterval(interval);
+        continueAfterNetCore();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [waitingForNetCore, continueAfterNetCore]);
 
   const {
     fileSystemUploadProgress,
@@ -156,7 +205,7 @@ const FirmwareUpdateApp = () => {
                           : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
                       }`}
                     >
-                      Bluetooth (BLE)
+                      Bluetooth
                     </button>
                     <button
                       type="button"
@@ -168,7 +217,7 @@ const FirmwareUpdateApp = () => {
                           : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20'
                       }`}
                     >
-                      USB Serial (WebSerial)
+                      USB Serial
                     </button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
@@ -181,25 +230,35 @@ const FirmwareUpdateApp = () => {
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-lg border ${
-                  selectedTransportAvailable
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                }`}>
+                {!selectedTransportAvailable && (
+                  <div className="p-3 rounded-lg border bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                    <div className="flex items-center">
+                      <span className="mr-2">❌</span>
+                      <span className="text-sm font-medium text-red-800 dark:text-red-300">
+                        {transport === 'ble' ? 'Bluetooth (BLE)' : 'USB Serial (WebSerial)'} Unavailable
+                      </span>
+                    </div>
+                    <p className="mt-2 mb-0 text-xs leading-relaxed text-red-700 dark:text-red-300">
+                      {transport === 'ble'
+                        ? 'Requires a browser with Web Bluetooth support (Chrome, Edge, Opera).'
+                        : 'Requires Web Serial support (Chrome or Edge).'}
+                    </p>
+                  </div>
+                )}
+
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center">
-                    <span className="mr-2">{selectedTransportAvailable ? '✅' : '❌'}</span>
-                    <span className={`text-sm font-medium ${
-                      selectedTransportAvailable ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
-                    }`}>
-                      {transport === 'ble' ? 'Bluetooth (BLE)' : 'USB Serial (WebSerial)'} {selectedTransportAvailable ? 'Available' : 'Unavailable'}
+                    <span className="mr-2">💡</span>
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                      Enable Firmware Updates
                     </span>
                   </div>
-                  <p className={`mt-2 text-xs leading-relaxed ${
-                    selectedTransportAvailable ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-300'
-                  }`}>
-                    {transport === 'ble'
-                      ? 'Requires a browser with Web Bluetooth support (Chrome, Edge, Opera). Ensure the watch is advertising and not already connected to another device.'
-                      : 'Requires Web Serial support (Chrome or Edge) and watch is in MCUBoot. Enter MCUBoot by holding down top right button while resetting the watch. Or holding down two right buttons for 25 seconds.'}
+                  <p className="mt-2 mb-0 text-xs leading-relaxed text-blue-700 dark:text-blue-200">
+                    Go to ZSWatch <b>System -> Update App</b> and enable either USB or Bluetooth.
+                    <b> USB is significantly faster than Bluetooth</b> due to Web Bluetooth API limitations.
+                    <br />
+                    <br />
+                    <b>Serial Recovery:</b> If ZSWatch is not responding enter MCUBoot by holding down two right buttons for 25 seconds.
                   </p>
                 </div>
 
@@ -297,29 +356,19 @@ const FirmwareUpdateApp = () => {
             
             <div className="bg-white dark:bg-white/5 backdrop-blur-sm rounded-lg p-6 shadow-sm">
               <div className="space-y-3">
-                <details className="group">
-                  <summary className="flex items-center justify-between cursor-pointer text-gray-900 dark:text-white hover:text-zswatch-primary transition-colors text-sm">
-                    <span>Connection issues</span>
-                    <span className="group-open:rotate-180 transition-transform">▼</span>
-                  </summary>
-                  <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
-                    <p className="m-0">• Forget device in OS Bluetooth settings</p>
-                    <p className="m-0">• Ensure watch is on</p>
-                    <p className="m-0">• Use supported browser</p>
-                  </div>
-                </details>
-                
-                <details className="group">
-                  <summary className="flex items-center justify-between cursor-pointer text-gray-900 dark:text-white hover:text-zswatch-primary transition-colors text-sm">
-                    <span>Upload fails</span>
-                    <span className="group-open:rotate-180 transition-transform">▼</span>
-                  </summary>
-                  <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
-                    <p className="m-0">• Reset watch, reload page and reconnect</p>
-                    <p className="m-0">• Check file format (.zip or .bin)</p>
-                    <p className="m-0">• Try switching to USB serial mode.</p>
-                  </div>
-                </details>
+                {TROUBLESHOOTING_ITEMS.map((section, index) => (
+                  <details key={index} className="group">
+                    <summary className="flex items-center justify-between cursor-pointer text-gray-900 dark:text-white hover:text-zswatch-primary transition-colors text-sm">
+                      <span>{section.title}</span>
+                      <span className="group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-3 space-y-2 text-xs text-gray-600 dark:text-gray-300 pl-4 border-l-2 border-zswatch-primary/30">
+                      {section.items.map((item, itemIndex) => (
+                        <p key={itemIndex} className="m-0">• {item}</p>
+                      ))}
+                    </div>
+                  </details>
+                ))}
               </div>
             </div>
           </div>
@@ -345,7 +394,7 @@ const FirmwareUpdateApp = () => {
                 onEraseFiles={() => mcumgr && mcumgr.cmdImageErase()}
                 onConfirmFiles={() => mcumgr && mcumgr.cmdImageConfirm()}
                 isConnected={isConnected}
-                transport={transport}
+                isSerialRecoveryMode={isSerialRecoveryMode}
               />
             </div>
           </div>
@@ -363,7 +412,7 @@ const FirmwareUpdateApp = () => {
                 onFileSystemSelection={handleFileSystemSelection}
                 onFileSystemUploadStart={startFileSystemUpload}
                 isConnected={isConnected}
-                transport={transport}
+                isSerialRecoveryMode={isSerialRecoveryMode}
               />
             </div>
           </div>
@@ -468,7 +517,7 @@ const FirmwareUpdateApp = () => {
                     >
                       Refresh
                     </button>
-                    {transport === 'ble' && (
+                    {!isSerialRecoveryMode && (
                       <>
                         <button
                           onClick={() => mcumgr && mcumgr.cmdImageTest()}
@@ -492,15 +541,15 @@ const FirmwareUpdateApp = () => {
                     )}
                   </div>
                   
-                  {transport === 'ble' ? (
+                  {!isSerialRecoveryMode ? (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
-                      <span className="mr-1">🔗</span>
-                      Bluetooth connection required for test/confirm/erase
+                      <span className="mr-1">ℹ️</span>
+                      Use Test/Confirm/Erase to manage firmware images
                     </div>
                   ) : (
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center">
                       <span className="mr-1">ℹ️</span>
-                      Serial updates flash directly. Just reset to boot new firmware.
+                      Updates flash directly in MCUBoot mode. Reset device to boot new firmware.
                     </div>
                   )}
                 </div>
@@ -544,24 +593,42 @@ const FirmwareUpdateApp = () => {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md mx-4">
-            {confirmMode === 'serial' ? (
+            {isSerialRecoveryMode ? (
               <>
                 <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
                   Firmware Uploaded
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Update complete. Reset the device to boot the new firmware.
-                </p>
+                {netCoreCountdown > 0 ? (
+                  <>
+                    <p className="text-gray-600 dark:text-gray-300 mb-2">
+                      Net core image uploaded successfully. Waiting for device to load it...
+                    </p>
+                    <div className="text-center my-4">
+                      <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                        {netCoreCountdown}s
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Please wait while the device initializes
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-600 dark:text-gray-300 mb-6">
+                    Update complete. Reset the device to boot the new firmware.
+                  </p>
+                )}
                 <div className="flex gap-3 justify-end">
                   <button
                     onClick={() => handleConfirmationResponse(false)}
-                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                    disabled={netCoreCountdown > 0}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Close
                   </button>
                   <button
                     onClick={() => { handleReset(); handleConfirmationResponse(false); }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    disabled={netCoreCountdown > 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Reset Now
                   </button>
@@ -574,7 +641,7 @@ const FirmwareUpdateApp = () => {
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                   Do you want to confirm the uploaded images and restart the device?
-                  After confirming, you need to restart the device to apply the changes.
+                  It will take about 30s to reboot and apply the new firmware. Be patient.
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button

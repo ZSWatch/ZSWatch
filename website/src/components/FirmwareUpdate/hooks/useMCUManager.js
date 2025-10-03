@@ -16,10 +16,11 @@ export const useMCUManager = () => {
   const [images, setImages] = useState([]);
   const [bluetoothAvailable, setBluetoothAvailable] = useState(false);
   const [serialAvailable, setSerialAvailable] = useState(!!navigator.serial);
-  const [transport, setTransport] = useState("ble");
+  const [transport, setTransport] = useState("serial");
+  const [isSerialRecoveryMode, setIsSerialRecoveryMode] = useState(true);
 
   // Use useRef to create a stable mcumgr instance
-  const mcumgrRef = useRef(new MCUManager({ transport: "ble" }));
+  const mcumgrRef = useRef(new MCUManager({ transport: "serial" }));
   const mcumgr = mcumgrRef.current;
 
   useEffect(() => {
@@ -40,16 +41,21 @@ export const useMCUManager = () => {
     // Set up mcumgr event listeners
     mcumgr.onConnecting(() => {
       setScreen(SCREENS.CONNECTING);
+      // Reset mode detection when starting a new connection
+      setIsSerialRecoveryMode(true);
     });
 
     mcumgr.onConnect(() => {
       setDeviceName(prevName => mcumgr.name || prevName);
-      setScreen(SCREENS.CONNECTED);
       mcumgr.cmdImageState();
     });
 
     mcumgr.onDisconnect(() => {
       setScreen(SCREENS.INITIAL);
+      // Reset mode detection on disconnect
+      setIsSerialRecoveryMode(true);
+      // Clear images on disconnect
+      setImages([]);
     });
 
     mcumgr.onMessage(({ group, id, data }) => {
@@ -75,7 +81,31 @@ export const useMCUManager = () => {
         case MGMT_GROUP_ID_IMAGE:
           switch (id) {
             case IMG_MGMT_ID_STATE:
-              setImages(data.images || []);
+              const receivedImages = data.images || [];
+              setImages(receivedImages);
+
+              // Don't consider connected until we receive image state as that is how we detect
+              // if device is in serial recovery mode or full application mode
+              console.log("Received image state:", receivedImages);
+              setScreen(prevScreen =>
+                prevScreen === SCREENS.CONNECTING ? SCREENS.CONNECTED : prevScreen
+              );
+
+              // Detect if device is in serial recovery mode (MCUBoot) or full application mode
+              // Different modes return different levels of information:
+              // - Full application mode: provides confirmed, pending, active, hash, slot
+              // - Serial recovery mode (MCUBoot): only provides basic image info, different image slots
+              if (receivedImages.length > 0) {
+                const firstImage = receivedImages[0];
+                // Device is in full application mode if it provides confirmed/pending status
+                // If false, device is in MCUBoot serial recovery mode
+                const isAppMode =
+                  firstImage.hasOwnProperty('confirmed') &&
+                  firstImage.hasOwnProperty('pending') &&
+                  firstImage.hasOwnProperty('hash');
+                setIsSerialRecoveryMode(!isAppMode);
+                console.log("Device mode detected:", isAppMode ? "Full Application" : "Serial Recovery (MCUBoot)");
+              }
               break;
           }
           break;
@@ -89,6 +119,20 @@ export const useMCUManager = () => {
   useEffect(() => {
     mcumgr.setTransport(transport);
   }, [transport, mcumgr]);
+
+  useEffect(() => {
+    // Adjust chunk timeout based on device mode and transport
+    let timeout;
+    if (transport === "serial") {
+      // For some reason serial updates in application often times out, even with long timeouts
+      // so we use a shorter timeout to not wait too long
+      timeout = isSerialRecoveryMode ? 500 : 100;
+    } else {
+      timeout = 500;
+    }
+    mcumgr.setChunkTimeout(timeout);
+    console.log(`Chunk timeout set to ${timeout}ms for ${transport.toUpperCase()} transport in ${isSerialRecoveryMode ? 'Serial Recovery' : 'Application'} mode`);
+  }, [isSerialRecoveryMode, transport, mcumgr]);
 
   const handleTransportChange = value => {
     if (value !== "ble" && value !== "serial") {
@@ -124,6 +168,7 @@ export const useMCUManager = () => {
     bluetoothAvailable,
     serialAvailable,
     transport,
+    isSerialRecoveryMode,
     setScreen,
     handleTransportChange,
     handleDeviceNameChange,
