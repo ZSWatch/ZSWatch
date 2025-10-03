@@ -167,7 +167,7 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
 {
     file_header_t *file;
 
-    if (file_table.magic != TABLE_HEADER_MAGIC) {
+    if (file_table.magic != TABLE_HEADER_MAGIC || full_fs_file.len == 0) {
         return NULL;
     }
 
@@ -632,9 +632,23 @@ static int zsw_decoder_init(void)
     full_fs_file.opened = false;
     full_fs_file.index = 0;
     full_fs_file.len = file_table.total_length;
+
     if (file_table.magic != TABLE_HEADER_MAGIC) {
-        LOG_ERR("Invalid file table magic: %x", file_table.magic);
+        LOG_ERR("Invalid file table magic: 0x%08x", file_table.magic);
         full_fs_file.len = 0;
+    } else {
+        uint32_t trailer_magic;
+        uint32_t trailer_offset = file_table.total_length - sizeof(trailer_magic); // Last 4 bytes
+
+        rc = flash_area_read(flash_area, trailer_offset, &trailer_magic, sizeof(trailer_magic));
+        if (rc != 0) {
+            LOG_ERR("Failed to read trailer magic at offset %d: %d", trailer_offset, rc);
+            full_fs_file.len = 0;
+        } else if (trailer_magic != TABLE_HEADER_MAGIC) {
+            LOG_ERR("Invalid trailer magic at offset %d: 0x%08x, expected 0x%08x",
+                    trailer_offset, trailer_magic, TABLE_HEADER_MAGIC);
+            full_fs_file.len = 0;
+        }
     }
 
     rc = fs_register(FS_TYPE_EXTERNAL_BASE, &zsw_fs);
