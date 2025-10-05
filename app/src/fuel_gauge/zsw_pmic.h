@@ -5,6 +5,13 @@
 int zsw_pmic_get_full_state(struct battery_sample_event *sample);
 
 /**
+ * @brief Get whether VBUS (USB power) is connected to the PMIC.
+ *
+ * @return true if VBUS is connected, false otherwise.
+ */
+int zsw_pmic_get_vbus_connected(void);
+
+/**
  * @brief Powers down everything. Enter lowest power mode.
  *
  * This function is used to power down the PMIC and enter it's "ship mode".

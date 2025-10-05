@@ -293,6 +293,11 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     return ret;
 }
 
+int zsw_pmic_get_vbus_connected(void)
+{
+    return vbus_connected;
+}
+
 int zsw_pmic_power_down(void)
 {
     if (vbus_connected) {

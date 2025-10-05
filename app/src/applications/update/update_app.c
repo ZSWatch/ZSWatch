@@ -23,11 +23,15 @@
 #include "update_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_xip_manager.h"
+#include "managers/zsw_usb_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 #include <zephyr/logging/log.h>
 #include <zcbor_decode.h>
 #include <zephyr/usb/usb_device.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/sys/reboot.h>
+#include <zephyr/retention/bootmode.h>
 #ifndef CONFIG_ARCH_POSIX
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
@@ -144,19 +148,14 @@ static bool toggle_usb_fota(void)
     if (usb_fota_enabled) {
         if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
             zsw_xip_enable();
-            int ret = usb_enable(NULL);
-            if (ret && ret != -EALREADY) {
-                LOG_ERR("Failed to enable USB: %d", ret);
+            int ret = zsw_usb_manager_enable();
+            if (ret) {
+                zsw_xip_disable();
+                LOG_ERR("Failed to enable USB via manager: %d", ret);
                 update_ui_set_status("Status: USB enable failed");
                 usb_fota_enabled = false; // Revert state
-                zsw_xip_disable();
                 update_ui_update_usb_button_state(false);
                 return false;
-            }
-            if (ret == -EALREADY) {
-                LOG_INF("USB stack already enabled");
-            } else {
-                LOG_INF("USB stack enabled");
             }
             update_ui_set_status("Status: USB FOTA enabled - Ready for updates");
             update_ui_update_usb_button_state(true);
@@ -164,9 +163,9 @@ static bool toggle_usb_fota(void)
         }
     } else {
         if (IS_ENABLED(CONFIG_USB_DEVICE_STACK)) {
-            int ret = usb_disable();
+            int ret = zsw_usb_manager_disable();
             if (ret) {
-                LOG_ERR("Failed to disable USB");
+                LOG_ERR("Failed to disable USB via manager: %d", ret);
                 update_ui_set_status("Status: USB disable failed");
                 usb_fota_enabled = true; // Revert state
                 update_ui_update_usb_button_state(true);
@@ -196,6 +195,8 @@ static bool toggle_ble_fota(void)
             zsw_xip_disable();
             return false;
         }
+        ble_comm_set_fast_adv_interval();
+        ble_comm_set_short_connection_interval();
         ble_fota_enabled = true;
         update_ui_set_status("Status: BLE FOTA enabled - Ready for updates");
         LOG_INF("BLE FOTA enabled");
@@ -209,6 +210,8 @@ static bool toggle_ble_fota(void)
             update_ui_update_ble_button_state(true);
             return false;
         }
+        ble_comm_set_default_adv_interval();
+        ble_comm_set_default_connection_interval();
         ble_fota_enabled = false;
         // Disable XIP after disabling MCUmgr
         zsw_xip_disable();
@@ -218,6 +221,77 @@ static bool toggle_ble_fota(void)
         return true;
     }
 }
+
+#ifndef CONFIG_ARCH_POSIX
+static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
+        return -EINVAL;
+    }
+
+    if (strcmp(argv[1], "enable") == 0) {
+        if (ble_fota_enabled) {
+            shell_print(sh, "BLE FOTA is already enabled");
+            return 0;
+        }
+        shell_print(sh, "Enabling BLE FOTA...");
+        bool result = toggle_ble_fota();
+        if (result && ble_fota_enabled) {
+            shell_print(sh, "BLE FOTA enabled successfully");
+            return 0;
+        } else {
+            shell_error(sh, "Failed to enable BLE FOTA");
+            return -EIO;
+        }
+    } else if (strcmp(argv[1], "disable") == 0) {
+        if (!ble_fota_enabled) {
+            shell_print(sh, "BLE FOTA is already disabled");
+            return 0;
+        }
+        shell_print(sh, "Disabling BLE FOTA...");
+        bool result = toggle_ble_fota();
+        if (result && !ble_fota_enabled) {
+            shell_print(sh, "BLE FOTA disabled successfully");
+            return 0;
+        } else {
+            shell_error(sh, "Failed to disable BLE FOTA");
+            return -EIO;
+        }
+    } else if (strcmp(argv[1], "status") == 0) {
+        shell_print(sh, "BLE FOTA is currently %s", ble_fota_enabled ? "enabled" : "disabled");
+        return 0;
+    } else {
+        shell_error(sh, "Unknown command: %s", argv[1]);
+        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
+        return -EINVAL;
+    }
+}
+
+SHELL_CMD_REGISTER(ble_fota, NULL, "Enable/disable BLE FOTA (enable|disable|status)", cmd_ble_fota);
+
+static int cmd_boot(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2 || strcmp(argv[1], "start") != 0) {
+        shell_error(sh, "Usage: boot start");
+        return -EINVAL;
+    }
+
+    shell_print(sh, "Preparing to enter serial recovery");
+    int rc = bootmode_set(BOOT_MODE_TYPE_BOOTLOADER);
+    if (rc != 0) {
+        shell_error(sh, "Failed to set boot mode (%d)", rc);
+        return rc;
+    }
+
+    shell_print(sh, "Rebooting into bootloader...");
+    sys_reboot(SYS_REBOOT_COLD);
+
+    return 0;
+}
+
+SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
+#endif
 
 #else
 static bool toggle_ble_fota(void)
@@ -238,15 +312,11 @@ static bool toggle_usb_fota(void)
 static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
     update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
-    ble_comm_set_fast_adv_interval();
-    ble_comm_set_short_connection_interval();
 }
 
 static void update_app_stop(void)
 {
     update_ui_remove();
-    ble_comm_set_default_adv_interval();
-    ble_comm_set_default_connection_interval();
 }
 
 static int update_app_add(void)
