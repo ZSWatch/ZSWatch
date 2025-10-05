@@ -17,6 +17,7 @@ Hardware-in-the-loop testing for ZSWatch firmware using pytest.
        jlink_serial: "1057713387"
        serial_port: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B0031VW0-if00-port0"
        ppk2_port: "/dev/serial/by-id/usb-Nordic_Semiconductor_PPK2_E01C7386A791-if01"
+       usb_cdc_port: "/dev/serial/by-id/usb-ZEPHYR_ZSWatch_D476C294A8135102-if00"
      zswatch@5:
        jlink_serial: "760208515"
        serial_port: "/dev/serial/by-id/usb-SEGGER_J-Link_000760208515-if00"
