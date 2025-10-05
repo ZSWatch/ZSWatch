@@ -6,6 +6,7 @@ import "./mcumgr.css";
 import PrebuiltFirmwares from "./components/PrebuiltFirmwares";
 import FileUploadSection from "./components/FileUploadSection";
 import FileSystemUpload from "./components/FileSystemUpload";
+import ShellConsole from "./components/ShellConsole";
 
 // Hooks
 import { useMCUManager } from "./hooks/useMCUManager";
@@ -58,6 +59,7 @@ const FirmwareUpdateApp = () => {
     handleDeviceNameChange,
     handleConnect,
     handleDisconnect,
+    registerShellListener,
   } = useMCUManager();
 
   const isConnected = (mcumgr?.isConnected?.() && (screen === SCREENS.CONNECTED)) ?? false;
@@ -80,6 +82,7 @@ const FirmwareUpdateApp = () => {
   } = useFileUpload(mcumgr, isSerialRecoveryMode);
 
   const [netCoreCountdown, setNetCoreCountdown] = useState(0);
+  const [isShellConsoleModalOpen, setShellConsoleModalOpen] = useState(false);
 
   // Handle net core countdown when waiting
   useEffect(() => {
@@ -423,6 +426,27 @@ const FirmwareUpdateApp = () => {
 
         {/* Right Column - Prebuilt Firmware & Images */}
         <div className="lg:col-span-3 xl:col-span-4 space-y-6">
+          {/* Shell Console */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Shell Console</h2>
+              <button
+                type="button"
+                onClick={() => setShellConsoleModalOpen(true)}
+                className="px-3 py-2 text-xs font-medium rounded-md border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-200 bg-white dark:bg-white/10 hover:bg-gray-100 dark:hover:bg-white/20 transition-all"
+              >
+                Open in Modal
+              </button>
+            </div>
+            <div className="border-b border-gray-200 dark:border-white/20 mb-4"></div>
+
+            <ShellConsole
+              mcumgr={mcumgr}
+              registerShellListener={registerShellListener}
+              isConnected={isConnected}
+            />
+          </div>
+
           {/* Prebuilt Firmware */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Prebuilt Firmware</h2>
@@ -591,6 +615,41 @@ const FirmwareUpdateApp = () => {
           {/* Information Cards - moved to sidebar in connected state */}
         </div>
       </div>
+
+      {isShellConsoleModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShellConsoleModalOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/60"></div>
+          <div
+            className="relative z-10 w-full max-w-5xl"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/10">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white m-0">Shell Console</h3>
+                <button
+                  type="button"
+                  onClick={() => setShellConsoleModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white transition"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4">
+                <ShellConsole
+                  mcumgr={mcumgr}
+                  registerShellListener={registerShellListener}
+                  isConnected={isConnected}
+                  className="shadow-none p-0 bg-transparent"
+                  textareaClassName="h-[28rem] text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirmModal && (

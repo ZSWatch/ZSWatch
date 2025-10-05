@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import MCUManager from "../../../mcumgr-web/js/mcumgr";
 import {
   MGMT_GROUP_ID_IMAGE,
@@ -7,6 +7,7 @@ import {
   OS_MGMT_ID_ECHO,
   OS_MGMT_ID_TASKSTAT,
   OS_MGMT_ID_MPSTAT,
+  MGMT_GROUP_ID_SHELL,
 } from "../../../mcumgr-web/js/mcumgr";
 import { SCREENS } from "../constants";
 
@@ -22,6 +23,29 @@ export const useMCUManager = () => {
   // Use useRef to create a stable mcumgr instance
   const mcumgrRef = useRef(new MCUManager({ transport: "serial" }));
   const mcumgr = mcumgrRef.current;
+
+  const shellListenersRef = useRef(new Set());
+
+  const notifyShellListeners = useCallback((payload) => {
+    shellListenersRef.current.forEach(listener => {
+      try {
+        listener(payload);
+      } catch (error) {
+        console.error('Shell listener callback failed', error);
+      }
+    });
+  }, []);
+
+  const registerShellListener = useCallback((listener) => {
+    if (typeof listener !== 'function') {
+      return () => {};
+    }
+
+    shellListenersRef.current.add(listener);
+    return () => {
+      shellListenersRef.current.delete(listener);
+    };
+  }, []);
 
   useEffect(() => {
     // Check Bluetooth availability
@@ -58,7 +82,7 @@ export const useMCUManager = () => {
       setImages([]);
     });
 
-    mcumgr.onMessage(({ group, id, data }) => {
+    mcumgr.onMessage(({ group, id, data, op }) => {
       console.log("MCU Manager message:", { group, id, data });
       switch (group) {
         case MGMT_GROUP_ID_OS:
@@ -109,12 +133,15 @@ export const useMCUManager = () => {
               break;
           }
           break;
+        case MGMT_GROUP_ID_SHELL:
+          notifyShellListeners({ group, id, data, op });
+          break;
         default:
           console.log("Unknown group");
           break;
       }
     });
-  }, [mcumgr]);
+  }, [mcumgr, notifyShellListeners]);
 
   useEffect(() => {
     mcumgr.setTransport(transport);
@@ -174,5 +201,6 @@ export const useMCUManager = () => {
     handleDeviceNameChange,
     handleConnect,
     handleDisconnect,
+    registerShellListener,
   };
 };
