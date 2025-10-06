@@ -33,7 +33,10 @@ menu "ZSWatch"
         # Enable Shell over MCUmgr
         select MCUMGR_GRP_SHELL
         select SHELL
+        select SHELL_MINIMAL
         select SHELL_BACKEND_DUMMY
+        select SHELL_HELP
+        select CONSOLE
 
         select BASE64
         select MCUMGR_TRANSPORT_DUMMY

@@ -11,8 +11,8 @@ bool zsw_usb_manager_is_enabled(void);
 #define zsw_usb_manager_enable() _zsw_usb_manager_enable(__func__)
 #define zsw_usb_manager_disable() _zsw_usb_manager_disable(__func__)
 #else
-#define zsw_usb_manager_enable()
-#define zsw_usb_manager_disable()
+#define zsw_usb_manager_enable() (0)
+#define zsw_usb_manager_disable() (0)
 #define zsw_usb_manager_is_enabled() (false)
 #endif
 

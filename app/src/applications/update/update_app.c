@@ -30,8 +30,6 @@
 #include <zcbor_decode.h>
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/shell/shell.h>
-#include <zephyr/sys/reboot.h>
-#include <zephyr/retention/bootmode.h>
 #ifndef CONFIG_ARCH_POSIX
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
@@ -222,7 +220,7 @@ static bool toggle_ble_fota(void)
     }
 }
 
-#ifndef CONFIG_ARCH_POSIX
+#ifdef CONFIG_SHELL
 static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
 {
     if (argc < 2) {
@@ -269,28 +267,6 @@ static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_CMD_REGISTER(ble_fota, NULL, "Enable/disable BLE FOTA (enable|disable|status)", cmd_ble_fota);
-
-static int cmd_boot(const struct shell *sh, size_t argc, char **argv)
-{
-    if (argc < 2 || strcmp(argv[1], "start") != 0) {
-        shell_error(sh, "Usage: boot start");
-        return -EINVAL;
-    }
-
-    shell_print(sh, "Preparing to enter serial recovery");
-    int rc = bootmode_set(BOOT_MODE_TYPE_BOOTLOADER);
-    if (rc != 0) {
-        shell_error(sh, "Failed to set boot mode (%d)", rc);
-        return rc;
-    }
-
-    shell_print(sh, "Rebooting into bootloader...");
-    sys_reboot(SYS_REBOOT_COLD);
-
-    return 0;
-}
-
-SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
 #endif
 
 #else
