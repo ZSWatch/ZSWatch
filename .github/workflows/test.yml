@@ -130,15 +130,16 @@ jobs:
           sudo btmgmt --index 0 power on
 
           pytest \
-            --junitxml=report_target.xml -v \
-            -m 'not linux_only' \
-            --html=report_target.html \
-            --self-contained-html
-          pytest \
             --board=native_sim \
             -m 'linux_only' --board=native_sim \
             --junitxml=report_linux.xml -v \
             --html=report_linux.html \
+            --self-contained-html
+
+          pytest \
+            --junitxml=report_target.xml -v \
+            -m 'not linux_only' \
+            --html=report_target.html \
             --self-contained-html
 
       - name: Upload test reports

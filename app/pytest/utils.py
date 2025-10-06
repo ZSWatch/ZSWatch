@@ -1,7 +1,10 @@
+import asyncio
 import subprocess
 import logging
+import sys
+import threading
 import time
-import pylink
+
 import serial
 
 log = logging.getLogger()
@@ -125,38 +128,6 @@ def recover(device_config):
     )
 
 
-def read_rtt(
-    serial_number,
-    timeout_ms=10000,
-    target_device="nRF5340_XXAA",
-):
-    """Read Segger RTT output"""
-    jlink = pylink.JLink()
-    log.info("Connecting to JLink...")
-    jlink.open(serial_no=serial_number)
-    log.info("Connecting to %s..." % target_device)
-    jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
-    jlink.connect(target_device)
-    jlink.rtt_start(None)
-    start_time = current_milli_time()
-    read_data = ""
-
-    while jlink.connected() and start_time + timeout_ms > current_milli_time():
-        read_bytes = jlink.rtt_read(0, 1024)
-
-        if read_bytes and read_bytes != "":
-            data = "".join(map(chr, read_bytes))
-            read_data = read_data + data
-
-        time.sleep(0.1)
-
-    jlink.close()
-    print(read_data)
-    log.debug(read_data)
-
-    return read_data
-
-
 def read_serial(serial_device, timeout_ms=10000):
     """Read serial output from a given serial handle"""
     start_time = current_milli_time()
@@ -174,11 +145,104 @@ def read_serial(serial_device, timeout_ms=10000):
 
 
 def read_log(device_config, timeout_ms=10000):
-    """Read from either RTT or serial based on device configuration"""
-    if "serial_port" in device_config:
-        return read_serial(device_config["serial"], timeout_ms)
-    elif "jlink_serial" in device_config and device_config["jlink_serial"]:
-        return read_rtt(device_config["jlink_serial"], timeout_ms)
-    else:
-        log.error("No valid communication method found in device configuration.")
+    """Read from serial when available (legacy helper, prefer LogCollector)."""
+    serial_dev = device_config.get("serial")
+    if serial_dev is None:
+        log.error("Serial logging not configured for this device.")
         return ""
+    return read_serial(serial_dev, timeout_ms)
+
+
+class LogCollector:
+    """Simple background collector for UART output."""
+
+    def __init__(self, device_config, show_uart: bool = False):
+        self._device_config = device_config
+        self._show_uart = show_uart
+        self._history: list[str] = []
+        self._lock = threading.Lock()
+        self._update_event = threading.Event()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._has_source = False
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        if self._device_config.get("serial") is not None:
+            self._thread = threading.Thread(target=self._serial_loop, daemon=True)
+            self._has_source = True
+        else:
+            self._has_source = False
+            return
+        self._stop_event.clear()
+        self._update_event.clear()
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._update_event.set()
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=2.0)
+        self._thread = None
+
+    def clear(self) -> None:
+        with self._lock:
+            self._history.clear()
+        self._update_event.set()
+
+    def get_text(self) -> str:
+        with self._lock:
+            return "".join(self._history)
+
+    def wait_for(self, pattern: str, timeout_s: float) -> bool:
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if pattern in self.get_text():
+                return True
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            self._update_event.wait(remaining)
+            self._update_event.clear()
+        return pattern in self.get_text()
+
+    async def wait_for_async(self, pattern: str, timeout_s: float) -> bool:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.wait_for, pattern, timeout_s)
+
+    def has_source(self) -> bool:
+        return self._has_source
+
+    def _append(self, chunk: str) -> None:
+        if not chunk:
+            return
+        with self._lock:
+            self._history.append(chunk)
+        if self._show_uart:
+            print(chunk, end="", file=sys.stdout, flush=True)
+        self._update_event.set()
+
+    def _serial_loop(self) -> None:
+        serial_dev = self._device_config.get("serial")
+        if serial_dev is None:
+            return
+        try:
+            serial_dev.reset_input_buffer()
+        except Exception:
+            pass
+        while not self._stop_event.is_set():
+            try:
+                waiting = serial_dev.in_waiting
+                if waiting:
+                    data = serial_dev.read(waiting)
+                else:
+                    data = serial_dev.read(1)
+                if data:
+                    chunk = data.decode(errors="replace")
+                    self._append(chunk)
+                else:
+                    time.sleep(0.05)
+            except Exception:
+                break

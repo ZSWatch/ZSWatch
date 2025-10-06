@@ -185,7 +185,7 @@ def setup_ppk2(device_config: Dict) -> Optional[PPK2Manager]:
         return None
 
     try:
-        manager = PPK2Manager(device_config["ppk2_port"], 4100)
+        manager = PPK2Manager(device_config["ppk2_port"], 1800)
         manager.setup()
         return manager
     except Exception as e:

@@ -1,18 +1,20 @@
-import time
 import logging
-import utils
-import yaml
-
 import asyncio
 from typing import Final
 
-from smpclient import SMPClient
 from smpclient.generics import error, success
 from smpclient.requests.os_management import EchoWrite
-from smpclient.transport.ble import SMPBLETransport
 
 import pytest
 from bleak import BleakScanner, BleakClient
+
+from mcumgr_utils import (
+    find_ble_address as _find_ble_address,
+    with_ble_client as _with_ble_client,
+    require_usb_port as _require_usb_port,
+    enable_ble_fota as _enable_ble_fota,
+    wait_for_usb_port as _wait_for_usb_port,
+)
 
 log = logging.getLogger()
 
@@ -45,32 +47,22 @@ async def test_connect(device_config):
 
 @pytest.mark.asyncio
 async def test_smp_echo(device_config):
-    mac = device_config["mac"]
-    log.info("Scanning for SMP servers...")
-    smp_servers: Final = await SMPBLETransport.scan(timeout=30.0)
-    log.info("OK")
-    log.info(f"Found {len(smp_servers)} SMP servers: {smp_servers}")
-    log.info(smp_servers)
-    matched_server = None
-    for server in smp_servers:
-        if server.address.lower() == mac.lower():
-            matched_server = server
-            break
-    assert (
-        matched_server is not None
-    ), f"Device with MAC {mac} not found among SMP servers!"
+    usb_port = _require_usb_port(device_config)
+    await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
 
-    log.info("Connecting to the SMP server...")
-    async with SMPClient(SMPBLETransport(), matched_server.address) as client:
-        log.info("OK")
+    await _enable_ble_fota(device_config)
+    await asyncio.sleep(2)
+    address = await _find_ble_address(device_config)
+    log.info(f"Connecting to SMP server at {address} via helper")
 
-        log.info("Sending request...")
+    async def run(client):
+        log.info("Sending SMP echo request...")
         response: Final = await client.request(EchoWrite(d="Hello, World!"))
-        log.info("OK")
-
         if success(response):
             log.info(f"Received response: {response}")
         elif error(response):
-            log.info(f"Received error: {response}")
+            pytest.fail(f"Received SMP error response: {response}")
         else:
-            raise Exception(f"Unknown response: {response}")
+            pytest.fail(f"Unknown SMP response: {response}")
+
+    await _with_ble_client(address, run)

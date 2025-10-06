@@ -1,30 +1,22 @@
-import time
 import logging
 
 import pytest
 import utils
-import yaml
 
 log = logging.getLogger()
 
 
 def test_boot(device_config):
-    if "serial_port" not in device_config:
-        pytest.skip("No serial port configured for device, RTT not supported right now")
     search_string = "Disable Pairable"
     log.info("Check for '{}' string".format(search_string))
     timeout_s = 10
+    collector = device_config.get("uart_logs")
+    if collector is None or not collector.has_source():
+        pytest.skip("No log collector available for this device")
+    collector.clear()
     utils.reset(device_config)
-    start_time = time.time()
-    output = ""
-    found = False
-    while time.time() - start_time < timeout_s:
-        chunk = utils.read_log(device_config, timeout_ms=1000)
-        output += chunk
-        if search_string in output:
-            found = True
-            break
-    log.info(output)
+    found = collector.wait_for(search_string, timeout_s)
+    log.info(collector.get_text())
     assert (
         found
     ), f"'{search_string}' not found in serial output within {timeout_s} seconds"

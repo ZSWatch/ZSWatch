@@ -97,13 +97,15 @@ def device_config(device_param):
     if "serial_port" in device:
         try:
             serial_device = serial.Serial(
-                device["serial_port"], baudrate=115200, timeout=5
+                device["serial_port"],
+                baudrate=115200,
+                timeout=0.1,
+                exclusive=True,
             )
+
         except serial.SerialException as e:
             logging.error(f"Failed to open serial port {device['serial_port']}: {e}")
-            pytest.skip(
-                f"Skipping tests: cannot open serial port {device['serial_port']}"
-            )
+            pytest.fail(f"Cannot open serial port {device['serial_port']}: {e}")
 
     cfg = dict(device)
     cfg["board"] = str(board)
@@ -132,6 +134,12 @@ def ppk2_session_cleanup():
 
 def pytest_addoption(parser):
     parser.addoption("--board", action="store", help="Board name from devices.yaml")
+    parser.addoption(
+        "--show-uart",
+        action="store_true",
+        default=False,
+        help="Print UART logs during test execution",
+    )
 
 
 # Flash once per board before all tests for that board
@@ -168,6 +176,13 @@ def prepare_device(device_config):
             )
             raise
 
+@pytest.fixture
+def restore_firmware(device_config):
+    """Restore firmware after tests that modify it."""
+    yield
+    if "jlink_serial" in device_config:
+        utils.recover(device_config)
+        utils.flash(device_config)
 
 # Reset before each test
 @pytest.fixture(autouse=True)
@@ -175,3 +190,16 @@ def reset_device(device_config):
     if "jlink_serial" in device_config:
         utils.reset(device_config)
         time.sleep(1)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def uart_logs(device_config, request):
+    show_uart = request.config.getoption("--show-uart")
+    collector = utils.LogCollector(device_config, show_uart=show_uart)
+    collector.start()
+    device_config["uart_logs"] = collector
+    try:
+        yield collector
+    finally:
+        device_config.pop("uart_logs", None)
+        collector.stop()

@@ -16,7 +16,9 @@ T = TypeVar("T")
 ClientHandler = Callable[[SMPClient], Awaitable[T]]
 
 
-async def drain_pending_frames(client: SMPClient, attempts: int = 3, timeout_s: float = 0.2) -> None:
+async def drain_pending_frames(
+    client: SMPClient, attempts: int = 3, timeout_s: float = 0.2
+) -> None:
     """Drain any pending frames left in the transport before starting a new exchange."""
     for _ in range(attempts):
         try:
@@ -25,7 +27,9 @@ async def drain_pending_frames(client: SMPClient, attempts: int = 3, timeout_s: 
             break
 
 
-async def with_serial_client(usb_port: str, handler: ClientHandler[T], attempts: int = 3) -> T:
+async def with_serial_client(
+    usb_port: str, handler: ClientHandler[T], attempts: int = 3
+) -> T:
     """Execute a coroutine with an SMP client over USB, retrying on transient errors."""
     last_exc: Exception | None = None
     for attempt in range(attempts):
@@ -40,7 +44,9 @@ async def with_serial_client(usb_port: str, handler: ClientHandler[T], attempts:
     pytest.fail(f"Failed to communicate with device on {usb_port}: {last_exc}")
 
 
-async def with_ble_client(address: str, handler: ClientHandler[T], attempts: int = 3) -> T:
+async def with_ble_client(
+    address: str, handler: ClientHandler[T], attempts: int = 3
+) -> T:
     """Execute a coroutine with an SMP client over BLE, retrying on transient errors."""
     last_exc: Exception | None = None
     for attempt in range(attempts):
@@ -61,7 +67,16 @@ def require_usb_port(device_config) -> str:
     return usb_port
 
 
-async def wait_for_usb_port(usb_port: str, present: bool, timeout_s: float = 30.0, interval_s: float = 0.5) -> None:
+def require_mcuboot_usb_port(device_config) -> str:
+    usb_port = device_config.get("mcuboot_usb_cdc_port")
+    if not usb_port:
+        pytest.skip("mcuboot_usb_cdc_port missing in device configuration")
+    return usb_port
+
+
+async def wait_for_usb_port(
+    usb_port: str, present: bool, timeout_s: float = 30.0, interval_s: float = 0.5
+) -> None:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
     while True:
@@ -115,11 +130,14 @@ async def enable_ble_fota(device_config):
 
 async def enter_serial_recovery(device_config):
     usb_port = require_usb_port(device_config)
+    usb_mcuboot_port = require_mcuboot_usb_port(device_config)
     await wait_for_usb_port(usb_port, True, timeout_s=15.0)
 
     async def trigger(client: SMPClient):
         try:
-            response = await client.request(Execute(argv=["boot", "start"]), timeout_s=5.0)
+            response = await client.request(
+                Execute(argv=["boot", "start"]), timeout_s=5.0
+            )
             if error(response):
                 pytest.fail(f"Failed to enter serial recovery: {response}")
         except TimeoutError:
@@ -127,5 +145,4 @@ async def enter_serial_recovery(device_config):
 
     await with_serial_client(usb_port, trigger)
     await wait_for_usb_port(usb_port, False, timeout_s=10.0)
-    await wait_for_usb_port(usb_port, True, timeout_s=30.0)
-
+    await wait_for_usb_port(usb_mcuboot_port, True, timeout_s=30.0)

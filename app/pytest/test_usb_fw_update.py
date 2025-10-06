@@ -14,6 +14,7 @@ from mcumgr_utils import (
     enter_serial_recovery as _enter_serial_recovery,
     find_ble_address as _find_ble_address,
     require_usb_port as _require_usb_port,
+    require_mcuboot_usb_port as _require_mcuboot_usb_port,
     shell_command_ble as _shell_command_ble,
     shell_command_usb as _shell_command_usb,
     wait_for_usb_port as _wait_for_usb_port,
@@ -25,8 +26,8 @@ BOOT_LOG_PATTERN = "Disable Pairable"
 FIRMWARE_ZIP = Path(__file__).resolve().parent / "firmware" / "dfu_application_dk.zip"
 FIRMWARE_SEQUENCE = [
     "app.internal.bin",
-    "ipc_radio.bin",
     "app.external.bin",
+    "ipc_radio.bin",
 ]
 APPLICATION_IMAGE_IDS = {
     "app.internal.bin": 0,
@@ -50,33 +51,30 @@ def _load_firmware_bins():
     with zipfile.ZipFile(FIRMWARE_ZIP, "r") as archive:
         return {name: archive.read(name) for name in FIRMWARE_SEQUENCE}
 
+def _clear_uart_logs(device_config):
+    collector = device_config.get("uart_logs")
+    collector.clear()
 
 async def _reset_device(device_config):
     await asyncio.to_thread(utils.reset, device_config)
     await asyncio.sleep(2)
 
 
-async def _wait_for_boot_log(device_config, timeout_s: float = 30.0):
-    serial_device = device_config.get("serial")
-    if not serial_device:
-        return
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + timeout_s
-    output = ""
-    while loop.time() < deadline:
-        chunk = await asyncio.to_thread(utils.read_log, device_config, timeout_ms=1000)
-        output += chunk
-        if BOOT_LOG_PATTERN in output:
-            return
-    pytest.fail(f"Boot log did not contain '{BOOT_LOG_PATTERN}' within {timeout_s}s")
+async def _wait_fw_update_boot_log(device_config, serial_recovery: bool = False, timeout_s: float = 60.0):
+    collector = device_config.get("uart_logs")
+    if collector is None or not collector.has_source():
+        assert False, "No UART log source configured"
+    found = True
+    if not serial_recovery:
+        found = await collector.wait_for_async("Image 0 upgrade secondary slot", timeout_s)
+        found = found and await collector.wait_for_async("Image 1 upgrade secondary slot", timeout_s)
+        found = found and await collector.wait_for_async("Turned on network core", timeout_s)
+    found = found and await collector.wait_for_async(BOOT_LOG_PATTERN, timeout_s)
+    if not found:
+        pytest.fail(f"Boot log did not contain '{BOOT_LOG_PATTERN}' within {timeout_s}s")
 
 
-async def _post_update_reboot_check(device_config):
-    await _reset_device(device_config)
-    await _wait_for_boot_log(device_config)
-
-
-async def _upload_images(client, image_map, confirm_images: bool = False):
+async def _upload_images(client, image_map, serial_recovery_mode: bool = False):
     firmware_bins = _load_firmware_bins()
     for filename in FIRMWARE_SEQUENCE:
         image_id = image_map[filename]
@@ -85,7 +83,13 @@ async def _upload_images(client, image_map, confirm_images: bool = False):
         async for offset in client.upload(data, slot=image_id):
             last_offset = offset
         assert last_offset == len(data)
-    if confirm_images:
+        if serial_recovery_mode and filename == "ipc_radio.bin":
+            # In serial recovery mode we need to wait after uploading the radio firmware
+            # to allow net core bootloader to copy the image from RAM to net core flash
+            # This takes less than 30s according to documentation
+            print("Waiting 30s for net core to copy radio firmware...")
+            await asyncio.sleep(30)
+    if not serial_recovery_mode:
         state_response = await client.request(ImageStatesRead())
         if error(state_response):
             pytest.fail(f"Failed to read image state: {state_response}")
@@ -99,17 +103,33 @@ async def _upload_images(client, image_map, confirm_images: bool = False):
             assert success(response)
 
 
+async def _upload_images_and_reset(client, image_map, serial_recovery_mode: bool = False):
+    await _upload_images(client, image_map, serial_recovery_mode=serial_recovery_mode)
+    try:
+        reset_response = await client.request(ResetWrite())
+        if error(reset_response) and not serial_recovery_mode:
+            pytest.fail(f"mcumgr reset failed: {reset_response}")
+    except TimeoutError:
+        pass
+
+
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("restore_firmware")
 async def test_usb_firmware_update(device_config):
     _ensure_watchdk(device_config)
     usb_port = _require_usb_port(device_config)
     await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
-    await _with_serial_client(usb_port, lambda client: _upload_images(client, APPLICATION_IMAGE_IDS, confirm_images=True))
-    await _reset_device(device_config)
-    await _wait_for_boot_log(device_config)
+    _clear_uart_logs(device_config)
+    await _with_serial_client(
+        usb_port,
+        lambda client: _upload_images_and_reset(client, APPLICATION_IMAGE_IDS),
+    )
+
+    await _wait_fw_update_boot_log(device_config)
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("restore_firmware")
 async def test_ble_firmware_update(device_config):
     _ensure_watchdk(device_config)
     usb_port = _require_usb_port(device_config)
@@ -119,30 +139,32 @@ async def test_ble_firmware_update(device_config):
     await asyncio.sleep(2)
 
     address = await _find_ble_address(device_config)
-    await _with_ble_client(address, lambda client: _upload_images(client, APPLICATION_IMAGE_IDS, confirm_images=True))
+    _clear_uart_logs(device_config)
+    await _with_ble_client(
+        address,
+        lambda client: _upload_images_and_reset(client, APPLICATION_IMAGE_IDS),
+    )
 
-    await _reset_device(device_config)
-    await _wait_for_boot_log(device_config)
+    await _wait_fw_update_boot_log(device_config)
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("restore_firmware")
 async def test_serial_recovery_firmware_update(device_config):
     _ensure_watchdk(device_config)
     usb_port = _require_usb_port(device_config)
+    usb_mcuboot_port = _require_mcuboot_usb_port(device_config)
 
     await _enter_serial_recovery(device_config)
-    async def upload_and_reset(client):
-        await _upload_images(client, SERIAL_RECOVERY_IMAGE_IDS)
-        try:
-            reset_response = await client.request(ResetWrite())
-            if error(reset_response):
-                pytest.fail(f"Serial recovery reset failed: {reset_response}")
-        except TimeoutError:
-            pass
+    _clear_uart_logs(device_config)
+    await _with_serial_client(
+        usb_mcuboot_port,
+        lambda client: _upload_images_and_reset(client, SERIAL_RECOVERY_IMAGE_IDS, serial_recovery_mode=True),
+    )
 
-    await _with_serial_client(usb_port, upload_and_reset)
+    await _wait_fw_update_boot_log(device_config, serial_recovery=True)
+    await _wait_for_usb_port(usb_port, True, timeout_s=30.0)
 
-    await _wait_for_boot_log(device_config)
 
 
 @pytest.mark.asyncio
