@@ -162,6 +162,7 @@ def prepare_device(device_config):
     if "jlink_serial" in device_config:
         # Flash only once per board
         if board in _flashed_boards:
+            utils.reset(device_config)
             return
         try:
             utils.recover(device_config)
