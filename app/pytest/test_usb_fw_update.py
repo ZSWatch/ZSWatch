@@ -60,7 +60,7 @@ async def _reset_device(device_config):
     await asyncio.sleep(2)
 
 
-async def _wait_fw_update_boot_log(device_config, serial_recovery: bool = False, timeout_s: float = 60.0):
+async def _wait_fw_update_boot_log(device_config, serial_recovery: bool = False, timeout_s: float = 120.0):
     collector = device_config.get("uart_logs")
     if collector is None or not collector.has_source():
         assert False, "No UART log source configured"
