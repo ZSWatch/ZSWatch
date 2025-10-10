@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-405TQEL8SG"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-405TQEL8SG",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.481a1c04.css">
-<script src="/assets/js/runtime~main.d09d93a0.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.3e0d5b3f.js" defer="defer"></script>
 <script src="/assets/js/main.8c44a98e.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -65,14 +65,14 @@
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="how-xip-works-on-zswatch-and-why-we-toggle-it">How XIP works on ZSWatch (and why we toggle it)<a href="#how-xip-works-on-zswatch-and-why-we-toggle-it" class="hash-link" aria-label="Direct link to How XIP works on ZSWatch (and why we toggle it)" title="Direct link to How XIP works on ZSWatch (and why we toggle it)">​</a></h3>
 <p>Execute‑in‑Place (XIP) lets the MCU run code directly from external flash over the QSPI interface. This gives us a lot more flash space for features, but it comes with two important considerations:</p>
 <ul>
-<li>Power: Keeping QSPI and its cache active adds to idle current — around 3–5 mA, which is a lot for a watch.</li>
+<li>Power: Keeping QSPI and its cache active adds to idle current around 3–5 mA, which is a lot for a watch.</li>
 <li>Safety: Parts of the code (e.g., some of LVGL, mcumgr/USB, etc.) reside in XIP. This code must not be called while XIP is disabled or it will crash.</li>
 </ul>
-<p>Some of the things we do in ZSWatch:</p>
+<p>Some of the things we do in ZSWatch to manage this:</p>
 <ul>
 <li>Some LVGL components are placed in external flash. We keep the most used parts and drawing code in internal flash since XIP is slower.</li>
 <li>App UI code is placed in the XIP area to save internal flash. App logic stays in internal flash so apps can continue running when the screen is off and XIP is disabled.</li>
-<li>XIP manager: A small manager arbitrates XIP enable/disable and provides a simple API so code that needs XIP can request it when needed. The API is ref‑counted — when the count hits 0, XIP is disabled, and vice versa.</li>
+<li>XIP manager: A small manager arbitrates XIP enable/disable and provides a simple API so code that needs XIP can request it when needed. The API is ref‑counted and when the count hits 0, XIP is disabled, and vice versa.</li>
 <li>App visibility state: Apps are notified when their UI is visible/hidden so they don’t call into LVGL (or other XIP code paths) when XIP is off.</li>
 <li>On‑demand features: <code>mcumgr</code> and USB live in the XIP area and are only enabled for updates.</li>
 </ul>
@@ -80,7 +80,7 @@
 <hr>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="whats-next">What’s next<a href="#whats-next" class="hash-link" aria-label="Direct link to What’s next" title="Direct link to What’s next">​</a></h3>
 <ul>
-<li>Continue power profiling — there’s more to do.</li>
+<li>Continue power profiling, there’s more to do.</li>
 <li>Validate the Dev Kit when received.</li>
 <li>Work has started on a completely reworked case for the upcoming ZSWatch.</li>
 </ul>
