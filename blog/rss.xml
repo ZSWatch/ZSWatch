@@ -9,7 +9,7 @@
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <item>
-            <title><![CDATA[Power conusumption, HW update & Production test]]></title>
+            <title><![CDATA[Power consumption, HW update & Production test]]></title>
             <link>https://zswatch.dev/blog/progress-hw-xip-usb-power</link>
             <guid>https://zswatch.dev/blog/progress-hw-xip-usb-power</guid>
             <pubDate>Fri, 10 Oct 2025 00:00:00 GMT</pubDate>
@@ -86,6 +86,7 @@
 <li>Continue power profiling, there’s more to do.</li>
 <li>Validate the Dev Kit when received.</li>
 <li>Work has started on a completely reworked case for the upcoming ZSWatch.</li>
+<li>Start work on real watch PCB and HR PCB, we got design validated to it's "just" to route them.</li>
 </ul>
 <br>
 <p>Want to stay in the loop? Subscribe below for updates!</p>

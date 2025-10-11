@@ -8,7 +8,7 @@
     <subtitle>ZSWatch Blog</subtitle>
     <icon>https://zswatch.dev/img/favicon.ico</icon>
     <entry>
-        <title type="html"><![CDATA[Power conusumption, HW update & Production test]]></title>
+        <title type="html"><![CDATA[Power consumption, HW update & Production test]]></title>
         <id>https://zswatch.dev/blog/progress-hw-xip-usb-power</id>
         <link href="https://zswatch.dev/blog/progress-hw-xip-usb-power"/>
         <updated>2025-10-10T00:00:00.000Z</updated>
@@ -85,6 +85,7 @@
 <li>Continue power profiling, there’s more to do.</li>
 <li>Validate the Dev Kit when received.</li>
 <li>Work has started on a completely reworked case for the upcoming ZSWatch.</li>
+<li>Start work on real watch PCB and HR PCB, we got design validated to it's "just" to route them.</li>
 </ul>
 <br>
 <p>Want to stay in the loop? Subscribe below for updates!</p>
