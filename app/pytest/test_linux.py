@@ -17,9 +17,17 @@ def disable_bt(request):
     except Exception as e:
         log.warning("btmgmt command failed: %s", e)
 
+    time.sleep(2)  # Add delay to let adapter settle
+
     def enable_bt():
         log.info("Re-enabling Bluetooth...")
         try:
+            # Extra power off to ensure clean state
+            with os.popen("yes | sudo btmgmt --index 0 power off") as stream:
+                output = stream.read()
+            log.info(f"Power off before re-enable: {output}")
+            time.sleep(2)
+
             with os.popen("yes | sudo btmgmt --index 0 power on") as stream:
                 output = stream.read()
             log.info(output)

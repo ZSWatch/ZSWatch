@@ -127,6 +127,7 @@ jobs:
 
           # Make sure bt hci adapter is on.
           sudo btmgmt --index 0 power off
+          sleep 2
           sudo btmgmt --index 0 power on
 
           pytest \
