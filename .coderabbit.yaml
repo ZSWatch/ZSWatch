@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+reviews:
+  profile: "chill"
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  auto_review:
+    enabled: true
+    drafts: true
+  in_progress_fortune: false
+  tools:
+    github-checks:
+      enabled: false
+    cppcheck:
+      enabled: true
+    pylint:
+      enabled: true
+  finishing_touches:
+    docstrings:
+      enabled: false
+  unit_tests:
+    enabled: false
+  pre_merge_checks:
+    mode: "off"
+  title:
+    mode: "off"
+chat:
+  art: false
