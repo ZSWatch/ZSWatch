@@ -1,24 +1,20 @@
-
+import Link from '@docusaurus/Link';
 import styles from './styles.module.css';
 
 export default function SubscriptionForm() {
   return (
-    <form method="post" action="https://zswatch.pikapod.net/subscription/form" className={styles.signup}>
+    <form method="POST" action="https://8624cdd8.sibforms.com/serve/MUIFALM3Ssztzpct9-Ej_L1x-ZTpeqPjztgSukyA3NeuAURXXnlQtI1sd8dvZ4GFrtHP_5vGwH_TJHFHG5kQ_FlO1O5J6fz1zUh3nGnViH3947txULamjrEPZ6SE_XyGRy87LPqAkTlzg2mo6aeo6kHvMU2BSl23qZasOs0FtaieMQK_w4zqdbKjrlpp_JN4XS2ksl_xKksL9t3eOg==" className={styles.signup}>
       <div className={styles.center}>
         <div className={styles.signupTitle}>Sign up for updates here</div>
-        <input type="hidden" name="nonce" />
         <div>
-          <input type="email" name="email" required placeholder="Enter your email" className={styles.emailInput} />
+          <input type="email" name="EMAIL" required placeholder="Enter your email" className={styles.emailInput} />
           <input type="submit" value="Subscribe" className={styles.subscribeBtn} />
         </div>
-        <a href="/blog" className={styles.blogReminder}>
+        <Link to="/blog" className={styles.blogReminder}>
           Read the blog for latest info
-        </a>
-        <p hidden>
-          <input id="2cca0" type="checkbox" name="l" defaultChecked value="2cca0c50-ef0d-4339-b695-9e559f4a4359" />
-          <label htmlFor="2cca0">ZSWatch Test List</label>
-          <br />
-        </p>
+        </Link>
+        <input type="text" name="email_address_check" value="" className="input--hidden" style={{ display: 'none' }} />
+        <input type="hidden" name="locale" value="en" />
       </div>
     </form>
   );

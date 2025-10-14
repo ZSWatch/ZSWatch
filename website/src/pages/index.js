@@ -46,18 +46,12 @@ function WatchImagesGallery() {
 
 function SubscriptionForm() {
   return (
-    <form method="post" action="https://zswatch.pikapod.net/subscription/form" className="flex gap-3 mb-4">
-      <input type="hidden" name="nonce" />
-      <input
-        id="2cca0"
-        type="hidden"
-        name="l"
-        defaultChecked
-        value="2cca0c50-ef0d-4339-b695-9e559f4a4359"
-      />
+    <form method="POST" action="https://8624cdd8.sibforms.com/serve/MUIFALM3Ssztzpct9-Ej_L1x-ZTpeqPjztgSukyA3NeuAURXXnlQtI1sd8dvZ4GFrtHP_5vGwH_TJHFHG5kQ_FlO1O5J6fz1zUh3nGnViH3947txULamjrEPZ6SE_XyGRy87LPqAkTlzg2mo6aeo6kHvMU2BSl23qZasOs0FtaieMQK_w4zqdbKjrlpp_JN4XS2ksl_xKksL9t3eOg==" className="flex gap-3 mb-4">
+      <input type="text" name="email_address_check" value="" style={{ display: 'none' }} />
+      <input type="hidden" name="locale" value="en" />
       <input
         type="email"
-        name="email"
+        name="EMAIL"
         required
         placeholder="Enter your email for updates"
         className="flex-1 text-white"
