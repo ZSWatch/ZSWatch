@@ -35,6 +35,8 @@
 static void zbus_fetch_fusion_data_callback(const struct zbus_channel *chan);
 static void fusion_app_start(lv_obj_t *root, lv_group_t *group);
 static void fusion_app_stop(void);
+static void fusion_app_ui_unavailable(void);
+static void fusion_app_ui_available(void);
 static void on_close_fusion(void);
 static void cube_timer_cb(lv_timer_t *t);
 static void on_zero_yaw(void);
@@ -50,10 +52,12 @@ static application_t app = {
     .start_func = fusion_app_start,
     .stop_func = fusion_app_stop,
     .category = ZSW_APP_CATEGORY_SENSORS,
+    .ui_unavailable_func = fusion_app_ui_unavailable,
+    .ui_available_func = fusion_app_ui_available,
 };
 
 static lv_timer_t *cube_timer = NULL;
-static uint32_t cube_timer_period_ms = 33; // ~30 Hz
+static uint32_t cube_timer_period_ms = 33;
 static float yaw_zero_offset_rad = 0.0f;
 static int32_t last_render_tick_ms = 0;
 static uint32_t render_frames = 0;
@@ -81,6 +85,22 @@ static void fusion_app_stop(void)
         cube_timer = NULL;
     }
     fusion_ui_remove();
+}
+
+static void fusion_app_ui_unavailable(void)
+{
+    // Stop cube rendering when UI is not available
+    if (cube_timer) {
+        lv_timer_pause(cube_timer);
+    }
+}
+
+static void fusion_app_ui_available(void)
+{
+    // Resume cube rendering when UI is available
+    if (cube_timer) {
+        lv_timer_resume(cube_timer);
+    }
 }
 
 static void zbus_fetch_fusion_data_callback(const struct zbus_channel *chan)

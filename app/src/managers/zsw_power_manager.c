@@ -30,7 +30,6 @@
 #include "events/accel_event.h"
 #include "events/battery_event.h"
 #include "managers/zsw_power_manager.h"
-#include "managers/zsw_xip_manager.h"
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_vibration_motor.h"
 
@@ -79,6 +78,10 @@ static void enter_inactive(void)
     is_active = false;
     retained.wakeup_time += k_uptime_get_32() - last_wakeup_time;
     zsw_retained_ram_update();
+
+    // Publish inactive state immediately, before disabling display and XIP.
+    update_and_publish_state(ZSW_ACTIVITY_STATE_INACTIVE);
+
     zsw_display_control_sleep_ctrl(false);
 
     zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, true);
@@ -87,7 +90,6 @@ static void enter_inactive(void)
     zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
-    update_and_publish_state(ZSW_ACTIVITY_STATE_INACTIVE);
 }
 
 static void enter_active(void)
