@@ -21,6 +21,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+#include <errno.h>
 
 #include "../ext_drivers/fusion/Fusion/Fusion.h"
 #include "../ext_drivers/fusion/Fusion/FusionCompass.h"
@@ -86,6 +87,8 @@ static FusionAhrs ahrs;
 static int32_t previousTimestamp;
 static sensor_fusion_t readings;
 static struct k_work_sync cancel_work_sync;
+static zsw_quat_t readings_quat;
+static float last_delta_time_s = 0.0f;
 
 #ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
 #define UP_BUFFER_SIZE 256
@@ -119,16 +122,20 @@ static void sensor_fusion_timeout(struct k_work *work)
     accelerometer.axis.y /= SENSOR_GF;
     accelerometer.axis.z /= SENSOR_GF;
 
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     ret = zsw_magnetometer_get_all(&magnetometer.axis.x, &magnetometer.axis.y, &magnetometer.axis.z);
     if (ret != 0) {
         LOG_ERR("zsw_magnetometer_get_all err: %d", ret);
     }
+#endif
 
     // Apply calibration
     gyroscope = FusionCalibrationInertial(gyroscope, gyroscopeMisalignment, gyroscopeSensitivity, gyroscopeOffset);
     accelerometer = FusionCalibrationInertial(accelerometer, accelerometerMisalignment, accelerometerSensitivity,
                                               accelerometerOffset);
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     magnetometer = FusionCalibrationMagnetic(magnetometer, softIronMatrix, hardIronOffset);
+#endif
 
     // Update gyroscope offset correction algorithm
     gyroscope = FusionOffsetUpdate(&offset, gyroscope);
@@ -136,6 +143,7 @@ static void sensor_fusion_timeout(struct k_work *work)
     // Calculate delta time (in seconds) to account for gyroscope sample clock error
     const float deltaTime = (start - previousTimestamp) / 1000.0f;
     previousTimestamp = start;
+    last_delta_time_s = deltaTime > 0 ? deltaTime : last_delta_time_s;
 
     // Update gyroscope AHRS algorithm
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
@@ -144,9 +152,12 @@ static void sensor_fusion_timeout(struct k_work *work)
     FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, deltaTime);
 #endif
     // Print algorithm outputs
-    const FusionEuler euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+    const FusionQuaternion q = FusionAhrsGetQuaternion(&ahrs);
+    const FusionEuler euler = FusionQuaternionToEuler(q);
     const FusionVector earth = FusionAhrsGetEarthAcceleration(&ahrs);
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     float heading = FusionCompassCalculateHeading(FusionConventionNwu, accelerometer, magnetometer);
+#endif
 
     readings.pitch = euler.angle.pitch;
     readings.roll = euler.angle.roll;
@@ -155,11 +166,23 @@ static void sensor_fusion_timeout(struct k_work *work)
     readings.y = earth.axis.y;
     readings.z = earth.axis.z;
 
+    readings_quat.w = q.element.w;
+    readings_quat.x = q.element.x;
+    readings_quat.y = q.element.y;
+    readings_quat.z = q.element.z;
+
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     LOG_DBG("Roll %0.1f, Pitch %0.1f, Yaw %0.1f, Head: %01f, X %0.2f, Y %0.2f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f\n",
             euler.angle.roll, euler.angle.pitch,
             euler.angle.yaw, heading, /*earth.axis.x, earth.axis.y, earth.axis.z*/ accelerometer.axis.x, accelerometer.axis.y,
             accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z, magnetometer.axis.x, magnetometer.axis.y,
             magnetometer.axis.z );
+#else
+    LOG_DBG("Roll %0.1f, Pitch %0.1f, Yaw %0.1f, X %0.2f, Y %0.2f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f\n",
+            euler.angle.roll, euler.angle.pitch,
+            euler.angle.yaw, accelerometer.axis.x, accelerometer.axis.y,
+            accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z);
+#endif
 #if CONFIG_SEND_SENSOR_READING_OVER_RTT
     uint8_t data_buf[UP_BUFFER_SIZE];
     int len = snprintf(data_buf, UP_BUFFER_SIZE,
@@ -189,11 +212,13 @@ int zsw_sensor_fusion_init(void)
         return ret;
     }
 
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     ret = zsw_magnetometer_set_enable(true);
     if (ret != 0) {
         LOG_ERR("zsw_magnetometer_set_enable err: %d", ret);
         return ret;
     }
+#endif
 
     memset(&ahrs, 0, sizeof(ahrs));
 
@@ -222,7 +247,9 @@ void zsw_sensor_fusion_deinit(void)
 {
     k_work_cancel_delayable_sync(&sensor_fusion_timer, &cancel_work_sync);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     zsw_magnetometer_set_enable(false);
+#endif
 }
 
 int zsw_sensor_fusion_fetch_all(sensor_fusion_t *p_readings)
@@ -235,5 +262,14 @@ int zsw_sensor_fusion_get_heading(float *heading)
 {
     // @todo: implement, this is not correct magnetic heading. Use FusionCompassCalculateHeading
     *heading = readings.yaw;
+    return 0;
+}
+
+int zsw_sensor_fusion_get_quaternion(zsw_quat_t *q)
+{
+    if (!q) {
+        return -EINVAL;
+    }
+    *q = readings_quat;
     return 0;
 }

@@ -26,6 +26,13 @@ typedef struct sensor_fusion {
     float z;
 } sensor_fusion_t;
 
+typedef struct zsw_quat {
+    float w;
+    float x;
+    float y;
+    float z;
+} zsw_quat_t;
+
 int zsw_sensor_fusion_init(void);
 
 void zsw_sensor_fusion_deinit(void);
@@ -33,3 +40,5 @@ void zsw_sensor_fusion_deinit(void);
 int zsw_sensor_fusion_fetch_all(sensor_fusion_t *p_readings);
 
 int zsw_sensor_fusion_get_heading(float *heading);
+
+int zsw_sensor_fusion_get_quaternion(zsw_quat_t *q);
