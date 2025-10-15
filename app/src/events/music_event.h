@@ -17,7 +17,13 @@
 
 #pragma once
 
-#include "music_control/music_control_ui.h"
+typedef enum {
+    MUSIC_CONTROL_UI_CLOSE,
+    MUSIC_CONTROL_UI_PLAY,
+    MUSIC_CONTROL_UI_PAUSE,
+    MUSIC_CONTROL_UI_NEXT_TRACK,
+    MUSIC_CONTROL_UI_PREV_TRACK
+} music_control_ui_evt_type_t;
 
 struct music_event {
     music_control_ui_evt_type_t control_type;

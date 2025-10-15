@@ -1,0 +1,40 @@
+<globals>
+	<api>
+		<!-- Add <enumdefs> here -->
+	</api>
+
+	<consts>
+		<!-- Add <px>, <int>, <color> etc here -->
+		<int name="unit_sm" value="6" />
+		<int name="unit_md" value="12" />
+		<int name="unit_lg" value="18" />
+		<int name="unit_xl" value="24" />
+		<percentage name="opa_muted" value="20%" />
+	</consts>
+
+	<styles>
+		<!-- Add <style> tags here -->
+	</styles>
+
+	<subjects>
+		<!-- Music control subjects -->
+		<string name="music_track_name" value="No music playing..." help="Current track name" />
+		<string name="music_artist_name" value="Artist..." help="Current artist name" />
+		<string name="music_time" value="00:00" help="Current time display" />
+		<int name="music_progress" value="0" help="Track progress percentage (0-100)" />
+		<int name="music_playing" value="0" help="0:paused 1:playing" />
+	</subjects>
+
+	<images>
+		<!-- Images for music control - Editor will generate C arrays -->
+		<!-- Using <data> tags so Editor converts PNG to C arrays for both preview and embedded -->
+		<data name="icon_play" src_path="images/icon_play.png" color_format="rgb565a8"/>
+		<data name="icon_pause" src_path="images/icon_pause.png" color_format="rgb565a8"/>
+		<data name="icon_skip_forward" src_path="images/icon_skip_forward.png" color_format="rgb565a8"/>
+		<data name="icon_skip_back" src_path="images/icon_skip_back.png" color_format="rgb565a8"/>
+	</images>
+
+	<fonts>
+		<!-- Add <bin> , <tiny_ttf>, <freetype> tags here -->
+	</fonts>
+</globals>

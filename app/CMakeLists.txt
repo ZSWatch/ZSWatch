@@ -56,6 +56,8 @@ add_subdirectory(src/drivers)
 add_subdirectory(src/ble)
 add_subdirectory(src/images)
 
+add_subdirectory(lvgl_editor)
+
 include_directories(src/)
 include_directories(src/ui)
 include_directories(src/applications)

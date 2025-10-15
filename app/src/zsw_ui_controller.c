@@ -34,6 +34,7 @@
 #include "managers/zsw_notification_manager.h"
 #include "managers/zsw_power_manager.h"
 #include "ui/zsw_ui.h"
+#include "lvgl_editor_gen.h"
 
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_APP_LOG_LEVEL);
 
@@ -324,6 +325,9 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 int zsw_ui_controller_init(void)
 {
     lv_indev_t *touch_indev;
+
+    // Initialize LVGL Editor subjects and assets
+    lvgl_editor_init_gen("");
 
     root_screen = lv_scr_act();
 

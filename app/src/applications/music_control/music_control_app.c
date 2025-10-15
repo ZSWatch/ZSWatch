@@ -20,7 +20,8 @@
 #include <zsw_clock.h>
 #include <zephyr/zbus/zbus.h>
 
-#include "music_control_ui.h"
+#include "lvgl_editor_gen.h"
+#include "music_app_gen.h"
 #include "ble/ble_comm.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
@@ -32,7 +33,6 @@ static void music_control_app_start(lv_obj_t *root, lv_group_t *group);
 static void music_control_app_stop(void);
 
 static void timer_callback(lv_timer_t *timer);
-static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type);
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void handle_update_ui(struct k_work *item);
 static void app_on_ui_available(void);
@@ -60,37 +60,62 @@ static application_t app = {
 static lv_timer_t *progress_timer;
 static int progress_seconds;
 static bool playing;
+static lv_obj_t *music_ui_root;
+
+// Event callbacks referenced in the generated UI code
+void music_on_prev_clicked(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    struct music_event music_event = {
+        .control_type = MUSIC_CONTROL_UI_PREV_TRACK,
+    };
+    zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
+}
+
+void music_on_play_pause_clicked(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    // Toggle playing state via subject
+    int current_playing = lv_subject_get_int(&music_playing);
+    lv_subject_set_int(&music_playing, current_playing ? 0 : 1);
+    playing = !current_playing;
+
+    // Send event to BLE
+    struct music_event music_event = {
+        .control_type = current_playing ? MUSIC_CONTROL_UI_PAUSE : MUSIC_CONTROL_UI_PLAY,
+    };
+    zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
+}
+
+void music_on_next_clicked(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    struct music_event music_event = {
+        .control_type = MUSIC_CONTROL_UI_NEXT_TRACK,
+    };
+    zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
+}
 
 static void music_control_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    progress_timer = lv_timer_create(timer_callback, 1000,  NULL);
-    music_control_ui_show(root, on_music_ui_evt_music);
+    progress_timer = lv_timer_create(timer_callback, 1000, NULL);
+
+    // Create the music app UI - images come from globals.xml
+    music_ui_root = music_app_create(root);
+
     handle_update_ui(NULL);
 }
 
 static void music_control_app_stop(void)
 {
     lv_timer_del(progress_timer);
-    music_control_ui_remove();
+    lv_obj_del(music_ui_root);
 }
 
 static void app_on_ui_available(void)
 {
     // When UI becomes available, update it with the latest info.
     handle_update_ui(NULL);
-}
-
-static void on_music_ui_evt_music(music_control_ui_evt_type_t evt_type)
-{
-    if (evt_type == MUSIC_CONTROL_UI_CLOSE) {
-        zsw_app_manager_app_close_request(&app);
-    } else {
-        struct music_event music_event = {
-            .control_type = evt_type,
-        };
-
-        zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
-    }
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
@@ -109,19 +134,23 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 
 static void handle_update_ui(struct k_work *item)
 {
-    char buf[5 * MAX_MUSIC_FIELD_LENGTH];
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         if (strlen(last_music_info.track_name) > 0) {
-            snprintf(buf, sizeof(buf), "Track: %s", last_music_info.track_name);
             progress_seconds = 0;
-            music_control_ui_music_info(last_music_info.track_name, last_music_info.artist);
-            music_control_ui_set_track_progress(0);
+
+            // Update subjects instead of calling UI functions
+            lv_subject_copy_string(&music_track_name, last_music_info.track_name);
+            lv_subject_copy_string(&music_artist_name, last_music_info.artist);
+            lv_subject_set_int(&music_progress, 0);
         }
 
-        if (last_music_state.position >= 0) {
-            music_control_ui_set_music_state(last_music_state.playing,
-                                             (((float)last_music_state.position / (float)last_music_info.duration)) * 100,
-                                             last_music_state.shuffle);
+        if (last_music_state.position >= 0 && last_music_info.duration > 0) {
+            int progress_percent = (((float)last_music_state.position / (float)last_music_info.duration)) * 100;
+
+            // Update subjects
+            lv_subject_set_int(&music_playing, last_music_state.playing ? 1 : 0);
+            lv_subject_set_int(&music_progress, progress_percent);
+
             progress_seconds = last_music_state.position;
             playing = last_music_state.playing;
         }
@@ -132,10 +161,16 @@ static void timer_callback(lv_timer_t *timer)
 {
     zsw_timeval_t time;
     zsw_clock_get_time(&time);
-    music_control_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
-    if (playing) {
+
+    // Update time via subject
+    char time_str[16];
+    snprintf(time_str, sizeof(time_str), "%02d:%02d", time.tm.tm_hour, time.tm.tm_min);
+    lv_subject_copy_string(&music_time, time_str);
+
+    if (playing && last_music_info.duration > 0) {
         progress_seconds++;
-        music_control_ui_set_track_progress((((float)progress_seconds / (float)last_music_info.duration)) * 100);
+        int progress_percent = (((float)progress_seconds / (float)last_music_info.duration)) * 100;
+        lv_subject_set_int(&music_progress, progress_percent);
     }
 }
 

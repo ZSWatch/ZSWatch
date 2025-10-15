@@ -1,0 +1,115 @@
+<component>
+	<previews>
+		<preview width="240" height="240" style_bg_color="0xfcfcfc" />
+	</previews>
+
+	<api />
+
+	<styles>
+		<!-- Root container style -->
+		<style name="style_root" width="100%" height="100%" border_width="0" bg_opa="0" />
+
+		<!-- Progress arc styles -->
+		<style name="style_arc_bg" width="240" height="240" arc_width="3" arc_color="0x444444" bg_opa="0" />
+		<style name="style_arc_indicator" arc_width="3" arc_color="0xFF6600" />
+
+		<!-- Button base styles -->
+		<style name="style_button_base" bg_opa="0" border_width="0" pad_all="0" width="content" height="content" />
+
+		<!-- Button focused style -->
+		<style name="style_button_focused" border_side="bottom" border_width="1" border_color="0xFF6600" />
+
+		<!-- Labels -->
+		<style name="style_track_label" text_align="center" width="50%" />
+
+		<style name="style_artist_label" text_align="center" width="50%" />
+
+		<style name="style_time_label" text_align="center" width="content" />
+
+		<!-- Flex container style -->
+		<style
+			name="style_button_container"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="center"
+			flex_cross_place="center"
+			pad_column="10"
+			bg_opa="0"
+			border_width="0"
+		/>
+	</styles>
+
+	<view>
+		<remove_style_all />
+		<style name="style_root" />
+
+		<!-- Progress arc in the background -->
+		<lv_arc
+			align="center"
+			rotation="270"
+			bg_start_angle="0"
+			bg_end_angle="360"
+			min_value="0"
+			max_value="100"
+			bind_value="music_progress"
+			mode="normal"
+			clickable="false"
+		>
+			<style name="style_arc_bg" />
+			<style name="style_arc_indicator" selector="indicator" />
+			<remove_style selector="knob" />
+		</lv_arc>
+
+		<!-- Track name label -->
+		<lv_label align="top_mid" x="0" y="25" long_mode="scroll_circular" bind_text="music_track_name">
+			<style name="style_track_label" />
+		</lv_label>
+
+		<!-- Artist name label -->
+		<lv_label align="top_mid" x="0" y="45" long_mode="scroll_circular" bind_text="music_artist_name">
+			<style name="style_artist_label" />
+		</lv_label>
+
+		<!-- Time label at top center (negative y to go above center) -->
+		<lv_label align="center" x="0" y="-105" bind_text="music_time">
+			<style name="style_time_label" />
+		</lv_label>
+
+		<!-- Control buttons container centered -->
+		<lv_obj align="center" x="0" y="0" width="content" height="content">
+			<style name="style_button_container" />
+
+			<!-- Previous button with image -->
+			<lv_button clickable="true" click_focusable="true">
+				<style name="style_button_base" />
+				<lv_image src="icon_skip_back" align="center" />
+				<event_cb callback="music_on_prev_clicked" trigger="clicked" />
+			</lv_button>
+
+			<!-- Play/Pause button - toggle images based on music_playing subject -->
+			<lv_button click_focusable="true">
+				<remove_style_all />
+				<style name="style_button_base" />
+
+				<!-- Play icon - visible when not playing (music_playing == 0) -->
+				<lv_image src="icon_play" align="center">
+					<bind_flag_if_eq subject="music_playing" flag="hidden" ref_value="1" />
+				</lv_image>
+
+				<!-- Pause icon - visible when playing (music_playing == 1) -->
+				<lv_image src="icon_pause" align="center" >
+					<bind_flag_if_eq subject="music_playing" flag="hidden" ref_value="0" />
+				</lv_image>
+
+				<event_cb callback="music_on_play_pause_clicked" trigger="clicked" />
+			</lv_button>
+			<!-- Next button with image -->
+			<lv_button clickable="true" click_focusable="true">
+				<style name="style_button_base" />
+
+				<lv_image src="icon_skip_forward" align="center" />
+				<event_cb callback="music_on_next_clicked" trigger="clicked" />
+			</lv_button>
+		</lv_obj>
+	</view>
+</component>
