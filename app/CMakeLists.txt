@@ -58,18 +58,22 @@ add_subdirectory(src/images)
 
 add_subdirectory(lvgl_editor)
 
-include_directories(src/)
-include_directories(src/ui)
-include_directories(src/applications)
-include_directories(src/ui/watchfaces)
+target_include_directories(app PRIVATE src/)
+target_include_directories(app PRIVATE src/ui)
+target_include_directories(app PRIVATE src/drivers)
+target_include_directories(app PRIVATE src/applications)
+target_include_directories(app PRIVATE src/applications/watchface)
+target_include_directories(app PRIVATE src/ui/watchfaces)
+target_include_directories(app PRIVATE src/filesystem)
+target_include_directories(app PRIVATE src/managers)
+target_include_directories(app PRIVATE src/fuel_gauge)
+target_include_directories(app PRIVATE src/ext_drivers/kissfft)
 
 if(CONFIG_AUDIO_DMIC)
 target_sources(app PRIVATE
     src/ext_drivers/kissfft/kiss_fft.c
     src/ext_drivers/kissfft/kiss_fftr.c
 )
-
-target_include_directories(app PRIVATE src/ext_drivers/kissfft)
 
 target_compile_definitions(app PRIVATE
     kiss_fft_scalar=float
@@ -79,7 +83,7 @@ target_compile_definitions(app PRIVATE
 
 endif()
 
-if (CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
+if(CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
     add_subdirectory(src/fuel_gauge)
 else()
     add_subdirectory(src/basic_battery)
@@ -123,7 +127,7 @@ set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
 zephyr_compile_options(-Wno-double-promotion)
 
 # XIP Code Relocation
-if (CONFIG_MCUMGR)
+if(CONFIG_MCUMGR)
     # Should work in XIP as we use update_app to enable FW update which forces XIP on during update.
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__mgmt LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY subsys__mgmt__mcumgr__util LOCATION EXTFLASH_TEXT NOCOPY)
@@ -160,8 +164,8 @@ zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY
 zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_RODATA NOCOPY)
 zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION RAM_DATA)
 
-if (CONFIG_USB_DEVICE_STACK)
-    # USB can work in XIP as when plugging in VBUS (nPM1300 notifies us) we turn on XIP always on. 
+if(CONFIG_USB_DEVICE_STACK)
+    # USB can work in XIP as when plugging in VBUS (nPM1300 notifies us) we turn on XIP always on.
     # Also in update_app we turn on XIP always on before enabling USB.
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION RAM_DATA)
