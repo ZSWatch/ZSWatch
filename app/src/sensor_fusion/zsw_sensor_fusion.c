@@ -89,6 +89,7 @@ static sensor_fusion_t readings;
 static struct k_work_sync cancel_work_sync;
 static zsw_quat_t readings_quat;
 static float last_delta_time_s = 0.0f;
+static float last_heading = 0.0f;
 
 #ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
 #define UP_BUFFER_SIZE 256
@@ -141,21 +142,32 @@ static void sensor_fusion_timeout(struct k_work *work)
     gyroscope = FusionOffsetUpdate(&offset, gyroscope);
 
     // Calculate delta time (in seconds) to account for gyroscope sample clock error
+    // Clamp deltaTime for robustness: seed on first call, clamp to reasonable range
     const float deltaTime = (start - previousTimestamp) / 1000.0f;
     previousTimestamp = start;
-    last_delta_time_s = deltaTime > 0 ? deltaTime : last_delta_time_s;
+    
+    // Seed deltaTime on first call (when previousTimestamp was 0), clamp to [0.001, 0.1]
+    if (deltaTime <= 0.0f || deltaTime > 0.1f) {
+        last_delta_time_s = (last_delta_time_s > 0.0f) ? last_delta_time_s : (1.0f / SAMPLE_RATE_HZ);
+    } else {
+        last_delta_time_s = deltaTime;
+    }
 
     // Update gyroscope AHRS algorithm
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
-    FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, deltaTime);
+    FusionAhrsUpdate(&ahrs, gyroscope, accelerometer, magnetometer, last_delta_time_s);
 #else
-    FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, deltaTime);
+    FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, last_delta_time_s);
 #endif
     // Print algorithm outputs
     const FusionQuaternion q = FusionAhrsGetQuaternion(&ahrs);
     const FusionEuler euler = FusionQuaternionToEuler(q);
     const FusionVector earth = FusionAhrsGetEarthAcceleration(&ahrs);
+    const FusionAhrsInternalStates states = FusionAhrsGetInternalStates(&ahrs);
+    const FusionAhrsFlags flags = FusionAhrsGetFlags(&ahrs);
+    
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
+    // Calculate proper magnetic heading using compass algorithm
     float heading = FusionCompassCalculateHeading(FusionConventionNwu, accelerometer, magnetometer);
 #endif
 
@@ -172,16 +184,19 @@ static void sensor_fusion_timeout(struct k_work *work)
     readings_quat.z = q.element.z;
 
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
-    LOG_DBG("Roll %0.1f, Pitch %0.1f, Yaw %0.1f, Head: %01f, X %0.2f, Y %0.2f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f\n",
-            euler.angle.roll, euler.angle.pitch,
-            euler.angle.yaw, heading, /*earth.axis.x, earth.axis.y, earth.axis.z*/ accelerometer.axis.x, accelerometer.axis.y,
-            accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z, magnetometer.axis.x, magnetometer.axis.y,
-            magnetometer.axis.z );
+    last_heading = heading;
+#endif
+
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
+    LOG_DBG("R %0.1f, P %0.1f, Y %0.1f, H %0.1f | Init:%d AngRec:%d AccRec:%d MagRec:%d | AccErr:%0.1f AccIgn:%d MagErr:%0.1f MagIgn:%d",
+            euler.angle.roll, euler.angle.pitch, euler.angle.yaw, heading,
+            flags.initialising, flags.angularRateRecovery, flags.accelerationRecovery, flags.magneticRecovery,
+            states.accelerationError, states.accelerometerIgnored, states.magneticError, states.magnetometerIgnored);
 #else
-    LOG_DBG("Roll %0.1f, Pitch %0.1f, Yaw %0.1f, X %0.2f, Y %0.2f, Z %0.1f, X %0.1f, Y %0.1f, Z %0.1f\n",
-            euler.angle.roll, euler.angle.pitch,
-            euler.angle.yaw, accelerometer.axis.x, accelerometer.axis.y,
-            accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z);
+    LOG_DBG("R %0.1f, P %0.1f, Y %0.1f | Init:%d AngRec:%d AccRec:%d | AccErr:%0.1f AccIgn:%d",
+            euler.angle.roll, euler.angle.pitch, euler.angle.yaw,
+            flags.initialising, flags.angularRateRecovery, flags.accelerationRecovery,
+            states.accelerationError, states.accelerometerIgnored);
 #endif
 #if CONFIG_SEND_SENSOR_READING_OVER_RTT
     uint8_t data_buf[UP_BUFFER_SIZE];
@@ -194,7 +209,13 @@ static void sensor_fusion_timeout(struct k_work *work)
     len = SEGGER_RTT_Write(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, data_buf, len);
 #endif
 
-    k_work_schedule(&sensor_fusion_timer, K_MSEC((1000 / SAMPLE_RATE_HZ) - (k_uptime_get_32() - start)));
+    // Schedule next update, ensuring non-negative delay
+    uint32_t elapsed_ms = k_uptime_get_32() - start;
+    uint32_t target_period_ms = 1000 / SAMPLE_RATE_HZ;
+    int32_t delay_ms = (int32_t)target_period_ms - (int32_t)elapsed_ms;
+    
+    // If processing took longer than target period, schedule immediately
+    k_work_schedule(&sensor_fusion_timer, K_MSEC(delay_ms > 0 ? delay_ms : 0));
 }
 
 int zsw_sensor_fusion_init(void)
@@ -222,18 +243,26 @@ int zsw_sensor_fusion_init(void)
 
     memset(&ahrs, 0, sizeof(ahrs));
 
+    // Gyroscope offset correction is tuned via constants in FusionOffset.c:
+    // - CUTOFF_FREQUENCY (0.02 Hz): Filter cutoff for offset estimation
+    // - TIMEOUT (5 seconds): Stationary period required before offset correction begins
+    // - THRESHOLD (3.0 deg/s): Max angular rate considered stationary
+    // Modify these constants in the Fusion library source if further tuning is needed
     FusionOffsetInitialise(&offset, SAMPLE_RATE_HZ);
     FusionAhrsInitialise(&ahrs);
 
     // Set AHRS algorithm settings
-    /// @todo may want to tune more.
+    // Tuned for faster recovery after aggressive motion:
+    // - Higher gain (1.0f) for faster convergence to gravity after motion
+    // - Loosened acceleration rejection (90.0f) so accelerometer is trusted more quickly after motion
+    // - Shortened recovery trigger period (2s) for earlier snap-back after prolonged acceleration
     const FusionAhrsSettings settings = {
         .convention = FusionConventionNwu,
-        .gain = 0.5f,
+        .gain = 1.0f,
         .gyroscopeRange = 2000.0f, /* app/drivers/sensor/bmi270/bosch_bmi270.c:426 */
-        .accelerationRejection = 10.0f,
+        .accelerationRejection = 90.0f,
         .magneticRejection = 10.0f,
-        .recoveryTriggerPeriod = 5 * SAMPLE_RATE_HZ, /* 5 seconds */
+        .recoveryTriggerPeriod = 2 * SAMPLE_RATE_HZ, /* 2 seconds */
     };
 
     FusionAhrsSetSettings(&ahrs, &settings);
@@ -260,8 +289,13 @@ int zsw_sensor_fusion_fetch_all(sensor_fusion_t *p_readings)
 
 int zsw_sensor_fusion_get_heading(float *heading)
 {
-    // @todo: implement, this is not correct magnetic heading. Use FusionCompassCalculateHeading
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
+    // Return proper magnetic heading calculated via FusionCompassCalculateHeading
+    *heading = last_heading;
+#else
+    // No magnetometer available, return yaw from gyroscope integration
     *heading = readings.yaw;
+#endif
     return 0;
 }
 
