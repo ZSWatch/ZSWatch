@@ -46,7 +46,7 @@ Smartwatch built from scratch, both hardware and software. Built on the [Zephyrâ
 
 <kbd><img title="Overview" src=".github/images/overview.jpg"/></kbd>
 
-https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682
+https://github.com/ZSWatch/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfcbe682
 
 ## Features
 
@@ -72,7 +72,7 @@ https://github.com/jakkra/ZSWatch/assets/4318648/ec1a94fd-a682-4559-9e68-f3e5bfc
 
 #### PCB
 
-A 4-layer board that measures 38mm in diameter is designed in KiCad. More info [here](https://github.com/jakkra/ZSWatch-HW).
+A 4-layer board that measures 38mm in diameter is designed in KiCad. More info [here](https://github.com/ZSWatch/ZSWatch-HW).
 
 <kbd><img title="Hardware Overview" src="resources/images/Hardware-Overview.png"/></kbd>
 
@@ -125,7 +125,7 @@ Apple exposes [Apple Notification Center Service](https://developer.apple.com/li
 
 ### Upcomming features
 
-There are almost endless possibilities for features that could be implemented, see [here for full progress](https://github.com/users/jakkra/projects/1) and in GitHub issues.
+There are almost endless possibilities for features that could be implemented, see [here for full progress](https://github.com/users/ZSWatch/projects/1) and in GitHub issues.
 
 ## Charger/Dock
 
@@ -136,21 +136,21 @@ There are almost endless possibilities for features that could be implemented, s
 
 Option with and without onboard SEGGER J-Link OB debugger. As the debugger requires a license, this will only be available as part of a kit.
 
-See more at [here](https://github.com/jakkra/ZSWatch-Dock).
+See more at [here](https://github.com/ZSWatch/ZSWatch-Dock).
 
 ## Demos
 
-- [HTTP requests over BLE through Gadgetbridge](https://github.com/jakkra/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82)
-- [Watchfaces](https://github.com/jakkra/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d)
+- [HTTP requests over BLE through Gadgetbridge](https://github.com/ZSWatch/ZSWatch/assets/4318648/12d6e754-ceb3-4efd-9a75-d207aaeb0e82)
+- [Watchfaces](https://github.com/ZSWatch/ZSWatch/assets/4318648/13e43401-1c00-40ab-866f-e6518e61940d)
 
 ## Building or getting one
 
-- Head over to the hardware repos for the [PCB](https://github.com/jakkra/ZSWatch-HW) and the [Dock](https://github.com/jakkra/ZSWatch-Dock) for information about ordering the PCBs and assembly from PCBWay
-- Go to the [Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch
+- Head over to the hardware repos for the [PCB](https://github.com/ZSWatch/ZSWatch-HW) and the [Dock](https://github.com/ZSWatch/ZSWatch-Dock) for information about ordering the PCBs and assembly from PCBWay
+- Go to the [Wiki](https://github.com/ZSWatch/ZSWatch/wiki/Case,-3D-printing-and-assembling) for information how to print parts and assemble ZSWatch
 
 Some things are still in progress:
 
-- [Building instructions in Wiki](https://github.com/jakkra/ZSWatch/wiki/Case,-3D-printing-and-assembling)
+- [Building instructions in Wiki](https://github.com/ZSWatch/ZSWatch/wiki/Case,-3D-printing-and-assembling)
 - Dock casing
 
 If you are interested in a kit or want to get notified when the missing parts above are resolved, fill in your **[mail here](https://zswatch.dev/)** and we'll send a reminder when it's ready.
@@ -159,11 +159,11 @@ If you are interested in a kit or want to get notified when the missing parts ab
 
 ## Environment, Compiling and running the code
 
-See [Wiki page about Start Developing](https://github.com/jakkra/ZSWatch/wiki/Start-Developing).
+See [Wiki page about Start Developing](https://github.com/ZSWatch/ZSWatch/wiki/Start-Developing).
 
 ## Writing apps for the Application Manager
 
-See [Wiki page about apps](https://github.com/jakkra/ZSWatch/wiki/Apps).
+See [Wiki page about apps](https://github.com/ZSWatch/ZSWatch/wiki/Apps).
 
 ## Licence GPL-3.0
 
