@@ -131,8 +131,16 @@ jobs:
           # Make sure bt hci adapter is on.
           # Sometimes get's into a bad state on the self-hosted runner.
           # Try to reset Bluetooth by restarting the service and power cycling the adapter.
-          sudo systemctl stop bluetooth
+          sudo pkill bluetoothd
+          sudo pkill hciattach
+          sudo pkill bluealsa
+          sudo pkill btattach
+          sleep 5
+          sudo hciconfig hci0 down
+          sudo rmmod btusb
+          sudo modprobe btusb
           sudo systemctl start bluetooth
+
           sudo btmgmt --index 0 power off
           sleep 2
           sudo btmgmt --index 0 power on
