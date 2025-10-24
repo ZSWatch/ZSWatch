@@ -17,6 +17,12 @@ static inline void lv_obj_set_name(lv_obj_t * obj, const char * name)
     (void)name;
 }
 
+static inline void lv_obj_set_name_static(lv_obj_t * obj, const char * name)
+{
+    (void)obj;
+    (void)name;
+}
+
 // Arc range functions - newer API uses separate min/max setters
 static inline void lv_arc_set_min_value(lv_obj_t * obj, int32_t min)
 {
