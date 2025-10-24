@@ -249,7 +249,7 @@ int zsw_history_save(zsw_history_t *p_history)
 
     // Second: Save the data
     sprintf(key_data, "%s/%s", p_history->key, ZSW_HISTORY_DATA_EXTENSION);
-    error = settings_save_one(key_data, p_history->samples, p_history->write_index * p_history->sample_size);
+    error = settings_save_one(key_data, p_history->samples, p_history->max_samples * p_history->sample_size);
     if (error) {
         LOG_ERR("Error during saving of history data! Error: %i", error);
         return -EFAULT;
