@@ -15,6 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
