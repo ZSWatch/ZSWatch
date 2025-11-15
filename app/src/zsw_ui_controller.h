@@ -30,7 +30,7 @@
  *
  * @return 0 on success, negative error code on failure
  */
-int zsw_ui_controller_init();
+int zsw_ui_controller_init(void);
 
 /**
  * @brief Enable notification mode for UI controller

@@ -353,7 +353,6 @@ int zsw_ui_controller_init(void)
     enc_indev = lv_indev_create();
     lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);
     lv_indev_set_read_cb(enc_indev, encoder_read);
-    lv_indev_set_group(enc_indev, input_group);
 
     input_group = lv_group_create();
     lv_group_set_default(input_group);
