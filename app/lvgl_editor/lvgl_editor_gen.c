@@ -80,8 +80,6 @@ lv_subject_t music_playing;
 
 void lvgl_editor_init_gen(const char * asset_path)
 {
-    char buf[256];
-
     /*----------------
      * Global styles
      *----------------*/

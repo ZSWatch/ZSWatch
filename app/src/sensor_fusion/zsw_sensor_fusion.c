@@ -69,6 +69,7 @@ static const FusionMatrix accelerometerMisalignment = {.element.xx = 1.0f,
                                                       };
 static const FusionVector accelerometerSensitivity = {{1.0f, 1.0f, 1.0f}};
 static const FusionVector accelerometerOffset = {{0.0f, 0.0f, 0.0f}};
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
 static const FusionMatrix softIronMatrix = {.element.xx = 1.0f,
                                             .element.xy = 0.0f,
                                             .element.xz = 0.0f,
@@ -80,6 +81,7 @@ static const FusionMatrix softIronMatrix = {.element.xx = 1.0f,
                                             .element.zz = 1.0f
                                            };
 static const FusionVector hardIronOffset = {{0.0f, 0.0f, 0.0f}};
+#endif
 
 // Initialise algorithms
 static FusionOffset offset;
@@ -101,7 +103,9 @@ static void sensor_fusion_timeout(struct k_work *work)
 
     FusionVector gyroscope;
     FusionVector accelerometer;
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     FusionVector magnetometer;
+#endif
 
     uint32_t start = k_uptime_get_32();
     ret = zsw_imu_fetch_gyro_f(&gyroscope.axis.x, &gyroscope.axis.y, &gyroscope.axis.z);
@@ -185,12 +189,20 @@ static void sensor_fusion_timeout(struct k_work *work)
 #endif
 #if CONFIG_SEND_SENSOR_READING_OVER_RTT
     uint8_t data_buf[UP_BUFFER_SIZE];
+#ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     int len = snprintf(data_buf, UP_BUFFER_SIZE,
                        "%0.5f, %0.1f, %0.1f, %0.1f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f\n",
                        k_uptime_get_32() / 1000.0, euler.angle.roll, euler.angle.pitch,
                        euler.angle.yaw, gyroscope.axis.x,
                        gyroscope.axis.y, gyroscope.axis.z,  accelerometer.axis.x, accelerometer.axis.y, accelerometer.axis.z,
                        magnetometer.axis.x, magnetometer.axis.y, magnetometer.axis.z);
+#else
+    int len = snprintf(data_buf, UP_BUFFER_SIZE,
+                       "%0.5f, %0.1f, %0.1f, %0.1f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f\n",
+                       k_uptime_get_32() / 1000.0, euler.angle.roll, euler.angle.pitch,
+                       euler.angle.yaw, gyroscope.axis.x,
+                       gyroscope.axis.y, gyroscope.axis.z, accelerometer.axis.x, accelerometer.axis.y, accelerometer.axis.z);
+#endif
     len = SEGGER_RTT_Write(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, data_buf, len);
 #endif
 

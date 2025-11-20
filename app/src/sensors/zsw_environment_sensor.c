@@ -35,9 +35,9 @@ static const struct device *const bme688 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bm
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
-    float temperature;
-    float pressure;
-    float humidity;
+    float temperature = 0.0f;
+    float pressure = 0.0f;
+    float humidity = 0.0f;
     float iaq = -1.0;
 
     if (zsw_environment_sensor_get(&temperature, &humidity, &pressure)) {

@@ -262,7 +262,7 @@ static int settings_load_handler(const char *key, size_t len,
 static int zsw_power_manager_init(void)
 {
     int err;
-    zsw_settings_display_always_on_t display_always_on;
+    zsw_settings_display_always_on_t display_always_on = false;
 
     last_wakeup_time = k_uptime_get_32();
     last_pwr_off_time = k_uptime_get_32();

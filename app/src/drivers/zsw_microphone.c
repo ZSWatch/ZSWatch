@@ -101,6 +101,7 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 
     if (mic_state.reg_dev && !device_is_ready(mic_state.reg_dev)) {
         LOG_WRN("Microphone regulator device not ready");
+        return -ENODEV;
     }
 
     mic_state.mic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));

@@ -17,6 +17,7 @@
 
 #include "spectrum_analyzer.h"
 #include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
 #include <string.h>
 #include <math.h>
 #include "kiss_fftr.h"

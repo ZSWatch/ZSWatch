@@ -64,9 +64,15 @@ include_directories(src/applications)
 include_directories(src/ui/watchfaces)
 
 if(CONFIG_AUDIO_DMIC)
-target_sources(app PRIVATE
+set(kissfft_sources
     src/ext_drivers/kissfft/kiss_fft.c
     src/ext_drivers/kissfft/kiss_fftr.c
+)
+
+target_sources(app PRIVATE ${kissfft_sources})
+
+set_source_files_properties(${kissfft_sources} PROPERTIES
+    COMPILE_OPTIONS "-include;zephyr/kernel.h"
 )
 
 target_include_directories(app PRIVATE src/ext_drivers/kissfft)
