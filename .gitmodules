@@ -22,9 +22,9 @@
 [submodule "hardware/Dock-HW"]
 	path = hardware/Dock-HW
 	url = https://github.com/ZSWatch/Dock-HW.git
-[submodule "hardware/Watch-HW"]
-	path = hardware/Watch-HW
-	url = https://github.com/ZSWatch/Watch-HW.git
+[submodule "hardware/Watch-DevKit-HW"]
+	path = hardware/Watch-DevKit-HW
+	url = https://github.com/ZSWatch/Watch-DevKit-HW.git
 [submodule "app/src/ext_drivers/kissfft"]
 	path = app/src/ext_drivers/kissfft
 	url = https://github.com/mborgerding/kissfft.git
