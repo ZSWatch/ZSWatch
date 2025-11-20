@@ -3,7 +3,7 @@ on: [workflow_call]
 jobs:
   build:
     runs-on: ubuntu-24.04
-    container: ghcr.io/zephyrproject-rtos/ci:v0.27.4
+    container: ghcr.io/zswatch/zswatch-ci:zswatch_v0.28.4
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
     strategy:
