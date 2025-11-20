@@ -16,7 +16,8 @@
  */
 
 #include "zsw_microphone.h"
-#include <zephyr/drivers/gpio.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/regulator.h>
 #include <zephyr/audio/dmic.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
@@ -35,14 +36,16 @@ static struct {
     bool recording;
     zsw_mic_audio_cb_t audio_callback;
     const struct device *mic_dev;
-    struct gpio_dt_spec enable_gpio;
+    const struct device *const reg_dev;
 
     struct k_thread audio_thread;
     k_tid_t audio_thread_id;
 
     uint32_t buffer_allocation_failures;
     uint32_t total_blocks_processed;
-} mic_state;
+} mic_state = {
+    .reg_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(mic_pwr)),
+};
 
 K_MEM_SLAB_DEFINE(rx_mem_slab, PCM_BLK_SIZE_MS, BUFFER_POOL_SIZE, 1);
 
@@ -89,21 +92,15 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 
     LOG_INF("Initializing microphone");
 
-    memset(&mic_state, 0, sizeof(mic_state));
+    mic_state.recording = false;
     mic_state.audio_callback = audio_callback;
+    mic_state.buffer_allocation_failures = 0;
+    mic_state.total_blocks_processed = 0;
+    mic_state.audio_thread_id = NULL;
+    memset(&mic_state.audio_thread, 0, sizeof(mic_state.audio_thread));
 
-    mic_state.enable_gpio = (struct gpio_dt_spec)GPIO_DT_SPEC_GET_OR(DT_NODELABEL(mic_pwr), enable_gpios, {});
-
-    if (mic_state.enable_gpio.port && !device_is_ready(mic_state.enable_gpio.port)) {
-        LOG_ERR("Microphone power GPIO not ready");
-    }
-
-    if (mic_state.enable_gpio.port) {
-        ret = gpio_pin_configure_dt(&mic_state.enable_gpio, GPIO_OUTPUT_LOW);
-        if (ret != 0) {
-            LOG_ERR("Failed to configure microphone power GPIO: %d", ret);
-            return ret;
-        }
+    if (mic_state.reg_dev && !device_is_ready(mic_state.reg_dev)) {
+        LOG_WRN("Microphone regulator device not ready");
     }
 
     mic_state.mic_dev = DEVICE_DT_GET(DT_NODELABEL(dmic_dev));
@@ -273,25 +270,41 @@ static void audio_thread_entry(void *p1, void *p2, void *p3)
 
 static int power_on_microphone(void)
 {
-    if (mic_state.enable_gpio.port == NULL) {
+    if (mic_state.reg_dev == NULL) {
         return 0;
     }
-    int ret = gpio_pin_set_dt(&mic_state.enable_gpio, 1);
+
+    if (!device_is_ready(mic_state.reg_dev)) {
+        LOG_ERR("Microphone regulator device not ready");
+        return -ENODEV;
+    }
+
+    int ret = regulator_enable(mic_state.reg_dev);
     if (ret == 0) {
-        LOG_DBG("Microphone powered on");
+        LOG_DBG("Microphone regulator enabled");
         k_sleep(K_MSEC(1));
+    } else {
+        LOG_ERR("Failed to enable microphone regulator: %d", ret);
     }
     return ret;
 }
 
 static int power_off_microphone(void)
 {
-    if (mic_state.enable_gpio.port == NULL) {
+    if (mic_state.reg_dev == NULL) {
         return 0;
     }
-    int ret = gpio_pin_set_dt(&mic_state.enable_gpio, 0);
+
+    if (!device_is_ready(mic_state.reg_dev)) {
+        LOG_ERR("Microphone regulator device not ready");
+        return -ENODEV;
+    }
+
+    int ret = regulator_disable(mic_state.reg_dev);
     if (ret == 0) {
-        LOG_DBG("Microphone powered off");
+        LOG_DBG("Microphone regulator disabled");
+    } else {
+        LOG_ERR("Failed to disable microphone regulator: %d", ret);
     }
     return ret;
 }

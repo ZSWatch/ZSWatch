@@ -173,12 +173,6 @@ zephyr_udc0: &usbd {
         enable-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
     };
 
-    mic_pwr: mic-pwr-ctrl {
-        compatible = "regulator-fixed";
-        regulator-name = "mic-pwr-ctrl";
-        enable-gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
-    };
-
     pwmleds {
         compatible = "pwm-leds";
 
@@ -352,8 +346,12 @@ dmic_dev: &pdm0 {
                 regulator-boot-on;
             };
 
-            npm1300_ldo1: LDO1 {
-                status = "disabled";
+            mic_pwr: LDO1 {
+                regulator-min-microvolt = <1800000>;
+                regulator-max-microvolt = <1800000>;
+                regulator-init-microvolt = <1800000>;
+                regulator-initial-mode = <NPM13XX_LDSW_MODE_LDO>;
+                regulator-boot-off;
             };
 
             npm1300_ldo2: LDO2 {
