@@ -15,6 +15,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/dt-bindings/input/cst816s-gesture-codes.h>
 
 #define CST816S_CHIP_ID                 0xB4
 
@@ -30,6 +31,7 @@
 #define CST816S_REG_BPC1H               0xB2
 #define CST816S_REG_BPC1L               0xB3
 #define CST816S_REG_POWER_MODE          0xA5
+#define CST816S_REG_SLEEP_MODE          0xE5
 #define CST816S_REG_CHIP_ID             0xA7
 #define CST816S_REG_PROJ_ID             0xA8
 #define CST816S_REG_FW_VERSION          0xA9
@@ -62,6 +64,10 @@
 #define CST816S_IRQ_EN_CHANGE           BIT(5)
 #define CST816S_IRQ_EN_MOTION           BIT(4)
 #define CST816S_IRQ_ONCE_WLP            BIT(0)
+
+#ifndef CONFIG_INPUT_CST816S_INTERRUPT
+#warning "This mode is untested with power management"
+#endif
 
 #define CST816S_IOCTL_SOFT_RTS          BIT(2)
 #define CST816S_IOCTL_IIC_OD            BIT(1)
@@ -116,7 +122,34 @@ struct cst816s_output {
 	uint16_t y;
 };
 
-LOG_MODULE_REGISTER(cst816s, CONFIG_INPUT_LOG_LEVEL);
+#ifdef CONFIG_PM_DEVICE
+// NOTE: Those descriptions may not be correct as they come from translated chinese datasheet.
+struct cst816s_lp_profile {
+	uint8_t autosleep_time_s;      /* 0xF9: seconds before entering LP mode */
+	uint8_t lp_auto_wake_time_min; /* 0xF4: minutes between LP recalibrations */
+	uint8_t lp_scan_th;            /* 0xF5: smaller = more sensitive */
+	uint8_t lp_scan_win;           /* 0xF6: 0..3, larger = more sensitive / power */
+	uint8_t lp_scan_freq;          /* 0xF7: smaller = more sensitive / more power */
+	uint8_t lp_scan_i_dac;         /* 0xF8: smaller = more sensitive */
+	uint8_t nor_scan_per;          /* 0xEE: 10 ms units, affects auto-sleep timing */
+	uint8_t irq_ctl;               /* 0xFA: IRQ enables */
+};
+
+// Those values comes from experimentation. This results in reliable low-power operation with good wake sensitivity.
+// Consumes about 80uA in suspend mode. Can probably be tuned more to reduce power further while keeping good wake sensitivity.
+static const struct cst816s_lp_profile cst816s_suspend_profile = {
+	.autosleep_time_s = 2,         /* Enter LP mode quickly*/
+	.lp_auto_wake_time_min = 3,    /* Recalibrate every X minutes */
+	.lp_scan_th = 50,              /* More sensitive threshold for reliable wake detection */
+	.lp_scan_win = 100,              /* Max window for better touch detection */
+	.lp_scan_freq = 50,             /* Balance between sensitivity and power */
+	.lp_scan_i_dac = 200,            /* Lower drive = more sensitive */
+	.nor_scan_per = 10,            /* 100ms scan period - balance power and responsiveness */
+	.irq_ctl = CST816S_IRQ_EN_TOUCH,
+};
+#endif
+
+LOG_MODULE_REGISTER(cst816s, LOG_LEVEL_WRN);
 
 static int cst816s_process(const struct device *dev)
 {
@@ -176,6 +209,11 @@ static int cst816s_process(const struct device *dev)
 
 				break;
 			}
+			case CST816S_GESTURE_DOUBLE_CLICK: {
+				input_report_key(dev, CST816S_GESTURE_CODE_DOUBLE_CLICK, 0, true, K_FOREVER);
+
+				break;
+			}
 			default: {
 				break;
 			}
@@ -183,6 +221,18 @@ static int cst816s_process(const struct device *dev)
 	}
 
 	return 0;
+}
+
+static int cst816s_write_reg_checked(const struct i2c_dt_spec *i2c, uint8_t reg, uint8_t val,
+				     const char *label)
+{
+	int ret = i2c_reg_write_byte_dt(i2c, reg, val);
+
+	if (ret) {
+		LOG_WRN("Reg write %s (0x%02x) -> 0x%02x failed (%d)", label, reg, val, ret);
+	}
+
+	return ret;
 }
 
 static void cst816s_work_handler(struct k_work *work)
@@ -196,7 +246,7 @@ static void cst816s_work_handler(struct k_work *work)
 static void cst816s_isr_handler(const struct device *dev, struct gpio_callback *cb, uint32_t mask)
 {
 	struct cst816s_data *data = CONTAINER_OF(cb, struct cst816s_data, int_gpio_cb);
-
+	printk("ISR\n");
 	k_work_submit(&data->work);
 }
 #else
@@ -252,12 +302,13 @@ static int cst816s_chip_init(const struct device *dev)
 		return -ENODATA;
 	}
 
+	/*
 	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL, CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE,
 							   CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE) < 0) {
 		LOG_ERR("Could not enable irq");
 		return -ENODATA;
 	}
-
+	*/
 	return 0;
 }
 
@@ -299,25 +350,67 @@ static int cst816s_init(const struct device *dev)
 	k_timer_start(&data->timer, K_MSEC(CONFIG_INPUT_CST816S_PERIOD), K_MSEC(CONFIG_INPUT_CST816S_PERIOD));
 #endif
 
-	return cst816s_chip_init(dev);
+	int status = cst816s_chip_init(dev);
+	if (status < 0) {
+		return status;
+	}
+
+	return 0;
 };
 
 #ifdef CONFIG_PM_DEVICE
+static int cst816s_apply_profile(const struct cst816s_config *cfg, const struct cst816s_lp_profile *p)
+{
+	int ret = 0;
+
+	//ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_NOR_SCAN_PER, p->nor_scan_per, "nor_scan_per");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_AUTOSLEEP_TIME, p->autosleep_time_s, "autosleep_time");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_LP_AUTO_WAKEUP_TIME, p->lp_auto_wake_time_min, "lp_auto_wake_time");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_LP_SCAN_TH, p->lp_scan_th, "lp_scan_th");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_LP_SCAN_WIN, p->lp_scan_win, "lp_scan_win");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_LP_SCAN_FREQ, p->lp_scan_freq, "lp_scan_freq");
+	ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_LP_SCAN_I_DAC, p->lp_scan_i_dac, "lp_scan_i_dac");
+	//ret |= cst816s_write_reg_checked(&cfg->i2c, CST816S_REG_IRQ_CTL, p->irq_ctl, "irq_ctl");
+
+	if (ret) {
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static int cst816s_pm_action(const struct device *dev, enum pm_device_action action)
 {
 	int status = 0;
+	const struct cst816s_config *cfg = dev->config;
 
-	LOG_DBG("Status: %u", action);
+	// For some reason the CST816S does not respond to I2C commands after we use the standby profile.
+	// Workaround for now is to just always reset it before we change power modes.
+	cst816s_chip_reset(dev);
+	status = cst816s_chip_init(dev);
+	LOG_WRN("PM action: %u, reset status: %d", action, status);
 
 	switch (action) {
-		case PM_DEVICE_ACTION_SUSPEND: {
-			// Suspend/Resume only used to handle re-init after powered off.
+		case PM_DEVICE_ACTION_SUSPEND:
+		// For PM TURN_ON means device is in suspend mode, hence apply suspend profile. 
+		case PM_DEVICE_ACTION_TURN_ON: {
+			status = cst816s_apply_profile(cfg, &cst816s_suspend_profile);
+
+			if (i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_DIS_AUTO_SLEEP, 0x00) < 0) {
+				LOG_WRN("Could not enable auto sleep");
+			}
 			break;
 		}
-		case PM_DEVICE_ACTION_TURN_ON: {
-			LOG_DBG("State changed to active");
-			status = cst816s_chip_init(dev);
-
+		case PM_DEVICE_ACTION_TURN_OFF: {
+			// Deep Sleep
+			status = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_SLEEP_MODE, CST816S_POWER_MODE_SLEEP);
+			if (status < 0) {
+				LOG_WRN("Could not enter deep sleep mode");
+			}
+			break;
+		}
+		case PM_DEVICE_ACTION_RESUME: {
+			// Nothing to do, device is already reset above.
 			break;
 		}
 		default: {
