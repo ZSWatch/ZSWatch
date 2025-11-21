@@ -1,0 +1,5 @@
+rsource "../app/Kconfig"
+
+menu "Power debug options"
+
+endmenu

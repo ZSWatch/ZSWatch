@@ -1,0 +1,13 @@
+/*
+ * Power debug overlay for WatchDK
+ */
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
+
+    aliases {
+        sw0 = &button1;
+    };
+};
