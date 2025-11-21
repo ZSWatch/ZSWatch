@@ -15,8 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "zsw_ui_controller.h"
-#include <stdint.h>
 #include <zephyr/input/input.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -24,21 +22,25 @@
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
 #include <lvgl.h>
-#include <filesystem/zsw_filesystem.h>
-#include <zsw_retained_ram_storage.h>
-#include "applications/watchface/watchface_app.h"
-#include "drivers/zsw_display_control.h"
-#include "drivers/zsw_vibration_motor.h"
-#include "fuel_gauge/zsw_pmic.h"
-#include "managers/zsw_app_manager.h"
-#include "managers/zsw_notification_manager.h"
-#include "managers/zsw_power_manager.h"
-#include "ui/zsw_ui.h"
-#include "lvgl_editor_gen.h"
+
+#include <stdint.h>
+#include <string.h>
+
+#include "zsw_ui_controller.h"
+#include "zsw_filesystem.h"
+#include "zsw_retained_ram_storage.h"
+#include "watchface_app.h"
+#include "zsw_display_control.h"
+#include "zsw_vibration_motor.h"
+#include "zsw_pmic.h"
+#include "zsw_app_manager.h"
+#include "zsw_notification_manager.h"
+#include "zsw_power_manager.h"
+#include "zsw_ui.h"
 
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_APP_LOG_LEVEL);
 
-typedef enum ui_state {
+typedef enum {
     INIT_STATE,
     WATCHFACE_STATE,
     APPLICATION_MANAGER_STATE,
@@ -57,21 +59,24 @@ static lv_obj_t *root_screen;
 static lv_group_t *input_group;
 static lv_group_t *temp_group;
 static lv_indev_t *enc_indev;
-static uint8_t last_pressed;
+static uint8_t last_pressed = 0xFF;
 
 static void run_input_work(struct k_work *item);
-static void handle_screen_gesture(lv_dir_t event_code);
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
-static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
 static void on_application_manager_close(void);
 
 K_WORK_DEFINE(input_work, run_input_work);
 
 static ui_state_t watch_state = INIT_STATE;
+
+static void async_turn_off_buttons_allocation(void *unused)
+{
+    is_buttons_for_lvgl = false;
+}
 
 static void run_input_work(struct k_work *item)
 {
@@ -121,7 +126,7 @@ static void run_input_work(struct k_work *item)
 
     if (is_buttons_for_lvgl) {
         // Handled by LVGL
-        last_input_event.code = container->event.code;
+        memcpy(&last_input_event, &container->event, sizeof(struct input_event));
         return;
     }
 }
@@ -160,11 +165,6 @@ static void on_application_manager_close(void)
     lv_async_call(async_turn_off_buttons_allocation, NULL);
 }
 
-static void async_turn_off_buttons_allocation(void *unused)
-{
-    is_buttons_for_lvgl = false;
-}
-
 static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 {
     // Currently you have to define a keycode as binding between buttons and longpress. We skip this binding codes for now.
@@ -177,45 +177,43 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
     }
 
     input_worker_item.event = *evt;
-    input_worker_item.work = input_work;
+    k_work_init(&input_worker_item.work, run_input_work);
     k_work_submit(&input_worker_item.work);
-}
-
-static void handle_screen_gesture(lv_dir_t event_code)
-{
-    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
-        switch (event_code) {
-            case LV_DIR_LEFT: {
-                open_application_manager_page("Notification");
-                break;
-            }
-            case LV_DIR_RIGHT: {
-                open_application_manager_page("Watchface Picker");
-                break;
-            }
-            case LV_DIR_TOP: {
-                open_application_manager_page(NULL);
-                break;
-            }
-            case LV_DIR_BOTTOM: {
-                break;
-            }
-            default:
-                __ASSERT(false, "Not a valid gesture code: %d", event_code);
-        }
-        lv_indev_wait_release(lv_indev_get_act());
-    } else if (zsw_notification_popup_is_shown()) {
-        zsw_notification_popup_remove();
-    }
 }
 
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
 {
-    lv_dir_t  dir;
+    lv_dir_t dir;
     lv_event_code_t event = lv_event_get_code(e);
+
     if (event == LV_EVENT_GESTURE) {
         dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        handle_screen_gesture(dir);
+        if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
+            switch (dir) {
+                case LV_DIR_LEFT: {
+                    open_application_manager_page("Notification");
+                    break;
+                }
+                case LV_DIR_RIGHT: {
+                    open_application_manager_page("Watchface Picker");
+                    break;
+                }
+                case LV_DIR_TOP: {
+                    open_application_manager_page(NULL);
+                    break;
+                }
+                case LV_DIR_BOTTOM: {
+                    break;
+                }
+                default: {
+                    LOG_DBG("Not a valid gesture code: %d", dir);
+                    break;
+                }
+            }
+            lv_indev_wait_release(lv_indev_get_act());
+        } else if (zsw_notification_popup_is_shown()) {
+            zsw_notification_popup_remove();
+        }
     }
 }
 
@@ -243,7 +241,9 @@ static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data)
         if (last_pressed == 0xFF) {
             return;
         }
+
         data->state = LV_INDEV_STATE_REL;
+
         switch (last_pressed) {
             case 2:
                 data->key = LV_KEY_RIGHT;
@@ -257,6 +257,7 @@ static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data)
             default:
                 break;
         }
+
         last_pressed = 0xFF;
     }
 
@@ -352,7 +353,6 @@ int zsw_ui_controller_init(void)
     enc_indev = lv_indev_create();
     lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);
     lv_indev_set_read_cb(enc_indev, encoder_read);
-    lv_indev_set_group(enc_indev, input_group);
 
     input_group = lv_group_create();
     lv_group_set_default(input_group);

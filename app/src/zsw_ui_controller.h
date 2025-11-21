@@ -15,8 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ZSW_UI_CONTROLLER_H
-#define ZSW_UI_CONTROLLER_H
+#pragma once
 
 /**
  * @brief Initialize the UI controller system
@@ -31,7 +30,7 @@
  *
  * @return 0 on success, negative error code on failure
  */
-int zsw_ui_controller_init();
+int zsw_ui_controller_init(void);
 
 /**
  * @brief Enable notification mode for UI controller
@@ -57,5 +56,3 @@ void zsw_ui_controller_set_notification_mode(void);
  * This returns input handling to the appropriate state based on current UI mode.
  */
 void zsw_ui_controller_clear_notification_mode(void);
-
-#endif /* ZSW_UI_CONTROLLER_H */
