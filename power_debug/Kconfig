@@ -1,0 +1,29 @@
+rsource "../app/Kconfig"
+
+menu "Power debug options"
+
+config POWER_DEBUG_SYSTEM_OFF_DELAY_MS
+    int "Delay before entering System OFF (ms)"
+    default 15000
+    range 0 600000
+    help
+      Time to wait after boot and peripheral shutdown before entering
+      System OFF. Use this window to measure active/idle power.
+
+config POWER_DEBUG_EXTEND_DELAY_MS
+    int "Additional delay when extending the measurement window (ms)"
+    default 10000
+    range 0 600000
+    help
+      Extra time added when a button press requests more time before
+      entering System OFF.
+
+config POWER_DEBUG_HEARTBEAT_INTERVAL_S
+    int "Heartbeat log interval (s)"
+    default 5
+    range 0 3600
+    help
+      How often to print a heartbeat log while waiting to enter
+      System OFF. Set to 0 to disable heartbeats.
+
+endmenu

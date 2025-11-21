@@ -1,0 +1,14 @@
+/*
+ * Power debug overlay for WatchDK
+ */
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
+
+    aliases {
+        /* Map sw0 to a physical button for waking from System OFF */
+        sw0 = &button1;
+    };
+};
