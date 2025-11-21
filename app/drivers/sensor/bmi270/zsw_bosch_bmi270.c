@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/i2c.h>
@@ -536,6 +537,7 @@ static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action ac
     }
 
     if (rslt != BMI2_OK) {
+        LOG_ERR("PM action %d failed for BMI270 (%d)", action, rslt);
         return -EFAULT;
     }
 
