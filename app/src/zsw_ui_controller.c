@@ -18,6 +18,7 @@
 #include "zsw_ui_controller.h"
 #include <stdint.h>
 #include <zephyr/input/input.h>
+#include <zephyr/dt-bindings/input/cst816s-gesture-codes.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
@@ -115,6 +116,10 @@ static void run_input_work(struct k_work *item)
                 lv_async_call(open_application_manager_page, NULL);
             }
 
+            break;
+        }
+        case CST816S_GESTURE_CODE_DOUBLE_CLICK: {
+            LOG_WRN("Double click gesture detected");
             break;
         }
     }
