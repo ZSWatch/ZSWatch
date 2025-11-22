@@ -24,6 +24,7 @@
 #include <events/activity_event.h>
 #include <zsw_retained_ram_storage.h>
 #include <zephyr/settings/settings.h>
+#include <math.h>
 
 #include "zsw_settings.h"
 #include "zsw_cpu_freq.h"
@@ -38,18 +39,36 @@ LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
 #ifdef CONFIG_ARCH_POSIX
 #define IDLE_TIMEOUT_SECONDS    UINT32_MAX
 #else
-#define IDLE_TIMEOUT_SECONDS    CONFIG_POWER_MANAGEMENT_IDLE_TIMEOUT_SECONDS
+#define IDLE_TIMEOUT_SECONDS    10
 #endif
 
 #define POWER_MANAGEMENT_MIN_ACTIVE_PERIOD_SECONDS                  1
 #define LOW_BATTERY_VOLTAGE_MV                                      3750
 
+/* Tilt-based auto-off tuning */
+/* How often to sample accelerometer while active (ms) */
+#define TILT_SAMPLE_PERIOD_MS                                       500
+/* Number of samples to average when learning reference orientation */
+#define TILT_REF_SAMPLES                                            8
+/* Require user inactivity for at least this long before tilt-off (ms) */
+#define TILT_MIN_LVGL_IDLE_MS                                       1500
+/* Cosine thresholds for "clearly facing" / "clearly away"
+ * (dot product between current gravity vector and learned reference).
+ *  cos(35deg) ~ 0.82, cos(70deg) ~ 0.34
+ */
+#define TILT_FACE_DOT_MIN                                           0.75f
+#define TILT_AWAY_DOT_MAX                                           0.45f
+/* How long tilt must stay in "away" region before turning off (ms) */
+#define TILT_AWAY_HOLD_MS                                           800
+
 static void update_and_publish_state(zsw_power_manager_state_t new_state);
 static void handle_idle_timeout(struct k_work *item);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
+static void tilt_timeout(struct k_work *item);
 
 K_WORK_DELAYABLE_DEFINE(idle_work, handle_idle_timeout);
+K_WORK_DELAYABLE_DEFINE(tilt_work, tilt_timeout);
 
 ZBUS_CHAN_DECLARE(activity_state_data_chan);
 
@@ -66,6 +85,24 @@ static bool is_stationary;
 static uint32_t last_wakeup_time;
 static uint32_t last_pwr_off_time;
 static zsw_power_manager_state_t state;
+
+/* Tilt detection state */
+static bool tilt_ref_valid;
+static float tilt_ref_x;
+static float tilt_ref_y;
+static float tilt_ref_z;
+static uint8_t tilt_ref_count;
+static uint32_t tilt_away_start_ms;
+
+static void tilt_reset_state(void)
+{
+    tilt_ref_valid = false;
+    tilt_ref_x = 0.0f;
+    tilt_ref_y = 0.0f;
+    tilt_ref_z = 0.0f;
+    tilt_ref_count = 0;
+    tilt_away_start_ms = 0;
+}
 
 static void enter_inactive(void)
 {
@@ -89,7 +126,6 @@ static void enter_inactive(void)
     // Screen inactive -> wait for NO_MOTION interrupt in order to power off display regulator.
     zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
-
 }
 
 static void enter_active(void)
@@ -119,9 +155,13 @@ static void enter_active(void)
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
+    /* Prepare tilt detection for this active session */
+    tilt_reset_state();
+
     update_and_publish_state(ZSW_ACTIVITY_STATE_ACTIVE);
 
     k_work_schedule(&idle_work, K_SECONDS(idle_timeout_seconds));
+    k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
 }
 
 bool zsw_power_manager_reset_idle_timout(void)
@@ -176,6 +216,114 @@ static void handle_idle_timeout(struct k_work *item)
     } else {
         k_work_schedule(&idle_work, K_MSEC(idle_timeout_seconds * 1000 - last_lvgl_activity_ms));
     }
+}
+
+static void tilt_timeout(struct k_work *item)
+{
+    ARG_UNUSED(item);
+
+    /* Only run tilt logic while active and when an idle timeout is configured. */
+    if (!is_active || (idle_timeout_seconds == UINT32_MAX)) {
+        LOG_DBG("Tilt: skip (is_active=%d, idle_timeout_seconds=%u)",
+                is_active, idle_timeout_seconds);
+        return;
+    }
+
+    uint32_t lvgl_idle = lv_disp_get_inactive_time(NULL);
+    LOG_WRN("Tlvgl_idle=%u ms", lvgl_idle);
+    /* Do not consider tilt-off while there is very recent LVGL activity. */
+    if (lvgl_idle < TILT_MIN_LVGL_IDLE_MS) {
+        LOG_DBG("Tilt: LVGL recently active (%u ms < %u ms), skip",
+                lvgl_idle, (uint32_t)TILT_MIN_LVGL_IDLE_MS);
+        k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
+        return;
+    }
+
+    float ax, ay, az;
+    if (zsw_imu_fetch_accel_f(&ax, &ay, &az) != 0) {
+        /* Try again later if sampling fails. */
+        LOG_DBG("Tilt: zsw_imu_fetch_accel_f failed");
+        k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
+        return;
+    }
+
+    /* Compute magnitude of current gravity vector. */
+    float mag_sq = ax * ax + ay * ay + az * az;
+    if (mag_sq <= 0.0f) {
+        LOG_DBG("Tilt: invalid accel magnitude");
+        k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
+        return;
+    }
+
+    float mag = sqrtf(mag_sq);
+
+    if (!tilt_ref_valid) {
+        /* Learn reference orientation during the first few samples of active period. */
+        tilt_ref_x += ax / mag;
+        tilt_ref_y += ay / mag;
+        tilt_ref_z += az / mag;
+        tilt_ref_count++;
+
+        LOG_DBG("Tilt: learning ref, count=%u", tilt_ref_count);
+
+        if (tilt_ref_count >= TILT_REF_SAMPLES) {
+            float ref_mag_sq = tilt_ref_x * tilt_ref_x +
+                               tilt_ref_y * tilt_ref_y +
+                               tilt_ref_z * tilt_ref_z;
+            if (ref_mag_sq > 0.0f) {
+                float ref_mag = sqrtf(ref_mag_sq);
+                tilt_ref_x /= ref_mag;
+                tilt_ref_y /= ref_mag;
+                tilt_ref_z /= ref_mag;
+                tilt_ref_valid = true;
+                LOG_INF("Tilt: reference learned (%.3f, %.3f, %.3f)",
+                        tilt_ref_x, tilt_ref_y, tilt_ref_z);
+            } else {
+                /* Reset learning if something went wrong. */
+                tilt_reset_state();
+                LOG_DBG("Tilt: reference learning failed, reset");
+            }
+        }
+
+        k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
+        return;
+    }
+
+    /* Compute unit vector of current gravity and dot product vs reference. */
+    float ux = ax / mag;
+    float uy = ay / mag;
+    float uz = az / mag;
+
+    float dot = ux * tilt_ref_x + uy * tilt_ref_y + uz * tilt_ref_z;
+
+    LOG_DBG("Tilt: dot=%.3f, away_start=%u", (double)dot, tilt_away_start_ms);
+
+    /* Fully facing: reset any away timer. */
+    if (dot >= TILT_FACE_DOT_MIN) {
+        tilt_away_start_ms = 0;
+        k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
+        return;
+    }
+
+    /* Clearly away: require sustained condition before turning off. */
+    if (dot <= TILT_AWAY_DOT_MAX) {
+        uint32_t now = k_uptime_get_32();
+        if (tilt_away_start_ms == 0) {
+            tilt_away_start_ms = now;
+            LOG_INF("Tilt: away region entered, starting timer");
+        } else if ((now - tilt_away_start_ms) >= TILT_AWAY_HOLD_MS) {
+            LOG_INF("Tilt: away held for %u ms, entering inactive",
+                    (uint32_t)(now - tilt_away_start_ms));
+            enter_inactive();
+            return;
+        }
+    } else {
+        /* In-between region: neither clearly facing nor clearly away. */
+        tilt_away_start_ms = 0;
+        LOG_DBG("Tilt: in-between region, reset away timer");
+    }
+
+    k_work_schedule(&tilt_work, K_MSEC(TILT_SAMPLE_PERIOD_MS));
 }
 
 static void zbus_accel_data_callback(const struct zbus_channel *chan)
@@ -272,9 +420,11 @@ static int zsw_power_manager_init(void)
         idle_timeout_seconds = UINT32_MAX;
     }
 
-    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
+    /* Start in ACTIVE state after boot so that display and tilt logic
+     * follow the same path as any other wakeup.
+     */
+    enter_active();
 
-    k_work_schedule(&idle_work, K_SECONDS(idle_timeout_seconds));
     return 0;
 }
 
