@@ -129,6 +129,9 @@ int zsw_display_control_sleep_ctrl(bool on)
                 display_blanking_on(display_dev);
                 // Suspend the display
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_SUSPEND);
+                if (device_is_ready(touch_dev)) {
+                    pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
+                }
                 // Turn off PWM peripheral as it consumes like 200-250uA
                 zsw_display_control_set_brightness(0);
                 // Prepare for next call to lv_task_handler when screen is enabled again,
@@ -148,6 +151,9 @@ int zsw_display_control_sleep_ctrl(bool on)
                 display_state = DISPLAY_STATE_AWAKE;
                 // Resume the display and touch chip
                 pm_device_action_run(display_dev, PM_DEVICE_ACTION_RESUME);
+                if (device_is_ready(touch_dev)) {
+                    pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
+                }
                 // Turn backlight on, unless the display was off,
                 // then wait to show content until rendering completes.
                 // This avoids user seeing random pixel data for ~500ms
@@ -224,6 +230,8 @@ int zsw_display_control_pwr_ctrl(bool on)
 
                     if (device_is_ready(touch_dev)) {
                         pm_device_action_run(touch_dev, PM_DEVICE_ACTION_TURN_ON);
+                        pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
+                        pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
                     }
                     first_render_since_poweron = true;
                     current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
