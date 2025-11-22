@@ -243,11 +243,18 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     float ttf;
     float delta;
     int32_t chg_status;
+    struct sensor_value vbus_val;
+    int vbus_ma = 0;
 
     ret = read_sensors(charger, &voltage, &current, &temp, &chg_status, &error);
     if (ret < 0) {
         LOG_ERR("Error: Could not read from charger device\n");
         return ret;
+    }
+
+    ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &vbus_val);
+    if (ret == 0) {
+        vbus_ma = (vbus_val.val1 * 1000) + (vbus_val.val2 / 1000);
     }
 
     ret = nrf_fuel_gauge_ext_state_update(
@@ -277,7 +284,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 
     LOG_DBG("V: %.3f, I: %.3f, T: %.2f, ", voltage, current, temp);
     LOG_DBG("SoC: %.2f, TTE: %.0f, TTF: %.0f\n", soc, tte, ttf);
-    LOG_DBG("Status: %d, Error: %d\n", chg_status, error);
+    LOG_DBG("Status: %d, Error: %d, VBUS: %d mA\n", chg_status, error, vbus_ma);
 
     sample->mV = voltage * 1000;
     sample->percent = soc;
@@ -287,6 +294,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
     sample->ttf = ttf;
     sample->status = chg_status;
     sample->error = error;
+    sample->vbus_current_limit_ma = vbus_ma;
     sample->is_charging = is_charging_from_status(chg_status);
     sample->pmic_data_valid = true;
 
