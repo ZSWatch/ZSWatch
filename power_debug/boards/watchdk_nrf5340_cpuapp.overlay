@@ -12,3 +12,8 @@
         sw0 = &button1;
     };
 };
+
+
+&uart0 {
+    disable-rx;
+};
