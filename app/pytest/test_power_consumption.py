@@ -92,7 +92,7 @@ async def test_display_sleeping_inactive(device_config, ppk2_instance):
 
     This test:
     1. Power cycles the device using PPK2
-    2. Waits 25 seconds (20s display timeout + 5s safety margin) for display to sleep
+    2. Waits 40 seconds (20s display timeout + 20s safety margin) for display to sleep
     3. Measures current for 10 seconds while display is sleeping
     4. Analyzes and reports current consumption statistics
     """
@@ -101,7 +101,7 @@ async def test_display_sleeping_inactive(device_config, ppk2_instance):
         ppk2_instance,
         test_name="display_sleeping_inactive",
         measurement_duration_s=10,
-        delay_s=25,  # 20 seconds is the default display timeout, plus 5 seconds for safety
+        delay_s=40,  # 20 seconds is the default display timeout, plus 5 seconds for safety
     )
 
     # Sanity checks specific to display-sleeping state
@@ -109,3 +109,23 @@ async def test_display_sleeping_inactive(device_config, ppk2_instance):
     # assert stats["average_ma"] < 5, f"Display-sleeping current seems too high: {stats['average_ma']:.3f} mA"
     # assert stats["average_ma"] > 0.001, f"Display-sleeping current seems too low: {stats['average_ma']:.3f} mA"
     # assert stats["sample_count"] > 10, f"Too few samples collected: {stats['sample_count']}"
+
+@pytest.mark.asyncio
+@pytest.mark.ppk2
+async def test_not_worn_stationary(device_config, ppk2_instance):
+    """
+    Test to measure current consumption when the watch is not worn and stationary.
+
+    This test:
+    1. Power cycles the device using PPK2
+    2. Waits 180 seconds (160s display timeout + 20s safety margin) watch to go to stationary mode
+    3. Measures current for 10 seconds while watch is sleeping
+    4. Analyzes and reports current consumption statistics
+    """
+    stats = _measure_current(
+        device_config,
+        ppk2_instance,
+        test_name="not_worn_stationary",
+        measurement_duration_s=10,
+        delay_s=180,  # 160 seconds is the default display timeout, plus 20 seconds for safety
+    )

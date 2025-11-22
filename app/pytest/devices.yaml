@@ -1,6 +1,6 @@
 devices:
   watchdk@1:
-    jlink_serial: "960130209"
+    jlink_serial: "51022722"
     serial_port: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B0031VW0-if00-port0"
     usb_cdc_port: "/dev/serial/by-id/usb-ZEPHYR_ZSWatch_DBAF9AB9B6296B61-if00"
     mcuboot_usb_cdc_port: "/dev/serial/by-id/usb-ZEPHYR_ZSWatch_BOOT_DBAF9AB9B6296B61-if00"
