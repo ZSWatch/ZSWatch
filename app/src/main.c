@@ -122,6 +122,8 @@ static void run_init_work(struct k_work *item)
     }
 #endif
 
+    zsw_power_manager_init();
+
     LOG_INF("ZSWatch application started");
 }
 

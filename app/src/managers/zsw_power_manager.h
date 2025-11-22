@@ -26,6 +26,11 @@ typedef enum {
     ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY,
 } zsw_power_manager_state_t;
 
+/** @brief  Initializes the power manager module.
+ *  @return 0 on success, negative error code on failure.
+*/
+int zsw_power_manager_init(void);
+
 /** @brief  Resets the inactivity timeout that will make the watch go
  *          into inactive mode with display etc. turned off to save power.
  *  @return true if the call caused wakup from inactive state, false otherwise.
@@ -41,3 +46,8 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void);
  *  @return Power manager state
 */
 zsw_power_manager_state_t zsw_power_manager_get_state(void);
+
+/** @brief Notify power manager of user activity (touch/button/etc).
+ *         Safe to call in any state.
+ */
+void zsw_power_manager_on_user_activity(void);

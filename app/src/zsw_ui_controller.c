@@ -172,6 +172,7 @@ static void async_turn_off_buttons_allocation(void *unused)
 
 static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 {
+    zsw_power_manager_on_user_activity();
     // Currently you have to define a keycode as binding between buttons and longpress. We skip this binding codes for now.
     // Also touch events will be skipped, because they are handled by LVGL.
     // TODO: Charger is also ignored for now.
