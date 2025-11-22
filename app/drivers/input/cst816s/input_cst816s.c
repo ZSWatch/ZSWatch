@@ -297,14 +297,15 @@ static int cst816s_chip_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_MOTION_MASK, CST816S_MOTION_EN_DCLICK, 0) < 0) {
-		LOG_ERR("Could not set motion mask");
+	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_MOTION_MASK, CST816S_MOTION_EN_DCLICK,
+				   CST816S_MOTION_EN_DCLICK) < 0) {
+		LOG_ERR("Could not enable double-click motion mask");
 		return -ENODATA;
 	}
-
-	/*
-	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL, CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE,
-							   CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE) < 0) {
+/*
+	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL,
+				   CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE | CST816S_IRQ_EN_MOTION,
+				   CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE | CST816S_IRQ_EN_MOTION) < 0) {
 		LOG_ERR("Could not enable irq");
 		return -ENODATA;
 	}
