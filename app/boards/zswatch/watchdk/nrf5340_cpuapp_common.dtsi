@@ -63,6 +63,7 @@
 
 &gpio1 {
     status = "okay";
+    sense-edge-mask = <0xffffffff>;
 };
 
 
