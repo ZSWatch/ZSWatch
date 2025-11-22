@@ -29,6 +29,7 @@ struct battery_sample_event {
     float ttf;
     int status;
     int error;
+    int vbus_current_limit_ma;
     bool is_charging;
     bool pmic_data_valid;
 };
