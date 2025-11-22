@@ -518,14 +518,35 @@ static int bmi270_sensor_init(const struct device *p_dev)
 */
 static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action action)
 {
-    int8_t rslt = 0;
+    struct bmi270_data *data = p_dev->data;
+    int8_t rslt = BMI2_OK;
 
     switch (action) {
         case PM_DEVICE_ACTION_TURN_ON:
         case PM_DEVICE_ACTION_RESUME: {
+            /* Re-apply the normal configuration and re-enable sensors */
+            (void)bmi2_set_adv_power_save(BMI2_DISABLE, &data->bmi2);
+            rslt = bmi2_configure_enable_all(p_dev, data);
             break;
         }
         case PM_DEVICE_ACTION_SUSPEND: {
+            /* Disable all enabled sensors/features to cut current */
+            static const uint8_t sensors_to_disable[] = {
+                BMI2_ACCEL,
+                BMI2_GYRO,
+                BMI2_ANY_MOTION,
+                BMI2_STEP_COUNTER,
+                BMI2_WRIST_GESTURE,
+                BMI2_WRIST_WEAR_WAKE_UP,
+                BMI2_NO_MOTION,
+                BMI2_STEP_ACTIVITY,
+            };
+
+            rslt = bmi270_sensor_disable(sensors_to_disable, ARRAY_SIZE(sensors_to_disable), &data->bmi2);
+            if (rslt == BMI2_OK) {
+                /* Let the device enter advanced power-save after shutdown */
+                (void)bmi2_set_adv_power_save(BMI2_ENABLE, &data->bmi2);
+            }
             break;
         }
         case PM_DEVICE_ACTION_TURN_OFF: {

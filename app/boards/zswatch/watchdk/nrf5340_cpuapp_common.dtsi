@@ -428,15 +428,11 @@ dmic_dev: &pdm0 {
         sck-frequency = <96000000>;
         jedec-id = [c2 25 3a];
         size = <DT_SIZE_M(64*8)>;
-        /*
         has-dpd;
-        // CS High to Power-Down Mode (tDP) - 3 us
-        // Rev. S Table 26. AC Electrical Characteristic
-        t-enter-dpd = <20000>;
-        // CS High to Standby Mode without Electronic Signature Read (tRES1) 3 us
-        // Rev. S Table 26. AC Electrical Characteristic
-        t-exit-dpd = <20000>;
-        */
+        // CS High to Power-Down Mode (tDP) - 10 us
+        t-enter-dpd = <10000>;
+        // CS High to Standby Mode without Electronic Signature Read (tRES1) 30 us
+        t-exit-dpd = <30000>;
         // Configure to actully use Quad SPI data.
         writeoc = "pp4io";
         readoc = "read4io";
