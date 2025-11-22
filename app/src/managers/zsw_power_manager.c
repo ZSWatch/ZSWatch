@@ -333,7 +333,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
     switch (event->data.type) {
         case ZSW_IMU_EVT_TYPE_WRIST_WAKEUP: {
             if (!is_active) {
-                LOG_DBG("Wakeup gesture detected");
+                LOG_INF("Wrist wakeup gesture detected");
                 enter_active();
             }
             break;
