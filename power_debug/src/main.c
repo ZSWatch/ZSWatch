@@ -33,8 +33,8 @@
 #define POWER_DEBUG_LOG_LEVEL LOG_LEVEL_INF
 
 #define ACTIVE_WINDOW_MS          3000   /* time with all peripherals active */
-#define SUSPENDED_WINDOW_MS       30000   /* time after peripheral suspend */
-#define CUT_TO_SYSTEM_OFF_MS      30000    /* delay after 3V0 cut before System OFF */
+#define SUSPENDED_WINDOW_MS       10000   /* time after peripheral suspend */
+#define CUT_TO_SYSTEM_OFF_MS      10000    /* delay after 3V0 cut before System OFF */
 
 LOG_MODULE_REGISTER(power_debug, POWER_DEBUG_LOG_LEVEL);
 
@@ -86,6 +86,20 @@ static void suspend_peripherals(void);
 static void stage_handler(struct k_work *work);
 static void schedule_system_off_ms(int64_t delay_ms);
 static void schedule_stage_in_ms(int32_t delay_ms);
+
+#define PM_SUSPEND_DEVICE(name, dev_ptr)                                                         \
+	do {                                                                                     \
+		int _err = pm_device_action_run((dev_ptr), PM_DEVICE_ACTION_SUSPEND);            \
+		if (_err == -ENOTSUP) {                                                          \
+			LOG_DBG("%s does not support PM_DEVICE_ACTION_SUSPEND", (name));         \
+		} else if (_err == -EALREADY) {                                                 \
+			LOG_DBG("%s already suspended", (name));                                \
+		} else if (_err) {                                                              \
+			LOG_WRN("Suspending %s failed (%d)", (name), _err);                    \
+		} else {                                                                        \
+			LOG_INF("%s suspended", (name));                                        \
+		}                                                                               \
+	} while (0)
 
 K_WORK_DELAYABLE_DEFINE(system_off_work, system_off_handler);
 K_WORK_DELAYABLE_DEFINE(stage_work, stage_handler);
