@@ -297,8 +297,9 @@ static int cst816s_chip_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_MOTION_MASK, CST816S_MOTION_EN_DCLICK, 0) < 0) {
-		LOG_ERR("Could not set motion mask");
+	if (i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_MOTION_MASK, CST816S_MOTION_EN_DCLICK,
+				   CST816S_MOTION_EN_DCLICK) < 0) {
+		LOG_ERR("Could not enable double-click motion mask");
 		return -ENODATA;
 	}
 
