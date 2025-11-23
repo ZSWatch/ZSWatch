@@ -140,6 +140,12 @@ def pytest_addoption(parser):
         default=False,
         help="Print UART logs during test execution",
     )
+    parser.addoption(
+        "--skip-flash",
+        action="store_true",
+        default=False,
+        help="Skip flashing firmware (assume already flashed)",
+    )
 
 
 # Flash once per board before all tests for that board
@@ -147,8 +153,9 @@ _flashed_boards = set()
 
 
 @pytest.fixture(autouse=True)
-def prepare_device(device_config):
+def prepare_device(device_config, request):
     board = device_config["board"]
+    skip_flash = request.config.getoption("--skip-flash")
 
     # Setup PPK2 power if available (always needed for PPK2 tests)
     if "ppk2_port" in device_config and "ppk2" not in device_config:
@@ -159,7 +166,7 @@ def prepare_device(device_config):
             _ppk2_instances.append(ppk2_manager)
             time.sleep(2)  # Allow PPK2 to settle after setup
 
-    if "jlink_serial" in device_config:
+    if "jlink_serial" in device_config and not skip_flash:
         # Flash only once per board
         if board in _flashed_boards:
             utils.reset(device_config)

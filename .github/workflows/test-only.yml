@@ -1,0 +1,106 @@
+name: Test Only (No Flash)
+
+on:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: 'Board to test (leave empty for all)'
+        required: false
+        type: string
+
+jobs:
+  test-only:
+    runs-on: [self-hosted, x64]
+    concurrency:
+      group: hardware-test-runner-test-only-${{ github.run_id }}
+      cancel-in-progress: true
+    env:
+      BLEAK_ADAPTER: hci1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python environment
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r app/pytest/requirements.txt
+
+      - name: Reset Bluetooth adapter
+        run: |
+          # Make sure bt hci adapter is on.
+          # Sometimes get's into a bad state on the self-hosted runner.
+          sudo pkill bluetoothd || true
+          sudo pkill hciattach || true
+          sudo pkill bluealsa || true
+          sudo pkill btattach || true
+          sleep 2
+          sudo hciconfig hci1 down || true
+          sudo rmmod btusb || true
+          sudo modprobe btusb
+          sudo systemctl start bluetooth
+          sleep 2
+
+          sudo btmgmt --index 1 power off || true
+          sleep 2
+          sudo btmgmt --index 1 power on || true
+
+      - name: Run pytest (hardware tests)
+        run: |
+          source .venv/bin/activate
+          cd app/pytest
+          
+          if [ -n "${{ inputs.board }}" ]; then
+            pytest \
+              --skip-flash \
+              --board=${{ inputs.board }} \
+              --junitxml=report_target.xml -v \
+              -m 'not linux_only' \
+              --html=report_target.html \
+              --self-contained-html \
+              --show-uart
+          else
+            pytest \
+              --skip-flash \
+              --junitxml=report_target.xml -v \
+              -m 'not linux_only' \
+              --html=report_target.html \
+              --self-contained-html \
+              --show-uart
+          fi
+
+      - name: Run pytest (linux simulation)
+        if: inputs.board == '' || inputs.board == 'native_sim'
+        run: |
+          source .venv/bin/activate
+          cd app/pytest
+          
+          pytest \
+            --board=native_sim \
+            -m 'linux_only' \
+            --junitxml=report_linux.xml -v \
+            --html=report_linux.html \
+            --self-contained-html
+
+      - name: Upload test reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-only-reports
+          path: |
+            app/pytest/report_*.xml
+            app/pytest/report_*.html
+            app/pytest/power_results.json
+
+      - name: Test Summary
+        if: success() || failure()
+        uses: mikepenz/action-junit-report@v5
+        continue-on-error: true
+        with:
+          report_paths: 'app/pytest/report_*.xml'
+          include_passed: true
+          detailed_summary: true
+          job_summary: true
+          fail_on_failure: false
