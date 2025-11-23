@@ -10,8 +10,9 @@ log = logging.getLogger()
 @pytest.fixture(scope="module", autouse=True)
 def disable_bt(request):
     log.info("Disabling Bluetooth...")
+    adapter_index = os.environ.get('BLEAK_ADAPTER', 'hci0').replace('hci', '')
     try:
-        with os.popen("yes | sudo btmgmt --index 0 power off") as stream:
+        with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
             output = stream.read()
         log.info(output)
     except Exception as e:
@@ -23,12 +24,12 @@ def disable_bt(request):
         log.info("Re-enabling Bluetooth...")
         try:
             # Extra power off to ensure clean state
-            with os.popen("yes | sudo btmgmt --index 0 power off") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
                 output = stream.read()
             log.info(f"Power off before re-enable: {output}")
             time.sleep(2)
 
-            with os.popen("yes | sudo btmgmt --index 0 power on") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power on") as stream:
                 output = stream.read()
             log.info(output)
         except Exception as e:
@@ -58,8 +59,9 @@ def test_native_sim_boots():
         # Ensure the executable has the correct permissions
         os.chmod("./zswatch_native_sim_64.exe", 0o755)
         # Run your SDL app
+        bt_adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
         proc = subprocess.Popen(
-            ["sudo", "./zswatch_native_sim_64.exe", "--bt-dev=hci0"],
+            ["sudo", "./zswatch_native_sim_64.exe", f"--bt-dev={bt_adapter}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
