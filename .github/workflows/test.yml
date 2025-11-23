@@ -24,6 +24,8 @@ jobs:
     concurrency:
       group: hardware-test-runner-${{ github.event.pull_request.number || github.run_id }}
       cancel-in-progress: true
+    env:
+      BLEAK_ADAPTER: hci1
 
     steps:
       - name: Checkout code
@@ -136,14 +138,14 @@ jobs:
           sudo pkill bluealsa
           sudo pkill btattach
           sleep 5
-          sudo hciconfig hci0 down
+          sudo hciconfig hci1 down
           sudo rmmod btusb
           sudo modprobe btusb
           sudo systemctl start bluetooth
 
-          sudo btmgmt --index 0 power off
+          sudo btmgmt --index 1 power off
           sleep 2
-          sudo btmgmt --index 0 power on
+          sudo btmgmt --index 1 power on || true
 
           pytest \
             --junitxml=report_target.xml -v \
