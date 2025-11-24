@@ -11,7 +11,14 @@ log = logging.getLogger()
 def disable_bt(request):
     # Get the adapter name from environment and derive the numeric index
     bt_adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
-    adapter_index = bt_adapter.replace('hci', '')
+    
+    # Extract and validate the numeric index from the adapter name
+    if not bt_adapter.startswith('hci'):
+        raise ValueError(f"Invalid adapter name: {bt_adapter}. Expected format: hciN")
+    
+    adapter_index = bt_adapter[3:]  # Remove 'hci' prefix
+    if not adapter_index.isdigit():
+        raise ValueError(f"Invalid adapter index: {adapter_index}. Must be numeric.")
     
     log.info(f"Disabling Bluetooth on adapter {bt_adapter} (index {adapter_index})...")
     try:
