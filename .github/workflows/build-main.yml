@@ -1,0 +1,16 @@
+name: Build Main
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 2 * * *'  # Runs at 02:00 UTC every day
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
