@@ -101,7 +101,7 @@ async def test_display_sleeping_inactive(device_config, ppk2_instance):
         ppk2_instance,
         test_name="display_sleeping_inactive",
         measurement_duration_s=10,
-        delay_s=40,  # 20 seconds is the default display timeout, plus 5 seconds for safety
+        delay_s=40,  # 20 seconds is the default display timeout, plus 20 seconds for safety
     )
 
     # Sanity checks specific to display-sleeping state

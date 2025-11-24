@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 # Reuse the board definitions from the main application
-set(BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../app)
 list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../app)
 
 # Add custom device tree bindings from the main app
