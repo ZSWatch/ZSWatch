@@ -536,6 +536,7 @@ static int bmi270_pm_action(const struct device *p_dev, enum pm_device_action ac
     }
 
     if (rslt != BMI2_OK) {
+        LOG_ERR("PM action %d failed for BMI270 (%d)", action, rslt);
         return -EFAULT;
     }
 

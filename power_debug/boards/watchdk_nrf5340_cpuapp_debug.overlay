@@ -1,0 +1,9 @@
+/*
+ * Debug overlay for UART logging on WatchDK
+ */
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
+};

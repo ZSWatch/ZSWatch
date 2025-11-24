@@ -9,9 +9,20 @@ log = logging.getLogger()
 
 @pytest.fixture(scope="module", autouse=True)
 def disable_bt(request):
-    log.info("Disabling Bluetooth...")
+    # Get the adapter name from environment and derive the numeric index
+    bt_adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
+    
+    # Extract and validate the numeric index from the adapter name
+    if not bt_adapter.startswith('hci'):
+        raise ValueError(f"Invalid adapter name: {bt_adapter}. Expected format: hciN")
+    
+    adapter_index = bt_adapter[3:]  # Remove 'hci' prefix
+    if not adapter_index.isdigit():
+        raise ValueError(f"Invalid adapter index: {adapter_index}. Must be numeric.")
+    
+    log.info(f"Disabling Bluetooth on adapter {bt_adapter} (index {adapter_index})...")
     try:
-        with os.popen("yes | sudo btmgmt --index 0 power off") as stream:
+        with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
             output = stream.read()
         log.info(output)
     except Exception as e:
@@ -20,15 +31,15 @@ def disable_bt(request):
     time.sleep(2)  # Add delay to let adapter settle
 
     def enable_bt():
-        log.info("Re-enabling Bluetooth...")
+        log.info(f"Re-enabling Bluetooth on adapter {bt_adapter} (index {adapter_index})...")
         try:
             # Extra power off to ensure clean state
-            with os.popen("yes | sudo btmgmt --index 0 power off") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
                 output = stream.read()
             log.info(f"Power off before re-enable: {output}")
             time.sleep(2)
 
-            with os.popen("yes | sudo btmgmt --index 0 power on") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power on") as stream:
                 output = stream.read()
             log.info(output)
         except Exception as e:
@@ -58,8 +69,9 @@ def test_native_sim_boots():
         # Ensure the executable has the correct permissions
         os.chmod("./zswatch_native_sim_64.exe", 0o755)
         # Run your SDL app
+        bt_adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
         proc = subprocess.Popen(
-            ["sudo", "./zswatch_native_sim_64.exe", "--bt-dev=hci0"],
+            ["sudo", "./zswatch_native_sim_64.exe", f"--bt-dev={bt_adapter}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

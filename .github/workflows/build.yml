@@ -91,7 +91,7 @@ jobs:
 
           if [ "${{ matrix.build_type }}" = "debug" ]; then
             case "${{ matrix.board }}" in
-              watchdk@1/nrf5340/cpuapp)
+              "watchdk@1/nrf5340/cpuapp")
                 append_var EXTRA_CONF_FILE "boards/debug.conf;boards/log_on_uart.conf"
                 append_var EXTRA_DTC_OVERLAY "boards/log_on_uart.overlay"
                 ;;
