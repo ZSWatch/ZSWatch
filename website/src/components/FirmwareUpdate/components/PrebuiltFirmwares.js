@@ -8,6 +8,7 @@ const PrebuiltFirmwares = ({
   isConnected = false
 }) => {
   const [expandedBranches, setExpandedBranches] = useState({});
+  const filteredFirmwares = firmwares.filter((firmware) => firmware.artifacts && firmware.artifacts.length > 0);
 
   const toggleExpanded = (branch) => {
     setExpandedBranches(prev => ({
@@ -16,8 +17,8 @@ const PrebuiltFirmwares = ({
     }));
   };
 
-  // Group firmwares by branch
-  const firmwaresByBranch = firmwares.reduce((acc, firmware) => {
+  // Group firmwares by branch, skipping runs without artifacts
+  const firmwaresByBranch = filteredFirmwares.reduce((acc, firmware) => {
     if (!acc[firmware.branch]) {
       acc[firmware.branch] = [];
     }
@@ -35,7 +36,7 @@ const PrebuiltFirmwares = ({
           </div>
           <p className="text-gray-700 dark:text-white text-sm">Loading firmwares...</p>
         </div>
-      ) : firmwares.length === 0 ? (
+      ) : filteredFirmwares.length === 0 ? (
         <div className="text-center py-6 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg">
           <span className="text-2xl mb-2 block">📦</span>
           <p className="text-gray-700 dark:text-white text-sm">No firmwares fetched yet</p>
@@ -71,32 +72,36 @@ const PrebuiltFirmwares = ({
               <div className="space-y-1">
                 {branchFirmwares.map((firmware, index) => {
                   const branchKey = `${branch}-${index}`;
+                  const shortSha = firmware.sha ? firmware.sha.substring(0, 7) : "";
+                  const commitMsg = firmware.commitMessage
+                    ? firmware.commitMessage.split("\n")[0]
+                    : "";
                   return (
                     <div key={index} className="border-b border-gray-100 dark:border-white/5 last:border-b-0">
                       <button
                         onClick={() => toggleExpanded(branchKey)}
                         className="w-full flex items-center justify-between p-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 transition-all"
                       >
-                        <div className="flex items-center gap-2 text-left">
-                          <span className="text-xs text-gray-600 dark:text-gray-300">by {firmware.user}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {firmware.artifacts.length} artifact{firmware.artifacts.length !== 1 ? 's' : ''}
-                          </span>
+                        <div className="flex flex-col items-start gap-0.5 overflow-hidden text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600 dark:text-gray-300">by {firmware.user}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {firmware.artifacts.length} artifact{firmware.artifacts.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                              {shortSha || "unknown"}
+                            </span>
+                            <span
+                              className="text-xs text-gray-500 dark:text-gray-400 truncate"
+                              title={firmware.commitMessage || ""}
+                            >
+                              {commitMsg || "No commit message"}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {branch === 'main' && index === 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (firmware.artifacts.length > 0) {
-                                  onDownloadFirmware(firmware.runId, firmware.artifacts[0].id);
-                                }
-                              }}
-                              className="bg-zswatch-primary text-black px-2 py-1 rounded text-xs font-medium hover:bg-zswatch-primary/90 transition-all"
-                            >
-                              Quick Download
-                            </button>
-                          )}
                           <span className={`text-xs transition-transform ${expandedBranches[branchKey] ? 'rotate-180' : ''}`}>
                             ▼
                           </span>

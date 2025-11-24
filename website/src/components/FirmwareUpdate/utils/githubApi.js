@@ -2,35 +2,60 @@ export const fetchArtifacts = async (githubConfig, numRuns = 5) => {
   let firmwares = [];
   try {
     const { owner, repo, token } = githubConfig;
-    
-    // Step 1: Get the list of workflow runs
-    const runsResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/actions/runs`,
-      token
-        ? {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        : {},
-    );
-    const runsData = await runsResponse.json();
+    const fetchOptions = token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : {};
 
-    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+    // Fetch recent runs plus explicitly grab the latest successful run on main
+    const [runsResponse, mainRunResponse] = await Promise.all([
+      fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=${Math.max(
+          numRuns * 2,
+          10,
+        )}`,
+        fetchOptions,
+      ),
+      fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=main&status=success&per_page=1`,
+        fetchOptions,
+      ),
+    ]);
+
+    const runsData = await runsResponse.json();
+    const mainRunsData = await mainRunResponse.json();
+
+    const workflowRuns = runsData.workflow_runs || [];
+    const mainBranchRuns = mainRunsData.workflow_runs || [];
+
+    if (workflowRuns.length === 0 && mainBranchRuns.length === 0) {
       console.log("No workflow runs found.");
       return [];
     }
 
-    console.log("Found", runsData, runsData.workflow_runs.length, "workflow runs.");
+    console.log("Found", workflowRuns.length, "workflow runs.");
 
-    // Step 2: Get the latest X workflow runs
-    const latestRuns = runsData.workflow_runs
-      .filter((run) => run.conclusion === "success" && run.head_branch !== "gh-pages")
-      .slice(0, numRuns);
-    console.log(`Fetching artifacts from the latest ${numRuns} workflow runs...`);
+    const successfulRuns = workflowRuns.filter(
+      (run) => run.conclusion === "success" && run.head_branch !== "gh-pages",
+    );
+    const latestMainRun = mainBranchRuns.find((run) => run.conclusion === "success");
+
+    // Ensure main is present by prepending it before trimming to numRuns
+    const runsWithMain = latestMainRun ? [latestMainRun, ...successfulRuns] : successfulRuns;
+    const uniqueRuns = runsWithMain.filter(
+      (run, index, arr) => arr.findIndex((other) => other.id === run.id) === index,
+    );
+    const latestRuns = uniqueRuns.slice(0, numRuns);
+    console.log(`Fetching artifacts from ${latestRuns.length} workflow runs (main prioritized)...`);
 
     for (const run of latestRuns) {
       console.log(`Processing workflow run: ${run.id} (${run.name})`, run);
+
+      const commitSha = run.head_sha || run.head_commit?.id || "";
+      const commitMessage = run.head_commit?.message || run.display_title || "";
 
       // Step 3: Get the artifacts for the current workflow run
       const artifactsResponse = await fetch(
@@ -54,8 +79,10 @@ export const fetchArtifacts = async (githubConfig, numRuns = 5) => {
         branch: run.head_branch,
         user: run.actor.login,
         runId: run.id,
+        sha: commitSha,
+        commitMessage,
         artifacts: artifactsData.artifacts.filter(
-          (artifact) => artifact.name.includes("@4") || artifact.name.includes("@5"),
+          (artifact) => artifact.name.includes("watchdk@1") || artifact.name.includes("@5"),
         ),
       };
 
