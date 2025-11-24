@@ -9,31 +9,31 @@ log = logging.getLogger()
 
 @pytest.fixture(scope="module", autouse=True)
 def disable_bt(request):
-    log.info("Disabling Bluetooth...")
-    adapter_index = os.environ.get('BLEAK_ADAPTER', 'hci0').replace('hci', '')
+    adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
+    log.info("Disabling Bluetooth on %s...", adapter)
     try:
-        with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
+        with os.popen(f"sudo hciconfig {adapter} down") as stream:
             output = stream.read()
         log.info(output)
     except Exception as e:
-        log.warning("btmgmt command failed: %s", e)
+        log.warning("hciconfig down failed: %s", e)
 
     time.sleep(2)  # Add delay to let adapter settle
 
     def enable_bt():
-        log.info("Re-enabling Bluetooth...")
+        log.info("Re-enabling Bluetooth on %s...", adapter)
         try:
             # Extra power off to ensure clean state
-            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
+            with os.popen(f"sudo hciconfig {adapter} down") as stream:
                 output = stream.read()
             log.info(f"Power off before re-enable: {output}")
             time.sleep(2)
 
-            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power on") as stream:
+            with os.popen(f"sudo hciconfig {adapter} up") as stream:
                 output = stream.read()
             log.info(output)
         except Exception as e:
-            log.warning("btmgmt command failed: %s", e)
+            log.warning("hciconfig up failed: %s", e)
 
     request.addfinalizer(enable_bt)
 

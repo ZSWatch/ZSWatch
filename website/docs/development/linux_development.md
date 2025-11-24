@@ -10,7 +10,7 @@ sidebar_position: 3
 sudo apt-get install build-essential
 sudo apt-get install libsdl2-dev 
 sudo usermod -aG bluetooth $USER
-sudo setcap cap_net_admin=eip $(which btmgmt)
+sudo setcap cap_net_admin=eip $(which hciconfig)
 ```
 
 :::warning

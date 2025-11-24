@@ -46,7 +46,7 @@
         {
             "label": "Disable BT",
             "type": "shell",
-            "command": "btmgmt --index 0 power off"
+            "command": "hciconfig hci0 down"
         }
     ]
 }

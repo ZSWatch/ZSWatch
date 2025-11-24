@@ -95,7 +95,7 @@ jobs:
           sudo apt-get install -y build-essential
           sudo apt-get install -y libsdl2-dev
           sudo usermod -aG bluetooth $USER
-          sudo setcap cap_net_admin=eip $(which btmgmt)
+          sudo setcap cap_net_admin=eip $(which hciconfig)
 
           # For UART
           sudo usermod -aG dialout $USER
@@ -143,10 +143,9 @@ jobs:
           sudo modprobe btusb
           sudo systemctl start bluetooth
 
-          adapter_index="${BLEAK_ADAPTER#hci}"
-          sudo btmgmt --index "$adapter_index" power off
+          sudo hciconfig "$BLEAK_ADAPTER" down
           sleep 2
-          sudo btmgmt --index "$adapter_index" power on
+          sudo hciconfig "$BLEAK_ADAPTER" up
 
           pytest \
             --junitxml=report_target.xml -v \
