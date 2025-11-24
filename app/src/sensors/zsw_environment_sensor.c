@@ -17,7 +17,8 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
-
+#include <zephyr/device.h>
+#include <zephyr/pm/device.h>
 #include "events/zsw_periodic_event.h"
 #include "events/environment_event.h"
 #include "sensors/zsw_environment_sensor.h"
@@ -31,7 +32,12 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(environment_data_chan);
 ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
 ZBUS_LISTENER_DEFINE(zsw_environment_sensor_lis, zbus_periodic_slow_callback);
-static const struct device *const bme688 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bme688));
+
+#if CONFIG_BME680
+static const struct device *const bme688 = DEVICE_DT_GET(DT_NODELABEL(bme688));
+#else
+static const struct device *const bme688 = NULL;
+#endif
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
 {
