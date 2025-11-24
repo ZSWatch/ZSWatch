@@ -9,9 +9,13 @@ log = logging.getLogger()
 
 @pytest.fixture(scope="module", autouse=True)
 def disable_bt(request):
-    log.info("Disabling Bluetooth...")
+    # Get the adapter name from environment and derive the numeric index
+    bt_adapter = os.environ.get('BLEAK_ADAPTER', 'hci0')
+    adapter_index = bt_adapter.replace('hci', '')
+    
+    log.info(f"Disabling Bluetooth on adapter {bt_adapter} (index {adapter_index})...")
     try:
-        with os.popen("yes | sudo btmgmt --index 1 power off") as stream:
+        with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
             output = stream.read()
         log.info(output)
     except Exception as e:
@@ -20,15 +24,15 @@ def disable_bt(request):
     time.sleep(2)  # Add delay to let adapter settle
 
     def enable_bt():
-        log.info("Re-enabling Bluetooth...")
+        log.info(f"Re-enabling Bluetooth on adapter {bt_adapter} (index {adapter_index})...")
         try:
             # Extra power off to ensure clean state
-            with os.popen("yes | sudo btmgmt --index 1 power off") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power off") as stream:
                 output = stream.read()
             log.info(f"Power off before re-enable: {output}")
             time.sleep(2)
 
-            with os.popen("yes | sudo btmgmt --index 1 power on") as stream:
+            with os.popen(f"yes | sudo btmgmt --index {adapter_index} power on") as stream:
                 output = stream.read()
             log.info(output)
         except Exception as e:
