@@ -83,19 +83,25 @@ class CoredumpWestCommand(WestCommand):
             sys.exit(1)
 
         if args.build_dir != "":
-            toolchain_path = self.find_toolchain_path(args.build_dir)
-            elf_file = f"{args.build_dir}/zephyr/zephyr.elf"
+            toolchain_path = self.find_toolchain_path(args.build_dir + "/app")
+            elf_file = f"{args.build_dir}/app/zephyr/zephyr.elf"
         else:
             toolchain_path = args.toolchain
             elf_file = args.elf
 
-        gdb_path = toolchain_path + "/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
-
-        if toolchain_path == "" or not Path(gdb_path).exists():
-            log.err("Toolchain not found", gdb_path)
+        if toolchain_path is None:
+            log.err(
+                "Toolchain not found (ZEPHYR_SDK_INSTALL_DIR not found in CMakeCache.txt)"
+            )
             sys.exit(1)
 
-        if elf_file == "" or not Path(elf_file).exists():
+        gdb_path = toolchain_path + "/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+
+        if not Path(gdb_path).exists():
+            log.err("GDB not found at", gdb_path)
+            sys.exit(1)
+
+        if not Path(elf_file).exists():
             log.err("Elf file not found", elf_file)
             sys.exit(1)
 
@@ -157,10 +163,14 @@ class CoredumpWestCommand(WestCommand):
             str: The path of the Zephyr SDK toolchain installation directory.
 
         """
-        with open(build_folder + "/CMakeCache.txt") as f:
+        cmake_cache_path = build_folder + "/CMakeCache.txt"
+        if not Path(cmake_cache_path).exists():
+            return None
+        with open(cmake_cache_path) as f:
             for line in f:
                 if "ZEPHYR_SDK_INSTALL_DIR:INTERNAL=" in line:
                     return line.split("=")[1].strip()
+        return None
 
     def extract_coredump_over_rtt(self, target_device="nRF5340_XXAA"):
         coredump_content = ""
