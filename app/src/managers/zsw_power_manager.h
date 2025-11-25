@@ -48,6 +48,5 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void);
 zsw_power_manager_state_t zsw_power_manager_get_state(void);
 
 /** @brief Notify power manager of user activity (touch/button/etc).
- *         Safe to call in any state.
  */
 void zsw_power_manager_on_user_activity(void);

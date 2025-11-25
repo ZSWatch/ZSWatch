@@ -107,6 +107,8 @@ static void run_init_work(struct k_work *item)
     zsw_light_sensor_init();
     zsw_environment_sensor_init();
 
+    zsw_power_manager_init();
+
     zsw_ui_controller_init();
 
 #ifdef CONFIG_AUDIO_DMIC
@@ -121,8 +123,6 @@ static void run_init_work(struct k_work *item)
         zsw_popup_show("Warning", "Missing files in external flash\nPlease run:\nwest upload_fs", NULL, 5, false);
     }
 #endif
-
-    zsw_power_manager_init();
 
     LOG_INF("ZSWatch application started");
 }

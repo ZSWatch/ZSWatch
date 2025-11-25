@@ -12,6 +12,7 @@ LOG_MODULE_REGISTER(zsw_usb_manager, LOG_LEVEL_INF);
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 
 #define USB_BOOT_TIMEOUT K_SECONDS(20)
+#define XIP_RELEASE_DELAY K_MSEC(50)
 
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(cdc_acm_uart0), okay)
 #define ZSW_USB_ACM_NODE DT_NODELABEL(cdc_acm_uart0)
@@ -99,7 +100,7 @@ int _zsw_usb_manager_disable(const char *requester)
         // finishes in another context. So we need to wait before disabling XIP.
         // Seems as the USB user callback can't be used as it's not getting called when disabled.
         // So we use a delayed work instead.
-        k_work_reschedule(&xip_release_work, K_MSEC(50));
+        k_work_reschedule(&xip_release_work, XIP_RELEASE_DELAY);
     }
 
     k_mutex_unlock(&state_lock);

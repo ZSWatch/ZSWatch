@@ -64,7 +64,6 @@ static int settings_load_handler(const char *key, size_t len,
                                  settings_read_cb read_cb, void *cb_arg, void *param);
 static void update_and_publish_state(zsw_power_manager_state_t new_state);
 static void handle_idle_timeout(struct k_work *item);
-static void tilt_reset_state(void);
 static void tilt_request_reference_update(void);
 static void update_last_activity_timestamp(void);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
@@ -178,16 +177,6 @@ void zsw_power_manager_on_user_activity(void)
     }
 }
 
-static void tilt_reset_state(void)
-{
-    tilt.state = TILT_STATE_IDLE;
-    tilt.ref_x = 0.0f;
-    tilt.ref_y = 0.0f;
-    tilt.ref_z = 0.0f;
-    tilt.ref_count = 0;
-    tilt.away_start_ms = 0;
-}
-
 static void tilt_request_reference_update(void)
 {
     tilt.state = TILT_STATE_LEARNING;
@@ -258,7 +247,6 @@ static void enter_active(void)
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
 
-    tilt_reset_state();
     tilt_request_reference_update();
 
     update_and_publish_state(ZSW_ACTIVITY_STATE_ACTIVE);
@@ -279,6 +267,10 @@ static void update_and_publish_state(zsw_power_manager_state_t new_state)
 
 static void handle_idle_timeout(struct k_work *item)
 {
+    if (idle_timeout_seconds == UINT32_MAX) {
+        return;
+    }
+
     uint32_t last_lvgl_activity_ms = lv_disp_get_inactive_time(NULL);
 
     if (last_lvgl_activity_ms > idle_timeout_seconds * 1000) {
