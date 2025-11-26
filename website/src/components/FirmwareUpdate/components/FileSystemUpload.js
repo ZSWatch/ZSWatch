@@ -38,13 +38,12 @@ const FileSystemUpload = ({
   return (
     <div className="space-y-6">
       {/* Enhanced File System Drag & Drop Zone */}
-      <div className={`relative ${!canUploadFilesystem ? 'opacity-60 pointer-events-none' : ''}`}>
+      <div className="relative">
         <input 
           type="file" 
           ref={fileFsInputRef}
           onChange={onFileSystemSelection}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-          disabled={!canUploadFilesystem}
           accept=".bin"
         />
         <div 
