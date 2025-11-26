@@ -152,7 +152,8 @@ jobs:
             -m 'not linux_only' \
             --html=report_target.html \
             --self-contained-html \
-            --show-uart
+            --show-uart \
+            -s
 
           pytest \
             --board=native_sim \
