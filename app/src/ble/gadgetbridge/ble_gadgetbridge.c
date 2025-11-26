@@ -17,6 +17,7 @@
 #include "events/ble_event.h"
 #include "events/music_event.h"
 #include "ble_gadgetbridge.h"
+#include "app_version.h"
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -740,5 +741,45 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         parse_state = WAIT_GB;
         LOG_DBG("%s", receive_buf);
         parse_data(receive_buf, parsed_data_index);
+    }
+}
+
+void ble_gadgetbridge_send_version_info(void)
+{
+    char version_msg[100];
+    int len = snprintf(version_msg, sizeof(version_msg),
+                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"}\n",
+                       APP_VERSION_STRING, CONFIG_BOARD_TARGET);
+    if (len > 0 && len < sizeof(version_msg)) {
+        LOG_DBG("Sending version info: %s", version_msg);
+        ble_comm_send(version_msg, len);
+    }
+}
+
+void ble_gadgetbridge_send_activity_state(zsw_power_manager_state_t activity_state)
+{
+    char activity_msg[100];
+    const char *act_str;
+
+    switch (activity_state) {
+        case ZSW_ACTIVITY_STATE_ACTIVE:
+            act_str = "ACTIVITY";
+            break;
+        case ZSW_ACTIVITY_STATE_INACTIVE:
+            act_str = "ACTIVITY";
+            break;
+        case ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY:
+            act_str = "NOT_WORN";
+            break;
+        default:
+            act_str = "UNKNOWN";
+            break;
+    }
+
+    int len = snprintf(activity_msg, sizeof(activity_msg),
+                       "{\"t\":\"act\",\"act\":\"%s\",\"rt\":1}\n", act_str);
+    if (len > 0 && len < sizeof(activity_msg)) {
+        LOG_DBG("Sending activity state: %s", activity_msg);
+        ble_comm_send(activity_msg, len);
     }
 }

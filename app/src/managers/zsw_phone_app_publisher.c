@@ -24,23 +24,35 @@
 #include <zephyr/bluetooth/services/bas.h>
 
 #include "ble/ble_comm.h"
+#include "ble/gadgetbridge/ble_gadgetbridge.h"
 #include "events/battery_event.h"
+#include "events/activity_event.h"
+#include "managers/zsw_power_manager.h"
 
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
+static void zbus_activity_state_callback(const struct zbus_channel *chan);
 
 static void handle_delayed_send_status(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_battery_sample_data_callback);
 
+ZBUS_CHAN_DECLARE(activity_state_data_chan);
+ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_activity_event, zbus_activity_state_callback);
+ZBUS_CHAN_ADD_OBS(activity_state_data_chan, zsw_phone_app_publisher_activity_event, 1);
+
 K_WORK_DELAYABLE_DEFINE(delayed_send_status_work, handle_delayed_send_status);
 
 static void connected(struct bt_conn *conn, uint8_t err);
+static void disconnected(struct bt_conn *conn, uint8_t reason);
+
+static bool is_connected;
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = connected,
+    .disconnected = disconnected,
 };
 
 static void send_battery_state_update(int mV, int percent, bool is_charging)
@@ -58,21 +70,43 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 {
     struct battery_sample_event *event = zbus_chan_msg(chan);
     bt_bas_set_battery_level(event->percent);
-    send_battery_state_update(event->mV, event->percent, event->is_charging);
+    if (is_connected) {
+        send_battery_state_update(event->mV, event->percent, event->is_charging);
+    }
+}
+
+static void zbus_activity_state_callback(const struct zbus_channel *chan)
+{
+    const struct activity_state_event *event = zbus_chan_const_msg(chan);
+    if (is_connected) {
+        ble_gadgetbridge_send_activity_state(event->state);
+    }
 }
 
 static void connected(struct bt_conn *conn, uint8_t err)
 {
-    // Due to MTU not yet exchanged when this callback is called
-    // we need to wait a bit for it to finish.
-    // TODO this should be handled somewhere else and only notify
-    // after MTU eschange is finished.
-    k_work_reschedule(&delayed_send_status_work, K_SECONDS(5));
+    if (err) {
+        return;
+    }
+    is_connected = true;
+    // Send version info and initial status after a short delay
+    // to allow phone to set up notifications
+    k_work_reschedule(&delayed_send_status_work, K_MSEC(3000));
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    is_connected = false;
+    k_work_cancel_delayable(&delayed_send_status_work);
 }
 
 static void handle_delayed_send_status(struct k_work *item)
 {
     struct battery_sample_event last_sample;
+
+    ble_gadgetbridge_send_version_info();
+
+    ble_gadgetbridge_send_activity_state(zsw_power_manager_get_state());
 
     if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
         send_battery_state_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
