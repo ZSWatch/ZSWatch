@@ -81,6 +81,8 @@ export const fetchArtifacts = async (githubConfig, numRuns = 5) => {
         runId: run.id,
         sha: commitSha,
         commitMessage,
+        createdAt: run.created_at,
+        updatedAt: run.updated_at,
         artifacts: artifactsData.artifacts.filter(
           (artifact) => artifact.name.includes("watchdk@1") || artifact.name.includes("@5"),
         ),

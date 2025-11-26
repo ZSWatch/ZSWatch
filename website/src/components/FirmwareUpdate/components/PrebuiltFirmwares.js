@@ -76,6 +76,15 @@ const PrebuiltFirmwares = ({
                   const commitMsg = firmware.commitMessage
                     ? firmware.commitMessage.split("\n")[0]
                     : "";
+                  const buildDate = firmware.createdAt
+                    ? new Date(firmware.createdAt).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : "";
                   return (
                     <div key={index} className="border-b border-gray-100 dark:border-white/5 last:border-b-0">
                       <button
@@ -88,13 +97,18 @@ const PrebuiltFirmwares = ({
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               {firmware.artifacts.length} artifact{firmware.artifacts.length !== 1 ? 's' : ''}
                             </span>
+                            {buildDate && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                • {buildDate}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 w-full">
                             <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
                               {shortSha || "unknown"}
                             </span>
                             <span
-                              className="text-xs text-gray-500 dark:text-gray-400 truncate"
+                              className="text-xs text-gray-600 dark:text-gray-300 truncate"
                               title={firmware.commitMessage || ""}
                             >
                               {commitMsg || "No commit message"}
