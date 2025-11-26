@@ -31,6 +31,7 @@ ZBUS_CHAN_DECLARE(accel_data_chan);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
 static int step_offset = 0;
+static zsw_imu_data_step_activity_t last_step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
 
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
@@ -64,6 +65,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
 
                 evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
                 evt.data.step_activity = sensor_val.val1;
+                last_step_activity = evt.data.step_activity;
 
                 const char *activity_output[4] = { "BMI2_STILL", "BMI2_WALK", "BMI2_RUN", "BMI2_UNKNOWN" };
                 LOG_DBG("Step activity: %s", activity_output[evt.data.step_activity]);
@@ -252,6 +254,16 @@ int zsw_imu_fetch_num_steps(uint32_t *num_steps)
 
     *num_steps = sensor_val.val1 + step_offset;
 
+    return 0;
+}
+
+int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity)
+{
+    if (activity == NULL) {
+        return -EINVAL;
+    }
+
+    *activity = last_step_activity;
     return 0;
 }
 

@@ -102,6 +102,14 @@ int zsw_imu_fetch_temperature(float *temperature);
 
 int zsw_imu_fetch_num_steps(uint32_t *num_steps);
 
+/**
+ * @brief Get the last detected step activity.
+ *
+ * @param activity Pointer to store the step activity.
+ * @return 0 on success, negative error code on failure.
+ */
+int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity);
+
 /*
 * Set an offset when fetching the number of steps.
 * This can be used if zsw_imu_fetch_num_steps should

@@ -22,26 +22,27 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/services/bas.h>
+#if defined(CONFIG_BT_HRS)
+#include <zephyr/bluetooth/services/hrs.h>
+#endif
 
 #include "ble/ble_comm.h"
 #include "ble/gadgetbridge/ble_gadgetbridge.h"
 #include "events/battery_event.h"
-#include "events/activity_event.h"
 #include "managers/zsw_power_manager.h"
+#include "sensors/zsw_imu.h"
+#if defined(CONFIG_BT_HRS)
+#include "sensors/zsw_health_data.h"
+#endif
 
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
-static void zbus_activity_state_callback(const struct zbus_channel *chan);
 
 static void handle_delayed_send_status(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_battery_sample_data_callback);
-
-ZBUS_CHAN_DECLARE(activity_state_data_chan);
-ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_activity_event, zbus_activity_state_callback);
-ZBUS_CHAN_ADD_OBS(activity_state_data_chan, zsw_phone_app_publisher_activity_event, 1);
 
 K_WORK_DELAYABLE_DEFINE(delayed_send_status_work, handle_delayed_send_status);
 
@@ -55,6 +56,25 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .disconnected = disconnected,
 };
 
+static void send_activity_data(void)
+{
+    uint32_t steps = 0;
+    zsw_imu_data_step_activity_t step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
+
+    zsw_imu_fetch_num_steps(&steps);
+    zsw_imu_fetch_step_activity(&step_activity);
+
+#if defined(CONFIG_BT_HRS)
+    uint16_t hr = zsw_health_data_get_heart_rate();
+    bt_hrs_notify(hr);
+    ble_gadgetbridge_send_activity_data(hr, steps, step_activity,
+                                        zsw_power_manager_get_state());
+#else
+    ble_gadgetbridge_send_activity_data(0, steps, step_activity,
+                                        zsw_power_manager_get_state());
+#endif
+}
+
 static void send_battery_state_update(int mV, int percent, bool is_charging)
 {
     int msg_len;
@@ -64,6 +84,8 @@ static void send_battery_state_update(int mV, int percent, bool is_charging)
     msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"status\", \"bat\": %d, \"volt\": %d, \"chg\": %d} \n", percent,
                        mV, is_charging);
     ble_comm_send(buf, msg_len);
+
+    send_activity_data();
 }
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
@@ -72,14 +94,6 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
     bt_bas_set_battery_level(event->percent);
     if (is_connected) {
         send_battery_state_update(event->mV, event->percent, event->is_charging);
-    }
-}
-
-static void zbus_activity_state_callback(const struct zbus_channel *chan)
-{
-    const struct activity_state_event *event = zbus_chan_const_msg(chan);
-    if (is_connected) {
-        ble_gadgetbridge_send_activity_state(event->state);
     }
 }
 
@@ -106,7 +120,7 @@ static void handle_delayed_send_status(struct k_work *item)
 
     ble_gadgetbridge_send_version_info();
 
-    ble_gadgetbridge_send_activity_state(zsw_power_manager_get_state());
+    send_activity_data();
 
     if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
         send_battery_state_update(last_sample.mV, last_sample.percent, last_sample.is_charging);

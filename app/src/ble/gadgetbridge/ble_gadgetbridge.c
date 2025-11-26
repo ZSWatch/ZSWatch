@@ -783,3 +783,50 @@ void ble_gadgetbridge_send_activity_state(zsw_power_manager_state_t activity_sta
         ble_comm_send(activity_msg, len);
     }
 }
+
+void ble_gadgetbridge_send_activity_data(uint16_t heart_rate, uint32_t steps,
+                                         zsw_imu_data_step_activity_t step_activity,
+                                         zsw_power_manager_state_t power_state)
+{
+    char activity_msg[150];
+    const char *act_str;
+
+    /* Map step_activity and power_state to Gadgetbridge activity strings:
+     * UNKNOWN, NOT_WORN, DEEP_SLEEP, LIGHT_SLEEP, REM_SLEEP, ACTIVITY,
+     * RUNNING, WALKING, SWIMMING, CYCLING, EXERCISE...
+     */
+    if (power_state == ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY) {
+        act_str = "NOT_WORN";
+    } else {
+        switch (step_activity) {
+            case ZSW_IMU_EVT_STEP_ACTIVITY_RUN:
+                act_str = "RUNNING";
+                break;
+            case ZSW_IMU_EVT_STEP_ACTIVITY_WALK:
+                act_str = "WALKING";
+                break;
+            case ZSW_IMU_EVT_STEP_ACTIVITY_STILL:
+                act_str = "ACTIVITY";
+                break;
+            case ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN:
+            default:
+                act_str = "ACTIVITY";
+                break;
+        }
+    }
+
+    int len;
+    if (heart_rate == 0) {
+        len = snprintf(activity_msg, sizeof(activity_msg),
+                       "{\"t\":\"act\",\"stp\":%u,\"act\":\"%s\",\"rt\":%u}\n",
+                       steps, act_str, 1);
+    } else {
+        len = snprintf(activity_msg, sizeof(activity_msg),
+                       "{\"t\":\"act\",\"hrm\":%u,\"stp\":%u,\"act\":\"%s\",\"rt\":%u}\n",
+                       heart_rate, steps, act_str, 1);
+    }
+    if (len > 0 && len < sizeof(activity_msg)) {
+        LOG_DBG("Sending activity data: %s", activity_msg);
+        ble_comm_send(activity_msg, len);
+    }
+}
