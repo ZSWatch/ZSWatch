@@ -52,12 +52,10 @@ static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
-static void on_restart_screen_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
 static void ble_pairing_work_handler(struct k_work *work);
-static void display_restart_work_handler(struct k_work *work);
 
 ZSW_LV_IMG_DECLARE(settings);
 
@@ -71,7 +69,6 @@ typedef struct setting_app {
 } setting_app_t;
 
 K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
-K_WORK_DEFINE(display_restart_work, display_restart_work_handler);
 
 // Default values.
 static setting_app_t settings_app = {
@@ -119,17 +116,6 @@ static lv_settings_item_t display_page_items[] = {
             .sw = {
                 .name = "Display always on",
                 .inital_val = &settings_app.display_always_on
-            }
-        }
-    },
-    {
-        .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_IMAGE,
-        .change_callback = on_restart_screen_changed,
-        .item = {
-            .btn = {
-                .name = "Restart screen",
-                .text = LV_SYMBOL_REFRESH
             }
         }
     },
@@ -407,25 +393,6 @@ static void on_clear_storage_changed(lv_setting_value_t value, bool final)
         zsw_popup_show("Erase all settings?",
                        "Are you sure?\nThis can take up to 300s, but probably less.\nThe watch will restart once done.",
                        on_clear_storage_confirm, 10, true);
-    }
-}
-
-static void display_restart_work_handler(struct k_work *work)
-{
-    zsw_display_control_sleep_ctrl(false);
-    zsw_display_control_pwr_ctrl(false);
-    zsw_display_control_pwr_ctrl(true);
-    zsw_display_control_sleep_ctrl(false);
-    zsw_display_control_sleep_ctrl(true);
-}
-
-static void on_restart_screen_changed(lv_setting_value_t value, bool final)
-{
-    if (final) {
-        // Display functions can not run from LVGL context so a context switch is needed.
-        // Due to display_off function will wait for LVGL to finish rendering, so we will hang as we wait
-        // for ourselves to finish.
-        k_work_submit(&display_restart_work);
     }
 }
 
