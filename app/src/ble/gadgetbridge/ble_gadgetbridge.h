@@ -16,6 +16,14 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len);
 void ble_gadgetbridge_send_version_info(void);
 
 /**
+ * @brief Send a notification action to Gadgetbridge.
+ *
+ * @param id Notification ID to act on
+ * @param action Action to perform
+ */
+void ble_gadgetbridge_send_notification_action(uint32_t id, ble_comm_notify_action_t action);
+
+/**
  * @brief Send activity data to Gadgetbridge.
  *
  * Maps step_activity and power_state to Gadgetbridge activities:

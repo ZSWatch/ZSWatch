@@ -30,6 +30,7 @@
 #include "ble/gadgetbridge/ble_gadgetbridge.h"
 #include "events/battery_event.h"
 #include "managers/zsw_power_manager.h"
+#include "events/zsw_notification_event.h"
 #include "sensors/zsw_imu.h"
 #if defined(CONFIG_BT_HRS)
 #include "sensors/zsw_health_data.h"
@@ -38,11 +39,15 @@
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
+static void zbus_notification_remove_callback(const struct zbus_channel *chan);
 
 static void handle_delayed_send_status(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
+ZBUS_CHAN_DECLARE(zsw_notification_mgr_remove_chan);
 ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_battery_sample_data_callback);
+ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_notification_remove_event, zbus_notification_remove_callback);
+ZBUS_CHAN_ADD_OBS(zsw_notification_mgr_remove_chan, zsw_phone_app_publisher_notification_remove_event, 1);
 
 K_WORK_DELAYABLE_DEFINE(delayed_send_status_work, handle_delayed_send_status);
 
@@ -124,6 +129,15 @@ static void handle_delayed_send_status(struct k_work *item)
 
     if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
         send_battery_state_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
+    }
+}
+
+static void zbus_notification_remove_callback(const struct zbus_channel *chan)
+{
+    const struct zsw_notification_remove_event *evt = zbus_chan_const_msg(chan);
+
+    if (evt->notification.id != 0) {
+        ble_gadgetbridge_send_notification_action(evt->notification.id, BLE_COMM_NOTIFY_ACTION_DISMISS);
     }
 }
 

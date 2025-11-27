@@ -106,6 +106,14 @@ typedef struct ble_comm_gps {
     char gpsSource[20];
 } ble_comm_gps_t;
 
+typedef enum {
+    BLE_COMM_NOTIFY_ACTION_DISMISS,
+    BLE_COMM_NOTIFY_ACTION_DISMISS_ALL,
+    BLE_COMM_NOTIFY_ACTION_OPEN,
+    BLE_COMM_NOTIFY_ACTION_MUTE,
+    BLE_COMM_NOTIFY_ACTION_REPLY,
+} ble_comm_notify_action_t;
+
 typedef struct ble_comm_cb_data {
     ble_comm_data_type_t type;
     union {

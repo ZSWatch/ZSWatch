@@ -748,11 +748,49 @@ void ble_gadgetbridge_send_version_info(void)
 {
     char version_msg[100];
     int len = snprintf(version_msg, sizeof(version_msg),
-                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"}\n",
+                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"} \n",
                        APP_VERSION_STRING, CONFIG_BOARD_TARGET);
     if (len > 0 && len < sizeof(version_msg)) {
         LOG_DBG("Sending version info: %s", version_msg);
         ble_comm_send(version_msg, len);
+    }
+}
+
+void ble_gadgetbridge_send_notification_action(uint32_t id, ble_comm_notify_action_t action)
+{
+    const char *action_str;
+    char buf[100];
+    int len;
+
+    switch (action) {
+        case BLE_COMM_NOTIFY_ACTION_DISMISS:
+            action_str = "DISMISS";
+            break;
+        case BLE_COMM_NOTIFY_ACTION_DISMISS_ALL:
+            action_str = "DISMISS_ALL";
+            break;
+        case BLE_COMM_NOTIFY_ACTION_OPEN:
+            action_str = "OPEN";
+            break;
+        case BLE_COMM_NOTIFY_ACTION_MUTE:
+            action_str = "MUTE";
+            break;
+        case BLE_COMM_NOTIFY_ACTION_REPLY:
+            action_str = "REPLY";
+            // TODO: This can also contain a reply text, implement later.
+            break;
+        default:
+            LOG_WRN("Unknown notification action (%d) for id %u", action, id);
+            return;
+    }
+
+    len = snprintf(buf, sizeof(buf), "{\"t\":\"notify\",\"id\":%u,\"n\":\"%s\"} \n", id, action_str);
+
+    if (len > 0 && len < sizeof(buf)) {
+        LOG_DBG("Sending notification action: %s", buf);
+        ble_comm_send(buf, len);
+    } else {
+        LOG_WRN("Failed to format notification action for id %u", id);
     }
 }
 
@@ -777,7 +815,7 @@ void ble_gadgetbridge_send_activity_state(zsw_power_manager_state_t activity_sta
     }
 
     int len = snprintf(activity_msg, sizeof(activity_msg),
-                       "{\"t\":\"act\",\"act\":\"%s\",\"rt\":1}\n", act_str);
+                       "{\"t\":\"act\",\"act\":\"%s\",\"rt\":1} \n", act_str);
     if (len > 0 && len < sizeof(activity_msg)) {
         LOG_DBG("Sending activity state: %s", activity_msg);
         ble_comm_send(activity_msg, len);
@@ -818,11 +856,11 @@ void ble_gadgetbridge_send_activity_data(uint16_t heart_rate, uint32_t steps,
     int len;
     if (heart_rate == 0) {
         len = snprintf(activity_msg, sizeof(activity_msg),
-                       "{\"t\":\"act\",\"stp\":%u,\"act\":\"%s\",\"rt\":%u}\n",
+                       "{\"t\":\"act\",\"stp\":%u,\"act\":\"%s\",\"rt\":%u} \n",
                        steps, act_str, 1);
     } else {
         len = snprintf(activity_msg, sizeof(activity_msg),
-                       "{\"t\":\"act\",\"hrm\":%u,\"stp\":%u,\"act\":\"%s\",\"rt\":%u}\n",
+                       "{\"t\":\"act\",\"hrm\":%u,\"stp\":%u,\"act\":\"%s\",\"rt\":%u} \n",
                        heart_rate, steps, act_str, 1);
     }
     if (len > 0 && len < sizeof(activity_msg)) {
