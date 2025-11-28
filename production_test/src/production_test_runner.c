@@ -32,11 +32,13 @@
 #include "production_test_runner.h"
 #include "screens/button_test_screen.h"
 #include "screens/vibration_test_screen.h"
+#include "screens/brightness_test_screen.h"
 #include "screens/touch_test_screen.h"
 #include "screens/microphone_test_screen.h"
 #include "screens/sensor_scan_screen.h"
 #include "screens/result_screen.h"
 #include "drivers/zsw_vibration_motor.h"
+#include "drivers/zsw_display_control.h"
 #include "drivers/zsw_microphone.h"
 #include "applications/mic/spectrum_analyzer.h"
 
@@ -95,6 +97,11 @@ static void vibration_step_on_button(uint32_t button_code);
 static void vibration_step_on_timeout(void);
 static void vibration_step_on_exit(void);
 
+static void backlight_step_enter(void);
+static void backlight_step_on_button(uint32_t button_code);
+static void backlight_step_on_timeout(void);
+static void backlight_brightness_work_handler(struct k_work *work);
+
 static void touch_step_enter(void);
 static void touch_step_on_touch(void);
 static void touch_step_on_timeout(void);
@@ -123,7 +130,13 @@ K_WORK_DELAYABLE_DEFINE(state_work, state_work_handler);
 K_WORK_DELAYABLE_DEFINE(timeout_work, timeout_work_handler);
 K_WORK_DELAYABLE_DEFINE(countdown_update_work, countdown_update_handler);
 K_WORK_DELAYABLE_DEFINE(vibration_repeat_work, vibration_repeat_handler);
+K_WORK_DELAYABLE_DEFINE(backlight_brightness_work, backlight_brightness_work_handler);
 K_WORK_DEFINE(mic_level_update_work, mic_level_update_handler);
+
+// Backlight test state
+static bool backlight_test_started;
+static bool backlight_awaiting_confirmation;
+static int backlight_cycle_count;
 
 static production_test_runner_context_t test_context;
 static production_test_runner_state_t pending_state = TEST_STATE_COMPLETE;
@@ -166,6 +179,14 @@ static const test_step_t test_steps[] = {
         .on_button = vibration_step_on_button,
         .on_timeout = vibration_step_on_timeout,
         .on_exit = vibration_step_on_exit,
+    },
+    {
+        .state = TEST_STATE_BACKLIGHT_TEST,
+        .name = "Backlight",
+        .timeout_sec = TEST_TIMEOUT_SEC,
+        .on_enter = backlight_step_enter,
+        .on_button = backlight_step_on_button,
+        .on_timeout = backlight_step_on_timeout,
     },
     {
         .state = TEST_STATE_TOUCH_TEST,
@@ -310,6 +331,7 @@ void production_test_runner_init(void)
 
     button_test_screen_init();
     vibration_test_screen_init();
+    brightness_test_screen_init();
     touch_test_screen_init();
     microphone_test_screen_init();
     sensor_scan_screen_init();
@@ -413,6 +435,9 @@ static void countdown_update_handler(struct k_work *work)
                 break;
             case TEST_STATE_VIBRATION_TEST:
                 vibration_test_screen_update_countdown(test_context.countdown_seconds);
+                break;
+            case TEST_STATE_BACKLIGHT_TEST:
+                brightness_test_screen_update_countdown(test_context.countdown_seconds);
                 break;
             case TEST_STATE_TOUCH_TEST:
                 touch_test_screen_update_countdown(test_context.countdown_seconds);
@@ -576,6 +601,87 @@ static void vibration_step_on_exit(void)
 }
 
 /* ------------------------------------------------------------------------- */
+/* Backlight test                                                            */
+/* ------------------------------------------------------------------------- */
+#define BACKLIGHT_CYCLE_COUNT    3
+#define BACKLIGHT_CYCLE_MS       500
+
+static void backlight_brightness_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    if (test_context.current_state != TEST_STATE_BACKLIGHT_TEST) {
+        return;
+    }
+
+    backlight_cycle_count++;
+
+    if (backlight_cycle_count < BACKLIGHT_CYCLE_COUNT * 2) {
+        // Alternate between low and high brightness
+        if (backlight_cycle_count % 2 == 0) {
+            zsw_display_control_set_brightness(5);
+        } else {
+            zsw_display_control_set_brightness(100);
+        }
+        k_work_schedule(&backlight_brightness_work, K_MSEC(BACKLIGHT_CYCLE_MS));
+    } else {
+        // Done cycling, restore normal brightness and ask confirmation
+        zsw_display_control_set_brightness(50);
+        backlight_awaiting_confirmation = true;
+        brightness_test_screen_ask_confirmation();
+    }
+}
+
+static void backlight_step_enter(void)
+{
+    backlight_test_started = false;
+    backlight_awaiting_confirmation = false;
+    backlight_cycle_count = 0;
+    test_context.results.backlight = TEST_RESULT_PENDING;
+    brightness_test_screen_show();
+}
+
+static void backlight_step_on_button(uint32_t button_code)
+{
+    ARG_UNUSED(button_code);
+
+    if (!backlight_test_started) {
+        // First button press - start the brightness test
+        backlight_test_started = true;
+        test_context.results.backlight = TEST_RESULT_RUNNING;
+        brightness_test_screen_start_test();
+
+        // Start with low brightness and begin cycling
+        zsw_display_control_set_brightness(5);
+        k_work_schedule(&backlight_brightness_work, K_MSEC(BACKLIGHT_CYCLE_MS));
+        return;
+    }
+
+    if (backlight_awaiting_confirmation) {
+        // User confirmed brightness change worked
+        test_context.results.backlight = TEST_RESULT_PASSED;
+        LOG_INF("Backlight test passed");
+
+        // Restore max brightness
+        zsw_display_control_set_brightness(100);
+
+        advance_to_next_step(K_MSEC(AUTOPASS_DELAY_MS));
+    }
+}
+
+static void backlight_step_on_timeout(void)
+{
+    test_context.results.backlight = TEST_RESULT_FAILED;
+    k_work_cancel_delayable(&backlight_brightness_work);
+
+    // Restore max brightness
+    zsw_display_control_set_brightness(100);
+
+    LOG_ERR("Backlight test failed - timeout");
+    advance_to_next_step(K_NO_WAIT);
+}
+
+/* ------------------------------------------------------------------------- */
 /* Touch test                                                                */
 /* ------------------------------------------------------------------------- */
 static void touch_step_enter(void)
@@ -670,8 +776,28 @@ static void microphone_step_on_exit(void)
 /* ------------------------------------------------------------------------- */
 /* Sensor scan                                                               */
 /* ------------------------------------------------------------------------- */
+static bool any_test_failed(void)
+{
+    test_result_t *results = (test_result_t *)&test_context.results;
+    size_t count = sizeof(test_results_t) / sizeof(test_result_t);
+
+    for (size_t i = 0; i < count; i++) {
+        if (results[i] == TEST_RESULT_FAILED) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void sensor_scan_step_enter(void)
 {
+    // Skip sensor scan screen if all tests passed
+    if (!any_test_failed()) {
+        LOG_INF("All tests passed - skipping hardware status page");
+        advance_to_next_step(K_NO_WAIT);
+        return;
+    }
+
     int count = 0;
     test_metadata_t metadata[MAX_NUM_TEST_METADATA];
 
@@ -681,6 +807,9 @@ static void sensor_scan_step_enter(void)
     };
     metadata[count++] = (test_metadata_t) {
         "Vibration", &test_context.results.vibration
+    };
+    metadata[count++] = (test_metadata_t) {
+        "Backlight", &test_context.results.backlight
     };
     metadata[count++] = (test_metadata_t) {
         "Touch", &test_context.results.touch

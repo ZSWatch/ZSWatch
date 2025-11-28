@@ -38,6 +38,7 @@ static void production_test_init_work(struct k_work *work)
 
     zsw_display_control_init();
     zsw_display_control_sleep_ctrl(true);
+    zsw_display_control_set_brightness(100);  // Max brightness for production test
 
     production_test_runner_init();
     production_test_runner_start();

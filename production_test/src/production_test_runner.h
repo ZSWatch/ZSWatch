@@ -23,6 +23,7 @@
 typedef enum {
     TEST_STATE_BUTTON_TEST,
     TEST_STATE_VIBRATION_TEST,
+    TEST_STATE_BACKLIGHT_TEST,
     TEST_STATE_TOUCH_TEST,
     TEST_STATE_MICROPHONE_TEST,
     TEST_STATE_SENSOR_SCAN,
@@ -40,6 +41,7 @@ typedef enum {
 typedef struct {
     test_result_t buttons;
     test_result_t vibration;
+    test_result_t backlight;
     test_result_t touch;
     test_result_t display;
     test_result_t imu;

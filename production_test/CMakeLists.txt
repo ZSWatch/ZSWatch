@@ -45,6 +45,7 @@ target_sources(app PRIVATE
     src/production_test_runner.c
     src/screens/button_test_screen.c
     src/screens/vibration_test_screen.c
+    src/screens/brightness_test_screen.c
     src/screens/touch_test_screen.c
     src/screens/microphone_test_screen.c
     src/screens/sensor_scan_screen.c
