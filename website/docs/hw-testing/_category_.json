@@ -1,0 +1,8 @@
+{
+  "label": "Hardware testing",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Use of Production Test software for ZSWatch."
+  }
+}
