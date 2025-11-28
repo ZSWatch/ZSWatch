@@ -33,6 +33,10 @@ typedef bool zsw_settings_display_always_on_t;
 #define ZSW_SETTINGS_KEY_DISPLAY_ALWAYS_ON "disp_on"
 #define ZSW_SETTINGS_DISPLAY_ALWAYS_ON (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_DISPLAY_ALWAYS_ON)
 
+typedef bool zsw_settings_ble_log_en_t;
+#define ZSW_SETTINGS_KEY_BLE_LOG_EN "ble_log"
+#define ZSW_SETTINGS_BLE_LOG_EN (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_LOG_EN)
+
 typedef bool zsw_settings_ble_aoa_en_t;
 #define ZSW_SETTINGS_KEY_BLE_AOA_EN "aoa_en"
 #define ZSW_SETTINGS_BLE_AOA_EN (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_AOA_EN)

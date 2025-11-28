@@ -141,7 +141,7 @@ int ble_comm_init(void);
  *  @param len
  *  @return     0 when successful
 */
-int ble_comm_send(uint8_t *data, uint16_t len);
+int ble_comm_send(const uint8_t *data, uint16_t len);
 
 /** @brief
  *  @param pairable

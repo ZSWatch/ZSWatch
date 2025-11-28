@@ -26,6 +26,7 @@
 #include "settings_ui.h"
 #include "ble/ble_aoa.h"
 #include "ble/ble_comm.h"
+#include "ble/ble_log_backend.h"
 #include "sensors/zsw_imu.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
@@ -51,6 +52,7 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
+static void on_ble_log_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
@@ -63,6 +65,7 @@ typedef struct setting_app {
     zsw_settings_brightness_t           brightness;
     zsw_settings_vib_on_press_t         vibration_on_click;
     zsw_settings_display_always_on_t    display_always_on;
+    zsw_settings_ble_log_en_t           ble_log_enabled;
     zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
     zsw_settings_watchface_t            watchface;
@@ -75,6 +78,7 @@ static setting_app_t settings_app = {
     .brightness = 30,
     .vibration_on_click = true,
     .display_always_on = false,
+    .ble_log_enabled = false,
     .ble_aoa_enabled = false,
     .ble_aoa_tx_interval = 100,
     .watchface = {
@@ -205,6 +209,17 @@ static lv_settings_item_t other_page_items[] = {
         }
     },
     {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_BLUETOOTH,
+        .change_callback = on_ble_log_changed,
+        .item = {
+            .sw = {
+                .name = "BLE logging",
+                .inital_val = &settings_app.ble_log_enabled,
+            }
+        }
+    },
+    {
         .type = LV_SETTINGS_TYPE_BTN,
         .icon = LV_SYMBOL_REFRESH,
         .change_callback = on_reset_steps_changed,
@@ -324,6 +339,14 @@ static void on_display_vib_press_changed(lv_setting_value_t value, bool final)
     settings_app.vibration_on_click = value.item.sw;
     settings_save_one(ZSW_SETTINGS_VIBRATE_ON_PRESS, &settings_app.vibration_on_click,
                       sizeof(settings_app.vibration_on_click));
+}
+
+static void on_ble_log_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.ble_log_enabled = value.item.sw;
+    ble_log_backend_set_enabled(settings_app.ble_log_enabled);
+    settings_save_one(ZSW_SETTINGS_BLE_LOG_EN, &settings_app.ble_log_enabled,
+                      sizeof(settings_app.ble_log_enabled));
 }
 
 static void on_relative_battery_press_changed(lv_setting_value_t value, bool final)
@@ -462,6 +485,18 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.display_always_on, sizeof(settings_app.display_always_on));
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_BLE_LOG_EN, &next) && !next) {
+        if (len != sizeof(settings_app.ble_log_enabled)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.ble_log_enabled, sizeof(settings_app.ble_log_enabled));
+        ble_log_backend_set_enabled(settings_app.ble_log_enabled);
         if (rc >= 0) {
             return 0;
         }

@@ -185,7 +185,7 @@ int ble_comm_init(void)
     return err;
 }
 
-int ble_comm_send(uint8_t *data, uint16_t len)
+int ble_comm_send(const uint8_t *data, uint16_t len)
 {
     uint16_t offset = 0;
     int ret = 0;

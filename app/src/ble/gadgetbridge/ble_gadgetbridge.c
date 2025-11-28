@@ -13,6 +13,7 @@
 
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
+#include "ble/ble_log_backend.h"
 #include "ble/ble_transport.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
@@ -588,6 +589,33 @@ static int parse_gps_data(char *data, int len)
     return 0;
 }
 
+static int parse_log_command(char *data, int len)
+{
+    (void) len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse log command");
+        return -EINVAL;
+    }
+
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+    if (!cJSON_IsBool(status)) {
+        LOG_WRN("Log command missing status");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    bool enabled = cJSON_IsTrue(status);
+
+    ble_log_backend_set_enabled(enabled);
+    LOG_INF("BLE logging %s via command", enabled ? "enabled" : "disabled");
+
+    cJSON_Delete(root);
+
+    return 0;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -630,6 +658,15 @@ static int parse_data(char *data, int len)
 
     if (strlen("gps") == type_len && strncmp(type, "gps", type_len) == 0) {
         return parse_gps_data(data, len);
+    }
+
+    if (strlen("log") == type_len && strncmp(type, "log", type_len) == 0) {
+        return parse_log_command(data, len);
+    }
+
+    if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
+        ble_gadgetbridge_send_version_info();
+        return 0;
     }
 
     return 0;
