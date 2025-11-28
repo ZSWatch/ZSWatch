@@ -48,6 +48,10 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .disconnected = disconnected,
 };
 
+// Number of 100ms periods to skip for sending data.
+// 1 = 100ms, 5 = 500ms, 10 = 1s etc.
+#define ZSW_GATT_SENSOR_NOTIFY_INTERVAL_PERIODS    3
+
 #if CONFIG_BLE_DISABLE_PAIRING_REQUIRED
 #define ZSW_GATT_READ_WRITE_PERM    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
 #else
@@ -117,6 +121,52 @@ BT_GATT_SERVICE_DEFINE(light_service,
                       );
 
 static bool notif_enabled;
+static uint8_t notify_period_counter;
+
+static const struct bt_gatt_attr *const notify_attrs[] = {
+    &temp_service.attrs[2],
+    &accel_service.attrs[2],
+    &humidity_service.attrs[2],
+    &pressure_service.attrs[2],
+    &mag_service.attrs[2],
+    &gyro_service.attrs[2],
+    &light_service.attrs[2],
+};
+
+struct notif_scan_ctx {
+    bool enabled;
+};
+
+static void notif_conn_scan(struct bt_conn *conn, void *data)
+{
+    struct notif_scan_ctx *state = data;
+    struct bt_conn_info info;
+
+    if (state->enabled || bt_conn_get_info(conn, &info) != 0 ||
+        info.state != BT_CONN_STATE_CONNECTED) {
+        return;
+    }
+
+    for (size_t i = 0; i < sizeof(notify_attrs) / sizeof(notify_attrs[0]); i++) {
+        if (bt_gatt_is_subscribed(conn, notify_attrs[i], BT_GATT_CCC_NOTIFY)) {
+            state->enabled = true;
+            return;
+        }
+    }
+}
+
+static bool any_notification_enabled(uint16_t value)
+{
+    if ((value & BT_GATT_CCC_NOTIFY) != 0U) {
+        return true;
+    }
+
+    struct notif_scan_ctx ctx = { 0 };
+
+    bt_conn_foreach(BT_CONN_TYPE_LE, notif_conn_scan, &ctx);
+
+    return ctx.enabled;
+}
 
 static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
 {
@@ -172,15 +222,14 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
     ARG_UNUSED(attr);
 
-    // TODO handle notifications per connection per service.
-    if (!notif_enabled && (value == BT_GATT_CCC_NOTIFY)) {
+    bool notifications_active = any_notification_enabled(value);
+
+    if (!notif_enabled && notifications_active) {
         notif_enabled = true;
         zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
         ble_comm_set_short_connection_interval();
         zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
-    } else if (notif_enabled && (value != BT_GATT_CCC_NOTIFY)) {
-        // If any char get notify off, then stop sending at all.
-        // TODO Keep track of which ones have notify on.
+    } else if (notif_enabled && !notifications_active) {
         ble_comm_set_default_connection_interval();
         zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
         zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
@@ -190,8 +239,16 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-    // TODO Handle multiple connections
+    ARG_UNUSED(conn);
+    ARG_UNUSED(reason);
+
+    if (!notif_enabled || any_notification_enabled(0)) {
+        return;
+    }
+
+    ble_comm_set_default_connection_interval();
     zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
+    zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
     notif_enabled = false;
 }
 
@@ -207,28 +264,33 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
     float temperature = 0.0;
     uint8_t buf[CONFIG_BT_L2CAP_TX_MTU];
 
+    notify_period_counter++;
+    if (notify_period_counter < ZSW_GATT_SENSOR_NOTIFY_INTERVAL_PERIODS) {
+        return;
+    }
+    notify_period_counter = 0;
+
     f_ptr = (float *)buf;
 
-    // TODO use bt_gatt_notify_multiple instead of many bt_gatt_notify
     zsw_environment_sensor_get(&temperature, &humidity, &pressure);
     f_ptr[0] = temperature;
     write_len = sizeof(float);
-    bt_gatt_notify(NULL, &temp_service.attrs[1], &buf, write_len);
+    bt_gatt_notify(NULL, &temp_service.attrs[2], &buf, write_len);
 
     f_ptr[0] = humidity;
     write_len = sizeof(float);
-    bt_gatt_notify(NULL, &humidity_service.attrs[1], &buf, write_len);
+    bt_gatt_notify(NULL, &humidity_service.attrs[2], &buf, write_len);
 
     f_ptr[0] = pressure;
     write_len = sizeof(float);
-    bt_gatt_notify(NULL, &pressure_service.attrs[1], &buf, write_len);
+    bt_gatt_notify(NULL, &pressure_service.attrs[2], &buf, write_len);
 
     if (zsw_imu_fetch_accel(&x, &y, &z) == 0) {
         f_ptr[0] = x;
         f_ptr[1] = y;
         f_ptr[2] = z;
         write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &accel_service.attrs[1], &buf, write_len);
+        bt_gatt_notify(NULL, &accel_service.attrs[2], &buf, write_len);
     }
 
     if (zsw_imu_fetch_gyro(&x, &y, &z) == 0) {
@@ -236,18 +298,18 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
         f_ptr[1] = y;
         f_ptr[2] = z;
         write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &gyro_service.attrs[1], &buf, write_len);
+        bt_gatt_notify(NULL, &gyro_service.attrs[2], &buf, write_len);
     }
 
     if (zsw_magnetometer_set_enable(true) == 0) {
         zsw_magnetometer_get_all(&f_ptr[0], &f_ptr[1], &f_ptr[2]);
         zsw_magnetometer_set_enable(false);
         write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &mag_service.attrs[1], &buf, write_len);
+        bt_gatt_notify(NULL, &mag_service.attrs[2], &buf, write_len);
     }
 
     if (zsw_light_sensor_get_light(&f_ptr[0]) == 0) {
         write_len = sizeof(float);
-        bt_gatt_notify(NULL, &light_service.attrs[1], &buf, write_len);
+        bt_gatt_notify(NULL, &light_service.attrs[2], &buf, write_len);
     }
 }
