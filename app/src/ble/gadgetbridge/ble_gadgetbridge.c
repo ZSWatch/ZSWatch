@@ -901,7 +901,6 @@ void ble_gadgetbridge_send_activity_data(uint16_t heart_rate, uint32_t steps,
                        heart_rate, steps, act_str, 1);
     }
     if (len > 0 && len < sizeof(activity_msg)) {
-        LOG_DBG("Sending activity data: %s", activity_msg);
         ble_comm_send(activity_msg, len);
     }
 }

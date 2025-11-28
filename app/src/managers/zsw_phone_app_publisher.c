@@ -38,14 +38,14 @@
 
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
 
-static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
+static void zbus_send_status_data_callback(const struct zbus_channel *chan);
 static void zbus_notification_remove_callback(const struct zbus_channel *chan);
 
 static void handle_delayed_send_status(struct k_work *item);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_CHAN_DECLARE(zsw_notification_mgr_remove_chan);
-ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_battery_sample_data_callback);
+ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_battery_event, zbus_send_status_data_callback);
 ZBUS_LISTENER_DEFINE(zsw_phone_app_publisher_notification_remove_event, zbus_notification_remove_callback);
 ZBUS_CHAN_ADD_OBS(zsw_notification_mgr_remove_chan, zsw_phone_app_publisher_notification_remove_event, 1);
 
@@ -80,7 +80,7 @@ static void send_activity_data(void)
 #endif
 }
 
-static void send_battery_state_update(int mV, int percent, bool is_charging)
+static void send_status_update(int mV, int percent, bool is_charging)
 {
     int msg_len;
     char buf[100];
@@ -89,16 +89,15 @@ static void send_battery_state_update(int mV, int percent, bool is_charging)
     msg_len = snprintf(buf, sizeof(buf), "{\"t\":\"status\", \"bat\": %d, \"volt\": %d, \"chg\": %d} \n", percent,
                        mV, is_charging);
     ble_comm_send(buf, msg_len);
-
-    send_activity_data();
 }
 
-static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
+static void zbus_send_status_data_callback(const struct zbus_channel *chan)
 {
     struct battery_sample_event *event = zbus_chan_msg(chan);
     bt_bas_set_battery_level(event->percent);
     if (is_connected) {
-        send_battery_state_update(event->mV, event->percent, event->is_charging);
+        send_status_update(event->mV, event->percent, event->is_charging);
+        send_activity_data();
     }
 }
 
@@ -128,7 +127,7 @@ static void handle_delayed_send_status(struct k_work *item)
     send_activity_data();
 
     if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
-        send_battery_state_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
+        send_status_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
     }
 }
 
