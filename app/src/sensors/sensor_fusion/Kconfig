@@ -1,0 +1,31 @@
+# Copyright (c) 2025 ZSWatch Project, Leonardo Bispo, Jakob Krantz
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Sensor Fusion"
+    config SENSOR_FUSION_INCLUDE_MAGNETOMETER
+        bool
+    prompt "Include Magnetometer reading in sensor fusion algorithm"
+    default y
+    help
+        "If the magnetometer is not well calibrated, you must disable this option."
+
+    config SEND_SENSOR_READING_OVER_RTT
+        bool
+    prompt "Log sensor fusion reading to RTT"
+    default 1
+    help
+        Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
+
+    if SEND_SENSOR_READING_OVER_RTT
+        config SENSOR_LOG_RTT_TRANSFER_CHANNEL
+            int
+        prompt "The RTT channel to use for transfer of sensor fusion reading"
+        default 1
+        help
+            If RTT logging is enabled.
+    endif
+
+    module = ZSW_SENSORS_FUSION
+    module-str = ZSW_SENSORS_FUSION
+    source "subsys/logging/Kconfig.template.log_config"
+endmenu

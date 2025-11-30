@@ -1,6 +1,13 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-module = ZSW_TRIVIA_APP
-module-str = ZSW_TRIVIA_APP
-source "subsys/logging/Kconfig.template.log_config"
+menu "Trivia-App"
+    config APPLICATIONS_USE_TRIVIA
+        bool
+    prompt "Activate the application 'Trivia'"
+    default y
+
+    module = ZSW_TRIVIA_APP
+    module-str = ZSW_TRIVIA_APP
+    source "subsys/logging/Kconfig.template.log_config"
+endmenu

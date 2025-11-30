@@ -1,0 +1,36 @@
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Compass Application"
+    config APPLICATIONS_USE_COMPASS
+        bool
+    prompt "Activate the application 'Compass'"
+    default y
+
+    menu "Configuration"
+        menu "Compass"
+            depends on APPLICATIONS_USE_COMPASS
+
+            config APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS
+                int
+            prompt "Refresh interval in milliseconds"
+            default 50
+
+            config APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S
+                int
+            prompt "Calibration time in seconds"
+            default 30
+        endmenu
+
+        menu "Sensors Summary"
+            depends on APPLICATIONS_USE_SENSORS_SUMMARY
+
+            config APPLICATIONS_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS
+                int
+            prompt "Refresh interval in milliseconds"
+            default 100
+        endmenu
+    endmenu
+endmenu

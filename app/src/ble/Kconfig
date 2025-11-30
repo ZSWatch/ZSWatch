@@ -1,3 +1,17 @@
-module = ZSW_BLE
-module-str = ZSW_BLE
-source "subsys/logging/Kconfig.template.log_config"
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "BLE"
+    config BLE_DISABLE_PAIRING_REQUIRED
+        bool
+    prompt "Disable encryption required for BLE connection (pairing/bonding)"
+    default n
+    help
+        Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
+
+    module = ZSW_BLE
+    module-str = ZSW_BLE
+    source "subsys/logging/Kconfig.template.log_config"
+endmenu
