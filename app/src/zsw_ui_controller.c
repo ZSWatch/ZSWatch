@@ -15,8 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "zsw_ui_controller.h"
-#include <stdint.h>
 #include <zephyr/input/input.h>
 #include <zephyr/dt-bindings/input/cst816s-gesture-codes.h>
 #include <zephyr/kernel.h>
@@ -24,20 +22,23 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
+
+#include <stdint.h>
+
 #include <lvgl.h>
-#include <filesystem/zsw_filesystem.h>
-#include <zsw_retained_ram_storage.h>
+
+#include "filesystem/zsw_filesystem.h"
+#include "zsw_retained_ram_storage.h"
 #include "applications/watchface/watchface_app.h"
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "fuel_gauge/zsw_pmic.h"
-#include "managers/zsw_app_manager.h"
-#include "managers/zsw_notification_manager.h"
-#include "managers/zsw_power_manager.h"
+#include "zsw_app_manager.h"
+#include "zsw_notification_manager.h"
+#include "zsw_power_manager.h"
+#include "zsw_ui_controller.h"
 #include "ui/zsw_ui.h"
 #include "lvgl_editor_gen.h"
-
-LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_APP_LOG_LEVEL);
 
 typedef enum ui_state {
     INIT_STATE,
@@ -59,9 +60,9 @@ static lv_group_t *input_group;
 static lv_group_t *temp_group;
 static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
+static ui_state_t watch_state = INIT_STATE;
 
 static void run_input_work(struct k_work *item);
-static void handle_screen_gesture(lv_dir_t event_code);
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e);
@@ -72,7 +73,8 @@ static void on_application_manager_close(void);
 
 K_WORK_DEFINE(input_work, run_input_work);
 
-static ui_state_t watch_state = INIT_STATE;
+//LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_APP_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_ui_controller, LOG_LEVEL_DBG);
 
 static void run_input_work(struct k_work *item)
 {
@@ -85,49 +87,47 @@ static void run_input_work(struct k_work *item)
         return;
     }
 
-    switch (container->event.code) {
-        // Button event
-        case (INPUT_KEY_Y): {
+    if (container->event.type == INPUT_EV_KEY) {
+        switch (container->event.code) {
+            case (INPUT_KEY_Y): {
 #if(CONFIG_MISC_ENABLE_SYSTEM_RESET && !CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED)
-            LOG_INF("Force restart");
+                LOG_INF("Force restart");
 
-            retained.off_count += 1;
-            zsw_retained_ram_update();
-            sys_reboot(SYS_REBOOT_COLD);
+                retained.off_count += 1;
+                zsw_retained_ram_update();
+                sys_reboot(SYS_REBOOT_COLD);
 #endif
-            break;
-        }
-        // Button event
-        case INPUT_KEY_3: {
-            if (zsw_notification_popup_is_shown()) {
-                zsw_notification_popup_remove();
-            } else if (watch_state == APPLICATION_MANAGER_STATE) {
-                zsw_app_manager_exit_app();
-
-                return;
+                break;
             }
+            case INPUT_KEY_3: {
+                if (zsw_notification_popup_is_shown()) {
+                    zsw_notification_popup_remove();
+                } else if (watch_state == APPLICATION_MANAGER_STATE) {
+                    zsw_app_manager_exit_app();
 
-            break;
-        }
-        case INPUT_KEY_1: {
-            if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()) {
-                watch_state = APPLICATION_MANAGER_STATE;
-                zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
-                lv_async_call(open_application_manager_page, NULL);
+                    return;
+                }
+
+                break;
             }
+            case INPUT_KEY_1: {
+                if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()) {
+                    watch_state = APPLICATION_MANAGER_STATE;
+                    zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
+                    lv_async_call(open_application_manager_page, NULL);
+                }
 
-            break;
-        }
-        case CST816S_GESTURE_CODE_DOUBLE_CLICK: {
-            LOG_WRN("Double click gesture detected");
-            break;
+                break;
+            }
         }
     }
 
-    if (is_buttons_for_lvgl) {
-        // Handled by LVGL
-        last_input_event.code = container->event.code;
-        return;
+    // Handled by LVGL
+    if (container->event.type == INPUT_EV_KEY) {
+        if (is_buttons_for_lvgl) {
+            memcpy(&last_input_event, &container->event, sizeof(struct input_event));
+            return;
+        }
     }
 }
 
@@ -151,9 +151,9 @@ void zsw_ui_controller_clear_notification_mode(void)
     lv_group_set_default(input_group);
     lv_indev_set_group(enc_indev, input_group);
     if (watch_state == WATCHFACE_STATE) {
-        is_buttons_for_lvgl = 0;
+        is_buttons_for_lvgl = false;
     } else {
-        is_buttons_for_lvgl = 1;
+        is_buttons_for_lvgl = true;
     }
 }
 
@@ -173,12 +173,14 @@ static void async_turn_off_buttons_allocation(void *unused)
 static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 {
     zsw_power_manager_on_user_activity();
-    // Currently you have to define a keycode as binding between buttons and longpress. We skip this binding codes for now.
-    // Also touch events will be skipped, because they are handled by LVGL.
-    // TODO: Charger is also ignored for now.
-    // TODO: Replace this filtering with a propper device filtering setup for the input handler
+
+    LOG_DBG("Input event received: type=%u, code=%u, value=%d", evt->type, evt->code, evt->value);
+
+    // The following events are ignored (will block a wakeup of the display):
+    //  - Generic touch events (INPUT_BTN_TOUCH, INPUT_ABS_X, INPUT_ABS_Y)
+    //  - Back button, mapped on INPUT_KEY_KP0
     if ((evt->code == INPUT_ABS_X) || (evt->code == INPUT_ABS_Y) || (evt->code == INPUT_BTN_TOUCH) ||
-        (evt->code == INPUT_KEY_KP0) || (evt->code == INPUT_KEY_POWER) || (evt->value == 1)) {
+        (evt->code == INPUT_KEY_KP0) || ((evt->code != INPUT_EV_DEVICE) && (evt->value == 1))) {
         return;
     }
 
@@ -187,41 +189,42 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
     k_work_submit(&input_worker_item.work);
 }
 
-static void handle_screen_gesture(lv_dir_t event_code)
-{
-    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
-        switch (event_code) {
-            case LV_DIR_LEFT: {
-                open_application_manager_page("Notification");
-                break;
-            }
-            case LV_DIR_RIGHT: {
-                open_application_manager_page("Watchface Picker");
-                break;
-            }
-            case LV_DIR_TOP: {
-                open_application_manager_page(NULL);
-                break;
-            }
-            case LV_DIR_BOTTOM: {
-                break;
-            }
-            default:
-                __ASSERT(false, "Not a valid gesture code: %d", event_code);
-        }
-        lv_indev_wait_release(lv_indev_get_act());
-    } else if (zsw_notification_popup_is_shown()) {
-        zsw_notification_popup_remove();
-    }
-}
-
 static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
 {
-    lv_dir_t  dir;
+    lv_dir_t dir;
     lv_event_code_t event = lv_event_get_code(e);
+
     if (event == LV_EVENT_GESTURE) {
         dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        handle_screen_gesture(dir);
+
+        LOG_DBG("Gesture event detected: %u", dir);
+
+        if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
+            switch (dir) {
+                case LV_DIR_LEFT: {
+                    open_application_manager_page("Notification");
+                    break;
+                }
+                case LV_DIR_RIGHT: {
+                    open_application_manager_page("Watchface Picker");
+                    break;
+                }
+                case LV_DIR_TOP: {
+                    open_application_manager_page(NULL);
+                    break;
+                }
+                case LV_DIR_BOTTOM: {
+                    break;
+                }
+                default: {
+
+                }
+            }
+
+            lv_indev_wait_release(lv_indev_get_act());
+        } else if (zsw_notification_popup_is_shown()) {
+            zsw_notification_popup_remove();
+        }
     }
 }
 
