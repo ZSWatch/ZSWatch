@@ -20,11 +20,11 @@
 #include <zephyr/drivers/flash/nrf_qspi_nor.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(zsw_xip_manager, LOG_LEVEL_DBG);
-
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
 
 static bool first_xip_disable_done = false;
+
+LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 
 int _zsw_xip_enable(const char *requester)
 {

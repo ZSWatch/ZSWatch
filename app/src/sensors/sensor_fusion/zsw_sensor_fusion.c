@@ -27,6 +27,7 @@
 
 >>>>>>> 002b567f (Include path simplification, move sensor fusion into sensor driver directory):app/src/sensors/sensor_fusion/zsw_sensor_fusion.c
 #include <errno.h>
+#include <string.h>
 
 #include "../ext_drivers/fusion/Fusion/Fusion.h"
 #include "../ext_drivers/fusion/Fusion/FusionCompass.h"
@@ -34,11 +35,14 @@
 #include "sensor_fusion/zsw_sensor_fusion.h"
 #include "zsw_imu.h"
 #include "zsw_magnetometer.h"
-#include "../ble/zsw_gatt_sensor_server.h"
-#include <string.h>
+#include "zsw_gatt_sensor_server.h"
 
-#ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
+#if CONFIG_USE_SEGGER_RTT
 #include <SEGGER_RTT.h>
+
+#ifndef CONFIG_RTT_TRANSFER_CHANNEL
+#define CONFIG_RTT_TRANSFER_CHANNEL 3
+#endif
 #endif
 
 #define SAMPLE_RATE_HZ  100
@@ -98,7 +102,7 @@ static zsw_quat_t readings_quat;
 static float last_delta_time_s = 0.0f;
 static atomic_t sensor_fusion_users = ATOMIC_INIT(0);
 
-#ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
+#if CONFIG_USE_SEGGER_RTT
 #define UP_BUFFER_SIZE 256
 static uint8_t up_buffer[UP_BUFFER_SIZE];
 #endif
@@ -193,7 +197,7 @@ static void sensor_fusion_timeout(struct k_work *work)
             euler.angle.yaw, accelerometer.axis.x, accelerometer.axis.y,
             accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z);
 #endif
-#if CONFIG_SEND_SENSOR_READING_OVER_RTT
+#if CONFIG_USE_SEGGER_RTT
     uint8_t data_buf[UP_BUFFER_SIZE];
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     int len = snprintf(data_buf, UP_BUFFER_SIZE,
@@ -209,7 +213,7 @@ static void sensor_fusion_timeout(struct k_work *work)
                        euler.angle.yaw, gyroscope.axis.x,
                        gyroscope.axis.y, gyroscope.axis.z, accelerometer.axis.x, accelerometer.axis.y, accelerometer.axis.z);
 #endif
-    len = SEGGER_RTT_Write(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, data_buf, len);
+    len = SEGGER_RTT_Write(CONFIG_RTT_TRANSFER_CHANNEL, data_buf, len);
 #endif
 
     k_work_schedule(&sensor_fusion_timer, K_MSEC((1000 / SAMPLE_RATE_HZ) - (k_uptime_get_32() - start)));
@@ -217,8 +221,8 @@ static void sensor_fusion_timeout(struct k_work *work)
 
 int zsw_sensor_fusion_init(void)
 {
-#if CONFIG_SEND_SENSOR_READING_OVER_RTT
-    SEGGER_RTT_ConfigUpBuffer(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, "FUSION",
+#if CONFIG_USE_SEGGER_RTT
+    SEGGER_RTT_ConfigUpBuffer(CONFIG_RTT_TRANSFER_CHANNEL, "FUSION",
                               up_buffer, UP_BUFFER_SIZE,
                               SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 #endif

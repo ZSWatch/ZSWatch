@@ -24,6 +24,7 @@
 #include <zephyr/sys/reboot.h>
 
 #include <stdint.h>
+#include <string.h>
 
 #include <lvgl.h>
 

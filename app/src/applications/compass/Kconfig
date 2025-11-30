@@ -15,13 +15,13 @@ menu "Compass Application"
 
             config APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS
                 int
-            prompt "Refresh interval in milliseconds"
-            default 50
+                prompt "Refresh interval in milliseconds"
+                default 50
 
             config APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S
                 int
-            prompt "Calibration time in seconds"
-            default 30
+                prompt "Calibration time in seconds"
+                default 30
         endmenu
 
         menu "Sensors Summary"
@@ -29,8 +29,8 @@ menu "Compass Application"
 
             config APPLICATIONS_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS
                 int
-            prompt "Refresh interval in milliseconds"
-            default 100
+                prompt "Refresh interval in milliseconds"
+                default 100
         endmenu
     endmenu
 endmenu

@@ -15,19 +15,18 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "zsw_microphone_manager.h"
-#include "drivers/zsw_microphone.h"
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/kernel.h>
-#if CONFIG_USE_SEGGER_RTT
-#include <SEGGER_RTT.h>
-#endif
+
 #include <string.h>
 #include <stdio.h>
 
-LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_APP_LOG_LEVEL);
+#include "zsw_microphone_manager.h"
+#include "drivers/zsw_microphone.h"
 
+#if CONFIG_USE_SEGGER_RTT
+#include <SEGGER_RTT.h>
 #ifndef CONFIG_RTT_TRANSFER_CHANNEL
 #define CONFIG_RTT_TRANSFER_CHANNEL 2
 #endif
@@ -37,6 +36,9 @@ LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_APP_LOG_LEVEL);
 #if CONFIG_USE_SEGGER_RTT
 static uint8_t rtt_buffer[RTT_BUFFER_SIZE];
 #endif
+#endif
+
+LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_MIC_MANAGER_LOG_LEVEL);
 
 typedef enum {
     ZSW_MIC_STATE_IDLE,          /**< Manager is idle, ready to start recording */

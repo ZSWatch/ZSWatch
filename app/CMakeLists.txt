@@ -65,6 +65,7 @@ include_directories(src/managers)
 include_directories(src/events)
 include_directories(src/drivers)
 include_directories(src/sensors)
+include_directories(src/ble)
 
 if(CONFIG_AUDIO_DMIC)
 set(kissfft_sources

@@ -92,7 +92,7 @@ menu "ZSWatch"
             prompt "Select the function for the Bosch environment sensor."
             help
                 You have to disable the BME680 option in the Zephyr configuration to enable the Bosch BSEC option.
-            def_bool EXTERNAL_USE_BOSCH_BME688
+            default EXTERNAL_USE_BOSCH_BME688
 
         config EXTERNAL_USE_BOSCH_BSEC
             prompt "Use Bosch BSEC library"
