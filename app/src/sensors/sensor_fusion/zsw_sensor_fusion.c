@@ -21,14 +21,15 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+
 #include <errno.h>
 
 #include "../ext_drivers/fusion/Fusion/Fusion.h"
 #include "../ext_drivers/fusion/Fusion/FusionCompass.h"
 
 #include "sensor_fusion/zsw_sensor_fusion.h"
-#include "../sensors/zsw_imu.h"
-#include "../sensors/zsw_magnetometer.h"
+#include "zsw_imu.h"
+#include "zsw_magnetometer.h"
 #include "../ble/zsw_gatt_sensor_server.h"
 #include <string.h>
 
