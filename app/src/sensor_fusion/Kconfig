@@ -1,6 +1,0 @@
-# Copyright (c) 2025 ZSWatch Project, Leonardo Bispo, Jakob Krantz
-# SPDX-License-Identifier: Apache-2.0
-
-module = ZSW_SENSORS_FUSION
-module-str = ZSW_SENSORS_FUSION
-source "subsys/logging/Kconfig.template.log_config"

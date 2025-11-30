@@ -19,14 +19,15 @@
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
 
+#include <lvgl.h>
+#include <math.h>
+
 #include "fusion_ui.h"
 #include "sensors/zsw_imu.h"
-#include "sensor_fusion/zsw_sensor_fusion.h"
+#include "sensors/sensor_fusion/zsw_sensor_fusion.h"
 #include "events/zsw_periodic_event.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
-#include <lvgl.h>
-#include <math.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

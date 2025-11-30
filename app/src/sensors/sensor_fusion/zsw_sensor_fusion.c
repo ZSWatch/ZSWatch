@@ -21,15 +21,19 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+<<<<<<< HEAD:app/src/sensor_fusion/zsw_sensor_fusion.c
 #include <zephyr/sys/atomic.h>
+=======
+
+>>>>>>> 002b567f (Include path simplification, move sensor fusion into sensor driver directory):app/src/sensors/sensor_fusion/zsw_sensor_fusion.c
 #include <errno.h>
 
 #include "../ext_drivers/fusion/Fusion/Fusion.h"
 #include "../ext_drivers/fusion/Fusion/FusionCompass.h"
 
 #include "sensor_fusion/zsw_sensor_fusion.h"
-#include "../sensors/zsw_imu.h"
-#include "../sensors/zsw_magnetometer.h"
+#include "zsw_imu.h"
+#include "zsw_magnetometer.h"
 #include "../ble/zsw_gatt_sensor_server.h"
 #include <string.h>
 

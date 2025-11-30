@@ -21,20 +21,20 @@
 #include <zephyr/zbus/zbus.h>
 #include <lvgl.h>
 #include <zephyr/logging/log.h>
-#include <events/activity_event.h>
-#include <zsw_retained_ram_storage.h>
 #include <zephyr/settings/settings.h>
 #include <math.h>
 
+#include "activity_event.h"
+#include "zsw_retained_ram_storage.h"
 #include "zsw_settings.h"
 #include "zsw_cpu_freq.h"
-#include "events/accel_event.h"
-#include "events/battery_event.h"
-#include "managers/zsw_power_manager.h"
-#include "drivers/zsw_display_control.h"
-#include "drivers/zsw_vibration_motor.h"
+#include "accel_event.h"
+#include "battery_event.h"
+#include "zsw_power_manager.h"
+#include "zsw_display_control.h"
+#include "zsw_vibration_motor.h"
 
-LOG_MODULE_REGISTER(zsw_power_manager, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(zsw_power_manager, CONFIG_ZSW_PWR_MANAGER_LOG_LEVEL);
 
 #ifdef CONFIG_ARCH_POSIX
 #define IDLE_TIMEOUT_SECONDS    UINT32_MAX
