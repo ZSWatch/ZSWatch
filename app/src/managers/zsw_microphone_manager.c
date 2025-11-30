@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 
-LOG_MODULE_REGISTER(zsw_mic_manager, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_APP_LOG_LEVEL);
 
 #ifndef CONFIG_RTT_TRANSFER_CHANNEL
 #define CONFIG_RTT_TRANSFER_CHANNEL 2
