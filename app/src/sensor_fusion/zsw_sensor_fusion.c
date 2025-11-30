@@ -21,6 +21,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/sys/atomic.h>
 #include <errno.h>
 
 #include "../ext_drivers/fusion/Fusion/Fusion.h"
@@ -91,6 +92,7 @@ static sensor_fusion_t readings;
 static struct k_work_sync cancel_work_sync;
 static zsw_quat_t readings_quat;
 static float last_delta_time_s = 0.0f;
+static atomic_t sensor_fusion_users = ATOMIC_INIT(0);
 
 #ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
 #define UP_BUFFER_SIZE 256
@@ -218,9 +220,14 @@ int zsw_sensor_fusion_init(void)
 #endif
     int ret;
 
+    if (atomic_inc(&sensor_fusion_users) != 0) {
+        return 0;
+    }
+
     ret = zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
     if (ret != 0) {
         LOG_ERR("zsw_imu_feature_enable err: %d", ret);
+        atomic_dec(&sensor_fusion_users);
         return ret;
     }
 
@@ -228,6 +235,8 @@ int zsw_sensor_fusion_init(void)
     ret = zsw_magnetometer_set_enable(true);
     if (ret != 0) {
         LOG_ERR("zsw_magnetometer_set_enable err: %d", ret);
+        zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
+        atomic_dec(&sensor_fusion_users);
         return ret;
     }
 #endif
@@ -257,6 +266,17 @@ int zsw_sensor_fusion_init(void)
 
 void zsw_sensor_fusion_deinit(void)
 {
+    atomic_val_t prev = atomic_get(&sensor_fusion_users);
+
+    if (prev == 0) {
+        return;
+    }
+
+    prev = atomic_dec(&sensor_fusion_users);
+    if (prev > 1) {
+        return;
+    }
+
     k_work_cancel_delayable_sync(&sensor_fusion_timer, &cancel_work_sync);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER

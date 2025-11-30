@@ -17,6 +17,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/sys/atomic.h>
 
 #include "zsw_clock.h"
 
@@ -32,6 +33,7 @@ static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bm
 static struct sensor_trigger bmi270_trigger;
 static int step_offset = 0;
 static zsw_imu_data_step_activity_t last_step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
+static atomic_t feature_refcount[BOSCH_BMI270_FEAT_WEAR_WAKE_UP + 1];
 
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
@@ -317,8 +319,21 @@ int zsw_imu_feature_disable(zsw_imu_feature_t feature)
 {
     struct sensor_value value;
 
+    if ((feature < 0) || (feature > BOSCH_BMI270_FEAT_WEAR_WAKE_UP)) {
+        return -EINVAL;
+    }
+
     if (!device_is_ready(bmi270)) {
         return -ENODEV;
+    }
+
+    if (atomic_get(&feature_refcount[feature]) <= 0) {
+        LOG_WRN("Feature %d already disabled", feature);
+        return 0;
+    }
+
+    if (atomic_dec(&feature_refcount[feature]) != 1) {
+        return 0;
     }
 
     value.val1 = feature;
@@ -335,14 +350,24 @@ int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en)
 {
     struct sensor_value value;
 
+    if ((feature < 0) || (feature > BOSCH_BMI270_FEAT_WEAR_WAKE_UP)) {
+        return -EINVAL;
+    }
+
     if (!device_is_ready(bmi270)) {
         return -ENODEV;
+    }
+
+    // TODO: handle interrupt enable/disable properly
+    if (atomic_inc(&feature_refcount[feature]) != 0) {
+        return 0;
     }
 
     value.val1 = feature;
     value.val2 = (int_en << 1) | BOSCH_BMI270_FEAT_ENABLE;
 
     if (sensor_attr_set(bmi270, SENSOR_CHAN_FEATURE, SENSOR_ATTR_CONFIGURATION, &value) != 0) {
+        atomic_dec(&feature_refcount[feature]);
         return -EFAULT;
     }
 
