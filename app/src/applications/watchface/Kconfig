@@ -17,7 +17,7 @@ menu "Watchface"
     choice WATCHFACE_BACKGROUND_IMG
         bool
         prompt "Select which watchface background imgage to use. Not all watchfaces supports this."
-        def_bool WATCHFACE_BACKGROUND_SPACE
+        default WATCHFACE_BACKGROUND_SPACE
 
     config WATCHFACE_BACKGROUND_SPACE
         prompt "Space themed background"

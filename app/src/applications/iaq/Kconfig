@@ -4,9 +4,9 @@
 menu "IAQ-App"
     config APPLICATIONS_USE_IAQ
         bool
-    prompt "Activate the application 'IAQ'"
-    depends on EXTERNAL_USE_BOSCH_BSEC && LV_Z_USE_FILESYSTEM
-    default n
+        prompt "Activate the application 'IAQ'"
+        depends on EXTERNAL_USE_BOSCH_BSEC && LV_Z_USE_FILESYSTEM
+        default n
 
     module = IAQ_APP
     module-str = IAQ_APP

@@ -1,5 +1,3 @@
-# ZSWatch board configuration
-
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,12 +11,12 @@ menu "Managers"
     menu "XIP Manager"
         config ZSW_XIP
             bool
-        prompt "Enable XIP"
+            prompt "Enable XIP"
             select HAVE_CUSTOM_LINKER_SCRIPT
             select CODE_DATA_RELOCATION
             select BUILD_NO_GAP_FILL
             select NORDIC_QSPI_NOR_XIP
-        default n
+            default n
 
         module = ZSW_XIP_MANAGER
         module-str = ZSW_XIP_MANAGER
@@ -28,10 +26,10 @@ menu "Managers"
     menu "Mic Manager"
         config ZSW_MIC
             bool
-        prompt "Enable Mic functionality"
-            select AUDIO
-            select AUDIO_DMIC
-        default n
+            prompt "Enable Mic functionality"
+                select AUDIO
+                select AUDIO_DMIC
+                default n
 
         module = ZSW_MIC_MANAGER
         module-str = ZSW_MIC_MANAGER
