@@ -6,10 +6,10 @@
 menu "BLE"
     config BLE_DISABLE_PAIRING_REQUIRED
         bool
-    prompt "Disable encryption required for BLE connection (pairing/bonding)"
-    default n
-    help
-        Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
+        prompt "Disable encryption required for BLE connection (pairing/bonding)"
+        default n
+        help
+            Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
 
     module = ZSW_BLE
     module-str = ZSW_BLE
