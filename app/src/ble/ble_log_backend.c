@@ -23,27 +23,63 @@
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/logging/log_output.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/kernel.h>
 
 #include "ble/ble_comm.h"
 #include "ble/ble_log_backend.h"
 
-LOG_MODULE_REGISTER(ble_log_backend, LOG_LEVEL_INF);
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/sys/atomic.h>
 
 #define BLE_LOG_BACKEND_BUF_SIZE 256
 #define BLE_LOG_PREFIX "<BLELOG>"
 #define BLE_LOG_SUFFIX "</BLELOG>"
+
+// Wait this long after connection before sending logs
+#define BLE_LOG_CONN_DELAY_MS 3000
 
 static uint8_t output_buf[BLE_LOG_BACKEND_BUF_SIZE];
 static bool panic_mode;
 static uint32_t log_format_current = LOG_OUTPUT_TEXT;
 static bool first_enable;
 static bool backend_active;
+static int64_t ble_conn_time_ms;
+static atomic_t ble_connected = ATOMIC_INIT(0);
+
+static void ble_log_backend_connected(struct bt_conn *conn, uint8_t err)
+{
+    if (err == 0) {
+        ble_conn_time_ms = k_uptime_get();
+        atomic_set(&ble_connected, 1);
+    }
+}
+
+static void ble_log_backend_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    atomic_set(&ble_connected, 0);
+}
+
+BT_CONN_CB_DEFINE(ble_log_backend_conn_cb) = {
+    .connected = ble_log_backend_connected,
+    .disconnected = ble_log_backend_disconnected,
+};
 
 static const struct log_backend log_backend_ble_comm;
 
 static int line_out(uint8_t *data, size_t length, void *ctx)
 {
     ARG_UNUSED(ctx);
+
+    if (!atomic_get(&ble_connected)) {
+        // Not connected, pretend to send all
+        return length;
+    }
+    int64_t now = k_uptime_get();
+    if ((now - ble_conn_time_ms) < BLE_LOG_CONN_DELAY_MS) {
+        // Too soon after connect, pretend to send all
+        return length;
+    }
 
     const size_t capped_len = MIN(length, (size_t)UINT16_MAX);
 
@@ -53,6 +89,7 @@ static int line_out(uint8_t *data, size_t length, void *ctx)
 
     return length;
 }
+
 
 LOG_OUTPUT_DEFINE(log_output_ble_comm, line_out, output_buf, sizeof(output_buf));
 
