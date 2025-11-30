@@ -90,7 +90,6 @@ static int line_out(uint8_t *data, size_t length, void *ctx)
     return length;
 }
 
-
 LOG_OUTPUT_DEFINE(log_output_ble_comm, line_out, output_buf, sizeof(output_buf));
 
 static void process(const struct log_backend *const backend, union log_msg_generic *msg)
