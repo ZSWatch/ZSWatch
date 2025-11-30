@@ -28,6 +28,7 @@
 #include "ble/ble_comm.h"
 #include <ble/zsw_gatt_sensor_server.h>
 
+#include "sensor_fusion/zsw_sensor_fusion.h"
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_magnetometer.h"
@@ -50,7 +51,7 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 
 // Number of 100ms periods to skip for sending data.
 // 1 = 100ms, 5 = 500ms, 10 = 1s etc.
-#define ZSW_GATT_SENSOR_NOTIFY_INTERVAL_PERIODS    3
+#define ZSW_GATT_SENSOR_NOTIFY_INTERVAL_PERIODS    2
 
 #if CONFIG_BLE_DISABLE_PAIRING_REQUIRED
 #define ZSW_GATT_READ_WRITE_PERM    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
@@ -111,6 +112,15 @@ BT_GATT_SERVICE_DEFINE(gyro_service,
                                               on_read, NULL, NULL),
                        BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
                       );
+
+BT_GATT_SERVICE_DEFINE(sensor_fusion_service,
+                       BT_GATT_PRIMARY_SERVICE(ADAFRUIT_SERVICE_3D),
+                       BT_GATT_CHARACTERISTIC(ADAFRUIT_CHAR_3D,
+                                              BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
+                                              ZSW_GATT_READ_WRITE_PERM,
+                                              on_read, NULL, NULL),
+                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                      );
 BT_GATT_SERVICE_DEFINE(light_service,
                        BT_GATT_PRIMARY_SERVICE(ADAFRUIT_SERVICE_LIGHT),
                        BT_GATT_CHARACTERISTIC(ADAFRUIT_CHAR_LIGHT,
@@ -130,6 +140,7 @@ static const struct bt_gatt_attr *const notify_attrs[] = {
     &pressure_service.attrs[2],
     &mag_service.attrs[2],
     &gyro_service.attrs[2],
+    &sensor_fusion_service.attrs[2],
     &light_service.attrs[2],
 };
 
@@ -210,6 +221,15 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
         f_ptr[1] = y;
         f_ptr[2] = z;
         write_len = 3 * sizeof(float);
+    } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&sensor_fusion_service.attrs[2])) {
+        zsw_quat_t quat;
+        if (zsw_sensor_fusion_get_quaternion(&quat) == 0) {
+            f_ptr[0] = quat.w;
+            f_ptr[1] = quat.x;
+            f_ptr[2] = quat.y;
+            f_ptr[3] = quat.z;
+            write_len = 4 * sizeof(float);
+        }
     } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&light_service.attrs[2])) {
         zsw_light_sensor_get_light(&f_ptr[0]);
         write_len = sizeof(float);
@@ -227,12 +247,16 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
     if (!notif_enabled && notifications_active) {
         notif_enabled = true;
         zsw_imu_feature_enable(ZSW_IMU_FEATURE_GYRO, false);
+        if (zsw_sensor_fusion_init() != 0) {
+            LOG_ERR("Failed to start sensor fusion for BLE notifications");
+        }
         ble_comm_set_short_connection_interval();
         zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
     } else if (notif_enabled && !notifications_active) {
         ble_comm_set_default_connection_interval();
         zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
         zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
+        zsw_sensor_fusion_deinit();
         notif_enabled = false;
     }
 }
@@ -249,6 +273,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     ble_comm_set_default_connection_interval();
     zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
+    zsw_sensor_fusion_deinit();
     notif_enabled = false;
 }
 
@@ -262,6 +287,7 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
     float pressure = 0.0;
     float humidity = 0.0;
     float temperature = 0.0;
+    zsw_quat_t quat;
     uint8_t buf[CONFIG_BT_L2CAP_TX_MTU];
 
     notify_period_counter++;
@@ -311,5 +337,14 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
     if (zsw_light_sensor_get_light(&f_ptr[0]) == 0) {
         write_len = sizeof(float);
         bt_gatt_notify(NULL, &light_service.attrs[2], &buf, write_len);
+    }
+
+    if (zsw_sensor_fusion_get_quaternion(&quat) == 0) {
+        f_ptr[0] = quat.w;
+        f_ptr[1] = quat.x;
+        f_ptr[2] = quat.y;
+        f_ptr[3] = quat.z;
+        write_len = 4 * sizeof(float);
+        bt_gatt_notify(NULL, &sensor_fusion_service.attrs[2], &buf, write_len);
     }
 }
