@@ -1,6 +1,14 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-module = IAQ_APP
-module-str = IAQ_APP
-source "subsys/logging/Kconfig.template.log_config"
+menu "IAQ-App"
+    config APPLICATIONS_USE_IAQ
+        bool
+    prompt "Activate the application 'IAQ'"
+    depends on EXTERNAL_USE_BOSCH_BSEC && LV_Z_USE_FILESYSTEM
+    default n
+
+    module = IAQ_APP
+    module-str = IAQ_APP
+    source "subsys/logging/Kconfig.template.log_config"
+endmenu
