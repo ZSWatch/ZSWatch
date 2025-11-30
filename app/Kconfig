@@ -8,6 +8,13 @@ menu "Zephyr Kernel"
 endmenu
 
 menu "ZSWatch"
+    rsource "src/applications/Kconfig"
+    rsource "src/managers/Kconfig"
+    rsource "drivers/Kconfig"
+    rsource "src/ui/utils/Kconfig"
+    rsource "src/sensors/Kconfig"
+    rsource "src/ble/Kconfig"
+
     config ZSW_FW_UPDATE
         bool
     prompt "Enable firmware update"
@@ -16,7 +23,7 @@ menu "ZSWatch"
         select PM_PARTITION_REGION_SETTINGS_STORAGE_EXTERNAL
         select PM_PARTITION_REGION_LITTLEFS_EXTERNAL
         select NCS_SAMPLE_MCUMGR_BT_OTA_DFU
-        # FOTA 
+        # FOTA
         select MCUMGR
         select MCUMGR_GRP_OS
         select MCUMGR_GRP_OS_TASKSTAT
@@ -62,138 +69,6 @@ menu "ZSWatch"
         select MCUMGR
         default n
 
-    config ZSW_XIP
-        bool
-    prompt "Enable XIP"
-        select HAVE_CUSTOM_LINKER_SCRIPT
-        select CODE_DATA_RELOCATION
-        select BUILD_NO_GAP_FILL
-        select NORDIC_QSPI_NOR_XIP
-    default n
-
-    config ZSW_MIC
-        bool
-    prompt "Enable Mic functionality"
-        select AUDIO
-        select AUDIO_DMIC
-    default n
-
-    menu "Applications"
-        config APPLICATIONS_USE_2048
-            bool
-        prompt "Activate the application '2048'"
-        default y
-
-        config APPLICATIONS_USE_ACCELEROMETER
-            bool
-        prompt "Activate the application 'Accelerometer'"
-        default y
-
-        config APPLICATIONS_USE_COMPASS
-            bool
-        prompt "Activate the application 'Compass'"
-        default y
-
-        config APPLICATIONS_USE_INFO
-            bool
-        prompt "Activate the application 'Info'"
-        default y
-
-        config APPLICATIONS_USE_QR_CODE
-            bool
-        prompt "Activate the application 'QR-Code'"
-        default y if LV_Z_USE_FILESYSTEM
-
-        config APPLICATIONS_USE_SENSORS_SUMMARY
-            bool
-        prompt "Activate the application 'Sensors Summary'"
-        default y
-
-        config APPLICATIONS_USE_X_RAY
-            bool
-        prompt "Activate the application 'X-Ray'"
-        default y if LV_Z_USE_FILESYSTEM
-
-        config APPLICATIONS_USE_ZDS
-            bool
-        prompt "Activate the application 'ZDS'"
-        default n
-        select APPLICATIONS_USE_ACCELEROMETER
-
-        config APPLICATIONS_USE_IAQ
-            bool
-        prompt "Activate the application 'IAQ'"
-        depends on EXTERNAL_USE_BOSCH_BSEC && LV_Z_USE_FILESYSTEM
-        default n
-
-        config APPLICATIONS_USE_TRIVIA
-            bool
-        prompt "Activate the application 'Trivia'"
-        default y
-
-        config APPLICATIONS_USE_PPT_REMOTE
-            bool
-        prompt "Activate the application 'PPT remote'"
-        default n
-
-        config APPLICATIONS_USE_CHRONOS
-            bool
-        prompt "Activate the application 'Chronos'"
-        default y
-
-        menu "Configuration"
-            menu "Compass"
-                depends on APPLICATIONS_USE_COMPASS
-
-                config APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS
-                    int
-                prompt "Refresh interval in milliseconds"
-                default 50
-
-                config APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S
-                    int
-                prompt "Calibration time in seconds"
-                default 30
-            endmenu
-
-            menu "Sensors Summary"
-                depends on APPLICATIONS_USE_SENSORS_SUMMARY
-
-                config APPLICATIONS_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS
-                    int
-                prompt "Refresh interval in milliseconds"
-                default 100
-            endmenu
-        endmenu
-    endmenu
-
-    menu "Watchface"
-        config WATCHFACE_DIGITAL
-            bool
-            prompt "Add digital watchface"
-            default y
-
-        config WATCHFACE_MINIMAL
-            bool
-            prompt "Add minimal watchface"
-            default y
-
-        choice WATCHFACE_BACKGROUND_IMG
-            bool
-            prompt "Select which watchface background imgage to use. Not all watchfaces supports this."
-            def_bool WATCHFACE_BACKGROUND_SPACE
-
-        config WATCHFACE_BACKGROUND_SPACE
-            prompt "Space themed background"
-        config WATCHFACE_BACKGROUND_FLOWER
-            prompt "Flower themed background"
-        config WATCHFACE_BACKGROUND_PLANET
-            prompt "Planet earth themed background"
-        config WATCHFACE_BACKGROUND_NONE
-            prompt "No background"
-        endchoice
-    endmenu
-
     menu "Default configuration"
         menu "ZSWatch Init Priorities"
             config DEFAULT_CONFIGURATION_DRIVER_INIT_PRIORITY
@@ -229,15 +104,6 @@ menu "ZSWatch"
         endchoice
     endmenu
 
-    menu "BLE"
-        config BLE_DISABLE_PAIRING_REQUIRED
-            bool
-        prompt "Disable encryption required for BLE connection (pairing/bonding)"
-        default n
-        help
-            Disable encryption for BLE connection (pairing/bonding). Used only for debugging purposes.
-    endmenu
-    
     menu "SPI RTT Flash Loader"
         config SPI_FLASH_LOADER
             bool
@@ -266,31 +132,6 @@ menu "ZSWatch"
         endif
     endmenu
 
-    menu "Sensor Fusion"
-        config SENSOR_FUSION_INCLUDE_MAGNETOMETER
-            bool
-        prompt "Include Magnetometer reading in sensor fusion algorithm"
-        default y
-        help
-            "If the magnetometer is not well calibrated, you must disable this option."
-
-        config SEND_SENSOR_READING_OVER_RTT
-            bool
-        prompt "Log sensor fusion reading to RTT"
-        default 1
-        help
-            Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
-
-        if SEND_SENSOR_READING_OVER_RTT
-            config SENSOR_LOG_RTT_TRANSFER_CHANNEL
-                int
-            prompt "The RTT channel to use for transfer of sensor fusion reading"
-            default 1
-            help
-                If RTT logging is enabled
-        endif
-    endmenu
-
     menu "Misc"
         config MISC_ENABLE_SYSTEM_RESET
             bool
@@ -304,10 +145,6 @@ menu "ZSWatch"
         default 672
     endmenu
 
-    menu "Custom drivers"
-        rsource "drivers/Kconfig"
-    endmenu
-
     menu "Logging"
         module = ZSW_APP
         module-str = ZSW_APP
@@ -315,18 +152,5 @@ menu "ZSWatch"
 
         rsource "src/basic_battery/Kconfig"
         rsource "src/history/Kconfig"
-        rsource "src/sensors/Kconfig"
-        rsource "src/sensor_fusion/Kconfig"
-        rsource "src/ble/Kconfig"
-        rsource "src/applications/settings/Kconfig"
-
-        rsource "src/applications/iaq/Kconfig"
-        rsource "src/applications/notification/Kconfig"
-        rsource "src/applications/trivia/Kconfig"
-        rsource "src/applications/ppt_remote/Kconfig"
-    endmenu
-
-    menu "UI"
-        rsource "src/ui/utils/Kconfig"
     endmenu
 endmenu

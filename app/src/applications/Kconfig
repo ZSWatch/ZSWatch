@@ -1,0 +1,51 @@
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Applications"
+    config APPLICATIONS_USE_2048
+        bool
+    prompt "Activate the application '2048'"
+    default y
+
+    config APPLICATIONS_USE_ACCELEROMETER
+        bool
+    prompt "Activate the application 'Accelerometer'"
+    default y
+
+    config APPLICATIONS_USE_INFO
+        bool
+    prompt "Activate the application 'Info'"
+    default y
+
+    config APPLICATIONS_USE_QR_CODE
+        bool
+    prompt "Activate the application 'QR-Code'"
+    default y if LV_Z_USE_FILESYSTEM
+
+    config APPLICATIONS_USE_X_RAY
+        bool
+    prompt "Activate the application 'X-Ray'"
+    default y if LV_Z_USE_FILESYSTEM
+
+    config APPLICATIONS_USE_ZDS
+        bool
+    prompt "Activate the application 'ZDS'"
+    default n
+    select APPLICATIONS_USE_ACCELEROMETER
+
+    config APPLICATIONS_USE_CHRONOS
+        bool
+    prompt "Activate the application 'Chronos'"
+    default y
+
+    rsource "watchface/Kconfig"
+    rsource "settings/Kconfig"
+    rsource "iaq/Kconfig"
+    rsource "notification/Kconfig"
+    rsource "trivia/Kconfig"
+    rsource "ppt_remote/Kconfig"
+    rsource "compass/Kconfig"
+    rsource "sensors_summary/Kconfig"
+endmenu
