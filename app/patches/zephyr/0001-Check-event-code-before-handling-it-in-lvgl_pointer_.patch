@@ -1,0 +1,27 @@
+From 7c09497a315d175c3b267da3549ca0b368de9bb8 Mon Sep 17 00:00:00 2001
+From: Daniel Kampert <DanielKampert@kampis-elektroecke.de>
+Date: Sat, 29 Nov 2025 23:24:04 +0100
+Subject: [PATCH] Check event code before handling it in lvgl_pointer_process
+
+---
+ modules/lvgl/input/lvgl_pointer_input.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/modules/lvgl/input/lvgl_pointer_input.c b/modules/lvgl/input/lvgl_pointer_input.c
+index 927c994499b..4fb45697f55 100644
+--- a/modules/lvgl/input/lvgl_pointer_input.c
++++ b/modules/lvgl/input/lvgl_pointer_input.c
+@@ -38,6 +38,10 @@ static void lvgl_pointer_process_event(struct input_event *evt, void *user_data)
+ 	struct display_capabilities *cap = &disp_data->cap;
+ 	lv_point_t *point = &data->common_data.pending_event.point;
+ 
++	if ((evt->code != INPUT_ABS_X) && (evt->code != INPUT_ABS_Y) && (evt->code != INPUT_BTN_TOUCH)) {
++		return;
++	}
++
+ 	switch (evt->code) {
+ 	case INPUT_ABS_X:
+ 		if (cfg->swap_xy) {
+-- 
+2.34.1
+
