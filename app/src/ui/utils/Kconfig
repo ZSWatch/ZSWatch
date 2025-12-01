@@ -1,7 +1,7 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-menu "UI"
+menu "Utils"
     config STORE_IMAGES_EXTERNAL_FLASH
         bool "Store UI Images into the External Flash"
 endmenu
