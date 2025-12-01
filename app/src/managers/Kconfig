@@ -31,6 +31,26 @@ menu "Managers"
                 select AUDIO_DMIC
                 default n
 
+        config ZSW_MIC_SEND_READING_OVER_RTT
+            depends on USE_SEGGER_RTT
+            bool
+            prompt "Log sensor fusion reading to RTT"
+            default y
+            help
+                Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
+
+        config ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL
+            depends on ZSW_MIC_SEND_READING_OVER_RTT
+            int
+            prompt "The RTT channel to use for transfer of sensor fusion reading"
+            default 2
+
+        config ZSW_MIC_LOG_RTT_TBUFFER_SIZE
+            depends on ZSW_MIC_SEND_READING_OVER_RTT
+            int
+            prompt "Buffer size for the RTT transfer of microphone reading"
+            default 512
+
         module = ZSW_MIC_MANAGER
         module-str = ZSW_MIC_MANAGER
         source "subsys/logging/Kconfig.template.log_config"
