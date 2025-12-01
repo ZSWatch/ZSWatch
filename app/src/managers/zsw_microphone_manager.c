@@ -25,17 +25,10 @@
 #include "zsw_microphone_manager.h"
 #include "drivers/zsw_microphone.h"
 
-#if CONFIG_USE_SEGGER_RTT
+#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
 #include <SEGGER_RTT.h>
-#ifndef CONFIG_RTT_TRANSFER_CHANNEL
-#define CONFIG_RTT_TRANSFER_CHANNEL 2
-#endif
 
-#define RTT_BUFFER_SIZE 512
-
-#if CONFIG_USE_SEGGER_RTT
-static uint8_t rtt_buffer[RTT_BUFFER_SIZE];
-#endif
+static uint8_t rtt_buffer[CONFIG_ZSW_MIC_LOG_RTT_TBUFFER_SIZE];
 #endif
 
 LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_MIC_MANAGER_LOG_LEVEL);
@@ -66,16 +59,16 @@ K_WORK_DELAYABLE_DEFINE(timeout_work, timeout_work_handler);
 
 static int init_rtt_for_audio(void)
 {
-#if CONFIG_USE_SEGGER_RTT
-    int ret = SEGGER_RTT_ConfigUpBuffer(CONFIG_RTT_TRANSFER_CHANNEL, "ZSW_MIC",
-                                        rtt_buffer, RTT_BUFFER_SIZE,
+#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
+    int ret = SEGGER_RTT_ConfigUpBuffer(CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL, "ZSW_MIC",
+                                        rtt_buffer, ARRAY_SIZE(rtt_buffer),
                                         SEGGER_RTT_MODE_NO_BLOCK_TRIM);
     if (ret < 0) {
         LOG_ERR("Failed to configure RTT buffer: %d", ret);
         return -EIO;
     }
 
-    LOG_DBG("RTT audio channel %d configured", CONFIG_RTT_TRANSFER_CHANNEL);
+    LOG_DBG("RTT audio channel %d configured", CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL);
 #endif
     return 0;
 }
@@ -252,8 +245,8 @@ static void mic_audio_callback(void *audio_data, size_t size)
 
     switch (mic_manager.config.output) {
         case ZSW_MIC_OUTPUT_RTT:
-#if CONFIG_USE_SEGGER_RTT
-            SEGGER_RTT_Write(CONFIG_RTT_TRANSFER_CHANNEL, audio_data, size);
+#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
+            SEGGER_RTT_Write(CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL, audio_data, size);
 #endif
             break;
 
