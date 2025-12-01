@@ -24,7 +24,7 @@
 
 #include "fusion_ui.h"
 #include "sensors/zsw_imu.h"
-#include "sensors/sensor_fusion/zsw_sensor_fusion.h"
+#include "sensor_fusion/zsw_sensor_fusion.h"
 #include "events/zsw_periodic_event.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"

@@ -5,6 +5,4 @@ menu "Sensors"
     module = ZSW_SENSORS
     module-str = ZSW_SENSORS
     source "subsys/logging/Kconfig.template.log_config"
-
-    rsource "sensor_fusion/Kconfig"
 endmenu
