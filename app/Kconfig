@@ -67,8 +67,6 @@ menu "ZSWatch"
 
         select BASE64
 
-        # Enable MCUmgr and Shell transport
-        select MCUMGR
         default n
 
     rsource "src/applications/Kconfig"
@@ -76,6 +74,7 @@ menu "ZSWatch"
     rsource "drivers/Kconfig"
     rsource "src/ui/Kconfig"
     rsource "src/sensors/Kconfig"
+    rsource "src/sensor_fusion/Kconfig"
     rsource "src/ble/Kconfig"
 
     menu "Default configuration"
