@@ -57,6 +57,8 @@ extern "C" {
  * Fonts
  *----------------*/
 
+extern lv_font_t * montserrat_14_full;
+
 /*----------------
  * Images
  *----------------*/

@@ -35,6 +35,15 @@
 	</images>
 
 	<fonts>
-		<!-- Add <bin> , <tiny_ttf>, <freetype> tags here -->
+		<!-- montserrat_14_full is the pre-generated font we already have in ZSWatch with extra characters. -->
+		<!-- in lvgl_editor just let it generate it with all characters, does not matter, we continue use the existing -->
+		<bin
+			name="montserrat_14_full"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="14"
+			range="0x00-0xff"
+		/>
 	</fonts>
 </globals>

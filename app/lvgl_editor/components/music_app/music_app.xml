@@ -61,12 +61,26 @@
 		</lv_arc>
 
 		<!-- Track name label -->
-		<lv_label align="top_mid" x="0" y="25" long_mode="scroll_circular" bind_text="music_track_name">
+		<lv_label
+			style_text_font="montserrat_14_full"
+			align="top_mid"
+			x="0"
+			y="25"
+			long_mode="scroll_circular"
+			bind_text="music_track_name"
+		>
 			<style name="style_track_label" />
 		</lv_label>
 
 		<!-- Artist name label -->
-		<lv_label align="top_mid" x="0" y="45" long_mode="scroll_circular" bind_text="music_artist_name">
+		<lv_label
+			style_text_font="montserrat_14_full"
+			align="top_mid"
+			x="0"
+			y="45"
+			long_mode="scroll_circular"
+			bind_text="music_artist_name"
+		>
 			<style name="style_artist_label" />
 		</lv_label>
 

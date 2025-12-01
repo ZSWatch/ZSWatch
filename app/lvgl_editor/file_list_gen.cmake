@@ -4,6 +4,7 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/music_app/music_app_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/lvgl_editor_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/lvgl_editor.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_14_full_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_play_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_pause_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_skip_forward_data.c

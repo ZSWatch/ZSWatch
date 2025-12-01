@@ -101,7 +101,6 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     }
 
     lv_obj_t * lv_obj_0 = lv_obj_create(parent);
-    lv_obj_set_name_static(lv_obj_0, "music_app_#");
 
     lv_obj_remove_style_all(lv_obj_0);
     lv_obj_add_style(lv_obj_0, &style_root, 0);
@@ -120,6 +119,7 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     lv_obj_remove_style(lv_arc_0, NULL, LV_PART_KNOB);
     
     lv_obj_t * lv_label_0 = lv_label_create(lv_obj_0);
+    lv_obj_set_style_text_font(lv_label_0, montserrat_14_full, 0);
     lv_obj_set_align(lv_label_0, LV_ALIGN_TOP_MID);
     lv_obj_set_x(lv_label_0, 0);
     lv_obj_set_y(lv_label_0, 25);
@@ -128,6 +128,7 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     lv_obj_add_style(lv_label_0, &style_track_label, 0);
     
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
+    lv_obj_set_style_text_font(lv_label_1, montserrat_14_full, 0);
     lv_obj_set_align(lv_label_1, LV_ALIGN_TOP_MID);
     lv_obj_set_x(lv_label_1, 0);
     lv_obj_set_y(lv_label_1, 45);
@@ -186,6 +187,8 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     lv_obj_add_event_cb(lv_button_2, music_on_next_clicked, LV_EVENT_CLICKED, NULL);
 
     LV_TRACE_OBJ_CREATE("finished");
+
+    lv_obj_set_name(lv_obj_0, "music_app_#");
 
     return lv_obj_0;
 }

@@ -47,6 +47,9 @@
  * Fonts
  *----------------*/
 
+lv_font_t * montserrat_14_full;
+extern lv_font_t montserrat_14_full_data;
+
 /*----------------
  * Images
  *----------------*/
@@ -87,6 +90,9 @@ void lvgl_editor_init_gen(const char * asset_path)
     /*----------------
      * Fonts
      *----------------*/
+
+    /* get font 'montserrat_14_full' from a C array */
+    montserrat_14_full = &montserrat_14_full_data;
 
 
     /*----------------
@@ -135,6 +141,7 @@ void lvgl_editor_init_gen(const char * asset_path)
     /* Register widgets */
 
     /* Register fonts */
+    lv_xml_register_font(NULL, "montserrat_14_full", montserrat_14_full);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "music_track_name", &music_track_name);
