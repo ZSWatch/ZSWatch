@@ -203,6 +203,51 @@ static int32_t extract_value_int32(char *key, char *data)
     return id;
 }
 
+static bool is_valid_utf8(const char *data, int len)
+{
+    int i = 0;
+    while (i < len && data[i] != '\0') {
+        // Check for Gadgetbridge's "\xNN" string escape pattern
+        if (data[i] == '\\' && i + 3 < len && data[i + 1] == 'x') {
+            return false; // Contains Gadgetbridge-style escape sequences
+        }
+
+        uint8_t byte = (uint8_t)data[i];
+        if (byte <= 0x7F) {
+            // ASCII - valid single byte
+            i++;
+        } else if ((byte & 0xE0) == 0xC0) {
+            // 2-byte UTF-8 sequence (0xC0-0xDF)
+            if (i + 1 >= len || ((uint8_t)data[i + 1] & 0xC0) != 0x80) {
+                return false; // Invalid continuation byte
+            }
+            i += 2;
+        } else if ((byte & 0xF0) == 0xE0) {
+            // 3-byte UTF-8 sequence (0xE0-0xEF)
+            if (i + 2 >= len ||
+                ((uint8_t)data[i + 1] & 0xC0) != 0x80 ||
+                ((uint8_t)data[i + 2] & 0xC0) != 0x80) {
+                return false;
+            }
+            i += 3;
+        } else if ((byte & 0xF8) == 0xF0) {
+            // 4-byte UTF-8 sequence (0xF0-0xF7)
+            if (i + 3 >= len ||
+                ((uint8_t)data[i + 1] & 0xC0) != 0x80 ||
+                ((uint8_t)data[i + 2] & 0xC0) != 0x80 ||
+                ((uint8_t)data[i + 3] & 0xC0) != 0x80) {
+                return false;
+            }
+            i += 4;
+        } else {
+            // Invalid UTF-8 start byte (0x80-0xBF or 0xF8-0xFF)
+            // This includes Gadgetbridge's raw high bytes like 0xF6 for 'ö'
+            return false;
+        }
+    }
+    return true;
+}
+
 static void convert_to_encoded_text(char *data, int len, char *out_data, int out_buf_len)
 {
     int i = 0, j = 0;
@@ -622,10 +667,14 @@ static int parse_data(char *data, int len)
     char *type;
     uint8_t input_data_utf8[MAX_GB_PACKET_LENGTH];
 
-    memset(input_data_utf8, 0, sizeof(input_data_utf8));
-    // Convert data from Gadgetbridge into properly encoded text.
-    convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
-    data = input_data_utf8;
+    // Only convert if data contains Gadgetbridge's non-standard encoding.
+    // Properly UTF-8 encoded data should pass through unchanged.
+    if (!is_valid_utf8(data, len)) {
+        memset(input_data_utf8, 0, sizeof(input_data_utf8));
+        // Convert data from Gadgetbridge into properly encoded text.
+        convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
+        data = input_data_utf8;
+    }
 
     type = extract_value_str("\"t\":", data, &type_len);
     if (type == NULL) {
