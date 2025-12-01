@@ -7,23 +7,21 @@ menu "Sensor Fusion"
         prompt "Include Magnetometer reading in sensor fusion algorithm"
         default y
         help
-            "If the magnetometer is not well calibrated, you must disable this option."
+            If the magnetometer is not well calibrated, you must disable this option.
 
-    config SEND_SENSOR_READING_OVER_RTT
+    config SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
+        depends on USE_SEGGER_RTT
         bool
         prompt "Log sensor fusion reading to RTT"
         default y
         help
             Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
 
-    if SEND_SENSOR_READING_OVER_RTT
-        config SENSOR_LOG_RTT_TRANSFER_CHANNEL
-            int
-            prompt "The RTT channel to use for transfer of sensor fusion reading"
-            default 1
-            help
-                If RTT logging is enabled.
-    endif
+    config SENSOR_FUSION_LOG_RTT_TRANSFER_CHANNEL
+        depends on SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
+        int
+        prompt "The RTT channel to use for transfer of sensor fusion reading"
+        default 3
 
     module = ZSW_SENSORS_FUSION
     module-str = ZSW_SENSORS_FUSION
