@@ -8,16 +8,18 @@ menu "Zephyr Kernel"
 endmenu
 
 menu "ZSWatch"
-    rsource "src/applications/Kconfig"
-    rsource "src/managers/Kconfig"
-    rsource "drivers/Kconfig"
-    rsource "src/ui/Kconfig"
-    rsource "src/sensors/Kconfig"
-    rsource "src/ble/Kconfig"
+    config ZSW_XIP
+        bool
+        prompt "Enable XIP"
+        select HAVE_CUSTOM_LINKER_SCRIPT
+        select CODE_DATA_RELOCATION
+        select BUILD_NO_GAP_FILL
+        select NORDIC_QSPI_NOR_XIP
+        default n
 
     config ZSW_FW_UPDATE
         bool
-    prompt "Enable firmware update"
+        prompt "Enable firmware update"
         select NORDIC_QSPI_NOR
         select PM_OVERRIDE_EXTERNAL_DRIVER_CHECK
         select PM_PARTITION_REGION_SETTINGS_STORAGE_EXTERNAL
@@ -68,6 +70,13 @@ menu "ZSWatch"
         # Enable MCUmgr and Shell transport
         select MCUMGR
         default n
+
+    rsource "src/applications/Kconfig"
+    rsource "src/managers/Kconfig"
+    rsource "drivers/Kconfig"
+    rsource "src/ui/Kconfig"
+    rsource "src/sensors/Kconfig"
+    rsource "src/ble/Kconfig"
 
     menu "Default configuration"
         menu "ZSWatch Init Priorities"
