@@ -20,28 +20,28 @@ menu "Managers"
         config ZSW_MIC
             bool
             prompt "Enable Mic functionality"
-                select AUDIO
-                select AUDIO_DMIC
-                default n
+            select AUDIO
+            select AUDIO_DMIC
+            default n
 
         config ZSW_MIC_SEND_READING_OVER_RTT
             depends on USE_SEGGER_RTT
             bool
-            prompt "Log sensor fusion reading to RTT"
+            prompt "Log microphone reading to RTT"
             default y
             help
-                Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
+                Python script can be used to read, analyze the RTT channel and plot the microphone reading.
 
         config ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL
             depends on ZSW_MIC_SEND_READING_OVER_RTT
             int
-            prompt "The RTT channel to use for transfer of sensor fusion reading"
+            prompt "The RTT channel to use for transfer of microphone reading"
             default 2
 
         config ZSW_MIC_LOG_RTT_TBUFFER_SIZE
             depends on ZSW_MIC_SEND_READING_OVER_RTT
             int
-            prompt "Buffer size for the RTT transfer of microphone reading"
+            prompt "Buffer size for the RTT transfer"
             default 512
 
         module = ZSW_MIC_MANAGER

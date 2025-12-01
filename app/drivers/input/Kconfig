@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if INPUT
-config INPUT_NPM13XX
-	bool "NPM1300 SHIPHOLD button input driver"
-	default y
-	depends on MFD_NPM13XX
-	help
-	  Enable input driver for NPM1300 SHIPHOLD button events.
-	  Forwards NPM1300 SHIPHOLD events into Zephyr's input subsystem.
+	rsource "cst816s/Kconfig"
+
+	config INPUT_NPM13XX
+		bool "NPM1300 SHIPHOLD button input driver"
+		default y
+		depends on MFD_NPM13XX
+		help
+			Enable input driver for NPM1300 SHIPHOLD button events.
+			Forwards NPM1300 SHIPHOLD events into Zephyr's input subsystem.
 
 endif

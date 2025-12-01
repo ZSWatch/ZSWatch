@@ -31,7 +31,8 @@ int _zsw_xip_enable(const char *requester)
     LOG_WRN("XIP ENABLE(1) request from: %s", requester);
 
     if (!qspi_dev) {
-        return 0;
+        LOG_WRN("XIP enable request ignored: no nordic_pm_ext_flash chosen");
+        return -ENODEV;
     }
 
     if (!device_is_ready(qspi_dev)) {

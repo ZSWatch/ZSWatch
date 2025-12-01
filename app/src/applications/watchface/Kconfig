@@ -16,7 +16,7 @@ menu "Watchface"
 
     choice WATCHFACE_BACKGROUND_IMG
         bool
-        prompt "Select which watchface background imgage to use. Not all watchfaces supports this."
+        prompt "Select which watchface background image to use. Not all watchfaces supports this."
         default WATCHFACE_BACKGROUND_SPACE
 
     config WATCHFACE_BACKGROUND_SPACE
