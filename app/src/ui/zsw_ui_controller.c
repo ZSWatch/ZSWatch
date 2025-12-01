@@ -74,8 +74,7 @@ static void on_application_manager_close(void);
 
 K_WORK_DEFINE(input_work, run_input_work);
 
-//LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_APP_LOG_LEVEL);
-LOG_MODULE_REGISTER(zsw_ui_controller, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
 
 static void run_input_work(struct k_work *item)
 {

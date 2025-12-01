@@ -11,7 +11,7 @@ menu "ZSWatch"
     rsource "src/applications/Kconfig"
     rsource "src/managers/Kconfig"
     rsource "drivers/Kconfig"
-    rsource "src/ui/utils/Kconfig"
+    rsource "src/ui/Kconfig"
     rsource "src/sensors/Kconfig"
     rsource "src/ble/Kconfig"
 
