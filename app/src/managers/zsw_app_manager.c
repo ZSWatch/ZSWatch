@@ -149,6 +149,19 @@ static void row_focused(lv_event_t *e)
             }
         }
 
+        // Only scroll to view when using keypad/encoder, not touch
+        lv_indev_t *indev = lv_indev_active();
+        if (indev == NULL) {
+            indev = lv_event_get_indev(e);
+        }
+        if (indev) {
+            lv_indev_type_t indev_type = lv_indev_get_type(indev);
+            if (indev_type == LV_INDEV_TYPE_KEYPAD || indev_type == LV_INDEV_TYPE_ENCODER) {
+                // Manually scroll to view without animation for keypad/encoder navigation
+                lv_obj_scroll_to_view_recursive(row, LV_ANIM_OFF);
+            }
+        }
+
         lv_obj_t *title_label = lv_obj_get_user_data(row);
         if (title_label) {
             lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
@@ -380,6 +393,12 @@ static lv_obj_t *create_grid_container(void)
     lv_obj_set_scroll_dir(grid, LV_DIR_VER);
     lv_obj_set_scroll_snap_y(grid, LV_SCROLL_SNAP_CENTER);
     lv_obj_set_scrollbar_mode(grid, LV_SCROLLBAR_MODE_OFF);
+
+    // Disable scroll animations for better performance
+    lv_obj_remove_flag(grid, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    lv_obj_remove_flag(grid, LV_OBJ_FLAG_SCROLL_ELASTIC);
+    lv_obj_set_style_anim_duration(grid, 0, 0);
+
     lv_obj_add_event_cb(grid, scroll_event_cb, LV_EVENT_SCROLL, NULL);
 
     return grid;
@@ -406,7 +425,6 @@ static lv_obj_t *create_application_list_entry(lv_obj_t *grid, const void *icon,
     lv_obj_add_event_cb(cont, row_focused, LV_EVENT_FOCUSED, (void *)(intptr_t)app_id);
     lv_obj_add_event_cb(cont, row_unfocused, LV_EVENT_DEFOCUSED, (void *)(intptr_t)app_id);
     lv_group_add_obj(group_obj, cont);
-    lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
     lv_obj_t *img_icon = lv_img_create(cont);
     lv_img_set_src(img_icon, icon);
