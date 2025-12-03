@@ -181,6 +181,12 @@
         reg = <0x15>;
         irq-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+        auto-sleep-time = <2>;
+        auto-wake-time = <3>;
+        scan-th = <50>;
+        scan-win = <100>;
+        scan-freq = <50>;
+        scan-i-dac = <200>;
     };
 };
 

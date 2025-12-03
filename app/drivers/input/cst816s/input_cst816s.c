@@ -93,6 +93,18 @@ struct cst816s_config {
 #ifdef CONFIG_INPUT_CST816S_INTERRUPT
 	const struct gpio_dt_spec int_gpio;
 #endif
+
+#ifdef CONFIG_PM_DEVICE
+	/** cst816s power management profile. */
+	struct __packed {
+		uint8_t auto_wake_time_min; /**< Auto-recalibration period during low-power mode */
+		uint8_t scan_th;            /**< Low-power scan wake-up threshold */
+		uint8_t scan_win;           /**< Measurement range for low-power scan */
+		uint8_t scan_freq;          /**< Frequency for low-power scan */
+		uint8_t scan_i_dac;         /**< Current for low-power scan */
+		uint8_t auto_sleep_time_s; /**< Time of inactivity before entering low-power mode */
+	} lp_profile;
+#endif
 };
 
 /** cst816s data. */
@@ -111,30 +123,6 @@ struct cst816s_data {
 #endif
 };
 
-#ifdef CONFIG_PM_DEVICE
-struct cst816s_lp_profile {
-	uint8_t autosleep_time_s;
-	uint8_t lp_auto_wake_time_min;
-	uint8_t lp_scan_th;
-	uint8_t lp_scan_win;
-	uint8_t lp_scan_freq;
-	uint8_t lp_scan_i_dac;
-};
-
-/* NOTE: This results in reliable low-power operation with good
- * wake sensitivity. Consumes about 80uA in suspend mode. Can probably be tuned more to reduce power
- * further while keeping good wake sensitivity.
- */
-static const struct cst816s_lp_profile cst816s_suspend_profile = {
-	.autosleep_time_s = 2,
-	.lp_auto_wake_time_min = 3,
-	.lp_scan_th = 50,
-	.lp_scan_win = 100,
-	.lp_scan_freq = 50,
-	.lp_scan_i_dac = 200,
-};
-#endif
-
 static int cst816s_process(const struct device *dev)
 {
 	const struct cst816s_config *cfg = dev->config;
@@ -150,20 +138,20 @@ static int cst816s_process(const struct device *dev)
 
 	ret = i2c_burst_read_dt(&cfg->i2c, CST816S_REG_GESTURE_ID, &gesture, sizeof(gesture));
 	if (ret < 0) {
-		LOG_ERR("Could not read gesture-ID data");
+		LOG_ERR("Could not read gesture-ID data (%d)", ret);
 		return ret;
 	}
 #endif
 
 	ret = i2c_burst_read_dt(&cfg->i2c, CST816S_REG_XPOS_H, (uint8_t *)&x, sizeof(x));
 	if (ret < 0) {
-		LOG_ERR("Could not read x data");
+		LOG_ERR("Could not read x data (%d)", ret);
 		return ret;
 	}
 
 	ret = i2c_burst_read_dt(&cfg->i2c, CST816S_REG_YPOS_H, (uint8_t *)&y, sizeof(y));
 	if (ret < 0) {
-		LOG_ERR("Could not read y data");
+		LOG_ERR("Could not read y data (%d)", ret);
 		return ret;
 	}
 	col = sys_be16_to_cpu(x) & 0x0fff;
@@ -228,7 +216,7 @@ static void cst816s_chip_reset(const struct device *dev)
 	if (gpio_is_ready_dt(&config->rst_gpio)) {
 		ret = gpio_pin_configure_dt(&config->rst_gpio, GPIO_OUTPUT_ACTIVE);
 		if (ret < 0) {
-			LOG_ERR("Could not configure reset GPIO pin");
+			LOG_ERR("Could not configure reset GPIO pin (%d)", ret);
 			return;
 		}
 		k_msleep(CST816S_RESET_DELAY);
@@ -239,6 +227,7 @@ static void cst816s_chip_reset(const struct device *dev)
 
 static int cst816s_chip_init(const struct device *dev)
 {
+	uint8_t irq_mask;
 	const struct cst816s_config *cfg = dev->config;
 	int ret;
 	uint8_t chip_id;
@@ -251,31 +240,35 @@ static int cst816s_chip_init(const struct device *dev)
 	}
 	ret = i2c_reg_read_byte_dt(&cfg->i2c, CST816S_REG_CHIP_ID, &chip_id);
 	if (ret < 0) {
-		LOG_ERR("failed reading chip id");
+		LOG_ERR("Failed reading chip id (%d)", ret);
 		return ret;
 	}
 
 	if ((chip_id != CST816S_CHIP_ID1) && (chip_id != CST816S_CHIP_ID2) &&
 	    (chip_id != CST816S_CHIP_ID3)) {
-		LOG_ERR("CST816S wrong chip id: returned 0x%x", chip_id);
+		LOG_ERR("Wrong chip id: returned 0x%x", chip_id);
 		return -ENODEV;
 	}
 
 	ret = i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_MOTION_MASK, CST816S_MOTION_EN_DCLICK,
 				     CST816S_MOTION_EN_DCLICK);
 	if (ret < 0) {
-		LOG_ERR("Could not enable double-click motion mask!");
-		return -ENODATA;
-	}
-
-	ret = i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL,
-				     CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE,
-				     CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE);
-	if (ret < 0) {
-		LOG_ERR("Could not enable irq");
+		LOG_ERR("Could not enable double-click motion mask (%d)", ret);
 		return ret;
 	}
-	return ret;
+
+#ifdef CONFIG_INPUT_CST816S_EV_DEVICE
+	irq_mask = CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE | CST816S_IRQ_EN_MOTION;
+#else
+	irq_mask = CST816S_IRQ_EN_TOUCH | CST816S_IRQ_EN_CHANGE;
+#endif
+
+	ret = i2c_reg_update_byte_dt(&cfg->i2c, CST816S_REG_IRQ_CTL, irq_mask, irq_mask);
+	if (ret < 0) {
+		LOG_ERR("Could not enable irq (%d)", ret);
+		return ret;
+	}
+	return 0;
 }
 
 static int cst816s_init(const struct device *dev)
@@ -301,13 +294,13 @@ static int cst816s_init(const struct device *dev)
 
 	ret = gpio_pin_configure_dt(&config->int_gpio, GPIO_INPUT);
 	if (ret < 0) {
-		LOG_ERR("Could not configure interrupt GPIO pin");
+		LOG_ERR("Could not configure interrupt GPIO pin (%d)", ret);
 		return ret;
 	}
 
 	ret = gpio_pin_interrupt_configure_dt(&config->int_gpio, GPIO_INT_EDGE_TO_ACTIVE);
 	if (ret < 0) {
-		LOG_ERR("Could not configure interrupt GPIO interrupt.");
+		LOG_ERR("Could not configure interrupt GPIO interrupt (%d)", ret);
 		return ret;
 	}
 
@@ -315,7 +308,7 @@ static int cst816s_init(const struct device *dev)
 
 	ret = gpio_add_callback(config->int_gpio.port, &data->int_gpio_cb);
 	if (ret < 0) {
-		LOG_ERR("Could not set gpio callback");
+		LOG_ERR("Could not set gpio callback (%d)", ret);
 		return ret;
 	}
 #else
@@ -328,46 +321,14 @@ static int cst816s_init(const struct device *dev)
 }
 
 #ifdef CONFIG_PM_DEVICE
-static int cst816s_apply_profile(const struct cst816s_config *cfg,
-				 const struct cst816s_lp_profile *p)
+static int cst816s_apply_profile(const struct cst816s_config *cfg)
 {
 	int ret;
 
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_AUTOSLEEP_TIME, p->autosleep_time_s);
+	ret = i2c_burst_write_dt(&cfg->i2c, CST816S_REG_LP_AUTO_WAKEUP_TIME,
+				 (uint8_t *)&cfg->lp_profile, sizeof(cfg->lp_profile));
 	if (ret) {
-		LOG_WRN("Write autosleep_time 0x%02x failed (%d)", p->autosleep_time_s, ret);
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_LP_AUTO_WAKEUP_TIME,
-				    p->lp_auto_wake_time_min);
-	if (ret) {
-		LOG_WRN("Write lp_auto_wake_time_min 0x%02x failed (%d)", p->lp_auto_wake_time_min,
-			ret);
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_LP_SCAN_TH, p->lp_scan_th);
-	if (ret) {
-		LOG_WRN("Write lp_scan_th 0x%02x failed (%d)", p->lp_scan_th, ret);
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_LP_SCAN_WIN, p->lp_scan_win);
-	if (ret) {
-		LOG_WRN("Write lp_scan_win 0x%02x failed (%d)", p->lp_scan_win, ret);
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_LP_SCAN_FREQ, p->lp_scan_freq);
-	if (ret) {
-		LOG_WRN("Write lp_scan_freq 0x%02x failed (%d)", p->lp_scan_freq, ret);
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_LP_SCAN_I_DAC, p->lp_scan_i_dac);
-	if (ret) {
-		LOG_WRN("Write lp_scan_i_dac 0x%02x failed (%d)", p->lp_scan_i_dac, ret);
+		LOG_WRN("Write power profile failed (%d)", ret);
 		return ret;
 	}
 
@@ -384,24 +345,34 @@ static int cst816s_pm_action(const struct device *dev, enum pm_device_action act
 	 */
 	cst816s_chip_reset(dev);
 	ret = cst816s_chip_init(dev);
+	if (ret < 0) {
+		LOG_ERR("Chip init failed during PM action (%d)", ret);
+		return ret;
+	}
 
 	switch (action) {
 	case PM_DEVICE_ACTION_SUSPEND:
 	/* For PM TURN_ON means device is in suspend mode, hence apply suspend profile. */
 	case PM_DEVICE_ACTION_TURN_ON:
-		ret = cst816s_apply_profile(cfg, &cst816s_suspend_profile);
+		ret = cst816s_apply_profile(cfg);
+		if (ret < 0) {
+			LOG_WRN("Could not apply suspend profile (%d)", ret);
+			return ret;
+		}
 
 		ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_DIS_AUTO_SLEEP, 0x00);
 		if (ret < 0) {
-			LOG_WRN("Could not enable auto sleep! (%d)", ret);
+			LOG_WRN("Could not enable auto sleep (%d)", ret);
+			return ret;
 		}
 		break;
 	case PM_DEVICE_ACTION_TURN_OFF:
-		/* Put into Deep Sleep mode */
+		/* Put into Deep Sleep mode. */
 		ret = i2c_reg_write_byte_dt(&cfg->i2c, CST816S_REG_SLEEP_MODE,
 					    CST816S_POWER_MODE_SLEEP);
 		if (ret < 0) {
-			LOG_WRN("Could not enter deep sleep mode! (%d)", ret);
+			LOG_WRN("Could not enter deep sleep mode (%d)", ret);
+			return ret;
 		}
 		break;
 	case PM_DEVICE_ACTION_RESUME:
@@ -411,24 +382,46 @@ static int cst816s_pm_action(const struct device *dev, enum pm_device_action act
 		return -ENOTSUP;
 	}
 
-	return ret;
+	return 0;
 }
 #endif
 
-#define CST816S_DEFINE(index)                                                                      \
-	static const struct cst816s_config cst816s_config_##index = {                              \
-		.i2c = I2C_DT_SPEC_INST_GET(index),                                                \
-		.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(index, rst_gpios, {}),        \
+/* clang-format off */
+#define CST816S_DEFINE(index)             \
+	IF_ENABLED(CONFIG_PM_DEVICE, (                                    \
+		BUILD_ASSERT(DT_INST_PROP(index, scan_th) >= 1 &&              \
+				DT_INST_PROP(index, scan_th) <= 255,           \
+				"scan_th must be >= 1 and <= 255");            \
+		BUILD_ASSERT(DT_INST_PROP(index, scan_freq) >= 1 &&            \
+				DT_INST_PROP(index, scan_freq) <= 255,         \
+				"scan_freq must be >= 1 and <= 255");          \
+		BUILD_ASSERT(DT_INST_PROP(index, scan_win) <= 255,           \
+				"scan_win must be <= 255");             \
+		BUILD_ASSERT(DT_INST_PROP(index, scan_i_dac) >= 1 &&           \
+				DT_INST_PROP(index, scan_i_dac) <= 255,        \
+				"scan_i_dac must be >= 1 and <= 255");         \
+	))                                                                         \
+	static struct cst816s_data cst816s_data_##index; \
+	static const struct cst816s_config cst816s_config_##index = { \
+		.i2c = I2C_DT_SPEC_INST_GET(index), \
+		.rst_gpio = GPIO_DT_SPEC_INST_GET_OR(index, rst_gpios, {}), \
 		IF_ENABLED(CONFIG_INPUT_CST816S_INTERRUPT, \
-			   (.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),)) \
-	};                                                                                         \
-	static struct cst816s_data cst816s_data_##index;                                           \
-                                                                                                   \
-	PM_DEVICE_DT_INST_DEFINE(index, cst816s_pm_action);                                        \
-                                                                                                   \
-	DEVICE_DT_INST_DEFINE(index, cst816s_init,                                                 \
-			      PM_DEVICE_DT_INST_GET(index), &cst816s_data_##index,                 \
-			      &cst816s_config_##index, POST_KERNEL, CONFIG_INPUT_INIT_PRIORITY,    \
-			      NULL);
+				(.int_gpio = GPIO_DT_SPEC_INST_GET(index, irq_gpios),))  \
+				 IF_ENABLED(CONFIG_PM_DEVICE, \
+				(.lp_profile = {                                             \
+					.auto_wake_time_min = DT_INST_PROP(index, auto_wake_time), \
+					.scan_th = DT_INST_PROP(index, scan_th),     \
+					.scan_win = DT_INST_PROP(index, scan_win),   \
+					.scan_freq = DT_INST_PROP(index, scan_freq), \
+					.scan_i_dac = DT_INST_PROP(index, scan_i_dac), \
+					.auto_sleep_time_s = DT_INST_PROP(index, auto_sleep_time), \
+			},)) }; \
+                                                                                         \
+	PM_DEVICE_DT_INST_DEFINE(index, cst816s_pm_action);          \
+                                                                                           \
+	DEVICE_DT_INST_DEFINE(index, cst816s_init, PM_DEVICE_DT_INST_GET(index), \
+			      &cst816s_data_##index, &cst816s_config_##index, POST_KERNEL, \
+			      CONFIG_INPUT_INIT_PRIORITY, NULL);
 
 DT_INST_FOREACH_STATUS_OKAY(CST816S_DEFINE)
+/* clang-format on */
