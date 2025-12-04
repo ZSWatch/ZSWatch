@@ -38,7 +38,9 @@ LOG_MODULE_REGISTER(zsw_gatt_sensor_server, CONFIG_ZSW_BLE_LOG_LEVEL);
 
 static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset);
 static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
+static ssize_t on_ccc_cfg_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, uint16_t value);
 static void disconnected(struct bt_conn *conn, uint8_t reason);
+static void connected(struct bt_conn *conn, uint8_t err);
 
 static void zbus_periodic_fast_callback(const struct zbus_channel *chan);
 
@@ -46,6 +48,7 @@ ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(azsw_gatt_sensor_server_lis, zbus_periodic_fast_callback);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
+    .connected = connected,
     .disconnected = disconnected,
 };
 
@@ -65,7 +68,7 @@ BT_GATT_SERVICE_DEFINE(temp_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(accel_service,
@@ -74,7 +77,7 @@ BT_GATT_SERVICE_DEFINE(accel_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(humidity_service,
@@ -83,7 +86,7 @@ BT_GATT_SERVICE_DEFINE(humidity_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(pressure_service,
@@ -92,7 +95,7 @@ BT_GATT_SERVICE_DEFINE(pressure_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(mag_service,
@@ -101,7 +104,7 @@ BT_GATT_SERVICE_DEFINE(mag_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(gyro_service,
@@ -110,7 +113,7 @@ BT_GATT_SERVICE_DEFINE(gyro_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 BT_GATT_SERVICE_DEFINE(sensor_fusion_service,
@@ -119,7 +122,7 @@ BT_GATT_SERVICE_DEFINE(sensor_fusion_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 BT_GATT_SERVICE_DEFINE(light_service,
                        BT_GATT_PRIMARY_SERVICE(ADAFRUIT_SERVICE_LIGHT),
@@ -127,11 +130,15 @@ BT_GATT_SERVICE_DEFINE(light_service,
                                               BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_READ,
                                               ZSW_GATT_READ_WRITE_PERM,
                                               on_read, NULL, NULL),
-                       BT_GATT_CCC(on_ccc_cfg_changed, ZSW_GATT_READ_WRITE_PERM)
+                       BT_GATT_CCC_WITH_WRITE_CB(on_ccc_cfg_changed, on_ccc_cfg_write, ZSW_GATT_READ_WRITE_PERM)
                       );
 
 static bool notif_enabled;
 static uint8_t notify_period_counter;
+// Flag to ignore restored CCCDs on first connect after reboot/disconnect
+// If phone did not properly disable notifications before disconnecting,
+// we don't want to start sending sensor data automatically.
+static bool ignore_restored_ccc;
 
 static const struct bt_gatt_attr *const notify_attrs[] = {
     &temp_service.attrs[2],
@@ -238,9 +245,28 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
     return write_len;
 }
 
+static ssize_t on_ccc_cfg_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, uint16_t value)
+{
+    ARG_UNUSED(conn);
+    ARG_UNUSED(attr);
+    ARG_UNUSED(value);
+
+    // This callback is called when the peer actually writes to the CCCD.
+    ignore_restored_ccc = false;
+
+    return sizeof(value);
+}
+
 static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
     ARG_UNUSED(attr);
+
+    // If we are bonded with the remote we're going to ignore restored CCCDs (first callback after connect),
+    // don't start notifications. The phone must write to the CCCD again to actually enable notifications.
+    if (ignore_restored_ccc) {
+        LOG_DBG("Ignoring restored CCC value, phone must re-enable notifications");
+        return;
+    }
 
     bool notifications_active = any_notification_enabled(value);
 
@@ -261,10 +287,27 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
     }
 }
 
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+    ARG_UNUSED(conn);
+
+    if (err) {
+        return;
+    }
+
+    // Set flag to ignore any restored CCC values from bonding data.
+    // The phone must explicitly write to the CCCD to enable sensor notifications.
+    // This flag will be cleared after the first explicit CCCD write from the phone.
+    ignore_restored_ccc = true;
+}
+
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
     ARG_UNUSED(conn);
     ARG_UNUSED(reason);
+
+    // Reset the ignore flag for next connection
+    ignore_restored_ccc = false;
 
     if (!notif_enabled || any_notification_enabled(0)) {
         return;
