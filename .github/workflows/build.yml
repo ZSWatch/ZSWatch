@@ -145,6 +145,9 @@ jobs:
           # Only one copy of Net Core image needed, it's the same for all builds
           mv ${{ env.BUILD_DIR }}/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
 
+          # Copy qspi ini file
+          mv app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini fw_images/qspi_mx25u51245.ini
+
       - name: Build native_posix
         if: ${{ matrix.board == 'native_sim/native/64' }}
         working-directory: ZSWatch
