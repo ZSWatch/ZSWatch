@@ -48,7 +48,7 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(templates),
     .start_func = update_app_start,
     .stop_func = update_app_stop,
-    .category = ZSW_APP_CATEGORY_SYSTEM
+    .category = ZSW_APP_CATEGORY_ROOT
 };
 
 #ifndef CONFIG_ARCH_POSIX

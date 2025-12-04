@@ -32,7 +32,7 @@ static void watchface_picker_app_stop(void);
 ZSW_LV_IMG_DECLARE(watchface_picker_icon);
 
 static application_t app = {
-    .name = "Watchface Picker",
+    .name = "Face",
     .icon = ZSW_LV_IMG_USE(watchface_picker_icon),
     .start_func = watchface_picker_app_start,
     .stop_func = watchface_picker_app_stop,

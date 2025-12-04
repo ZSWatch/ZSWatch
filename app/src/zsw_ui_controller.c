@@ -64,7 +64,6 @@ static void run_input_work(struct k_work *item);
 static void handle_screen_gesture(lv_dir_t event_code);
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
-static void on_lvgl_screen_gesture_event_callback(lv_event_t *e);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
 static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
@@ -196,7 +195,7 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 break;
             }
             case LV_DIR_RIGHT: {
-                open_application_manager_page("Watchface Picker");
+                open_application_manager_page("Face");
                 break;
             }
             case LV_DIR_TOP: {
@@ -212,16 +211,6 @@ static void handle_screen_gesture(lv_dir_t event_code)
         lv_indev_wait_release(lv_indev_get_act());
     } else if (zsw_notification_popup_is_shown()) {
         zsw_notification_popup_remove();
-    }
-}
-
-static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
-{
-    lv_dir_t  dir;
-    lv_event_code_t event = lv_event_get_code(e);
-    if (event == LV_EVENT_GESTURE) {
-        dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-        handle_screen_gesture(dir);
     }
 }
 
@@ -296,6 +285,14 @@ static void handle_watchface_open_app_event(watchface_app_evt_open_app_t click)
 
 static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 {
+    if (watch_state != WATCHFACE_STATE) {
+        return;
+    }
+    if (evt.type == WATCHFACE_APP_EVENT_GESTURE) {
+        handle_screen_gesture(evt.data.gesture_direction);
+        return;
+    }
+
     if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
         switch (evt.type) {
             case WATCHFACE_APP_EVENT_OPEN_APP:
@@ -323,6 +320,8 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
                     }
                 }
 #endif
+                break;
+            default:
                 break;
         }
     }
@@ -379,8 +378,6 @@ int zsw_ui_controller_init(void)
     }
 
     watch_state = WATCHFACE_STATE;
-
-    lv_obj_add_event_cb(root_screen, on_lvgl_screen_gesture_event_callback, LV_EVENT_GESTURE, NULL);
 
     watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
 

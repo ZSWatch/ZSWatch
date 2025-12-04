@@ -29,6 +29,7 @@ typedef enum watchface_app_evt_type_t {
     WATCHFACE_APP_EVENT_SET_BRIGHTNESS,
     WATCHFACE_APP_EVENT_RESTART,
     WATCHFACE_APP_EVENT_SHUTDOWN,
+    WATCHFACE_APP_EVENT_GESTURE
 } watchface_app_evt_type_t;
 
 typedef enum watchface_app_evt_open_app_t {
@@ -48,6 +49,7 @@ typedef struct watchface_app_evt_t {
             uint16_t brightness;
             bool store_brightness;
         };
+        lv_dir_t gesture_direction;
     } data;
 } watchface_app_evt_t;
 

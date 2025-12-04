@@ -23,15 +23,21 @@
 		<string name="music_time" value="00:00" help="Current time display" />
 		<int name="music_progress" value="0" help="Track progress percentage (0-100)" />
 		<int name="music_playing" value="0" help="0:paused 1:playing" />
+
+		<!-- App picker subjects -->
+		<int name="app_picker_page_index" value="0" help="Current page index (0-based)" />
+		<int name="app_picker_page_count" value="1" help="Total number of pages" />
+		<int name="app_picker_folder_open" value="0" help="0:closed 1:open" />
+		<string name="app_picker_folder_title" value="Folder" help="Currently open folder title" />
 	</subjects>
 
 	<images>
 		<!-- Images for music control - Editor will generate C arrays -->
 		<!-- Using <data> tags so Editor converts PNG to C arrays for both preview and embedded -->
-		<data name="icon_play" src_path="images/icon_play.png" color_format="rgb565a8"/>
-		<data name="icon_pause" src_path="images/icon_pause.png" color_format="rgb565a8"/>
-		<data name="icon_skip_forward" src_path="images/icon_skip_forward.png" color_format="rgb565a8"/>
-		<data name="icon_skip_back" src_path="images/icon_skip_back.png" color_format="rgb565a8"/>
+		<data name="icon_play" src_path="images/icon_play.png" color_format="rgb565a8" />
+		<data name="icon_pause" src_path="images/icon_pause.png" color_format="rgb565a8" />
+		<data name="icon_skip_forward" src_path="images/icon_skip_forward.png" color_format="rgb565a8" />
+		<data name="icon_skip_back" src_path="images/icon_skip_back.png" color_format="rgb565a8" />
 	</images>
 
 	<fonts>
@@ -39,6 +45,30 @@
 		<!-- in lvgl_editor just let it generate it with all characters, does not matter, we continue use the existing -->
 		<bin
 			name="montserrat_14_full"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="14"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_10"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="10"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_12"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="12"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_14"
 			as_file="false"
 			bpp="2"
 			src_path="fonts/Montserrat-Medium.ttf"

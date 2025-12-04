@@ -1,0 +1,252 @@
+<component>
+	<previews>
+		<preview width="240" height="240" style_bg_color="0x000000" />
+	</previews>
+
+	<api />
+
+	<styles>
+		<!-- Root container style - full screen, transparent bg -->
+		<style name="style_root" width="240" height="240" bg_opa="0" border_width="0" pad_all="0" />
+
+		<!-- App container - holds all 7 app slots -->
+		<style name="style_app_container" width="240" height="240" bg_opa="0" border_width="0" pad_all="0" />
+
+		<!-- Individual app slot container (holds icon + label) - LARGER -->
+		<style name="style_app_slot" width="57" height="70" bg_opa="0" border_width="0" pad_all="0" />
+
+		<!-- App icon background circle - 55x55 with colored bg (25% larger) -->
+		<style name="style_app_icon_bg" width="55" height="55" radius="28" bg_opa="255" border_width="0" pad_all="0" />
+
+		<!-- App icon image centered inside - LARGER -->
+		<style name="style_app_icon_img" width="40" height="40" />
+
+		<!-- App label below icon -->
+		<style name="style_app_label" text_align="center" width="60" text_color="0xFFBAAF" text_font="montserrat_12" />
+
+		<!-- Folder overlay - full screen dark overlay -->
+		<style
+			name="style_folder_overlay"
+			width="240"
+			height="240"
+			bg_color="0x000000"
+			bg_opa="205"
+			border_width="0"
+			pad_all="0"
+		/>
+
+		<!-- Folder title -->
+		<style name="style_folder_title" text_align="center" text_color="0xffffff" />
+
+		<!-- Folder grid container - 3x3 grid -->
+		<style
+			name="style_folder_grid"
+			layout="flex"
+			flex_flow="row_wrap"
+			flex_main_place="center"
+			flex_cross_place="center"
+			pad_all="8"
+			pad_row="8"
+			pad_column="8"
+			bg_opa="0"
+			border_width="0"
+			width="200"
+			height="content"
+		/>
+
+		<!-- Folder app slot - larger -->
+		<style name="style_folder_app_slot" width="55" height="70" bg_opa="0" border_width="0" pad_all="0" />
+		<style
+			name="style_folder_app_icon_bg"
+			width="55"
+			height="55"
+			radius="28"
+			bg_opa="255"
+			border_width="0"
+			pad_all="0"
+		/>
+		<style
+			name="style_folder_app_label"
+			text_align="center"
+			width="60"
+			text_color="0xFFBAAF"
+			text_font="montserrat_12"
+		/>
+
+		<!-- Folder close button -->
+		<style
+			name="style_folder_close"
+			width="55"
+			height="55"
+			radius="28"
+			bg_color="0x495060"
+			bg_opa="255"
+			border_width="0"
+			pad_all="0"
+		/>
+
+		<!-- Navigation arrows -->
+		<style
+			name="style_nav_arrow"
+			width="28"
+			height="90"
+			radius="14"
+			bg_color="0x495060"
+			bg_opa="255"
+			border_width="0"
+			pad_all="0"
+		/>
+		<style name="style_nav_arrow_label" text_color="0xFFBAAF" text_font="montserrat_14" />
+	</styles>
+
+	<view scrollable="false">
+		<remove_style_all />
+		<style name="style_root" />
+
+		<!-- Main app container - apps positioned in circular layout -->
+		<lv_obj name="app_container" scrollable="false">
+			<style name="style_app_container" />
+
+			<!-- App slot 0 - Top -->
+			<lv_obj name="app_slot_0" x="92" y="8" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_0" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_0" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_0" align="bottom_mid" y="2" text="App 0" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 1 - Upper right -->
+			<lv_obj name="app_slot_1" x="152" y="42" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_1" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_1" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_1" align="bottom_mid" y="2" text="App 1" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 2 - Lower right -->
+			<lv_obj name="app_slot_2" x="152" y="118" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_2" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_2" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_2" align="bottom_mid" y="2" text="App 2" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 3 - Bottom -->
+			<lv_obj name="app_slot_3" x="92" y="160" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_3" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_3" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_3" align="bottom_mid" y="2" text="App 3" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 4 - Lower left -->
+			<lv_obj name="app_slot_4" x="32" y="118" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_4" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_4" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_4" align="bottom_mid" y="2" text="App 4" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 5 - Upper left -->
+			<lv_obj name="app_slot_5" x="32" y="42" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_5" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_5" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_5" align="bottom_mid" y="2" text="App 5" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+
+			<!-- App slot 6 - Center -->
+			<lv_obj name="app_slot_6" x="92" y="82" clickable="true" scrollable="false">
+				<style name="style_app_slot" />
+				<lv_obj name="app_icon_bg_6" align="top_mid" clickable="false" scrollable="false">
+					<style name="style_app_icon_bg" />
+					<lv_image name="app_icon_6" align="center" clickable="false">
+						<style name="style_app_icon_img" />
+					</lv_image>
+				</lv_obj>
+				<lv_label name="app_label_6" align="bottom_mid" y="2" text="Center" clickable="false" long_mode="clip">
+					<style name="style_app_label" />
+				</lv_label>
+				<event_cb callback="app_picker_on_app_clicked" trigger="short_clicked" />
+			</lv_obj>
+		</lv_obj>
+
+		<!-- Navigation arrows -->
+		<lv_button name="nav_arrow_left" align="left_mid" x="0" y="0" clickable="true">
+			<style name="style_nav_arrow" />
+			<lv_label name="nav_arrow_left_icon" text="&lt;" align="center">
+				<style name="style_nav_arrow_label" />
+			</lv_label>
+			<event_cb callback="app_picker_on_nav_left_clicked" trigger="clicked" />
+		</lv_button>
+
+		<lv_button name="nav_arrow_right" align="right_mid" x="0" y="0" clickable="true">
+			<style name="style_nav_arrow" />
+			<lv_label name="nav_arrow_right_icon" text="&gt;" align="center">
+				<style name="style_nav_arrow_label" />
+			</lv_label>
+			<event_cb callback="app_picker_on_nav_right_clicked" trigger="clicked" />
+		</lv_button>
+
+		<!-- Folder overlay - hidden by default -->
+		<lv_obj name="folder_overlay" hidden="true" scrollable="false">
+			<style name="style_folder_overlay" />
+
+			<lv_label name="folder_title" align="top_mid" y="20" bind_text="app_picker_folder_title">
+				<style name="style_folder_title" />
+			</lv_label>
+
+			<lv_obj name="folder_grid" align="center" y="-10" scrollable="false">
+				<style name="style_folder_grid" />
+			</lv_obj>
+
+			<lv_button name="folder_close_btn" align="bottom_mid" y="-15" clickable="true">
+				<style name="style_folder_close" />
+				<lv_image name="folder_close_icon" align="center" />
+				<event_cb callback="app_picker_on_folder_close_clicked" trigger="clicked" />
+			</lv_button>
+		</lv_obj>
+	</view>
+</component>

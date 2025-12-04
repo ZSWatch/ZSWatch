@@ -47,7 +47,7 @@ static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data
 ZSW_LV_IMG_DECLARE(statistic_icon);
 
 static application_t app = {
-    .name = "Mic Spectrum",
+    .name = "Mic",
     .icon = ZSW_LV_IMG_USE(statistic_icon),
     .start_func = mic_app_start,
     .stop_func = mic_app_stop,

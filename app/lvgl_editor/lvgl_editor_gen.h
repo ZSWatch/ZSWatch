@@ -59,6 +59,12 @@ extern "C" {
 
 extern lv_font_t * montserrat_14_full;
 
+extern lv_font_t * montserrat_10;
+
+extern lv_font_t * montserrat_12;
+
+extern lv_font_t * montserrat_14;
+
 /*----------------
  * Images
  *----------------*/
@@ -77,6 +83,10 @@ extern lv_subject_t music_artist_name;
 extern lv_subject_t music_time;
 extern lv_subject_t music_progress;
 extern lv_subject_t music_playing;
+extern lv_subject_t app_picker_page_index;
+extern lv_subject_t app_picker_page_count;
+extern lv_subject_t app_picker_folder_open;
+extern lv_subject_t app_picker_folder_title;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -86,6 +96,10 @@ extern lv_subject_t music_playing;
  * Event Callbacks
  *----------------*/
 
+void app_picker_on_app_clicked(lv_event_t * e);
+void app_picker_on_nav_left_clicked(lv_event_t * e);
+void app_picker_on_nav_right_clicked(lv_event_t * e);
+void app_picker_on_folder_close_clicked(lv_event_t * e);
 void music_on_prev_clicked(lv_event_t * e);
 void music_on_play_pause_clicked(lv_event_t * e);
 void music_on_next_clicked(lv_event_t * e);
@@ -105,6 +119,7 @@ void lvgl_editor_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
+#include "components/app_picker/app_picker_gen.h"
 #include "components/music_app/music_app_gen.h"
 
 #ifdef __cplusplus

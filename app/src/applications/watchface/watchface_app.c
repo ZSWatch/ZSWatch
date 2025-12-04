@@ -91,6 +91,7 @@ static void general_work(struct k_work *item);
 
 static void check_notifications(void);
 static void update_ui_from_event(struct k_work *item);
+static void watchface_gesture_cb(lv_event_t *e);
 
 static void connected(struct bt_conn *conn, uint8_t err);
 static void disconnected(struct bt_conn *conn, uint8_t reason);
@@ -163,6 +164,9 @@ void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app
 
     watchface_root_screen = root_screen;
     watchface_evt_cb = evt_cb;
+
+    lv_obj_add_event_cb(watchface_root_screen, watchface_gesture_cb, LV_EVENT_GESTURE, NULL);
+
     general_work_item.type = OPEN_WATCHFACE;
     __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
 }
@@ -176,6 +180,8 @@ void watchface_app_stop(void)
     k_work_cancel_delayable_sync(&general_work_item.work, &cancel_work_sync);
     watchfaces[watchface_settings.watchface_index]->remove();
     zsw_watchface_dropdown_ui_remove();
+
+    lv_obj_remove_event_cb(watchface_root_screen, watchface_gesture_cb);
 }
 
 void watchface_change(int index)
@@ -368,6 +374,19 @@ static void update_ui_from_event(struct k_work *item)
             zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
         }
         return;
+    }
+}
+
+static void watchface_gesture_cb(lv_event_t *e)
+{
+    lv_dir_t  dir;
+    lv_event_code_t event = lv_event_get_code(e);
+    if (event == LV_EVENT_GESTURE) {
+        dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+        watchface_evt_cb((watchface_app_evt_t) {
+            .type = WATCHFACE_APP_EVENT_GESTURE,
+            .data.gesture_direction = dir
+        });
     }
 }
 

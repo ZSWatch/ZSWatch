@@ -40,6 +40,13 @@ typedef enum {
     ZSW_APP_CATEGORY_INVALID
 } zsw_app_category_t;
 
+typedef struct {
+    const char *name;
+    const void *icon;
+    zsw_app_category_t category;
+    lv_color_t color;
+} zsw_app_folder_info_t;
+
 typedef enum {
     ZSW_APP_STATE_STOPPED,      // App is not running
     ZSW_APP_STATE_UI_VISIBLE,   // App UI is visible and safe to use
@@ -92,6 +99,12 @@ void zsw_app_manager_exit_app(void);
 /** @brief Get number of registrated applications
 */
 int zsw_app_manager_get_num_apps(void);
+
+/** @brief Get application by index
+ *  @param index Index of the application (0 to num_apps-1)
+ *  @return Pointer to application or NULL if index is invalid
+ */
+application_t *zsw_app_manager_get_app(int index);
 
 /** @brief Get current app state
  *  @param app Application to check

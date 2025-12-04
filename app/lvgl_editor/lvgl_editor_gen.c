@@ -49,6 +49,12 @@
 
 lv_font_t * montserrat_14_full;
 extern lv_font_t montserrat_14_full_data;
+lv_font_t * montserrat_10;
+extern lv_font_t montserrat_10_data;
+lv_font_t * montserrat_12;
+extern lv_font_t montserrat_12_data;
+lv_font_t * montserrat_14;
+extern lv_font_t montserrat_14_data;
 
 /*----------------
  * Images
@@ -72,6 +78,10 @@ lv_subject_t music_artist_name;
 lv_subject_t music_time;
 lv_subject_t music_progress;
 lv_subject_t music_playing;
+lv_subject_t app_picker_page_index;
+lv_subject_t app_picker_page_count;
+lv_subject_t app_picker_folder_open;
+lv_subject_t app_picker_folder_title;
 
 /**********************
  *      MACROS
@@ -83,6 +93,8 @@ lv_subject_t music_playing;
 
 void lvgl_editor_init_gen(const char * asset_path)
 {
+    char buf[256];
+
     /*----------------
      * Global styles
      *----------------*/
@@ -93,6 +105,12 @@ void lvgl_editor_init_gen(const char * asset_path)
 
     /* get font 'montserrat_14_full' from a C array */
     montserrat_14_full = &montserrat_14_full_data;
+    /* get font 'montserrat_10' from a C array */
+    montserrat_10 = &montserrat_10_data;
+    /* get font 'montserrat_12' from a C array */
+    montserrat_12 = &montserrat_12_data;
+    /* get font 'montserrat_14' from a C array */
+    montserrat_14 = &montserrat_14_data;
 
 
     /*----------------
@@ -132,6 +150,17 @@ void lvgl_editor_init_gen(const char * asset_path)
                           );
     lv_subject_init_int(&music_progress, 0);
     lv_subject_init_int(&music_playing, 0);
+    lv_subject_init_int(&app_picker_page_index, 0);
+    lv_subject_init_int(&app_picker_page_count, 1);
+    lv_subject_init_int(&app_picker_folder_open, 0);
+    static char app_picker_folder_title_buf[UI_SUBJECT_STRING_LENGTH];
+    static char app_picker_folder_title_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&app_picker_folder_title,
+                           app_picker_folder_title_buf,
+                           app_picker_folder_title_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "Folder"
+                          );
 
     /*----------------
      * Translations
@@ -142,6 +171,9 @@ void lvgl_editor_init_gen(const char * asset_path)
 
     /* Register fonts */
     lv_xml_register_font(NULL, "montserrat_14_full", montserrat_14_full);
+    lv_xml_register_font(NULL, "montserrat_10", montserrat_10);
+    lv_xml_register_font(NULL, "montserrat_12", montserrat_12);
+    lv_xml_register_font(NULL, "montserrat_14", montserrat_14);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "music_track_name", &music_track_name);
@@ -149,8 +181,16 @@ void lvgl_editor_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "music_time", &music_time);
     lv_xml_register_subject(NULL, "music_progress", &music_progress);
     lv_xml_register_subject(NULL, "music_playing", &music_playing);
+    lv_xml_register_subject(NULL, "app_picker_page_index", &app_picker_page_index);
+    lv_xml_register_subject(NULL, "app_picker_page_count", &app_picker_page_count);
+    lv_xml_register_subject(NULL, "app_picker_folder_open", &app_picker_folder_open);
+    lv_xml_register_subject(NULL, "app_picker_folder_title", &app_picker_folder_title);
 
     /* Register callbacks */
+    lv_xml_register_event_cb(NULL, "app_picker_on_app_clicked", app_picker_on_app_clicked);
+    lv_xml_register_event_cb(NULL, "app_picker_on_nav_left_clicked", app_picker_on_nav_left_clicked);
+    lv_xml_register_event_cb(NULL, "app_picker_on_nav_right_clicked", app_picker_on_nav_right_clicked);
+    lv_xml_register_event_cb(NULL, "app_picker_on_folder_close_clicked", app_picker_on_folder_close_clicked);
     lv_xml_register_event_cb(NULL, "music_on_prev_clicked", music_on_prev_clicked);
     lv_xml_register_event_cb(NULL, "music_on_play_pause_clicked", music_on_play_pause_clicked);
     lv_xml_register_event_cb(NULL, "music_on_next_clicked", music_on_next_clicked);
@@ -177,6 +217,26 @@ void lvgl_editor_init_gen(const char * asset_path)
 
 /* Callbacks */
 #if defined(LV_EDITOR_PREVIEW)
+void __attribute__((weak)) app_picker_on_app_clicked(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("app_picker_on_app_clicked was called\n");
+}
+void __attribute__((weak)) app_picker_on_nav_left_clicked(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("app_picker_on_nav_left_clicked was called\n");
+}
+void __attribute__((weak)) app_picker_on_nav_right_clicked(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("app_picker_on_nav_right_clicked was called\n");
+}
+void __attribute__((weak)) app_picker_on_folder_close_clicked(lv_event_t * e)
+{
+    LV_UNUSED(e);
+    LV_LOG("app_picker_on_folder_close_clicked was called\n");
+}
 void __attribute__((weak)) music_on_prev_clicked(lv_event_t * e)
 {
     LV_UNUSED(e);

@@ -61,7 +61,7 @@ static stopwatch_data_t stopwatch_data = {
 };
 
 static application_t app = {
-    .name = "Stopwatch",
+    .name = "Lap Time",
     .icon = ZSW_LV_IMG_USE(stopwatch_app_icon),
     .start_func = stopwatch_app_start,
     .stop_func = stopwatch_app_stop,

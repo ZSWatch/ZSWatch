@@ -47,7 +47,7 @@ ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(accel_app_lis, zbus_fetch_fusion_data_callback);
 
 static application_t app = {
-    .name = "Sensor Fusion",
+    .name = "Fusion",
     .icon = ZSW_LV_IMG_USE(imu_sensor_icon),
     .start_func = fusion_app_start,
     .stop_func = fusion_app_stop,

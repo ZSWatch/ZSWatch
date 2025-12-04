@@ -30,7 +30,7 @@ static void qr_code_app_stop(void);
 ZSW_LV_IMG_DECLARE(qr_code_icon);
 
 static application_t app = {
-    .name = "QR Code",
+    .name = "QR",
     .icon = ZSW_LV_IMG_USE(qr_code_icon),
     .start_func = qr_code_app_start,
     .stop_func = qr_code_app_stop,

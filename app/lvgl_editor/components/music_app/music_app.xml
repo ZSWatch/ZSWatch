@@ -111,7 +111,7 @@
 				</lv_image>
 
 				<!-- Pause icon - visible when playing (music_playing == 1) -->
-				<lv_image src="icon_pause" align="center" >
+				<lv_image src="icon_pause" align="center">
 					<bind_flag_if_eq subject="music_playing" flag="hidden" ref_value="0" />
 				</lv_image>
 

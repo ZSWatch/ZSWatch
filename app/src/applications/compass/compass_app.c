@@ -43,7 +43,7 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(move),
     .start_func = compass_app_start,
     .stop_func = compass_app_stop,
-    .category = ZSW_APP_CATEGORY_SENSORS,
+    .category = ZSW_APP_CATEGORY_ROOT,
 };
 
 static lv_timer_t *refresh_timer;

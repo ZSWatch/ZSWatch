@@ -16,7 +16,7 @@ static void calculator_app_stop(void);
 ZSW_LV_IMG_DECLARE(statistic_icon);
 
 static application_t app = {
-    .name = "Calculator",
+    .name = "Calc",
     .icon = ZSW_LV_IMG_USE(statistic_icon),
     .start_func = calculator_app_start,
     .stop_func = calculator_app_stop,

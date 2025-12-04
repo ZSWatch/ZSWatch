@@ -102,6 +102,7 @@ target_sources_ifdef(CONFIG_SHELL app PRIVATE src/zsw_shell.c)
 
 target_sources(app PRIVATE src/ui/notification/zsw_popup_notifcation.c)
 target_sources(app PRIVATE src/ui/popup/zsw_popup_window.c)
+target_sources(app PRIVATE src/ui/app_picker/app_picker_ui.c)
 target_sources(app PRIVATE src/ui/utils/zsw_ui_utils.c)
 
 target_sources(app PRIVATE src/ui/watchfaces/zsw_watchface_dropdown_ui.c)
