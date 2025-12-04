@@ -213,26 +213,24 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     for (int i = 0; i < num_pages; i++) {
         sub_page = lv_menu_page_create(_menu, NULL);
         lv_obj_set_scrollbar_mode(sub_page, LV_SCROLLBAR_MODE_OFF);
-        cont = lv_menu_cont_create(sub_page);
 
-        lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
         for (int j = 0; j < pages[i].num_items; j++) {
             item = &pages[i].items[j];
             switch (item->type) {
                 case LV_SETTINGS_TYPE_LABEL:
-                    create_text(cont, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
+                    create_text(sub_page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
                     break;
                 case LV_SETTINGS_TYPE_SWITCH:
-                    obj = create_switch(cont, item->icon, item->item.sw.name, *item->item.sw.inital_val);
+                    obj = create_switch(sub_page, item->icon, item->item.sw.name, *item->item.sw.inital_val);
                     lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item->change_callback);
                     break;
                 case LV_SETTINGS_TYPE_SLIDER:
-                    obj = create_slider(cont, item->icon, item->item.slider.name, item->item.slider.min_val, item->item.slider.max_val,
+                    obj = create_slider(sub_page, item->icon, item->item.slider.name, item->item.slider.min_val, item->item.slider.max_val,
                                         *item->item.slider.inital_val);
                     lv_obj_add_event_cb(obj, slider_event_cb, LV_EVENT_ALL, item->change_callback);
                     break;
                 case LV_SETTINGS_TYPE_BTN:
-                    obj = create_button(cont, item->icon, item->item.btn.name, item->item.btn.text);
+                    obj = create_button(sub_page, item->icon, item->item.btn.name, item->item.btn.text);
                     lv_obj_add_event_cb(obj, btn_event_cb, LV_EVENT_CLICKED, item->change_callback);
                     break;
                 default:
