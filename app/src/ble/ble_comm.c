@@ -78,10 +78,11 @@ static const struct bt_data ad[] = {
 static const struct bt_data ad_nus[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UUID_TRANSPORT_VAL),
+    BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1)
 };
 
 static struct bt_le_adv_param adv_param = {
-    .options = BT_LE_ADV_OPT_CONN | BT_LE_ADV_OPT_USE_NAME,
+    .options = BT_LE_ADV_OPT_CONN,
     .interval_min = BT_GAP_ADV_SLOW_INT_MIN,
     .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
 };
@@ -334,7 +335,7 @@ static int update_adv_interval(uint16_t interval_min, uint16_t interval_max)
 
 static void update_conn_interval_slow_handler(struct k_work *item)
 {
-    LOG_DBG("Change to long connection interval");
+    LOG_ERR("Change to long connection interval");
     ble_comm_set_default_connection_interval();
 }
 

@@ -7,13 +7,15 @@ manifest:
       url-base: https://github.com/nrfconnect
     - name: bosch
       url-base: https://github.com/boschsensortec
+    - name: upstream
+      url-base: https://github.com/zephyrproject-rtos
 
   group-filter: [-bsec2]
 
   projects:
     - name: sdk-nrf
       remote: sdk
-      revision: v3.1.0
+      revision: v3.2.0-rc1
       path: nrf
       import:
         name-blocklist:
@@ -40,6 +42,13 @@ manifest:
       path: app/src/ext_drivers/BSEC2
       groups:
         - bsec2
+
+    # Override Zephyr's LVGL project to track master on the same remote
+    - name: lvgl
+      remote: upstream
+      repo-path: lvgl
+      revision: c016f72d4c125098287be5e83c0f1abed4706ee5
+      path: modules/lib/gui/lvgl
       
   self:
     west-commands: scripts/west-commands.yml

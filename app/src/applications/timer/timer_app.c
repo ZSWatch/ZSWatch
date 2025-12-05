@@ -3,6 +3,7 @@
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
+#include <stdio.h>
 
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"

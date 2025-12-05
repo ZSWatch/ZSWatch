@@ -19,6 +19,7 @@
 #include <zephyr/init.h>
 #include <zsw_clock.h>
 #include <zephyr/zbus/zbus.h>
+#include <stdio.h>
 
 #include "lvgl_editor_gen.h"
 #include "music_app_gen.h"
