@@ -26,6 +26,20 @@ jobs:
         build_type: [debug, release]
         board: [watchdk@1/nrf5340/cpuapp, zswatch_legacy@4/nrf5340/cpuapp, zswatch_legacy@5/nrf5340/cpuapp, native_sim/native/64, nrf5340dk/nrf5340/cpuapp]
     steps:
+      - name: Free disk space on runner
+        run: |
+          df -h
+          for path in /usr/lib/jvm /usr/share/dotnet /usr/share/swift /usr/local/.ghcup /usr/local/julia* /usr/local/lib/android /usr/local/share/chromium /opt/microsoft /opt/google /opt/az /usr/local/share/powershell; do
+            if [ -e "$path" ]; then
+              rm -rf "$path"
+            fi
+          done
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get clean || true
+            rm -rf /var/lib/apt/lists/* /var/cache/apt/archives || true
+          fi
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -34,7 +48,7 @@ jobs:
 
       - name: Dependencies
         run: |
-          apt-get update && apt-get install -y lbzip2 build-essential cmake pkg-config libsdl2-dev || true
+          apt-get update && apt-get install -y lbzip2 libsdl2-dev || true
           apt-get install -f -y
           wget https://sourceforge.net/projects/astyle/files/astyle/astyle%203.4/astyle-3.4.10.tar.bz2/download -O astyle.tar.bz2
           tar -xf astyle.tar.bz2
@@ -167,6 +181,12 @@ jobs:
         run: |
           west build production_test --build-dir production_test/${{ env.BUILD_DIR }}_production --board ${{ matrix.board }} -- -DBOARD_ROOT="${PWD}/app"
           mv production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex fw_images/production_test_watchdk.hex
+
+      - name: Remove build directories to free space
+        working-directory: ZSWatch
+        run: |
+          rm -rf "${{ env.BUILD_DIR }}" "${{ env.BUILD_DIR }}_rotated" "production_test/${{ env.BUILD_DIR }}" "production_test/${{ env.BUILD_DIR }}_production"
+          df -h
 
       - name : Upload Firmware
         uses: actions/upload-artifact@v4.3.3

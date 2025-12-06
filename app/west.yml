@@ -17,7 +17,12 @@ manifest:
       path: nrf
       import:
         name-blocklist:
+          - azure-sdk-for-c
+          - bsim
+          - canopennode
+          - chre
           - ci-tools
+          - edtt
           - hal_altera
           - hal_cypress
           - hal_infineon
@@ -25,13 +30,27 @@ manifest:
           - hal_nxp
           - hal_openisa
           - hal_silabs
-          - hal_xtensa
           - hal_ti
+          - hal_xtensa
+          - liblc3
+          - nrf_wifi
+          - hostap
           - loramac-node
+          - mipi-sys-t
+          - matter
+          - memfault-firmware-sdk
+          - nanopb
           - net-tools
-          - edtt
-          - trusted-firmware-m
+          - nrf_hw_models
+          - openthread
+          - percepio
+          - psa-arch-tests
+          - qcbor
+          - tf-m-tests
           - sof
+          - trusted-firmware-m
+          - zscilib
+          - wfa-qt-control-app
       clone-depth: 1
 
     - name: bsec2
