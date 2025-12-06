@@ -111,7 +111,6 @@ static void run_input_work(struct k_work *item)
             }
             case INPUT_KEY_1: {
                 if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()) {
-                    watch_state = APPLICATION_MANAGER_STATE;
                     zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
                     lv_async_call(open_application_manager_page, NULL);
                 }
@@ -188,7 +187,6 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
     k_work_submit(&input_worker_item.work);
 }
 
-<<<<<<< HEAD
 static void handle_screen_gesture(lv_dir_t event_code)
 {
     if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
@@ -214,44 +212,6 @@ static void handle_screen_gesture(lv_dir_t event_code)
         lv_indev_wait_release(lv_indev_get_act());
     } else if (zsw_notification_popup_is_shown()) {
         zsw_notification_popup_remove();
-=======
-static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
-{
-    lv_dir_t dir;
-    lv_event_code_t event = lv_event_get_code(e);
-
-    if (event == LV_EVENT_GESTURE) {
-        dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-
-        LOG_DBG("Gesture event detected: %u", dir);
-
-        if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
-            switch (dir) {
-                case LV_DIR_LEFT: {
-                    open_application_manager_page("Notification");
-                    break;
-                }
-                case LV_DIR_RIGHT: {
-                    open_application_manager_page("Watchface Picker");
-                    break;
-                }
-                case LV_DIR_TOP: {
-                    open_application_manager_page(NULL);
-                    break;
-                }
-                case LV_DIR_BOTTOM: {
-                    break;
-                }
-                default: {
-
-                }
-            }
-
-            lv_indev_wait_release(lv_indev_get_act());
-        } else if (zsw_notification_popup_is_shown()) {
-            zsw_notification_popup_remove();
-        }
->>>>>>> ffcc3757 (Merge upstream touch driver with ZSWatch touch driver)
     }
 }
 

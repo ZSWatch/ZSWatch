@@ -18,6 +18,10 @@
     status = "disabled";
 };
 
+&cst816s {
+    status = "disabled";
+};
+
 &npm1300_pmic {
     status = "disabled";
 };

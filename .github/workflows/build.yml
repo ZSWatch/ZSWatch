@@ -70,12 +70,49 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r nrf/scripts/requirements-build.txt
           pip install -r app/scripts/requirements.txt
-      
+
+      - name: Apply patches
+        working-directory: ZSWatch
+        run: |
+          # Apply Zephyr patches
+          cd zephyr
+          for patch in ../app/patches/zephyr/*.patch; do
+            if [ -f "$patch" ]; then
+              echo "Checking patch: $patch"
+              if git apply --reverse --check "$patch" --unsafe-paths 2>/dev/null; then
+                echo "Patch already applied: $patch"
+              else
+                echo "Applying patch: $patch"
+                git apply "$patch" --unsafe-paths || {
+                  echo "Failed to apply patch: $patch"
+                  exit 1
+                }
+              fi
+            fi
+          done
+          cd ..
+
+          # Apply ext_drivers patches
+          for patch in app/patches/ext_drivers/*.patch; do
+            if [ -f "$patch" ]; then
+              echo "Checking patch: $patch"
+              if git apply --reverse --check "$patch" --unsafe-paths 2>/dev/null; then
+                echo "Patch already applied: $patch"
+              else
+                echo "Applying patch: $patch"
+                git apply "$patch" --unsafe-paths || {
+                  echo "Failed to apply patch: $patch"
+                  exit 1
+                }
+              fi
+            fi
+          done
+
       - name: Style
         working-directory: ZSWatch
         run: |
           west format --dry-run
-      
+
       - name: Define build directory name
         working-directory: ZSWatch
         run: |
@@ -149,7 +186,7 @@ jobs:
             -DEXTRA_DTC_OVERLAY_FILE="$EXTRA_DTC_OVERLAY" \
             -DSB_CONF_FILE="$SB_CONF_FILE" \
             -DBOARD_ROOT="${PWD}/app"
-          
+
           mv ${{ env.BUILD_DIR }}_rotated/merged.hex fw_images/${{ env.BUILD_DIR }}_rotated.hex
           mv ${{ env.BUILD_DIR }}_rotated/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}_rotated.elf
           if [ -f "${{ env.BUILD_DIR }}_rotated/dfu_application.zip" ]; then

@@ -20,7 +20,7 @@
 int _zsw_xip_enable(const char *requester);
 int _zsw_xip_disable(const char *requester);
 
-#ifdef CONFIG_NORDIC_QSPI_NOR_XIP
+#ifdef CONFIG_ZSW_XIP
 #define zsw_xip_enable() _zsw_xip_enable(__FUNCTION__)
 #define zsw_xip_disable() _zsw_xip_disable(__FUNCTION__)
 #else

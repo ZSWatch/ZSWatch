@@ -65,8 +65,6 @@ menu "ZSWatch"
         select STREAM_FLASH
         select FLASH_MAP
 
-        select BASE64
-
         default n
 
     rsource "src/applications/Kconfig"
@@ -103,11 +101,13 @@ menu "ZSWatch"
             default EXTERNAL_USE_BOSCH_BME688
 
         config EXTERNAL_USE_BOSCH_BSEC
+            bool
             prompt "Use Bosch BSEC library"
             depends on !BME680
             select BME68X_EXT_IAQ
 
         config EXTERNAL_USE_BOSCH_BME688
+            bool
             prompt "Use standard BME680 driver from Zephyr"
         endchoice
     endmenu

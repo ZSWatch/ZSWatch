@@ -4,8 +4,8 @@
 menu "PPT Remote Application"
     config APPLICATIONS_USE_PPT_REMOTE
         bool
-    prompt "Activate the application 'PPT remote'"
-    default n
+    	prompt "Activate the application 'PPT remote'"
+    	default n
 
     module = ZSW_REMOTE_APP
     module-str = ZSW_REMOTE_APP
