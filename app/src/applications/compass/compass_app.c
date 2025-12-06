@@ -21,7 +21,7 @@
 
 #include "compass_ui.h"
 #include "ui/popup/zsw_popup_window.h"
-#include "sensors/zsw_magnetometer.h"
+#include "zsw_magnetometer.h"
 #include "managers/zsw_app_manager.h"
 #include "sensor_fusion/zsw_sensor_fusion.h"
 #include "ui/utils/zsw_ui_utils.h"

@@ -1,0 +1,22 @@
+# ZSWatch board configuration
+
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Sensor Summary Application"
+    config APPLICATIONS_USE_SENSORS_SUMMARY
+        bool
+    prompt "Activate the application 'Sensors Summary'"
+    default y
+
+    menu "Configuration"
+        menu "Sensors Summary"
+            depends on APPLICATIONS_USE_SENSORS_SUMMARY
+
+            config APPLICATIONS_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS
+                int
+            prompt "Refresh interval in milliseconds"
+            default 100
+        endmenu
+    endmenu
+endmenu

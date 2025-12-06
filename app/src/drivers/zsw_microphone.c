@@ -78,8 +78,6 @@ static int power_off_microphone(void);
 
 int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 {
-    int ret;
-
     if (mic_state.initialized) {
         LOG_WRN("Microphone already initialized");
         return 0;

@@ -3,15 +3,15 @@
 # Copyright (c) 2022 Jakob Krantz <mail@jakobkrantz.se>
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig INPUT_MODIFIED_CST816S
-	bool "CST816S Capacitive touch panel driver"
+menuconfig INPUT_CST816S
+	bool "CST816S capacitive touch panel driver"
 	default y
 	depends on DT_HAS_HYNITRON_CST816S_ENABLED
 	select I2C
 	help
-	  Enable modified out of tree driver for hynitron cst816s touch panel.
+	  Enable driver for hynitron cst816s touch panel.
 
-if INPUT_MODIFIED_CST816S
+if INPUT_CST816S
 
 config INPUT_CST816S_PERIOD
 	int "Sample period"
@@ -27,4 +27,9 @@ config INPUT_CST816S_INTERRUPT
 	help
 	  Enable interrupt support (requires GPIO).
 
-endif
+config INPUT_CST816S_EV_DEVICE
+	bool "Device specific event support"
+	help
+	  Enable device specific event support.
+
+endif # INPUT_CST816S

@@ -162,6 +162,12 @@
         status = "okay";
         irq-gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio0 20 GPIO_ACTIVE_LOW>;
+        auto-sleep-time = <2>;
+        auto-wake-time = <3>;
+        scan-th = <50>;
+        scan-win = <100>;
+        scan-freq = <50>;
+        scan-i-dac = <200>;
     };
 };
 

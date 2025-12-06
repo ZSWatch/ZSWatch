@@ -47,7 +47,6 @@ zephyr_compile_definitions(
 add_subdirectory(drivers)
 add_subdirectory(src/history)
 add_subdirectory(src/applications)
-add_subdirectory(src/ui/watchfaces)
 add_subdirectory(src/sensors)
 add_subdirectory(src/sensor_fusion)
 add_subdirectory(src/events)
@@ -55,13 +54,18 @@ add_subdirectory(src/managers)
 add_subdirectory(src/drivers)
 add_subdirectory(src/ble)
 add_subdirectory(src/images)
-
+add_subdirectory(src/ui)
 add_subdirectory(lvgl_editor)
 
 include_directories(src/)
 include_directories(src/ui)
 include_directories(src/applications)
-include_directories(src/ui/watchfaces)
+include_directories(src/managers)
+include_directories(src/events)
+include_directories(src/drivers)
+include_directories(src/sensors)
+include_directories(src/sensor_fusion)
+include_directories(src/ble)
 
 if(CONFIG_AUDIO_DMIC)
 set(kissfft_sources
@@ -93,7 +97,6 @@ endif()
 
 target_sources(app PRIVATE src/zsw_clock.c)
 target_sources(app PRIVATE src/main.c)
-target_sources(app PRIVATE src/zsw_ui_controller.c)
 target_sources(app PRIVATE src/zsw_wdt.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)
 target_sources(app PRIVATE src/zsw_retained_ram_storage.c)
@@ -104,8 +107,6 @@ target_sources(app PRIVATE src/ui/notification/zsw_popup_notifcation.c)
 target_sources(app PRIVATE src/ui/popup/zsw_popup_window.c)
 target_sources(app PRIVATE src/ui/app_picker/app_picker_ui.c)
 target_sources(app PRIVATE src/ui/utils/zsw_ui_utils.c)
-
-target_sources(app PRIVATE src/ui/watchfaces/zsw_watchface_dropdown_ui.c)
 
 target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_flash_loader.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
@@ -167,7 +168,7 @@ zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_RODATA NOCO
 zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION RAM_DATA)
 
 if (CONFIG_USB_DEVICE_STACK)
-    # USB can work in XIP as when plugging in VBUS (nPM1300 notifies us) we turn on XIP always on. 
+    # USB can work in XIP as when plugging in VBUS (nPM1300 notifies us) we turn on XIP always on.
     # Also in update_app we turn on XIP always on before enabling USB.
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION EXTFLASH_TEXT NOCOPY)
     zephyr_code_relocate(LIBRARY drivers__usb__device LOCATION RAM_DATA)

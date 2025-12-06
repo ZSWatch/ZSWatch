@@ -1,6 +1,13 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-module = ZSW_REMOTE_APP
-module-str = ZSW_REMOTE_APP
-source "subsys/logging/Kconfig.template.log_config"
+menu "PPT Remote Application"
+    config APPLICATIONS_USE_PPT_REMOTE
+        bool
+    prompt "Activate the application 'PPT remote'"
+    default n
+
+    module = ZSW_REMOTE_APP
+    module-str = ZSW_REMOTE_APP
+    source "subsys/logging/Kconfig.template.log_config"
+endmenu
