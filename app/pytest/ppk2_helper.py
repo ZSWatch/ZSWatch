@@ -35,6 +35,37 @@ class PPK2Manager:
         self.port = port
         self.voltage_mv = voltage_mv
         self.ppk2: Optional[PPK2_API] = None
+        self._modifiers_loaded = False
+
+    def _load_modifiers(self, retries: int = 2, delay_s: float = 0.2) -> Optional[Dict]:
+        """Load PPK2 calibration modifiers with a couple of retries."""
+        if not self.ppk2:
+            raise RuntimeError("PPK2 not initialized - call setup() first")
+
+        modifiers: Optional[Dict] = None
+        for attempt in range(1, retries + 1):
+            try:
+                modifiers = self.ppk2.get_modifiers()
+                if modifiers:
+                    self._modifiers_loaded = True
+                    log.info("PPK2 modifiers loaded (attempt %d)", attempt)
+                    break
+            except Exception as exc:
+                log.warning("PPK2 get_modifiers failed (attempt %d): %s", attempt, exc)
+                # If the response was garbage, clear buffers before retrying.
+                try:
+                    self.ppk2.ser.reset_input_buffer()
+                    self.ppk2.ser.reset_output_buffer()
+                except Exception:
+                    pass
+                time.sleep(delay_s)
+
+        return modifiers
+
+    def ensure_calibrated(self):
+        """Ensure calibration modifiers are loaded before measuring."""
+        if not self._modifiers_loaded:
+            self._load_modifiers()
 
     def setup(self) -> PPK2_API:
         """Setup and configure PPK2 in source mode"""
@@ -79,6 +110,11 @@ class PPK2Manager:
         """
         if not self.ppk2:
             raise RuntimeError("PPK2 not initialized - call setup() first")
+
+        # Make sure calibration modifiers are present
+        self.ensure_calibrated()
+        if not self._modifiers_loaded:
+            log.warning("PPK2 modifiers are not loaded; readings may be uncalibrated")
 
         log.info(f"Measuring current for {duration_s} seconds...")
 
