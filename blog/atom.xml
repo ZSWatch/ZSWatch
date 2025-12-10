@@ -16,7 +16,7 @@
         <content type="html"><![CDATA[<p>The ZSWatch DevKit is almost ready for ordering, we've completed the heart rate integration into the main firmware, created a new app picker UI, finished the health PCB add-on with a new audio codec, and we started building a dedicated companion app. Let's break it all down!</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="devkit-ready-to-order-from-elecrow">DevKit Ready to Order from Elecrow<a href="https://zswatch.dev/blog/dk-and-hr-integration#devkit-ready-to-order-from-elecrow" class="hash-link" aria-label="Direct link to DevKit Ready to Order from Elecrow" title="Direct link to DevKit Ready to Order from Elecrow">​</a></h3>
 <p>After a while of iterations and testing, the ZSWatch DevKit is ready to be manufactured and shipped! They will be available from <a href="https://www.elecrow.com/" target="_blank" rel="noopener noreferrer">Elecrow</a> for fulfillment, where everything will be shipped together in one package.</p>
-<a href="https://zswatch.dev/assets/images/watchdk-10741c9882007e61dc4b4d791054b6ad.jpg" target="_blank" rel="noopener noreferrer"><img src="https://zswatch.dev/assets/images/watchdk-10741c9882007e61dc4b4d791054b6ad.jpg" alt="ZSWatch DevKit"></a>
+<a href="https://zswatch.dev/assets/images/watchdk-05d91341639eb66290a4dfd7d7e62dde.jpg" target="_blank" rel="noopener noreferrer"><img src="https://zswatch.dev/assets/images/watchdk-05d91341639eb66290a4dfd7d7e62dde.jpg" alt="ZSWatch DevKit"></a>
 <p><strong>Pricing:</strong> The DevKit will cost approximately <strong>$100</strong>, but may change slightly.</p>
 <p><strong>Battery:</strong> The battery is optional for the DevKit. We'll provide links to suitable batteries that you can purchase separately. Most 3.7V LiPo batteries should work.</p>
 <p><strong>UV Print Not Available:</strong>
@@ -26,7 +26,7 @@ The DevKit from Elecrow won't have the nice UV print shown on the PCB images as 
 <hr>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="heart-rate-integration-with-zswatch-firmware">Heart Rate Integration with ZSWatch Firmware<a href="https://zswatch.dev/blog/dk-and-hr-integration#heart-rate-integration-with-zswatch-firmware" class="hash-link" aria-label="Direct link to Heart Rate Integration with ZSWatch Firmware" title="Direct link to Heart Rate Integration with ZSWatch Firmware">​</a></h3>
 <p>We've completed the heart rate sensor integration into the main ZSWatch firmware! The health tracking PCB now connects to the headers and heart rate data can be displayed and plotted live.</p>
-<a href="https://zswatch.dev/assets/images/dk_with_hr_plot-5e703012a38f900108962ba763613477.jpg" target="_blank" rel="noopener noreferrer"><img src="https://zswatch.dev/assets/images/dk_with_hr_plot-5e703012a38f900108962ba763613477.jpg" alt="ZSWatch DevKit showing heart rate plot"></a>
+<a href="https://zswatch.dev/assets/images/dk_and_hr_dk_connection-2b82aefe0313f5f0522d665a3546f676.jpg" target="_blank" rel="noopener noreferrer"><img src="https://zswatch.dev/assets/images/dk_and_hr_dk_connection-2b82aefe0313f5f0522d665a3546f676.jpg" alt="ZSWatch DevKit showing heart rate plot"></a>
 <p>Here's a video walkthrough of the heart rate interface in action:</p>
 <iframe src="https://player.vimeo.com/video/1143873344?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" title="ZSWatch Heart Rate Demo" style="width:100%;aspect-ratio:16/9"></iframe>
 <hr>
