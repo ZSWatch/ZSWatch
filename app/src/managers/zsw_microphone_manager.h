@@ -83,14 +83,7 @@ typedef void (*zsw_mic_event_cb_t)(zsw_mic_event_t event, zsw_mic_event_data_t *
  *
  * @return 0 on success, negative error code on failure
  */
-#ifdef CONFIG_ZSW_MIC
 int zsw_microphone_manager_init(void);
-#else
-static inline int zsw_microphone_manager_init(void)
-{
-    return -ENOTSUP;
-}
-#endif
 
 /**
  * @brief Start recording audio (synchronous)
@@ -103,18 +96,9 @@ static inline int zsw_microphone_manager_init(void)
  *
  * @return 0 on success, negative error code on failure
  */
-#ifdef CONFIG_ZSW_MIC
 int zsw_microphone_manager_start_recording(const zsw_mic_config_t *config,
                                            zsw_mic_event_cb_t callback,
                                            void *user_data);
-#else
-static inline int zsw_microphone_manager_start_recording(const zsw_mic_config_t *config,
-                                                         zsw_mic_event_cb_t callback,
-                                                         void *user_data)
-{
-    return -ENOTSUP;
-}
-#endif
 
 /**
  * @brief Stop recording audio (synchronous)
@@ -123,39 +107,21 @@ static inline int zsw_microphone_manager_start_recording(const zsw_mic_config_t 
  *
  * @return 0 on success, negative error code on failure
  */
-#ifdef CONFIG_ZSW_MIC
 int zsw_microphone_stop_recording(void);
-#else
-static inline int zsw_microphone_stop_recording(void)
-{
-    return -ENOTSUP;
-}
-#endif
 
 /**
  * @brief Check if microphone manager is recording
  *
  * @return true if recording, false if idle or error
  */
-#ifdef CONFIG_ZSW_MIC
 bool zsw_microphone_manager_is_recording(void);
-#else
-static inline bool zsw_microphone_manager_is_recording(void)
-{
-    return false;
-}
-#endif
 
 /**
  * @brief Get default recording configuration
  *
  * @param config Pointer to configuration struct to fill
  */
-#ifdef CONFIG_ZSW_MIC
 void zsw_microphone_manager_get_default_config(zsw_mic_config_t *config);
-#else
-static inline void zsw_microphone_manager_get_default_config(zsw_mic_config_t *config) { }
-#endif
 
 #ifdef __cplusplus
 }

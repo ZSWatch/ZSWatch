@@ -86,6 +86,10 @@ LOG_MODULE_REGISTER(cst816s, CONFIG_INPUT_LOG_LEVEL);
 #define EVENT_CONTACT    0x02U
 #define EVENT_NONE       0x03U
 
+#ifndef CONFIG_INPUT_CST816S_INTERRUPT
+#warning "This mode is untested with power management"
+#endif
+
 /** cst816s configuration (DT). */
 struct cst816s_config {
 	struct i2c_dt_spec i2c;
@@ -95,30 +99,24 @@ struct cst816s_config {
 #endif
 
 #ifdef CONFIG_PM_DEVICE
-	/** cst816s power management profile. */
 	struct __packed {
 		uint8_t auto_wake_time_min; /**< Auto-recalibration period during low-power mode */
 		uint8_t scan_th;            /**< Low-power scan wake-up threshold */
 		uint8_t scan_win;           /**< Measurement range for low-power scan */
 		uint8_t scan_freq;          /**< Frequency for low-power scan */
 		uint8_t scan_i_dac;         /**< Current for low-power scan */
-		uint8_t auto_sleep_time_s; /**< Time of inactivity before entering low-power mode */
+		uint8_t auto_sleep_time_s;  /**< Time of inactivity before entering low-power mode */
 	} lp_profile;
 #endif
 };
 
-/** cst816s data. */
 struct cst816s_data {
-	/** Device pointer. */
 	const struct device *dev;
-	/** Work queue (for deferred read). */
 	struct k_work work;
 
 #ifdef CONFIG_INPUT_CST816S_INTERRUPT
-	/** Interrupt GPIO callback. */
 	struct gpio_callback int_gpio_cb;
 #else
-	/** Timer (polling mode). */
 	struct k_timer timer;
 #endif
 };
