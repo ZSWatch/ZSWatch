@@ -8,26 +8,41 @@ This guide describes how to run the production test on the ZSWatch Development K
 
 ## Required Equipment
 
-- **USB-C cable** – for power
-- **J-Link debugger or Nordic nRF Dev Kit** (e.g., nRF54KL15DK) – for programming the device
-- **ZSWatch Development kit (WatchDK)** – the device under test
-- **Vibration motor** – must be connected to the WatchDK
-- **Battery** – (TBD)
+- **USB-C cable** - for power
+- **SEGGER J-Link debugger or Nordic nRF Dev Kit** (e.g., nRF54KL15DK) - for programming the device
+- **ZSWatch Development kit (WatchDK)** - the device under test
+- **Vibration motor** - must be connected to the WatchDK
+- **Display** - must be connected to the WatchDK
 
 ## Software Requirements
 
 - [Segger J-Link Software](https://www.segger.com/downloads/jlink/)
-- `nrfjprog` (part of [nRF Command Line Tools](https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools/Download?lang=en#infotabs))
+- `nrfjprog` (part of [nRF Command Line Tools](https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools/Download?lang=en#infotabs)) and add to PATH
 
 ## Hardware Setup
 
 1. Connect the J-Link debugger to the WatchDK debug header
-2. Connect the vibration motor to the designated connector
-3. Connect USB-C cable for power
+2. Connect the vibration motor and display to the designated connector
+3. Mount all jumpers if not already mounted according to image below
+4. Connect USB-C cable for power. No battery needed.
+
+<div style={{padding: '0 20px'}}>
+
+![Production test hardware setup](dk_jumper_setup.png)
+
+<div style={{textAlign: 'center', fontSize: '0.9em'}}>
+  Jumper configuration for production testing. Ensure all jumpers are mounted as shown.
+</div>
+
+</div>
 
 <div style={{padding: '0 20px'}}>
 
 ![Production test hardware setup](prod_test_hw.jpg)
+
+<div style={{textAlign: 'center', fontSize: '0.9em'}}>
+  Full setup, ignore the battery, not needed.
+</div>
 
 </div>
 
