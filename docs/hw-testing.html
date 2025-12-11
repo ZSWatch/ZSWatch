@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-405TQEL8SG"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-405TQEL8SG",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.19d009e1.css">
-<script src="/assets/js/runtime~main.d5a6c182.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.968def83.js" defer="defer"></script>
 <script src="/assets/js/main.a8c06dd6.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -18,24 +18,26 @@
 <p>This guide describes how to run the production test on the ZSWatch Development Kit (WatchDK) to verify that all hardware components are working correctly.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="required-equipment">Required Equipment<a href="#required-equipment" class="hash-link" aria-label="Direct link to Required Equipment" title="Direct link to Required Equipment">​</a></h2>
 <ul>
-<li><strong>USB-C cable</strong> – for power</li>
-<li><strong>J-Link debugger or Nordic nRF Dev Kit</strong> (e.g., nRF54KL15DK) – for programming the device</li>
-<li><strong>ZSWatch Development kit (WatchDK)</strong> – the device under test</li>
-<li><strong>Vibration motor</strong> – must be connected to the WatchDK</li>
-<li><strong>Battery</strong> – (TBD)</li>
+<li><strong>USB-C cable</strong> - for power</li>
+<li><strong>SEGGER J-Link debugger or Nordic nRF Dev Kit</strong> (e.g., nRF54KL15DK) - for programming the device</li>
+<li><strong>ZSWatch Development kit (WatchDK)</strong> - the device under test</li>
+<li><strong>Vibration motor</strong> - must be connected to the WatchDK</li>
+<li><strong>Display</strong> - must be connected to the WatchDK</li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="software-requirements">Software Requirements<a href="#software-requirements" class="hash-link" aria-label="Direct link to Software Requirements" title="Direct link to Software Requirements">​</a></h2>
 <ul>
 <li><a href="https://www.segger.com/downloads/jlink/" target="_blank" rel="noopener noreferrer">Segger J-Link Software</a></li>
-<li><code>nrfjprog</code> (part of <a href="https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools/Download?lang=en#infotabs" target="_blank" rel="noopener noreferrer">nRF Command Line Tools</a>)</li>
+<li><code>nrfjprog</code> (part of <a href="https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools/Download?lang=en#infotabs" target="_blank" rel="noopener noreferrer">nRF Command Line Tools</a>) and add to PATH</li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="hardware-setup">Hardware Setup<a href="#hardware-setup" class="hash-link" aria-label="Direct link to Hardware Setup" title="Direct link to Hardware Setup">​</a></h2>
 <ol>
 <li>Connect the J-Link debugger to the WatchDK debug header</li>
-<li>Connect the vibration motor to the designated connector</li>
-<li>Connect USB-C cable for power</li>
+<li>Connect the vibration motor and display to the designated connector</li>
+<li>Mount all jumpers if not already mounted according to image below</li>
+<li>Connect USB-C cable for power. No battery needed.</li>
 </ol>
-<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Production test hardware setup" src="/assets/images/prod_test_hw-3e7dd9987d9bfb9fc32597c8657dbf5a.jpg" width="1000" height="752" class="img_ev3q"></p></div>
+<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Production test hardware setup" src="/assets/images/dk_jumper_setup-4989550b282e5a0671cec1a95f15a75e.png" width="1419" height="1004" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em"><p>Jumper configuration for production testing. Ensure all jumpers are mounted as shown.</p></div></div>
+<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Production test hardware setup" src="/assets/images/prod_test_hw-3e7dd9987d9bfb9fc32597c8657dbf5a.jpg" width="1000" height="752" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em"><p>Full setup, ignore the battery, not needed.</p></div></div>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="flashing-the-test-firmware">Flashing the Test Firmware<a href="#flashing-the-test-firmware" class="hash-link" aria-label="Direct link to Flashing the Test Firmware" title="Direct link to Flashing the Test Firmware">​</a></h2>
 <p>Download the pre-built production test firmware or build it from source in <code>production_test/</code>.</p>
 <p>Firmware can be downloaded from Github and is part of ci build artifacts:
