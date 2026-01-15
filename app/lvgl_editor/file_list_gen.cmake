@@ -2,6 +2,9 @@ list(
   APPEND
   PROJECT_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/components/app_picker/app_picker_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/hr_app/hr_app_debug_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/hr_app/hr_app_graph_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/hr_app/hr_app_overview_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/music_app/music_app_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/lvgl_editor_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/lvgl_editor.c
@@ -9,7 +12,12 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_10_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_12_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_14_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_18_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_24_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_28_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_48_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_play_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_pause_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/icon_skip_forward_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/images/icon_skip_back_data.c)
+  ${CMAKE_CURRENT_LIST_DIR}/images/icon_skip_back_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/heart_data.c)

@@ -38,10 +38,10 @@ static inline lv_color_t zsw_color_gray(void)
 
 static inline lv_color_t zsw_color_dark_gray(void)
 {
-    return lv_color_make(0x30, 0x34, 0x3f);
+    return lv_color_make(0x0, 0x0, 0x0);
 }
 
 static inline lv_color_t zsw_color_bg(void)
 {
-    return zsw_color_dark_gray();
+    return lv_color_make(0x0, 0x0, 0x0);
 }

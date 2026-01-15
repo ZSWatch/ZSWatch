@@ -1,0 +1,187 @@
+<component>
+	<previews>
+		<preview width="240" height="240" style_bg_color="0x000000" />
+	</previews>
+
+	<api />
+
+	<styles>
+		<!-- Root container -->
+		<style name="style_root" width="100%" height="100%" bg_opa="0" border_width="0" pad_all="0" />
+
+		<!-- Top bar with HR and Confidence -->
+		<style
+			name="style_top_bar"
+			width="100%"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="space_between"
+			flex_cross_place="center"
+			pad_left="45"
+			pad_right="45"
+			bg_opa="0"
+			border_width="0"
+		/>
+
+		<!-- HR display (left side) -->
+		<style
+			name="style_hr_display"
+			layout="flex"
+			flex_flow="row"
+			flex_cross_place="end"
+			pad_column="4"
+			bg_opa="0"
+			border_width="0"
+		/>
+		<style name="style_hr_value" text_color="0xff4444" text_font="montserrat_24" />
+		<style name="style_hr_unit" text_color="0x666666" text_font="montserrat_10" />
+
+		<!-- Confidence display (right side) -->
+		<style
+			name="style_conf_display"
+			layout="flex"
+			flex_flow="column"
+			flex_cross_place="end"
+			pad_row="0"
+			bg_opa="0"
+			border_width="0"
+		/>
+		<style pad_bottom="0" name="style_conf_value" text_color="0x3388ff" text_font="montserrat_18" />
+		<style pad_top="0" name="style_conf_label" text_color="0x666666" text_font="montserrat_10" />
+
+		<!-- Chart container -->
+		<style
+			name="style_chart_container"
+			width="220"
+			height="130"
+			bg_color="0x0a0a0a"
+			bg_opa="255"
+			radius="8"
+			border_width="0"
+			pad_all="0"
+		/>
+
+		<!-- Chart itself -->
+		<style
+			name="style_chart"
+			width="100%"
+			height="100%"
+			bg_opa="0"
+			border_width="0"
+			line_color="0x333333"
+			pad_all="5"
+		/>
+
+		<!-- Legend at bottom -->
+		<style
+			name="style_legend"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="center"
+			pad_column="20"
+			bg_opa="0"
+			border_width="0"
+		/>
+
+		<style
+			name="style_legend_item"
+			layout="flex"
+			flex_flow="row"
+			flex_cross_place="center"
+			pad_column="6"
+			bg_opa="0"
+			border_width="0"
+		/>
+
+		<style name="style_legend_line_hr" width="18" height="4" bg_color="0xff4444" radius="2" border_width="0" />
+		<style name="style_legend_line_conf" width="18" height="4" bg_color="0x3388ff" radius="2" border_width="0" />
+		<style name="style_legend_text" text_color="0xaaaaaa" text_font="montserrat_10" />
+	</styles>
+
+	<view>
+		<remove_style_all />
+		<style name="style_root" />
+
+		<!-- Top bar -->
+		<lv_obj align="top_mid" y="0" width="100%" height="content">
+			<style name="style_top_bar" />
+
+			<!-- HR display (left) -->
+			<lv_obj width="content" height="content">
+				<style name="style_hr_display" />
+				<lv_label text="❤️" style_text_font="montserrat_14" />
+				<lv_label bind_text="hr_bpm_text">
+					<style name="style_hr_value" />
+				</lv_label>
+				<lv_label text="bpm">
+					<style name="style_hr_unit" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- Confidence display (right) -->
+			<lv_obj width="content" height="content">
+				<style name="style_conf_display" />
+				<lv_label bind_text="hr_confidence_text">
+					<style name="style_conf_value" />
+				</lv_label>
+				<lv_label text="conf">
+					<style name="style_conf_label" />
+				</lv_label>
+			</lv_obj>
+		</lv_obj>
+
+		<!-- Chart container -->
+		<lv_obj align="center" y="12" width="220" height="120">
+			<style name="style_chart_container" />
+
+			<!-- Chart with 2 series: HR (primary Y) and Confidence (secondary Y) -->
+			<lv_chart
+				align="center"
+				type="line"
+				point_count="60"
+				update_mode="shift"
+				hor_div_line_count="3"
+				ver_div_line_count="0"
+			>
+				<style name="style_chart" />
+
+				<!-- HR series on primary Y axis (40-180 bpm range) -->
+				<lv_chart-series color="0xff4444" axis="primary_y" />
+
+				<!-- Confidence series on secondary Y axis (0-100% range) -->
+				<lv_chart-series color="0x3388ff" axis="secondary_y" />
+
+				<!-- Configure axis ranges -->
+				<lv_chart-axis axis="primary_y" min_value="40" max_value="180" />
+				<lv_chart-axis axis="secondary_y" min_value="0" max_value="100" />
+			</lv_chart>
+		</lv_obj>
+
+		<!-- Legend at bottom -->
+		<lv_obj align="bottom_mid" y="-22" width="content" height="content">
+			<style name="style_legend" />
+
+			<!-- HR legend item -->
+			<lv_obj width="content" height="content">
+				<style name="style_legend_item" />
+				<lv_obj>
+					<style name="style_legend_line_hr" />
+				</lv_obj>
+				<lv_label text="HR">
+					<style name="style_legend_text" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- Confidence legend item -->
+			<lv_obj width="content" height="content">
+				<style name="style_legend_item" />
+				<lv_obj>
+					<style name="style_legend_line_conf" />
+				</lv_obj>
+				<lv_label text="Conf">
+					<style name="style_legend_text" />
+				</lv_label>
+			</lv_obj>
+		</lv_obj>
+	</view>
+</component>

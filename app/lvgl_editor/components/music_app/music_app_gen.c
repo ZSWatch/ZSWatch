@@ -101,6 +101,7 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     }
 
     lv_obj_t * lv_obj_0 = lv_obj_create(parent);
+    lv_obj_set_name_static(lv_obj_0, "music_app_#");
 
     lv_obj_remove_style_all(lv_obj_0);
     lv_obj_add_style(lv_obj_0, &style_root, 0);
@@ -187,8 +188,6 @@ lv_obj_t * music_app_create(lv_obj_t * parent)
     lv_obj_add_event_cb(lv_button_2, music_on_next_clicked, LV_EVENT_CLICKED, NULL);
 
     LV_TRACE_OBJ_CREATE("finished");
-
-    lv_obj_set_name(lv_obj_0, "music_app_#");
 
     return lv_obj_0;
 }

@@ -470,7 +470,7 @@ int zsw_ui_controller_init(void)
     root_screen = lv_scr_act();
     lv_obj_add_event_cb(root_screen, on_root_screen_gesture, LV_EVENT_GESTURE, NULL);
 
-    lv_obj_set_style_bg_color(root_screen, zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(root_screen, zsw_color_bg(), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     // Need to enable the gpio-keys as they are suspended by default
     pm_device_action_run(DEVICE_DT_GET(DT_NODELABEL(buttons)), PM_DEVICE_ACTION_RESUME);

@@ -13,6 +13,9 @@
         zephyr,console = &uart0;
     };
 };
+&i2c1 {
+    status = "disabled";
+};
 
 &bmi270 {
     status = "disabled";
