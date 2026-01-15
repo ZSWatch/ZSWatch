@@ -36,7 +36,7 @@
 #include "sensors/zsw_health_data.h"
 #endif
 
-LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_INF);
 
 static void zbus_send_status_data_callback(const struct zbus_channel *chan);
 static void zbus_notification_remove_callback(const struct zbus_channel *chan);

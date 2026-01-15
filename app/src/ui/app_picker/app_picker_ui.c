@@ -24,7 +24,7 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
-LOG_MODULE_REGISTER(app_picker_ui, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(app_picker_ui, LOG_LEVEL_INF);
 
 /* Number of items displayed per page (6 outer + 1 center) */
 #define ITEMS_PER_PAGE 7

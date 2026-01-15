@@ -1,0 +1,210 @@
+<component>
+	<previews>
+		<preview width="240" height="240" style_bg_color="0x000000" />
+	</previews>
+
+	<api />
+
+	<styles>
+		<!-- Root container with flex layout -->
+		<style
+			name="style_root"
+			width="100%"
+			height="100%"
+			layout="flex"
+			flex_flow="column"
+			flex_main_place="start"
+			flex_cross_place="center"
+			flex_track_place="center"
+			pad_top="5"
+			pad_row="2"
+			pad_bottom="25"
+			bg_color="0x000000"
+			bg_opa="255"
+			border_width="0"
+		/>
+
+		<!-- Header -->
+		<style
+			name="style_header"
+			width="100%"
+			text_align="center"
+			pad_bottom="5"
+			border_side="bottom"
+			border_width="1"
+			border_color="0x222222"
+			bg_opa="0"
+		/>
+		<style name="style_header_text" text_color="0x666666" text_font="montserrat_12" />
+
+		<!-- HR section at top -->
+		<style
+			name="style_hr_section"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="center"
+			flex_cross_place="center"
+			pad_column="4"
+			pad_top="0"
+			pad_bottom="0"
+			bg_opa="0"
+			border_width="0"
+		/>
+		<style name="style_hr_value" text_color="0xff4444" text_font="montserrat_28" />
+		<style name="style_hr_unit" text_color="0x666666" text_font="montserrat_12" />
+		<style name="style_hr_conf" text_color="0x00ff88" text_font="montserrat_12" text_align="center" />
+
+		<!-- Data rows container -->
+		<style
+			name="style_data_section"
+			width="100%"
+			layout="flex"
+			flex_flow="column"
+			pad_left="15"
+			pad_right="15"
+			bg_opa="0"
+			border_width="0"
+		/>
+
+		<!-- Single data row -->
+		<style
+			name="style_data_row"
+			width="100%"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="space_between"
+			flex_cross_place="center"
+			pad_top="3"
+			pad_bottom="3"
+			border_side="bottom"
+			border_width="1"
+			border_color="0x1a1a1a"
+			bg_opa="0"
+		/>
+
+		<style
+			name="style_data_row_last"
+			width="100%"
+			layout="flex"
+			flex_flow="row"
+			flex_main_place="space_between"
+			flex_cross_place="center"
+			pad_top="3"
+			pad_bottom="3"
+			border_width="0"
+			bg_opa="0"
+		/>
+
+		<style name="style_data_label" text_color="0x666666" text_font="montserrat_12" />
+		<style name="style_data_value" text_color="0xffffff" text_font="montserrat_12" />
+		<style name="style_data_value_good" text_color="0x00ff88" text_font="montserrat_12" />
+		<style name="style_data_value_info" text_color="0x3388ff" text_font="montserrat_12" />
+	</styles>
+
+	<view>
+		<remove_style_all />
+		<style name="style_root" />
+
+		<!-- Header -->
+		<lv_obj width="200" height="content">
+			<style name="style_header" />
+			<lv_label text="DEBUG VIEW" align="center">
+				<style name="style_header_text" />
+			</lv_label>
+		</lv_obj>
+
+		<!-- HR display section -->
+		<lv_obj width="content" height="content">
+			<style name="style_hr_section" />
+			<lv_image src="heart" />
+			<lv_label bind_text="hr_bpm_text">
+				<style name="style_hr_value" />
+			</lv_label>
+			<lv_label text="bpm">
+				<style name="style_hr_unit" />
+			</lv_label>
+		</lv_obj>
+
+		<!-- HR Confidence -->
+		<lv_obj width="content" height="content">
+			<style name="style_hr_section" />
+			<lv_label text="Conf">
+				<style name="style_hr_conf" />
+			</lv_label>
+			<lv_label bind_text="hr_confidence_text">
+				<style name="style_hr_conf" />
+			</lv_label>
+		</lv_obj>
+
+		<!-- Data rows section -->
+		<lv_obj width="200" height="content">
+			<style name="style_data_section" />
+
+			<!-- RR Interval -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row" />
+				<lv_label text="RR Interval">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_rr_text">
+					<style name="style_data_value" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- RR Confidence -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row" />
+				<lv_label text="RR Conf">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_confidence_text">
+					<style name="style_data_value_info" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- SpO2 -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row" />
+				<lv_label text="SpO2">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_spo2_text">
+					<style name="style_data_value_good" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- SpO2 Confidence -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row" />
+				<lv_label text="SpO2 Conf">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_confidence_text">
+					<style name="style_data_value_info" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- Skin Contact -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row" />
+				<lv_label text="Skin Contact">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_skin_text">
+					<style name="style_data_value_good" />
+				</lv_label>
+			</lv_obj>
+
+			<!-- Activity -->
+			<lv_obj width="100%" height="content">
+				<style name="style_data_row_last" />
+				<lv_label text="Activity">
+					<style name="style_data_label" />
+				</lv_label>
+				<lv_label bind_text="hr_activity_text">
+					<style name="style_data_value" />
+				</lv_label>
+			</lv_obj>
+		</lv_obj>
+	</view>
+</component>

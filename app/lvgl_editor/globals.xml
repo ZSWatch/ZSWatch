@@ -29,6 +29,22 @@
 		<int name="app_picker_page_count" value="1" help="Total number of pages" />
 		<int name="app_picker_folder_open" value="0" help="0:closed 1:open" />
 		<string name="app_picker_folder_title" value="Folder" help="Currently open folder title" />
+
+		<!-- Heart Rate app subjects -->
+		<int name="hr_bpm" value="72" help="Heart rate in BPM" />
+		<int name="hr_confidence" value="78" help="HR confidence 0-100" />
+		<int name="hr_spo2" value="98" help="SpO2 percentage" />
+		<int name="hr_spo2_confidence" value="85" help="SpO2 confidence 0-100" />
+		<int name="hr_rr_interval" value="850" help="RR interval in ms" />
+		<int name="hr_rr_confidence" value="72" help="RR confidence 0-100" />
+		<int name="hr_skin_contact" value="3" help="0:undetected 1:off-skin 2:on-subject 3:on-skin" />
+		<int name="hr_activity" value="2" help="0:Rest 1:Other 2:Walk 3:Run 4:Bike" />
+		<string name="hr_bpm_text" value="72" help="HR value as string for label binding" />
+		<string name="hr_confidence_text" value="78%" help="HR confidence as string" />
+		<string name="hr_spo2_text" value="98%" help="SpO2 as string" />
+		<string name="hr_rr_text" value="850" help="RR interval as string" />
+		<string name="hr_activity_text" value="Walk" help="Activity name as string" />
+		<string name="hr_skin_text" value="On Skin" help="Skin contact status as string" />
 	</subjects>
 
 	<images>
@@ -38,6 +54,7 @@
 		<data name="icon_pause" src_path="images/icon_pause.png" color_format="rgb565a8" />
 		<data name="icon_skip_forward" src_path="images/icon_skip_forward.png" color_format="rgb565a8" />
 		<data name="icon_skip_back" src_path="images/icon_skip_back.png" color_format="rgb565a8" />
+		<data name="heart" src_path="images/heart.png" color_format="rgb565a8" />
 	</images>
 
 	<fonts>
@@ -73,6 +90,38 @@
 			bpp="2"
 			src_path="fonts/Montserrat-Medium.ttf"
 			size="14"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_18"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="14"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_24"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="24"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_28"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="28"
+			range="0x00-0xff"
+		/>
+		<bin
+			name="montserrat_48"
+			as_file="false"
+			bpp="2"
+			src_path="fonts/Montserrat-Medium.ttf"
+			size="48"
 			range="0x00-0xff"
 		/>
 	</fonts>

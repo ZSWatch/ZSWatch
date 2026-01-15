@@ -22,7 +22,7 @@
 #include <math.h>
 #include "kiss_fftr.h"
 
-LOG_MODULE_REGISTER(spectrum_analyzer, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(spectrum_analyzer, LOG_LEVEL_INF);
 
 static kiss_fftr_cfg fft_cfg;
 static bool initialized = false;

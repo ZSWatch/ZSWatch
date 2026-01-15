@@ -21,7 +21,7 @@
 #include <string.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(mic_app_ui, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(mic_app_ui, LOG_LEVEL_INF);
 
 #define DECAY_UPDATE_INTERVAL     80
 #define PEAK_DECAY_PIXELS_PER_TICK     2.0f

@@ -22,8 +22,8 @@ jobs:
     runs-on: [self-hosted, x64]
     environment: ${{ inputs.is-external-pr && 'external-pr-approval' || null }}
     concurrency:
-      group: hardware-test-runner-${{ github.event.pull_request.number || github.run_id }}
-      cancel-in-progress: true
+      group: hardware-test-runner
+      cancel-in-progress: false
     env:
       BLEAK_ADAPTER: hci1
 

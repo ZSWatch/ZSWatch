@@ -37,6 +37,7 @@
         mcuboot-button0 = &button1;
         spi-flash0 = &mx25u51245g;
         rtc = &rv_8263_c8;
+        hr-hub = &biometric_hub;
     };
 };
 
@@ -276,6 +277,10 @@ dmic_dev: &pdm0 {
     pinctrl-1 = <&i2c1_sleep>;
     pinctrl-names = "default", "sleep";
 
+    // Flash buffer size is needed for the I2C bootloader to flash the firmware
+    zephyr,flash-buf-max-size = <8250>;
+    clock-frequency = <I2C_BITRATE_STANDARD>;
+
     lis2mdl: lis2mdl@1e {
         compatible = "st,lis2mdl";
         reg = <0x1e>;
@@ -314,6 +319,20 @@ dmic_dev: &pdm0 {
         reg = <0x52>;
         status = "okay";
     };
+
+    biometric_hub: max32664c@55 {
+		compatible = "maxim,max32664c";
+		reg = <0x55>;
+		status = "okay";
+		reset-gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;
+        mfio-gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
+		hr-config = [00 01];
+		spo2-config = [11 21];
+		led-current = [3F 3F 3F];
+		min-sampling-rate = <400>;
+		max-sampling-rate = <400>;
+		use-max86141;
+	};
 
     npm1300_pmic: pmic@6b {
         compatible = "nordic,npm1300";

@@ -34,7 +34,7 @@ void calculator_smf_deinit(void)
 #include <stdlib.h>
 #include <stdio.h>
 
-LOG_MODULE_REGISTER(smf_thread, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(smf_thread, LOG_LEVEL_WRN);
 
 K_MSGQ_DEFINE(event_msgq, sizeof(struct calculator_event), 8, 1);
 

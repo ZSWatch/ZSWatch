@@ -65,6 +65,14 @@ extern lv_font_t * montserrat_12;
 
 extern lv_font_t * montserrat_14;
 
+extern lv_font_t * montserrat_18;
+
+extern lv_font_t * montserrat_24;
+
+extern lv_font_t * montserrat_28;
+
+extern lv_font_t * montserrat_48;
+
 /*----------------
  * Images
  *----------------*/
@@ -73,6 +81,7 @@ extern const void * icon_play;
 extern const void * icon_pause;
 extern const void * icon_skip_forward;
 extern const void * icon_skip_back;
+extern const void * heart;
 
 /*----------------
  * Subjects
@@ -87,6 +96,20 @@ extern lv_subject_t app_picker_page_index;
 extern lv_subject_t app_picker_page_count;
 extern lv_subject_t app_picker_folder_open;
 extern lv_subject_t app_picker_folder_title;
+extern lv_subject_t hr_bpm;
+extern lv_subject_t hr_confidence;
+extern lv_subject_t hr_spo2;
+extern lv_subject_t hr_spo2_confidence;
+extern lv_subject_t hr_rr_interval;
+extern lv_subject_t hr_rr_confidence;
+extern lv_subject_t hr_skin_contact;
+extern lv_subject_t hr_activity;
+extern lv_subject_t hr_bpm_text;
+extern lv_subject_t hr_confidence_text;
+extern lv_subject_t hr_spo2_text;
+extern lv_subject_t hr_rr_text;
+extern lv_subject_t hr_activity_text;
+extern lv_subject_t hr_skin_text;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -120,6 +143,9 @@ void lvgl_editor_init_gen(const char * asset_path);
 
 /*Include all the widget and components of this library*/
 #include "components/app_picker/app_picker_gen.h"
+#include "components/hr_app/hr_app_debug_gen.h"
+#include "components/hr_app/hr_app_graph_gen.h"
+#include "components/hr_app/hr_app_overview_gen.h"
 #include "components/music_app/music_app_gen.h"
 
 #ifdef __cplusplus

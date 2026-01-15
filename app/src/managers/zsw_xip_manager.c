@@ -3,7 +3,7 @@
 #include <zephyr/drivers/flash/nrf_qspi_nor.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(zsw_xip_manager, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_xip_manager, LOG_LEVEL_INF);
 
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
 

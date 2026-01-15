@@ -22,7 +22,7 @@
 #include <zephyr/fs/littlefs.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(zsw_filesystem, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zsw_filesystem, LOG_LEVEL_INF);
 
 #define PARTITION_NODE DT_NODELABEL(lvgl_lfs)
 FS_FSTAB_DECLARE_ENTRY(PARTITION_NODE);

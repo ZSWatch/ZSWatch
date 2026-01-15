@@ -55,6 +55,14 @@ lv_font_t * montserrat_12;
 extern lv_font_t montserrat_12_data;
 lv_font_t * montserrat_14;
 extern lv_font_t montserrat_14_data;
+lv_font_t * montserrat_18;
+extern lv_font_t montserrat_18_data;
+lv_font_t * montserrat_24;
+extern lv_font_t montserrat_24_data;
+lv_font_t * montserrat_28;
+extern lv_font_t montserrat_28_data;
+lv_font_t * montserrat_48;
+extern lv_font_t montserrat_48_data;
 
 /*----------------
  * Images
@@ -68,6 +76,8 @@ const void * icon_skip_forward;
 extern const void * icon_skip_forward_data;
 const void * icon_skip_back;
 extern const void * icon_skip_back_data;
+const void * heart;
+extern const void * heart_data;
 
 /*----------------
  * Subjects
@@ -82,6 +92,20 @@ lv_subject_t app_picker_page_index;
 lv_subject_t app_picker_page_count;
 lv_subject_t app_picker_folder_open;
 lv_subject_t app_picker_folder_title;
+lv_subject_t hr_bpm;
+lv_subject_t hr_confidence;
+lv_subject_t hr_spo2;
+lv_subject_t hr_spo2_confidence;
+lv_subject_t hr_rr_interval;
+lv_subject_t hr_rr_confidence;
+lv_subject_t hr_skin_contact;
+lv_subject_t hr_activity;
+lv_subject_t hr_bpm_text;
+lv_subject_t hr_confidence_text;
+lv_subject_t hr_spo2_text;
+lv_subject_t hr_rr_text;
+lv_subject_t hr_activity_text;
+lv_subject_t hr_skin_text;
 
 /**********************
  *      MACROS
@@ -111,6 +135,14 @@ void lvgl_editor_init_gen(const char * asset_path)
     montserrat_12 = &montserrat_12_data;
     /* get font 'montserrat_14' from a C array */
     montserrat_14 = &montserrat_14_data;
+    /* get font 'montserrat_18' from a C array */
+    montserrat_18 = &montserrat_18_data;
+    /* get font 'montserrat_24' from a C array */
+    montserrat_24 = &montserrat_24_data;
+    /* get font 'montserrat_28' from a C array */
+    montserrat_28 = &montserrat_28_data;
+    /* get font 'montserrat_48' from a C array */
+    montserrat_48 = &montserrat_48_data;
 
 
     /*----------------
@@ -120,6 +152,7 @@ void lvgl_editor_init_gen(const char * asset_path)
     icon_pause = &icon_pause_data;
     icon_skip_forward = &icon_skip_forward_data;
     icon_skip_back = &icon_skip_back_data;
+    heart = &heart_data;
 
     /*----------------
      * Subjects
@@ -161,6 +194,62 @@ void lvgl_editor_init_gen(const char * asset_path)
                            UI_SUBJECT_STRING_LENGTH,
                            "Folder"
                           );
+    lv_subject_init_int(&hr_bpm, 72);
+    lv_subject_init_int(&hr_confidence, 78);
+    lv_subject_init_int(&hr_spo2, 98);
+    lv_subject_init_int(&hr_spo2_confidence, 85);
+    lv_subject_init_int(&hr_rr_interval, 850);
+    lv_subject_init_int(&hr_rr_confidence, 72);
+    lv_subject_init_int(&hr_skin_contact, 3);
+    lv_subject_init_int(&hr_activity, 2);
+    static char hr_bpm_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_bpm_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_bpm_text,
+                           hr_bpm_text_buf,
+                           hr_bpm_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "72"
+                          );
+    static char hr_confidence_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_confidence_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_confidence_text,
+                           hr_confidence_text_buf,
+                           hr_confidence_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "78%"
+                          );
+    static char hr_spo2_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_spo2_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_spo2_text,
+                           hr_spo2_text_buf,
+                           hr_spo2_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "98%"
+                          );
+    static char hr_rr_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_rr_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_rr_text,
+                           hr_rr_text_buf,
+                           hr_rr_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "850"
+                          );
+    static char hr_activity_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_activity_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_activity_text,
+                           hr_activity_text_buf,
+                           hr_activity_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "Walk"
+                          );
+    static char hr_skin_text_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hr_skin_text_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hr_skin_text,
+                           hr_skin_text_buf,
+                           hr_skin_text_prev_buf,
+                           UI_SUBJECT_STRING_LENGTH,
+                           "On Skin"
+                          );
 
     /*----------------
      * Translations
@@ -174,6 +263,10 @@ void lvgl_editor_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "montserrat_10", montserrat_10);
     lv_xml_register_font(NULL, "montserrat_12", montserrat_12);
     lv_xml_register_font(NULL, "montserrat_14", montserrat_14);
+    lv_xml_register_font(NULL, "montserrat_18", montserrat_18);
+    lv_xml_register_font(NULL, "montserrat_24", montserrat_24);
+    lv_xml_register_font(NULL, "montserrat_28", montserrat_28);
+    lv_xml_register_font(NULL, "montserrat_48", montserrat_48);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "music_track_name", &music_track_name);
@@ -185,6 +278,20 @@ void lvgl_editor_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "app_picker_page_count", &app_picker_page_count);
     lv_xml_register_subject(NULL, "app_picker_folder_open", &app_picker_folder_open);
     lv_xml_register_subject(NULL, "app_picker_folder_title", &app_picker_folder_title);
+    lv_xml_register_subject(NULL, "hr_bpm", &hr_bpm);
+    lv_xml_register_subject(NULL, "hr_confidence", &hr_confidence);
+    lv_xml_register_subject(NULL, "hr_spo2", &hr_spo2);
+    lv_xml_register_subject(NULL, "hr_spo2_confidence", &hr_spo2_confidence);
+    lv_xml_register_subject(NULL, "hr_rr_interval", &hr_rr_interval);
+    lv_xml_register_subject(NULL, "hr_rr_confidence", &hr_rr_confidence);
+    lv_xml_register_subject(NULL, "hr_skin_contact", &hr_skin_contact);
+    lv_xml_register_subject(NULL, "hr_activity", &hr_activity);
+    lv_xml_register_subject(NULL, "hr_bpm_text", &hr_bpm_text);
+    lv_xml_register_subject(NULL, "hr_confidence_text", &hr_confidence_text);
+    lv_xml_register_subject(NULL, "hr_spo2_text", &hr_spo2_text);
+    lv_xml_register_subject(NULL, "hr_rr_text", &hr_rr_text);
+    lv_xml_register_subject(NULL, "hr_activity_text", &hr_activity_text);
+    lv_xml_register_subject(NULL, "hr_skin_text", &hr_skin_text);
 
     /* Register callbacks */
     lv_xml_register_event_cb(NULL, "app_picker_on_app_clicked", app_picker_on_app_clicked);
@@ -204,6 +311,7 @@ void lvgl_editor_init_gen(const char * asset_path)
     lv_xml_register_image(NULL, "icon_pause", icon_pause);
     lv_xml_register_image(NULL, "icon_skip_forward", icon_skip_forward);
     lv_xml_register_image(NULL, "icon_skip_back", icon_skip_back);
+    lv_xml_register_image(NULL, "heart", heart);
 #endif
 
 #if LV_USE_XML == 0

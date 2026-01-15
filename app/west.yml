@@ -7,6 +7,10 @@ manifest:
       url-base: https://github.com/nrfconnect
     - name: bosch
       url-base: https://github.com/boschsensortec
+    - name: zswatch
+      url-base: https://github.com/ZSWatch
+    - name: upstream
+      url-base: https://github.com/zephyrproject-rtos
 
   group-filter: [-bsec2]
 
@@ -59,6 +63,11 @@ manifest:
       path: app/src/ext_drivers/BSEC2
       groups:
         - bsec2
+
+    - name: Zephyr-MAX32664C
+      remote: zswatch
+      revision: jakkra_zephyr_module
+      path: modules/lib/max32664c
       
   self:
     west-commands: scripts/west-commands.yml
