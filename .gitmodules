@@ -30,4 +30,7 @@
 	url = https://github.com/mborgerding/kissfft.git
 [submodule "hardware/Watch-HW"]
 	path = hardware/Watch-HW
-	url = git@github.com:ZSWatch/Watch-HW.git
+	url = https://github.com/ZSWatch/Watch-HW.git
+[submodule "Watch-DevKit-HW"]
+	path = Watch-DevKit-HW
+	url = https://github.com/ZSWatch/Watch-DevKit-HW.git
