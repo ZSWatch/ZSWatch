@@ -28,3 +28,6 @@
 [submodule "app/src/ext_drivers/kissfft"]
 	path = app/src/ext_drivers/kissfft
 	url = https://github.com/mborgerding/kissfft.git
+[submodule "hardware/Watch-HW"]
+	path = hardware/Watch-HW
+	url = git@github.com:ZSWatch/Watch-HW.git
