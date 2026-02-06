@@ -1,0 +1,5 @@
+# Ensure patch files always use LF line endings (required for git apply)
+*.patch text eol=lf
+
+# Ensure shell scripts use LF line endings
+*.sh text eol=lf
