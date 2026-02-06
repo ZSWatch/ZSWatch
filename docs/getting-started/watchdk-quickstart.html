@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-405TQEL8SG"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-405TQEL8SG",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.19d009e1.css">
-<script src="/assets/js/runtime~main.49d69037.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.687bdc49.js" defer="defer"></script>
 <script src="/assets/js/main.8d9d7a9b.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -23,7 +23,7 @@
 <ol>
 <li>Connect the USB-C cable to the WatchDK.</li>
 <li>The watch should boot into the ZSWatch UI.</li>
-<li>Try press top right button to apen the application picker.</li>
+<li>Try press top right button to open the application picker.</li>
 </ol>
 <div class="theme-admonition theme-admonition-info admonition_xJq3 alert alert--info"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>No icons yet?</div><div class="admonitionContent_BuS1"><p>The watch ships with firmware but <strong>without image resources</strong>. The UI will work, but icons and graphics will be missing until you upload them in <a href="#step-3--upload-image-resources">Step 3</a>.</p></div></div>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="step-2---update-firmware">Step 2 - Update Firmware<a href="#step-2---update-firmware" class="hash-link" aria-label="Direct link to Step 2 - Update Firmware" title="Direct link to Step 2 - Update Firmware">​</a></h2>
@@ -48,18 +48,25 @@
 <li>The firmware build for WatchDK is named <strong><code>watchdk@1_nrf5340_cpuapp_debug</code></strong>.</li>
 <li>Follow the on-screen instructions on the update page to flash via USB or BLE.</li>
 </ol></div><div role="tabpanel" class="tabItem_Ymn6" hidden=""><p>Use this if you have a debugger connected. You can either flash a pre-built firmware or compile from source.</p><h4 class="anchor anchorWithStickyNavbar_LWe7" id="option-a-flash-a-pre-built-firmware">Option A: Flash a Pre-built Firmware<a href="#option-a-flash-a-pre-built-firmware" class="hash-link" aria-label="Direct link to Option A: Flash a Pre-built Firmware" title="Direct link to Option A: Flash a Pre-built Firmware">​</a></h4><ol>
-<li>Download the latest firmware hex file (build name <strong><code>watchdk@1_nrf5340_cpuapp_debug</code></strong>) from:<!-- -->
+<li>
+<p>Download the latest firmware hex file (build name <strong><code>watchdk@1_nrf5340_cpuapp_debug</code></strong>) from:</p>
 <ul>
 <li><a href="https://github.com/ZSWatch/ZSWatch/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a></li>
 <li><a href="https://github.com/ZSWatch/ZSWatch/actions" target="_blank" rel="noopener noreferrer">GitHub Actions</a> (latest CI builds)</li>
 </ul>
 </li>
-<li>Connect the debugger (recommended: <strong>nRF54L15 DK</strong>, ~<strong>$35</strong> - search for &quot;Nordic nRF54L15 DK&quot;) to the WatchDK debug header using a <strong>10-pin 1.27mm SWD cable</strong>.</li>
-</ol><ul>
+<li>
+<p>Connect the debugger to the WatchDK debug header using a <strong>10-pin 1.27mm SWD cable</strong>.</p>
+<ul>
 <li>Example SWD cables: <a href="https://www.adafruit.com/product/1675" target="_blank" rel="noopener noreferrer">Adafruit</a>, <a href="https://www.amazon.com/Treedix-Ribbon-Connector-1-27mm-Connecting/dp/B09JK5HD3X" target="_blank" rel="noopener noreferrer">Amazon</a></li>
-</ul><div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Debugger connected to WatchDK" src="/assets/images/prod_test_hw-3e7dd9987d9bfb9fc32597c8657dbf5a.jpg" width="1000" height="752" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em;margin-bottom:1em"><p>Debugger and all parts connected to WatchDK. Ignore the battery - it is not needed.</p></div></div><ol start="3">
-<li>Flash using <code>nrfjprog</code>:</li>
-</ol><div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog --recover --coprocessor CP_NETWORK -f nrf53</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog --recover -f nrf53</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog --program &lt;firmware&gt;.hex --chiperase --verify --reset -f nrf53</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div><h4 class="anchor anchorWithStickyNavbar_LWe7" id="option-b-compile-from-source-and-flash-from-vs-code">Option B: Compile from Source and Flash from VS Code<a href="#option-b-compile-from-source-and-flash-from-vs-code" class="hash-link" aria-label="Direct link to Option B: Compile from Source and Flash from VS Code" title="Direct link to Option B: Compile from Source and Flash from VS Code">​</a></h4><p>If you want to build the firmware yourself:</p><ol>
+</ul>
+<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Debugger connected to WatchDK" src="/assets/images/prod_test_hw-3e7dd9987d9bfb9fc32597c8657dbf5a.jpg" width="1000" height="752" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em;margin-bottom:1em"><p>Debugger and all parts connected to WatchDK. Ignore the battery - it is not needed.</p></div></div>
+</li>
+<li>
+<p>Flash the firmware:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#F8F8F2;--prism-background-color:#282A36"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#F8F8F2;background-color:#282A36"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog -f nrf53 --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini --coprocessor CP_APPLICATION</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog -f nrf53 --program zswatch_nrf5340_CPUNET.hex --chiperase --verify --reset --coprocessor CP_NETWORK</span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#F8F8F2"><span class="token plain">nrfjprog --reset</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+</li>
+</ol><h4 class="anchor anchorWithStickyNavbar_LWe7" id="option-b-compile-from-source-and-flash-from-vs-code">Option B: Compile from Source and Flash from VS Code<a href="#option-b-compile-from-source-and-flash-from-vs-code" class="hash-link" aria-label="Direct link to Option B: Compile from Source and Flash from VS Code" title="Direct link to Option B: Compile from Source and Flash from VS Code">​</a></h4><p>If you want to build the firmware yourself:</p><ol>
 <li>Set up the development toolchain - see <a href="/docs/development/toolchain">Toolchain Setup</a>.</li>
 <li>Compile the firmware - see <a href="/docs/development/compiling">Compiling the Software</a>.</li>
 <li>Flash directly from VS Code using the nRF Connect extension&#x27;s <strong>Flash</strong> action.</li>
