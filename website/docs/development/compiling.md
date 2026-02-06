@@ -44,6 +44,12 @@ Make sure the [Toolchain is set up](./toolchain.md) as described.
 
 4. Click <strong>Generate and Build</strong>.
 
+## Flashing
+
+To **flash** use nRF Connect plugin **ACTIONS** -> **Flash**.
+
+When hovering the Flash button, an icon to the right will appear "Erase and Flash to Board", us it as it will be much faster.
+
 ---
 
 :::success

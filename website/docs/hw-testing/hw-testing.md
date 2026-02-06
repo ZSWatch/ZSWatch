@@ -120,7 +120,7 @@ After a successful production test, flash the full ZSWatch firmware:
 
 **Step 1:** Flash the app core (with QSPI configuration):
 ```bash
-nrfjprog --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini qspi_mx25u51245.ini --coprocessor CP_APPLICATION -f nrf53
+nrfjprog --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini --coprocessor CP_APPLICATION -f nrf53
 ```
 
 **Step 2:** Flash the net core:

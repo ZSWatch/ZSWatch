@@ -14,23 +14,22 @@ import TabItem from '@theme/TabItem';
 
   Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> 
   and run the following tasks (if using older legacy zswatch v4 use the other named Legacy):
-  - `Erase external flash`
   - `Upload Raw FS`
 
   </TabItem>
-  <TabItem value="ble" label="Over BLE">
-  :::note Note
-    Note: This requires ZSWatch already flashed with functional firmware supporting BLE.
+  <TabItem value="ble" label="Over BLE / USB (Web)">
+  :::note Prerequisites
+  - ZSWatch must be flashed with functional firmware.
+  - On the watch, go to **Apps → Update** and enable **USB** and/or **BLE** before starting.
   :::
   Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions.
 
   </TabItem>
   <TabItem value="terminal" label="From terminal">
 
-  Below for later ZSWatch no need to specify anything else. But for older version sucn as legacy v4 take a look in [tasks.json](https://github.com/ZSWatch/ZSWatch/blob/main/.vscode/tasks.json) for the exact lines needed for specific ZSWatch version.
+  Below for later ZSWatch no need to specify anything else. But for older version such as legacy v4 take a look in [tasks.json](https://github.com/ZSWatch/ZSWatch/blob/main/.vscode/tasks.json) for the exact lines needed for specific ZSWatch version.
   ```sh
-  west upload_fs --erase
-  west upload_fs --type raw
+  west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
   ```
 
   </TabItem>
