@@ -416,9 +416,6 @@ Please fill in the form below.</p>
 <p>IMU <a href="https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf" target="_blank" rel="noopener noreferrer">Bosch BMI270</a>: The integrated IMU allows for advanced features such as gesture-based navigation and smartwatch wake-up by arm movement.</p>
 </li>
 <li>
-<p>Bosch <a href="https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme688/" target="_blank" rel="noopener noreferrer">BME688</a> Environmental sensor: The BME688 sensor provides AI-enhanced environmental data, enabling the watch to monitor air quality and other environmental parameters.</p>
-</li>
-<li>
 <p>Bosch <a href="https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp581/" target="_blank" rel="noopener noreferrer">BMP581</a> High-performance pressure sensor: The BMP581 sensor offers accurate pressure measurements with a precision of approximately 20cm.</p>
 </li>
 <li>
