@@ -42,7 +42,6 @@ menu "Applications"
 
     rsource "watchface/Kconfig"
     rsource "settings/Kconfig"
-    rsource "iaq/Kconfig"
     rsource "notification/Kconfig"
     rsource "trivia/Kconfig"
     rsource "ppt_remote/Kconfig"

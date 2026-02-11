@@ -28,12 +28,8 @@ static on_reference_set_cb_t ref_set_callback;
 static lv_obj_t *set_ref_btn;
 static lv_obj_t *ref_btn_text;
 static lv_obj_t *pressure_label;
-static lv_obj_t *humidity_label;
-static lv_obj_t *temp_label;
 static lv_obj_t *rel_height_label;
-static lv_obj_t *iaq_label;
 static lv_obj_t *light_label;
-static lv_obj_t *co2_label;
 
 static void event_set_reference_button(lv_event_t *e)
 {
@@ -63,57 +59,25 @@ static void create_ui(lv_obj_t *parent)
     lv_obj_set_width(pressure_label, LV_SIZE_CONTENT);
     lv_obj_set_height(pressure_label, LV_SIZE_CONTENT);
     lv_obj_set_x(pressure_label, 45);
-    lv_obj_set_y(pressure_label, -85);
+    lv_obj_set_y(pressure_label, -65);
     lv_obj_set_align(pressure_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(pressure_label, "Pressure: ");
-
-    humidity_label = lv_label_create(parent);
-    lv_obj_set_width(humidity_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(humidity_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(humidity_label, 30);
-    lv_obj_set_y(humidity_label, -65);
-    lv_obj_set_align(humidity_label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(humidity_label, "Humidity:");
-
-    temp_label = lv_label_create(parent);
-    lv_obj_set_width(temp_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(temp_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(temp_label, 15);
-    lv_obj_set_y(temp_label, -45);
-    lv_obj_set_align(temp_label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(temp_label, "Temp:");
 
     rel_height_label = lv_label_create(parent);
     lv_obj_set_width(rel_height_label, LV_SIZE_CONTENT);
     lv_obj_set_height(rel_height_label, LV_SIZE_CONTENT);
     lv_obj_set_x(rel_height_label, 15);
-    lv_obj_set_y(rel_height_label, -25);
+    lv_obj_set_y(rel_height_label, -35);
     lv_obj_set_align(rel_height_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(rel_height_label, "Rel. height:");
-
-    iaq_label = lv_label_create(parent);
-    lv_obj_set_width(iaq_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(iaq_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(iaq_label, 5);
-    lv_obj_set_y(iaq_label, -5);
-    lv_obj_set_align(iaq_label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(iaq_label, "IAQ:");
 
     light_label = lv_label_create(parent);
     lv_obj_set_width(light_label, LV_SIZE_CONTENT);
     lv_obj_set_height(light_label, LV_SIZE_CONTENT);
     lv_obj_set_x(light_label, 5);
-    lv_obj_set_y(light_label, 15);
+    lv_obj_set_y(light_label, -5);
     lv_obj_set_align(light_label, LV_ALIGN_LEFT_MID);
     lv_label_set_text(light_label, "Light:");
-
-    co2_label = lv_label_create(parent);
-    lv_obj_set_width(co2_label, LV_SIZE_CONTENT);
-    lv_obj_set_height(co2_label, LV_SIZE_CONTENT);
-    lv_obj_set_x(co2_label, 15);
-    lv_obj_set_y(co2_label, 35);
-    lv_obj_set_align(co2_label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(co2_label, "CO2:");
 
     lv_obj_add_event_cb(set_ref_btn, event_set_reference_button, LV_EVENT_CLICKED, NULL);
 }
@@ -146,16 +110,6 @@ void sensors_summary_ui_set_pressure(float pressure)
     lv_label_set_text_fmt(pressure_label, "Pressure:\t%.0f Pa", pressure);
 }
 
-void sensors_summary_ui_set_humidity(float humidity)
-{
-    lv_label_set_text_fmt(humidity_label, "Humidity:\t%.2f %%", humidity);
-}
-
-void sensors_summary_ui_set_temp(float temp)
-{
-    lv_label_set_text_fmt(temp_label, "Temp:\t%.2f C", temp);
-}
-
 void sensors_summary_ui_set_rel_height(float rel_height)
 {
     lv_label_set_text_fmt(rel_height_label, "Rel. height:\t%.2f m", rel_height);
@@ -164,14 +118,4 @@ void sensors_summary_ui_set_rel_height(float rel_height)
 void sensors_summary_ui_set_light(float light)
 {
     lv_label_set_text_fmt(light_label, "Light:\t%.2f", light);
-}
-
-void sensors_summary_ui_set_iaq(float iaq)
-{
-    lv_label_set_text_fmt(iaq_label, "IAQ:\t%.2f", iaq);
-}
-
-void sensors_summary_ui_set_co2(float co2)
-{
-    lv_label_set_text_fmt(co2_label, "CO2:\t%.2f ppm", co2);
 }

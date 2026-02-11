@@ -24,7 +24,6 @@
 #include "sensors_summary_ui.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "sensors/zsw_light_sensor.h"
-#include "sensors/zsw_environment_sensor.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
@@ -78,26 +77,15 @@ static double get_relative_height_m(double relative_pressure, double new_pressur
 
 static void timer_callback(lv_timer_t *timer)
 {
-    float temperature = 0.0;
     float pressure = 0.0;
-    float humidity = 0.0;
     float light = -1.0;
-    float iaq = -1.0;
-    float co2 = -1.0;
 
-    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
-    zsw_environment_sensor_get_iaq(&iaq);
-    zsw_environment_sensor_get_co2(&co2);
     zsw_pressure_sensor_get_pressure(&pressure);
     zsw_light_sensor_get_light(&light);
 
     sensors_summary_ui_set_pressure(pressure);
-    sensors_summary_ui_set_temp(temperature);
-    sensors_summary_ui_set_humidity(humidity);
-    sensors_summary_ui_set_iaq(iaq);
-    sensors_summary_ui_set_co2(co2);
     sensors_summary_ui_set_light(light);
-    sensors_summary_ui_set_rel_height(get_relative_height_m(relative_pressure, pressure, temperature));
+    sensors_summary_ui_set_rel_height(get_relative_height_m(relative_pressure, pressure, 0.0));
 }
 
 static void on_close_sensors_summary(void)

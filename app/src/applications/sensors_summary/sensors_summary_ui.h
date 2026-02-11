@@ -32,14 +32,6 @@ void sensors_summary_ui_remove(void);
 
 void sensors_summary_ui_set_pressure(float pressure);
 
-void sensors_summary_ui_set_humidity(float humidity);
-
-void sensors_summary_ui_set_temp(float temp);
-
 void sensors_summary_ui_set_rel_height(float rel_height);
 
 void sensors_summary_ui_set_light(float light);
-
-void sensors_summary_ui_set_iaq(float iaq);
-
-void sensors_summary_ui_set_co2(float co2);

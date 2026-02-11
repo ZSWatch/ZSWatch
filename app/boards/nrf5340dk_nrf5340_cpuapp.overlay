@@ -150,11 +150,6 @@
         invert-y;
     };
 
-    bme688: bme688@76 {
-        compatible = "bosch,bme680";
-        reg = <0x76>;
-    };
-
     lis2mdl: lis2mdl@1e {
         compatible = "st,lis2mdl";
         reg = <0x1e>;

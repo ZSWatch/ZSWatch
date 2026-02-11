@@ -32,7 +32,7 @@
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_light_sensor.h"
 #include "sensors/zsw_magnetometer.h"
-#include "sensors/zsw_environment_sensor.h"
+#include "sensors/zsw_pressure_sensor.h"
 
 LOG_MODULE_REGISTER(zsw_gatt_sensor_server, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -192,18 +192,16 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
     int16_t y;
     int16_t z;
     int write_len;
-    float temperature = 0.0;
     float pressure = 0.0;
-    float humidity = 0.0;
     float *f_ptr;
 
     f_ptr = (float *)buf;
     write_len = 0;
 
-    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
+    zsw_pressure_sensor_get_pressure(&pressure);
 
     if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&temp_service.attrs[2])) {
-        f_ptr[0] = temperature;
+        f_ptr[0] = 0.0;
         write_len = sizeof(float);
     } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&accel_service.attrs[2])) {
         zsw_imu_fetch_accel(&x, &y, &z);
@@ -212,7 +210,7 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
         f_ptr[2] = z;
         write_len = 3 * sizeof(float);
     } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&humidity_service.attrs[2])) {
-        f_ptr[0] = humidity;
+        f_ptr[0] = 0.0;
         write_len = sizeof(float);
     } else if (bt_gatt_attr_get_handle(attr) == bt_gatt_attr_get_handle(&pressure_service.attrs[2])) {
         f_ptr[0] = pressure;
@@ -328,8 +326,6 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
     int write_len;
     float *f_ptr;
     float pressure = 0.0;
-    float humidity = 0.0;
-    float temperature = 0.0;
     zsw_quat_t quat;
     uint8_t buf[CONFIG_BT_L2CAP_TX_MTU];
 
@@ -341,15 +337,15 @@ static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
 
     f_ptr = (float *)buf;
 
-    zsw_environment_sensor_get(&temperature, &humidity, &pressure);
-    f_ptr[0] = temperature;
+    f_ptr[0] = 0.0;
     write_len = sizeof(float);
     bt_gatt_notify(NULL, &temp_service.attrs[2], &buf, write_len);
 
-    f_ptr[0] = humidity;
+    f_ptr[0] = 0.0;
     write_len = sizeof(float);
     bt_gatt_notify(NULL, &humidity_service.attrs[2], &buf, write_len);
 
+    zsw_pressure_sensor_get_pressure(&pressure);
     f_ptr[0] = pressure;
     write_len = sizeof(float);
     bt_gatt_notify(NULL, &pressure_service.attrs[2], &buf, write_len);

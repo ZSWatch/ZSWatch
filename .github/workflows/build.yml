@@ -63,7 +63,6 @@ jobs:
         working-directory: ZSWatch
         run: |
           west init -l app
-          west config manifest.group-filter +bsec2
           west update -o=--depth=1 -n
           mkdir -p fw_images
 

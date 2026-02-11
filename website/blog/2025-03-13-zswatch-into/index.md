@@ -67,8 +67,6 @@ ZSWatch is equipped with a range of powerful hardware components that make it a 
 
     - IMU [Bosch BMI270](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf): The integrated IMU allows for advanced features such as gesture-based navigation and smartwatch wake-up by arm movement.
 
-    - Bosch [BME688](https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors/bme688/) Environmental sensor: The BME688 sensor provides AI-enhanced environmental data, enabling the watch to monitor air quality and other environmental parameters.
-
     - Bosch [BMP581](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp581/) High-performance pressure sensor: The BMP581 sensor offers accurate pressure measurements with a precision of approximately 20cm.
 
     - ST [LIS2MDLTR](https://www.st.com/resource/en/datasheet/lis2mdl.pdf) Magnetometer: The magnetometer enables the watch to detect magnetic fields, opening up possibilities for compass and navigation applications.

@@ -66,7 +66,7 @@ typedef struct watchface_ui_api_t {
     void (*set_weather)(int8_t temperature, int weather_code);
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
-    void (*set_watch_env_sensors)(int temperature, int humidity, int pressure, float iaq, float co2);
+    void (*set_watch_env_sensors)(int pressure);
     void (*ui_invalidate_cached)(void);
     const void *(*get_preview_img)(void);
     const char *name;

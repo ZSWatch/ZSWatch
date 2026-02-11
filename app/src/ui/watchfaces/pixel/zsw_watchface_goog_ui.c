@@ -442,7 +442,7 @@ static void watchface_goog_set_num_notifcations(int32_t number)
 
 }
 
-static void watchface_goog_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
+static void watchface_goog_set_watch_env_sensors(int pressure)
 {
     if (!face_goog) {
         return;

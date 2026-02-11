@@ -198,7 +198,7 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
     lv_image_set_rotation(ui_second_img, last_second);
 }
 
-static void watchface_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
+static void watchface_set_watch_env_sensors(int pressure)
 {
 }
 

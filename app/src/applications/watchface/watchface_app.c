@@ -37,7 +37,6 @@
 #include "events/activity_event.h"
 #include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
-#include "sensors/zsw_environment_sensor.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "managers/zsw_notification_manager.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
@@ -308,21 +307,11 @@ static void general_work(struct k_work *item)
         }
         case UPDATE_SLOW_VALUES: {
             float pressure = 0.0;
-            float temperature = 0.0;
-            float humidity = 0.0;
-            float iaq = 0.0;
-            float co2 = 0.0;
             zsw_timeval_t time;
             zsw_clock_get_time(&time);
 
-            zsw_environment_sensor_get(&temperature, &humidity, &pressure);
-            zsw_environment_sensor_get_co2(&co2);
-            zsw_environment_sensor_get_iaq(&iaq);
-
             zsw_pressure_sensor_get_pressure(&pressure);
-            watchfaces[watchface_settings.watchface_index]->set_watch_env_sensors((int)temperature, (int)humidity, (int)pressure,
-                                                                                  iaq,
-                                                                                  co2);
+            watchfaces[watchface_settings.watchface_index]->set_watch_env_sensors((int)pressure);
 
             __ASSERT(0 <= k_work_schedule(&date_work.work, SLOW_UPDATE_INTERVAL), "FAIL date_work");
         }

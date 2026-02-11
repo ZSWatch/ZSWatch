@@ -92,26 +92,6 @@ menu "ZSWatch"
         endmenu
     endmenu
 
-    menu "External"
-        choice EXTERNAL_BOSCH_SENSOR
-            bool
-            prompt "Select the function for the Bosch environment sensor."
-            help
-                You have to disable the BME680 option in the Zephyr configuration to enable the Bosch BSEC option.
-            default EXTERNAL_USE_BOSCH_BME688
-
-        config EXTERNAL_USE_BOSCH_BSEC
-            bool
-            prompt "Use Bosch BSEC library"
-            depends on !BME680
-            select BME68X_EXT_IAQ
-
-        config EXTERNAL_USE_BOSCH_BME688
-            bool
-            prompt "Use standard BME680 driver from Zephyr"
-        endchoice
-    endmenu
-
     menu "SPI RTT Flash Loader"
         config SPI_FLASH_LOADER
             bool

@@ -414,7 +414,7 @@ static void watchface_73_2_dial_set_num_notifcations(int32_t number)
 
 }
 
-static void watchface_73_2_dial_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
+static void watchface_73_2_dial_set_watch_env_sensors(int pressure)
 {
     if (!face_73_2_dial) {
         return;

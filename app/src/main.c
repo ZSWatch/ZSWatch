@@ -56,7 +56,6 @@
 #include "sensors/zsw_magnetometer.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "sensors/zsw_light_sensor.h"
-#include "sensors/zsw_environment_sensor.h"
 
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
@@ -105,7 +104,6 @@ static void run_init_work(struct k_work *item)
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
     zsw_light_sensor_init();
-    zsw_environment_sensor_init();
 
     zsw_power_manager_init();
 

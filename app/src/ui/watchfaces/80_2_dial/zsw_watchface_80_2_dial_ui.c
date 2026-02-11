@@ -488,7 +488,7 @@ static void watchface_80_2_dial_set_num_notifcations(int32_t number)
     zsw_ui_notification_area_num_notifications(zsw_ui_notifications_area, number);
 }
 
-static void watchface_80_2_dial_set_watch_env_sensors(int temperature, int humidity, int pressure, float iaq, float co2)
+static void watchface_80_2_dial_set_watch_env_sensors(int pressure)
 {
     if (!face_80_2_dial) {
         return;

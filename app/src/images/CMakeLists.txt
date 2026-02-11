@@ -22,7 +22,6 @@ set(RELOCATE_FILES
     assets_watchfaces/face_75_2_dial_3_59132_0.c
     assets_watchfaces/face_75_2_dial_19_89191_0.c
     assets_watchfaces/face_75_2_dial_35_138999_0.c
-    ui_img_iaq_co2_text.c
     move.c
     hour_minimal.c
     minute_minimal.c
