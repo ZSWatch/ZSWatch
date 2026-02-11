@@ -37,10 +37,16 @@ const config = {
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
+  markdown: {
+    mermaid: true,
+  },
+
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
+
+  themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
     [
@@ -75,6 +81,19 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      mermaid: {
+        theme: { light: 'neutral', dark: 'dark' },
+        options: {
+          themeVariables: {
+            fontSize: '20px',
+          },
+          flowchart: {
+            useMaxWidth: false,
+            nodeSpacing: 40,
+            rankSpacing: 50,
+          },
+        },
+      },
       // Replace with your project's social card
       image: 'img/zswatch_social_card.png',
       defaultMode: 'light',

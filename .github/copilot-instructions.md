@@ -554,7 +554,7 @@ Sensors are abstracted in `app/src/sensors/`:
 - `zsw_imu.h` — IMU (BMI270): accelerometer, gyroscope, gestures, step counting
 - `zsw_magnetometer.h` — Magnetometer (LIS2MDL)
 - `zsw_pressure_sensor.h` — Pressure/altitude (BMP581)
-- `zsw_environment_sensor.h` — Temperature, humidity, gas (BME688)
+- `zsw_environment_sensor.h` — Temperature, humidity
 - `zsw_light_sensor.h` — Ambient light (APDS-9306)
 
 Sensor data is published via zbus events (e.g., `accel_data_chan`, `magnetometer_data_chan`).

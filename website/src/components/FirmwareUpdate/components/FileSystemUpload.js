@@ -63,7 +63,12 @@ const FileSystemUpload = ({
               {isDragOver ? 'Drop your file system file here' : 'Upload File System'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Drag and drop your lvgl_resources_raw.bin file here to upload full filesystem
+              Drag and drop your <code>lvgl_resources_raw.bin</code> file here to upload icons and graphics.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              This file is included in the firmware download package from{' '}
+              <a href="https://github.com/ZSWatch/ZSWatch/releases" target="_blank" rel="noopener noreferrer" className="underline text-zswatch-primary">GitHub Releases</a>{' '}
+              or <a href="https://github.com/ZSWatch/ZSWatch/actions" target="_blank" rel="noopener noreferrer" className="underline text-zswatch-primary">GitHub Actions</a>.
             </p>
           </div>
         </div>

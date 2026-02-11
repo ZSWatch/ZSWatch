@@ -16,6 +16,7 @@
   "dependencies": {
     "@docusaurus/core": "3.7.0",
     "@docusaurus/preset-classic": "3.7.0",
+    "@docusaurus/theme-mermaid": "^3.7.0",
     "@mdx-js/react": "^3.0.0",
     "axios": "^1.8.1",
     "clsx": "^2.0.0",
@@ -24,7 +25,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-image-gallery": "^1.4.0",
-    "react-player": "^2.16.0"
+    "react-player": "^2.16.0",
+    "svg-pan-zoom": "^3.6.2"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.7.0",

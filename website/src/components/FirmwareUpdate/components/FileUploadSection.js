@@ -68,8 +68,8 @@ const FileUploadSection = ({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               {isDragOver ? 'Drop your files here' : 'Upload Firmware Files'}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Drag and drop your .bin or .zip files here
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              Drag and drop the <code>dfu_application.zip</code> from your firmware package here
             </p>
           </div>
         </div>

@@ -7,7 +7,7 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
   const [fileUploadSpeed, setFileUploadSpeed] = useState(null);
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [fileInfos, setFileInfos] = useState([]);
-  const [fileStatus, setFileStatus] = useState("Select image files (.bin or .zip)");
+  const [fileStatus, setFileStatus] = useState("Select image files (.bin or dfu_application.zip)");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -256,7 +256,7 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
 
   const clearFiles = () => {
     setFileInfos([]);
-    setFileStatus("Select image files (.bin or .zip)");
+    setFileStatus("Select image files (.bin or dfu_application.zip)");
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

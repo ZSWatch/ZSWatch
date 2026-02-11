@@ -2,9 +2,17 @@
 sidebar_position: 3
 ---
 
-# Running on Linux Without Real Hardware
+# Native Simulator (Linux)
+
+ZSWatch can be compiled as a native Linux executable that opens a simulated 240×240 display window. This is useful for developing and testing application logic, UI layouts, and event handling **without any hardware**.
+
+:::info
+This page covers the native Linux simulator only. For building and flashing real hardware, see [Compiling the Software](./compiling.md).
+:::
 
 ## 1. Install Dependencies
+
+These packages are needed for the SDL2-based display simulator and Zephyr's Bluetooth HCI passthrough:
 
 ```bash
 sudo apt-get install build-essential
@@ -12,6 +20,8 @@ sudo apt-get install libsdl2-dev
 sudo usermod -aG bluetooth $USER
 sudo setcap cap_net_admin=eip $(which hciconfig)
 ```
+
+For more information [check the Zephyr page about native_sim](https://docs.zephyrproject.org/latest/boards/native/native_sim/doc/index.html)
 
 :::warning
 You need to log out and in again (or restart) for the above to take effect.  
@@ -59,5 +69,6 @@ You can navigate using:
 
 - **Mouse**: Click to interact
 - **Enter**: Select
+- **Backspace**: Back
 - **Arrow Up**: Navigate Next/Up
 - **Arrow Down**: Navigate Previous/Down

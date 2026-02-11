@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # WatchDK Quick Start
 
+![ZSWatch Development Kit (WatchDK)](../../blog/2025-12-05-dk-and-hr/watchdk.jpg)
+
 This guide walks you through setting up your **ZSWatch Development Kit (WatchDK)** for the first time - from powering on to having a fully working smartwatch UI with icons and images.
 
 import Tabs from '@theme/Tabs';
@@ -26,7 +28,7 @@ import TabItem from '@theme/TabItem';
 3. Try press top right button to open the application picker.
 
 :::info No icons yet?
-The watch ships with firmware but **without image resources**. The UI will work, but icons and graphics will be missing until you upload them in [Step 3](#step-3--upload-image-resources).
+The watch ships with firmware but **without image resources**. The UI will work, but icons and graphics will be missing until you upload them in [Step 3](#step-3---upload-image-resources).
 :::
 
 ## Step 2 - Update Firmware
@@ -45,69 +47,43 @@ Before any USB or BLE update, you must enable it on the watch:
 <Tabs>
   <TabItem value="web" label="Web Update (no debugger needed)" default>
 
-  This is the easiest method - no extra hardware required.
+  This method requires no extra hardware.
 
   1. Make sure you enabled USB or BLE updates on the watch (see above).
   2. Go to [zswatch.dev/update](https://zswatch.dev/update).
-  3. Download the latest firmware from one of:
-     - The Prebuilt Firmware section on [zswatch.dev/update](https://zswatch.dev/update) itself
-     - [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases)
-     - [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions) (latest builds from main branch)
-  4. The firmware build for WatchDK is named **`watchdk@1_nrf5340_cpuapp_debug`**.
-  5. Follow the on-screen instructions on the update page to flash via USB or BLE.
+  3. Follow the on-screen instructions to flash via USB or BLE.
+
+  For details on firmware files and other update methods, see [Firmware Updates](../firmware/firmware_updates.md).
 
   </TabItem>
   <TabItem value="debugger" label="Debugger (SWD)">
 
-  Use this if you have a debugger connected. You can either flash a pre-built firmware or compile from source.
+  Use this method if you have a debugger connected and want to flash via SWD.
 
-#### Option A: Flash a Pre-built Firmware
-
-1. Download the latest firmware hex file (build name **`watchdk@1_nrf5340_cpuapp_debug`**) from:
-    - [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases)
-    - [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions) (latest CI builds)
-2. Connect the debugger to the WatchDK debug header using a **10-pin 1.27mm SWD cable**.
-    - Example SWD cables: [Adafruit](https://www.adafruit.com/product/1675), [Amazon](https://www.amazon.com/Treedix-Ribbon-Connector-1-27mm-Connecting/dp/B09JK5HD3X)
-
-    <div style={{padding: '0 20px'}}>
-
-    ![Debugger connected to WatchDK](../hw-testing/prod_test_hw.jpg)
-
-    <div style={{textAlign: 'center', fontSize: '0.9em', marginBottom: '1em'}}>
-      Debugger and all parts connected to WatchDK. Ignore the battery - it is not needed.
-    </div>
-
-    </div>
-
-3. Flash the firmware:
-    ```bash
-    nrfjprog -f nrf53 --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini --coprocessor CP_APPLICATION
-
-    nrfjprog -f nrf53 --program zswatch_nrf5340_CPUNET.hex --chiperase --verify --reset --coprocessor CP_NETWORK
-
-    nrfjprog --reset
-    ```
-
-  #### Option B: Compile from Source and Flash from VS Code
-
-  If you want to build the firmware yourself:
-
-  1. Set up the development toolchain - see [Toolchain Setup](../development/toolchain.md).
-  2. Compile the firmware - see [Compiling the Software](../development/compiling.md).
-  3. Flash directly from VS Code using the nRF Connect extension's **Flash** action.
+  See [Firmware Updates](../firmware/firmware_updates.md) for the full SWD flashing steps (pre-built firmware and building from source).
 
   </TabItem>
 </Tabs>
 
 ## Step 3 - Upload Image Resources
 
-Many icons and images in the ZSWatch UI are stored in external flash and are **not** included in the firmware. You need to upload them separately.
+Many icons and images in the ZSWatch UI are stored in external flash and are **not** included in the firmware binary itself. They need to be uploaded separately. The image resources file (`lvgl_resources_raw.bin`) is included in the firmware download package, so you already have it.
 
-:::tip
-If using the web updater, make sure **USB** or **BLE** is enabled on the watch under **Apps → Update** first.
+The **easiest method** is the web updater, no debugger required:
+
+1. On the watch, go to **Apps → Update** and enable **USB** and/or **BLE**.
+2. Go to [zswatch.dev/update](https://zswatch.dev/update).
+3. Follow the on-screen instructions to upload image resources via USB or BLE.
+
+See the full [Image Resources](../development/image_resources.md) guide for more details.
+
+
+:::tip Alternatively with debugger
+If you have a debugger connected, you can upload images from VS Code by pressing `Ctrl+Shift+P` and running the task **Upload Raw FS**, or from the terminal:
+```bash
+west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
+```
 :::
-
-Follow the instructions in the **[Getting Image Resources into the Watch](../development/image_resources.md)** guide. It covers all methods: VS Code tasks, terminal commands, and the web updater.
 
 ## Step 4 - Done!
 
@@ -139,4 +115,4 @@ If you add a battery, move the RTC (Battery) jumper to **VBAT** so the RTC stays
 
 - **[Setting up the Development Toolchain](../development/toolchain.md)** - install VS Code, nRF Connect SDK, and build tools
 - **[Compiling the Software](../development/compiling.md)** - build custom firmware from source
-- **[Firmware Recovery](../development/firmware_recovery.md)** - if the watch becomes unresponsive
+- **[Firmware Recovery](../firmware/firmware_recovery.md)** - if the watch becomes unresponsive

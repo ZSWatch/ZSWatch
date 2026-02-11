@@ -117,6 +117,18 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Mermaid diagrams: keep text readable and allow scrolling when wide */
+.mermaid,
+.theme-mermaid {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mermaid svg,
+.theme-mermaid svg {
+  max-width: none;
+}
+
 /* Ensure our custom buttons maintain their styling */
 .btn, [class*="bg-"], [class*="border-"] {
   outline: none !important;

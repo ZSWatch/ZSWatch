@@ -46,19 +46,30 @@ west init -l app
 west update
 ```
 
+Next, install the required Python packages. Both lines are needed. The first installs Zephyr's dependencies, the second installs ZSWatch-specific scripts (image upload tools, etc.).
 
-```bash
-pip install -r zephyr/scripts/requirements.txt
-```
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-**Linux/macOS:**
-```bash
-pip install -r app/scripts/requirements.txt
-```
+<Tabs>
+  <TabItem value="linux" label="Linux / macOS" default>
 
-**Windows only:** Use `--no-build-isolation` for the ZSWatch requirements:
-```bash
-pip install --no-build-isolation -r app/scripts/requirements.txt
-```
+  ```bash
+  pip install -r zephyr/scripts/requirements.txt
+  pip install -r app/scripts/requirements.txt
+  ```
 
-> **Note:** The `--no-build-isolation` flag on Windows works around a pip build environment issue when compiling `pynrfjprog` from source.
+  </TabItem>
+  <TabItem value="windows" label="Windows">
+
+  ```bash
+  pip install -r zephyr/scripts/requirements.txt
+  pip install --no-build-isolation -r app/scripts/requirements.txt
+  ```
+
+  :::note
+  The `--no-build-isolation` flag on Windows works around a pip build environment issue when compiling `pynrfjprog` from source.
+  :::
+
+  </TabItem>
+</Tabs>

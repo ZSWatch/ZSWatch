@@ -463,7 +463,12 @@ const FirmwareUpdateApp = () => {
                   {isFetchingFirmwares ? 'Fetching...' : 'Fetch Latest'}
                 </button>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">Download the latest firmware from GitHub Actions.</p>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">Download the latest firmware from GitHub Actions.</p>
+              <div className="p-3 mb-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                <p className="m-0"><strong>After downloading:</strong> The downloaded file is a zip archive. Extract it to find:</p>
+                <p className="m-0">&#8226; <code>dfu_application.zip</code> &mdash; upload this in <strong>Manual Upload</strong> to flash firmware</p>
+                <p className="m-0">&#8226; <code>lvgl_resources_raw.bin</code> &mdash; upload this in <strong>File System</strong> to update icons/graphics</p>
+              </div>
               
               <PrebuiltFirmwares 
                 firmwares={firmwares}
@@ -602,9 +607,21 @@ const FirmwareUpdateApp = () => {
             <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-gray-100">
               ZSWatch Firmware Update
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Update your ZSWatch firmware wirelessly over Bluetooth Low Energy
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
+              Update your ZSWatch firmware and image resources over USB or Bluetooth
             </p>
+            <details className="inline-block text-left max-w-2xl mx-auto">
+              <summary className="cursor-pointer text-sm font-medium text-zswatch-primary hover:underline">
+                How does this work?
+              </summary>
+              <div className="mt-3 p-4 rounded-lg bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                <p className="m-0"><strong>Step 1:</strong> On your ZSWatch, go to <strong>Apps &rarr; Update</strong> and enable <strong>USB</strong> or <strong>BLE</strong>.</p>
+                <p className="m-0"><strong>Step 2:</strong> Connect to the watch using the <strong>Connection</strong> panel on the left. USB is much faster than BLE.</p>
+                <p className="m-0"><strong>Step 3 &ndash; Firmware:</strong> Use <strong>Prebuilt Firmware</strong> to fetch the latest build matching your hardware. To flash, extract the <code>.zip</code> file you downloaded, then upload the <code>dfu_application.zip</code>.</p>
+                <p className="m-0"><strong>Step 4 &ndash; Image Resources:</strong> Upload <code>lvgl_resources_raw.bin</code> in the <strong>File System</strong> section so icons and graphics display correctly. This file is included in the firmware download package.</p>
+                <p className="m-0 text-xs text-gray-500 dark:text-gray-400">Firmware downloads are available from <a href="https://github.com/ZSWatch/ZSWatch/releases" target="_blank" rel="noopener noreferrer" className="underline">GitHub Releases</a> and <a href="https://github.com/ZSWatch/ZSWatch/actions" target="_blank" rel="noopener noreferrer" className="underline">GitHub Actions</a>.</p>
+              </div>
+            </details>
           </div>
 
           {/* Main Content */}
