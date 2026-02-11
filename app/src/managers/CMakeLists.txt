@@ -8,6 +8,7 @@ target_sources(app PRIVATE zsw_power_manager.c)
 target_sources(app PRIVATE zsw_usb_manager.c)
 
 target_sources_ifdef(CONFIG_ZSW_MIC app PRIVATE zsw_microphone_manager.c)
+target_sources_ifdef(CONFIG_DT_HAS_DLG_DA7212_ENABLED app PRIVATE zsw_speaker_manager.c)
 target_sources_ifdef(CONFIG_APPLICATIONS_USE_VOICE_MEMO app PRIVATE zsw_recording_manager.c)
 target_sources_ifdef(CONFIG_APPLICATIONS_USE_VOICE_MEMO app PRIVATE zsw_recording_manager_store.c)
 target_sources_ifdef(CONFIG_ZSW_XIP app PRIVATE zsw_xip_manager.c)

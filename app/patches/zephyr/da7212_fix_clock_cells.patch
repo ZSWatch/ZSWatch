@@ -1,0 +1,19 @@
+diff --git a/drivers/audio/da7212.c b/drivers/audio/da7212.c
+index 1234567..abcdef0 100644
+--- a/drivers/audio/da7212.c
++++ b/drivers/audio/da7212.c
+@@ -655,8 +655,11 @@ static const struct audio_codec_api da7212_driver_api = {
+ 	static const struct da7212_driver_config da7212_device_config_##n = {		\
+ 		.i2c = I2C_DT_SPEC_INST_GET(n),						\
+ 		.clock_source = DT_INST_ENUM_IDX(n, clock_source),			\
+ 		.mclk_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR_BY_NAME(n, mclk)),	\
+-		.mclk_name = (clock_control_subsys_t)DT_INST_CLOCKS_CELL_BY_NAME(n,	\
+-								 mclk, name)};		\
++		.mclk_name = COND_CODE_1(						\
++			DT_PHA_HAS_CELL(DT_DRV_INST(n), clocks, name),			\
++			((clock_control_subsys_t)DT_INST_CLOCKS_CELL_BY_NAME(n,		\
++								 mclk, name)),		\
++			(NULL))};							\
+ 											\
+ 	DEVICE_DT_INST_DEFINE(n, NULL, NULL, NULL, &da7212_device_config_##n,		\
+ 		POST_KERNEL, CONFIG_AUDIO_CODEC_INIT_PRIORITY, &da7212_driver_api);
