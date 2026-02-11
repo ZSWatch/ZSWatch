@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2026 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+    codec_mclk: codec-mclk {
+        compatible = "fixed-clock";
+        #clock-cells = <0>;
+        clock-frequency = <12288000>;
+    };
+
+    aliases {
+        i2s-codec-tx = &i2s0;
+    };
+};
+
+&clock {
+    hfclkaudio-frequency = <12288000>;
+};
+
+&i2s0 {
+    status = "okay";
+    pinctrl-0 = <&i2s0_default>;
+    pinctrl-1 = <&i2s0_sleep>;
+    pinctrl-names = "default", "sleep";
+    clock-source = "ACLK";
+};
+
+
+&i2c1 {
+    audio_codec: da7212@1a {
+        compatible = "dlg,da7212";
+        reg = <0x1a>;
+        clock-source = "MCLK";
+        clocks = <&codec_mclk>;
+        clock-names = "mclk";
+    };
+};
+
+&codec_pwr {
+    regulator-always-on;
+};
