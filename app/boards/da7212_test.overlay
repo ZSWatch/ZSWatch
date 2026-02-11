@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * DA7212 Audio Codec Test overlay for WatchDK
+ *
+ * Wiring (WatchDK → DA7212 EVB):
+ *   I2S header (X502):
+ *     Pin 1: +1V8       → EVB VDD_IO / VDDA
+ *     Pin 2: MCLK P1.07 → EVB MCLK
+ *     Pin 3: WS   P1.09 → EVB WCLK (LRCK)
+ *     Pin 4: Data P1.10 → EVB SDIN (nRF TX → codec RX)
+ *     Pin 6: GND        → EVB GND
+ *   GPIO header (X605):
+ *     Pin 4: P1.14      → EVB BCLK (SCK)
+ *   I2C header (X504):
+ *     Pin 1: +1V8       → EVB VDD_IO (already shared)
+ *     Pin 2: SDA P0.27  → EVB SDA
+ *     Pin 3: SCL P0.25  → EVB SCL
+ *     Pin 4: GND        → EVB GND
+ */
+
+&pinctrl {
+    i2s0_default: i2s0_default {
+        group1 {
+            psels = <NRF_PSEL(I2S_MCK, 1, 7)>,
+                    <NRF_PSEL(I2S_SCK_M, 1, 14)>,
+                    <NRF_PSEL(I2S_LRCK_M, 1, 9)>,
+                    <NRF_PSEL(I2S_SDOUT, 1, 10)>;
+        };
+    };
+
+    i2s0_sleep: i2s0_sleep {
+        group1 {
+            psels = <NRF_PSEL(I2S_MCK, 1, 7)>,
+                    <NRF_PSEL(I2S_SCK_M, 1, 14)>,
+                    <NRF_PSEL(I2S_LRCK_M, 1, 9)>,
+                    <NRF_PSEL(I2S_SDOUT, 1, 10)>;
+            low-power-enable;
+        };
+    };
+};
+
+/ {
+    codec_mclk: codec-mclk {
+        compatible = "fixed-clock";
+        #clock-cells = <0>;
+        clock-frequency = <4096000>;
+    };
+
+    aliases {
+        i2s-codec-tx = &i2s0;
+    };
+};
+
+&clock {
+    hfclkaudio-frequency = <12288000>;
+};
+
+&i2s0 {
+    status = "okay";
+    pinctrl-0 = <&i2s0_default>;
+    pinctrl-1 = <&i2s0_sleep>;
+    pinctrl-names = "default", "sleep";
+    clock-source = "ACLK";
+};
+
+&i2c1 {
+    audio_codec: da7212@1a {
+        compatible = "dlg,da7212";
+        reg = <0x1a>;
+        clock-source = "MCLK";
+        clocks = <&codec_mclk>;
+        clock-names = "mclk";
+    };
+};

@@ -40,6 +40,12 @@ menu "Applications"
         prompt "Activate the application 'Chronos'"
         default y
 
+    config APPLICATIONS_USE_DA7212_TEST
+        bool
+        prompt "Activate the application 'DA7212 Test'"
+        default n
+        depends on I2S && AUDIO_CODEC
+
     rsource "watchface/Kconfig"
     rsource "settings/Kconfig"
     rsource "notification/Kconfig"
