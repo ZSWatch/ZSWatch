@@ -165,6 +165,10 @@ const config = {
                 label: 'GitHub',
                 href: 'https://github.com/ZSWatch/ZSWatch',
               },
+              {
+                label: 'Companion App',
+                href: 'https://github.com/ZSWatch/ZSWatch-App',
+              },
             ],
           },
         ],
