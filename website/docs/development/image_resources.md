@@ -26,6 +26,7 @@ import TabItem from '@theme/TabItem';
   - ZSWatch must be flashed with functional firmware.
   - On the watch, go to **Apps → Update** and enable **USB** and/or **BLE** before starting.
   - The image resources file (`lvgl_resources_raw.bin`) is bundled in every firmware download from [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases) and [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions).
+  - Downloading from **GitHub Actions** requires you to be logged in to GitHub.
   :::
   Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions.
 

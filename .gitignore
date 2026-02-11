@@ -3,6 +3,7 @@ build*
 *.code-workspace
 *__pycache__*
 nrf/
+.nrf_env.sh
 
 # Zephyr workspace
 /.west

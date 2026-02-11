@@ -465,6 +465,7 @@ const FirmwareUpdateApp = () => {
               </div>
               <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">Download the latest firmware from GitHub Actions.</p>
               <div className="p-3 mb-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                <p className="m-0"><strong>Note:</strong> Downloading GitHub Actions artifacts requires you to be logged in to GitHub.</p>
                 <p className="m-0"><strong>After downloading:</strong> The downloaded file is a zip archive. Extract it to find:</p>
                 <p className="m-0">&#8226; <code>dfu_application.zip</code> &mdash; upload this in <strong>Manual Upload</strong> to flash firmware</p>
                 <p className="m-0">&#8226; <code>lvgl_resources_raw.bin</code> &mdash; upload this in <strong>File System</strong> to update icons/graphics</p>

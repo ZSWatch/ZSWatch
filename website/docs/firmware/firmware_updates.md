@@ -17,6 +17,10 @@ Before any update (USB, BLE, or SWD), enable updates on the watch:
 
 When you download a firmware package from [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases) or [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions), the zip contains both the firmware and the image resources:
 
+:::note GitHub Actions downloads
+GitHub requires you to be logged in to download **GitHub Actions** artifacts. If the link redirects you to sign in, log in and try again.
+:::
+
 | File | Description |
 |------|-------------|
 | `dfu_application.zip` | Firmware images (zip, for USB/BLE update) |

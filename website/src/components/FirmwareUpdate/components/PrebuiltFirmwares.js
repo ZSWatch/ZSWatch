@@ -10,6 +10,18 @@ const PrebuiltFirmwares = ({
   const [expandedBranches, setExpandedBranches] = useState({});
   const filteredFirmwares = firmwares.filter((firmware) => firmware.artifacts && firmware.artifacts.length > 0);
 
+  const getBuildType = (artifactName) => {
+    const lowerName = (artifactName || "").toLowerCase();
+    if (lowerName.includes("_release") || lowerName.endsWith("release")) return "release";
+    if (lowerName.includes("_debug") || lowerName.endsWith("debug")) return "debug";
+    return "";
+  };
+
+  const getDisplayName = (artifactName) => {
+    if (!artifactName) return "";
+    return artifactName.replace(/_(debug|release)$/i, "");
+  };
+
   const toggleExpanded = (branch) => {
     setExpandedBranches(prev => ({
       ...prev,
@@ -126,11 +138,32 @@ const PrebuiltFirmwares = ({
                         <div className="px-3 pb-2">
                           <div className="space-y-1">
                             {firmware.artifacts.map((artifact, artifactIndex) => (
-                              <div key={artifactIndex} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded border border-gray-200 dark:border-white/10 transition-colors">
-                                <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">{artifact.name}</span>
-                                <button 
+                              <div
+                                key={artifactIndex}
+                                className="flex items-center gap-2 min-w-0 p-2 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded border border-gray-200 dark:border-white/10 transition-colors"
+                              >
+                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                  <span
+                                    className="min-w-0 text-xs text-gray-700 dark:text-gray-300 font-mono truncate"
+                                    title={artifact.name}
+                                  >
+                                    {getDisplayName(artifact.name)}
+                                  </span>
+                                  {getBuildType(artifact.name) && (
+                                    <span
+                                      className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                                        getBuildType(artifact.name) === 'release'
+                                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
+                                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                      }`}
+                                    >
+                                      {getBuildType(artifact.name) === 'release' ? 'Release' : 'Debug'}
+                                    </span>
+                                  )}
+                                </div>
+                                <button
                                   onClick={() => onDownloadFirmware(firmware.runId, artifact.id)}
-                                  className="bg-zswatch-primary text-black px-2 py-1 rounded text-xs font-medium hover:bg-zswatch-primary/90 transition-all"
+                                  className="shrink-0 bg-zswatch-primary text-black px-2 py-1 rounded text-xs font-medium hover:bg-zswatch-primary/90 transition-all"
                                 >
                                   Download
                                 </button>

@@ -47,6 +47,11 @@
             "label": "Disable BT",
             "type": "shell",
             "command": "hciconfig hci0 down"
+        },
+        {
+            "label": "Get nRF Connect environment setup",
+            "type": "nrf-connect-shell",
+            "command": "env | grep -E '^(PATH|ZEPHYR_BASE|CMAKE_PREFIX_PATH|PYTHONPATH|GNUARMEMB_TOOLCHAIN_PATH|VIRTUAL_ENV)=' | sed 's/^/export /' > .nrf_env.sh && echo 'Environment saved' && cat .nrf_env.sh"
         }
     ]
 }

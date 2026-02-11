@@ -354,6 +354,32 @@ ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY   // Watch not being worn
 
 ## Build System
 
+### IMPORTANT: How to Run West Commands
+
+**ALL `west` commands (build, flash, upload_fs, etc.) MUST be executed using the nRF Connect SDK environment.** The `west` tool and its dependencies are ONLY available when the proper environment is loaded. **NEVER use VS Code tasks, tasks.json, or `run_task` for west commands.**
+
+**Required workflow for west commands:**
+
+1. **First, generate the environment file** (only needed once per session or if the environment changes):
+```python
+run_task(id="nrf-connect-shell: Get nRF Connect environment setup", 
+         workspaceFolder="<workspace_root_path>")
+```
+This creates `.nrf_env.sh` in the workspace root with all necessary environment variables (PATH, ZEPHYR_BASE, PYTHONPATH, etc.).
+
+2. **Then, run west commands by sourcing the environment**:
+```python
+run_in_terminal(
+    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
+    explanation="Building ZSWatch firmware for Watch DevKit with UART debug logging",
+    goal="Build firmware",
+    isBackground=True,
+    timeout=0
+)
+```
+
+**Always prefix west commands with `source .nrf_env.sh &&` to load the environment.** Running `west` without sourcing the environment will fail with exit code 127 (command not found) or encounter missing dependencies.
+
 ### West Workspace
 This is a **Zephyr T2 workspace application** — the `app/` directory is the manifest repository that imports NCS as a dependency.
 
@@ -371,11 +397,11 @@ west update
 west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
 ```
 
-Run this command directly in the terminal using `run_in_terminal`. Do NOT use VS Code tasks or tasks.json for building.
+**Remember to source the environment first:** `source .nrf_env.sh && <west command>`
 
 To flash after building:
 ```bash
-west flash --build-dir app/build_dbg_dk
+source .nrf_env.sh && west flash --build-dir app/build_dbg_dk
 ```
 
 ### Board Targets
@@ -395,7 +421,7 @@ When developing code that is **not platform-specific** (application logic, UI, e
 
 **Build:**
 ```bash
-west build --build-dir app/build app --pristine --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
+source .nrf_env.sh && west build --build-dir app/build app --pristine --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
 ```
 
 **Run (without debugger):**
@@ -433,6 +459,8 @@ All debug logging requires `boards/debug.conf` as a base. Then choose **one** lo
 For **release builds** (no logging, optimized for size/speed), use `boards/release.conf` instead of `debug.conf`.
 
 ### Build Command Examples
+
+**All commands below must be prefixed with `source .nrf_env.sh &&` when running via `run_in_terminal`.**
 
 ```bash
 # Watch DevKit with UART debug (DEFAULT)
@@ -478,6 +506,17 @@ Filesystem operations can be run via VS Code tasks (`run_task` tool):
 
 ### Verifying Builds
 When making code changes, always verify the build compiles successfully before finalizing changes. Run the default build command in the terminal and check for errors.
+
+**Always source the nRF environment before running west commands:**
+```python
+run_in_terminal(
+    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
+    explanation="Building ZSWatch firmware to verify changes",
+    goal="Verify build",
+    isBackground=True,
+    timeout=0
+)
+```
 
 ### Debugging and Logging
 
