@@ -494,9 +494,12 @@ static int settings_load_cb(const char *name, size_t len,
             return -EINVAL;
         }
 
-        rc = read_cb(cb_arg, &settings_app.brightness, sizeof(settings_app.brightness));
-        zsw_display_control_set_brightness(settings_app.brightness);
+        zsw_settings_brightness_t brightness;
+        rc = read_cb(cb_arg, &brightness, sizeof(brightness));
         if (rc >= 0) {
+            if (brightness >= 1 && brightness <= 100) {
+                settings_app.brightness = brightness;
+            }
             return 0;
         }
         return rc;
@@ -580,18 +583,23 @@ static int settings_load_cb(const char *name, size_t len,
         return rc;
     }
 
-    return -ENOENT;
+    return 0;
+}
+
+static int settings_commit_cb(void)
+{
+    zsw_display_control_set_brightness(settings_app.brightness);
+    return 0;
 }
 
 static int settings_app_add(void)
 {
     zsw_app_manager_add_application(&app);
-    memset(&settings_app, 0, sizeof(settings_app));
 
     return 0;
 }
 
 SETTINGS_STATIC_HANDLER_DEFINE(settings_app_handler, ZSW_SETTINGS_PATH, NULL,
-                               settings_load_cb, NULL, NULL);
+                               settings_load_cb, settings_commit_cb, NULL);
 
 SYS_INIT(settings_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

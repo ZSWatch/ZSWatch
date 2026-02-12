@@ -38,6 +38,7 @@
 #include "events/ble_event.h"
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_pressure_sensor.h"
+#include "drivers/zsw_display_control.h"
 #include "managers/zsw_notification_manager.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
@@ -53,8 +54,6 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void zbus_activity_event_callback(const struct zbus_channel *chan);
 static int settings_load_handler_watchface(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg,
                                            void *param);
-static int settings_load_handler_brightness(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg,
-                                            void *param);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(watchface_ble_comm_lis, zbus_ble_comm_data_callback);
@@ -122,7 +121,6 @@ static lv_obj_t *watchface_root_screen;
 static watchface_ui_api_t *watchfaces[MAX_WATCHFACES];
 static uint8_t num_watchfaces;
 static zsw_settings_watchface_t watchface_settings;
-static zsw_settings_brightness_t brightness_setting;
 
 static watchface_app_evt_listener watchface_evt_cb;
 
@@ -152,11 +150,6 @@ void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app
     int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler_watchface, &watchface_settings);
     if (err != 0) {
         LOG_ERR("Failed loading watchface settings");
-    }
-
-    err = settings_load_subtree_direct(ZSW_SETTINGS_BRIGHTNESS, settings_load_handler_brightness, &brightness_setting);
-    if (err != 0) {
-        LOG_ERR("Failed loading brightness settings");
     }
 
     if (watchface_settings.watchface_index >= num_watchfaces) {
@@ -284,7 +277,7 @@ static void general_work(struct k_work *item)
             is_suspended = false;
             // Dropdown
             watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
-            zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, brightness_setting);
+            zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness());
             watchface_views_created = true;
             refresh_ui();
 
@@ -465,23 +458,6 @@ static int settings_load_handler_watchface(const char *key, size_t len,
     }
 
     rc = read_cb(cb_arg, settings, sizeof(zsw_settings_watchface_t));
-    if (rc >= 0) {
-        return 0;
-    }
-
-    return -ENODATA;
-}
-
-static int settings_load_handler_brightness(const char *key, size_t len,
-                                            settings_read_cb read_cb, void *cb_arg, void *param)
-{
-    int rc;
-    zsw_settings_brightness_t *settings = (zsw_settings_brightness_t *)param;
-    if (len != sizeof(zsw_settings_brightness_t)) {
-        return -EINVAL;
-    }
-
-    rc = read_cb(cb_arg, settings, sizeof(zsw_settings_brightness_t));
     if (rc >= 0) {
         return 0;
     }
