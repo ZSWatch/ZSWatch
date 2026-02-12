@@ -66,6 +66,7 @@ else()
 endif()
 
 target_sources(app PRIVATE src/zsw_clock.c)
+target_sources(app PRIVATE src/zsw_settings.c)
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/zsw_wdt.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)

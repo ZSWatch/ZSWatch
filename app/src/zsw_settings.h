@@ -57,3 +57,5 @@ typedef struct {
 typedef bool zsw_settings_onboarding_done_t;
 #define ZSW_SETTINGS_KEY_ONBOARDING_DONE "onboard"
 #define ZSW_SETTINGS_ONBOARDING_DONE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_ONBOARDING_DONE)
+
+int zsw_settings_erase_all(void);

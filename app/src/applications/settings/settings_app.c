@@ -76,7 +76,7 @@ K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
 
 // Default values.
 static setting_app_t settings_app = {
-    .brightness = 30,
+    .brightness = 50,
     .vibration_on_click = true,
     .display_always_on = false,
     .ble_log_enabled = false,
@@ -436,7 +436,7 @@ static void on_factory_reset_confirm(bool yes_pressed)
         return;
     }
 
-    int ret = settings_delete(ZSW_SETTINGS_PATH);
+    int ret = zsw_settings_erase_all();
     if (ret != 0) {
         LOG_ERR("Failed to erase settings: %d", ret);
         return;

@@ -48,11 +48,12 @@ SHELL_CMD_ARG_REGISTER(battery, NULL, "Show battery voltage, level, and charging
 
 static int cmd_factory_reset(const struct shell *sh, size_t argc, char **argv)
 {
+    int ret;
+
     shell_print(sh, "WARNING: This will erase all settings and reboot the device!");
     shell_print(sh, "Erasing settings...");
 
-    // Delete all settings by deleting the entire subtree
-    int ret = settings_delete(ZSW_SETTINGS_PATH);
+    ret = zsw_settings_erase_all();
     if (ret != 0) {
         shell_error(sh, "Failed to erase settings: %d", ret);
         return ret;
