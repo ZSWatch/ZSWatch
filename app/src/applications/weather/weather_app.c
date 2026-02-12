@@ -42,6 +42,7 @@ static void weather_app_stop(void);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void periodic_fetch_weather_data(struct k_work *work);
 static void publish_weather_data(struct k_work *work);
+static void weather_data_timeout(struct k_work *work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(weather_ble_comm_lis, on_zbus_ble_data_callback);
@@ -49,6 +50,9 @@ ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, weather_ble_comm_lis, 1);
 
 K_WORK_DELAYABLE_DEFINE(weather_app_fetch_work, periodic_fetch_weather_data);
 K_WORK_DEFINE(weather_app_publish, publish_weather_data);
+K_WORK_DELAYABLE_DEFINE(weather_data_timeout_work, weather_data_timeout);
+
+#define WEATHER_DATA_TIMEOUT_S  20
 
 ZSW_LV_IMG_DECLARE(weather_app_icon);
 
@@ -160,11 +164,19 @@ static void periodic_fetch_weather_data(struct k_work *work)
     k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_BACKGROUND_FETCH_INTERVAL_S));
 }
 
+static void weather_data_timeout(struct k_work *work)
+{
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        weather_ui_set_error("No data received\nMake sure phone is connected");
+    }
+}
+
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 {
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
 
     if (event->data.type == BLE_COMM_DATA_TYPE_GPS) {
+        k_work_cancel_delayable(&weather_data_timeout_work);
         last_update_gps_time = k_uptime_get();
         LOG_DBG("Got GPS data, fetch weather\n");
         LOG_DBG("Latitude: %f\n", event->data.data.gps.lat);
@@ -188,6 +200,8 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
         if (res != 0) {
             LOG_ERR("Failed to request GPS data: %d", res);
             weather_ui_set_error("Failed to get GPS data");
+        } else {
+            k_work_reschedule(&weather_data_timeout_work, K_SECONDS(WEATHER_DATA_TIMEOUT_S));
         }
         // TODO Show GPS fetching in progress in app
     } else {
@@ -201,6 +215,7 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
 
 static void weather_app_stop(void)
 {
+    k_work_cancel_delayable(&weather_data_timeout_work);
     weather_ui_remove();
     ble_comm_request_gps_status(false);
 }

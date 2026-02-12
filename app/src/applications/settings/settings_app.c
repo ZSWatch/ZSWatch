@@ -52,6 +52,7 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_storage_changed(lv_setting_value_t value, bool final);
+static void on_factory_reset_changed(lv_setting_value_t value, bool final);
 static void on_ble_log_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
@@ -148,9 +149,59 @@ static lv_settings_item_t bluetooth_page_items[] = {
             }
         }
     },
+};
+
+static lv_settings_item_t general_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_POWER,
+        .change_callback = on_reboot_changed,
+        .item = {
+            .btn = {
+                .name = "Reboot",
+                .text = LV_SYMBOL_REFRESH
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_WARNING,
+        .change_callback = on_factory_reset_changed,
+        .item = {
+            .btn = {
+                .name = "Factory reset",
+                .text = LV_SYMBOL_TRASH
+            }
+        }
+    },
     {
         .type = LV_SETTINGS_TYPE_SWITCH,
-        .icon = NULL,
+        .icon = LV_SYMBOL_AUDIO,
+        .change_callback = on_display_vib_press_changed,
+        .item = {
+            .sw = {
+                .name = "Vibrate on click",
+                .inital_val = &settings_app.vibration_on_click,
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_BTN,
+        .icon = LV_SYMBOL_REFRESH,
+        .change_callback = on_reset_steps_changed,
+        .item = {
+            .btn = {
+                .name = "Reset step counter",
+                .text = LV_SYMBOL_REFRESH
+            }
+        }
+    },
+};
+
+static lv_settings_item_t developer_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_GPS,
         .change_callback = on_aoa_enable_changed,
         .item = {
             .sw = {
@@ -172,42 +223,6 @@ static lv_settings_item_t bluetooth_page_items[] = {
             }
         }
     },
-};
-
-static lv_settings_item_t other_page_items[] = {
-    {
-        .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_POWER,
-        .change_callback = on_reboot_changed,
-        .item = {
-            .btn = {
-                .name = "Reboot",
-                .text = LV_SYMBOL_REFRESH
-            }
-        }
-    },
-    {
-        .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_BACKSPACE,
-        .change_callback = on_clear_storage_changed,
-        .item = {
-            .btn = {
-                .name = "Erase external flash.",
-                .text = LV_SYMBOL_TRASH
-            }
-        }
-    },
-    {
-        .type = LV_SETTINGS_TYPE_SWITCH,
-        .icon = LV_SYMBOL_AUDIO,
-        .change_callback = on_display_vib_press_changed,
-        .item = {
-            .sw = {
-                .name = "Vibrate on click",
-                .inital_val = &settings_app.vibration_on_click,
-            }
-        }
-    },
     {
         .type = LV_SETTINGS_TYPE_SWITCH,
         .icon = LV_SYMBOL_BLUETOOTH,
@@ -221,12 +236,12 @@ static lv_settings_item_t other_page_items[] = {
     },
     {
         .type = LV_SETTINGS_TYPE_BTN,
-        .icon = LV_SYMBOL_REFRESH,
-        .change_callback = on_reset_steps_changed,
+        .icon = LV_SYMBOL_BACKSPACE,
+        .change_callback = on_clear_storage_changed,
         .item = {
             .btn = {
-                .name = "Reset step counter",
-                .text = LV_SYMBOL_REFRESH
+                .name = "Erase external flash",
+                .text = LV_SYMBOL_TRASH
             }
         }
     },
@@ -239,7 +254,7 @@ static lv_settings_item_t ui_page_items[] = {
         .change_callback = on_watchface_animation_changed,
         .item = {
             .sw = {
-                .name = "Enable animations on watchface.",
+                .name = "Enable animations on watchface",
                 .inital_val = &settings_app.watchface.animations_on,
             }
         }
@@ -280,14 +295,19 @@ static lv_settings_page_t settings_menu[] = {
         .items = bluetooth_page_items
     },
     {
-        .name = "UI",
+        .name = "Watchface",
         .num_items = ARRAY_SIZE(ui_page_items),
         .items = ui_page_items
     },
     {
-        .name = "Other",
-        .num_items = ARRAY_SIZE(other_page_items),
-        .items = other_page_items
+        .name = "General",
+        .num_items = ARRAY_SIZE(general_page_items),
+        .items = general_page_items
+    },
+    {
+        .name = "Developer",
+        .num_items = ARRAY_SIZE(developer_page_items),
+        .items = developer_page_items
     },
 };
 
@@ -410,12 +430,36 @@ static void on_clear_storage_confirm(bool yes_pressed)
     }
 }
 
+static void on_factory_reset_confirm(bool yes_pressed)
+{
+    if (!yes_pressed) {
+        return;
+    }
+
+    int ret = settings_delete(ZSW_SETTINGS_PATH);
+    if (ret != 0) {
+        LOG_ERR("Failed to erase settings: %d", ret);
+        return;
+    }
+
+    sys_reboot(SYS_REBOOT_COLD);
+}
+
 static void on_clear_storage_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
         zsw_popup_show("Erase all settings?",
-                       "Are you sure?\nThis can take up to 300s, but probably less.\nThe watch will restart once done.",
+                       "Are you sure?\nThis can take up to 5 minutes.\nThe watch will restart once done.",
                        on_clear_storage_confirm, 10, true);
+    }
+}
+
+static void on_factory_reset_changed(lv_setting_value_t value, bool final)
+{
+    if (final) {
+        zsw_popup_show("Factory reset?",
+                       "This will erase all stored settings\nand reboot the watch.",
+                       on_factory_reset_confirm, 10, true);
     }
 }
 

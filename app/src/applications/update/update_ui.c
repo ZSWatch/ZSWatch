@@ -17,6 +17,7 @@
 
 #include "update_ui.h"
 #include "ui/zsw_ui.h"
+#include "ui/popup/zsw_popup_window.h"
 #include "filesystem/zsw_filesystem.h"
 #include <assert.h>
 
@@ -28,9 +29,8 @@ static lv_obj_t *btn_usb_fota = NULL;
 static bool (*ble_toggle_callback)(void) = NULL;
 static bool (*usb_toggle_callback)(void) = NULL;
 
-static void btn_flash_erase_cb(lv_event_t *e)
+static void do_flash_erase(void)
 {
-    // Perform the flash erase operation
     update_ui_set_status("Status: Erasing flash... Don't do anything until it's done.");
     int rc = zsw_filesytem_erase();
     if (rc == 0) {
@@ -38,6 +38,20 @@ static void btn_flash_erase_cb(lv_event_t *e)
     } else {
         update_ui_set_status("Status: Flash erase failed");
     }
+}
+
+static void on_erase_confirm(bool yes_pressed)
+{
+    if (yes_pressed) {
+        do_flash_erase();
+    }
+}
+
+static void btn_flash_erase_cb(lv_event_t *e)
+{
+    zsw_popup_show("Erase flash?",
+                   "Are you sure?\nThis will erase all stored data\nand can take up to 5 minutes.",
+                   on_erase_confirm, 15, true);
 }
 
 static void btn_fota_usb_cb(lv_event_t *e)
