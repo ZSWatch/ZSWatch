@@ -50,10 +50,10 @@ TBD
 ### Option 2: ZSWatch Companion App (Experimental)
 
 :::warning Experimental
-The ZSWatch Companion App is under active development and may be unstable. GadgetBridge (Option 1) is recommended for most users. Use the companion app only for testing or if you need specific features like firmware updates.
+The ZSWatch Companion App is under active development and may be unstable. GadgetBridge (Option 1) is recommended for most users. Use the companion app only for testing.
 :::
 
-The [ZSWatch Companion App](./companion_app.md) is an open-source Flutter app built specifically for ZSWatch. It provides notifications, music control, firmware updates, health tracking, and developer tools — all in one app.
+The [ZSWatch Companion App](./companion_app.md) is an open-source Flutter app built specifically for ZSWatch. It provides notifications, music control, firmware updates, health tracking, and developer tools, all in one app.
 
 Download the latest APK from [GitHub Releases](https://github.com/ZSWatch/ZSWatch-App/releases) or see the [Companion App](./companion_app.md) page for full details and setup instructions.
 
@@ -67,9 +67,9 @@ Download the latest APK from [GitHub Releases](https://github.com/ZSWatch/ZSWatc
 The iOS companion app is under active development. On iOS, the watch can directly use ANCS/AMS for notifications and media control without any app, which is the recommended approach for most users.
 :::
 
-The [ZSWatch Companion App](./companion_app.md) also runs on iOS, providing firmware updates, health tracking, developer tools, and more. On iOS, notification forwarding and media control are handled automatically by the watch using Apple ANCS/AMS — no app needed for those features.
+The [ZSWatch Companion App](./companion_app.md) also runs on iOS, providing firmware updates, health tracking, developer tools, and more. On iOS, notification forwarding and media control are handled automatically by the watch using Apple ANCS/AMS, no app needed for those features.
 
-Currently there is no prebuilt iOS app available. You'll need to build from source — see the [Companion App](./companion_app.md) page.
+Currently there is no prebuilt iOS app available. You'll need to build from source, see the [Companion App](./companion_app.md) page.
 
 ---
 

@@ -272,6 +272,7 @@ static int zsw_fs_close(struct fs_file_t *zfp)
             }
             full_fs_stream_active = false;
         }
+        LOG_INF("Closing full_fs, total bytes written: %u", full_fs_file.len);
         full_fs_file.opened = false;
         full_fs_file.index = 0;
         zsw_display_control_set_render_enabled(true);
@@ -398,18 +399,24 @@ static ssize_t zsw_fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
 {
     if (IS_SPECIAL_FULL_FS_FILE(zfp->filep)) {
         if (!full_fs_stream_active) {
+            LOG_ERR("full_fs write rejected: stream not active");
             return -EACCES;
         }
 
         int rc = stream_flash_buffered_write(&full_fs_stream_ctx, ptr, size, false);
         if (rc != 0) {
-            LOG_ERR("stream_flash write failed: %d", rc);
+            LOG_ERR("stream_flash write failed: %d (offset=%u, size=%zu)", rc,
+                    full_fs_file.index, size);
             return rc;
         }
 
         full_fs_file.index += size;
         if (full_fs_file.index > full_fs_file.len) {
             full_fs_file.len = full_fs_file.index;
+        }
+
+        if ((full_fs_file.index % (64 * 1024)) < size) {
+            LOG_INF("full_fs write progress: %u bytes", full_fs_file.index);
         }
 
         return size;
