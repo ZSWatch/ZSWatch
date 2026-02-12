@@ -9,8 +9,6 @@ import time
 from pathlib import Path
 from west.configuration import config
 import subprocess
-import pylink
-import serial
 
 THIS_ZEPHYR = Path(__file__).parent.parent.parent / "zephyr"
 ZEPHYR_BASE = Path(os.environ.get("ZEPHYR_BASE", THIS_ZEPHYR))
@@ -197,6 +195,12 @@ class CoredumpWestCommand(WestCommand):
         return None
 
     def extract_coredump_over_rtt(self, target_device="nRF5340_XXAA"):
+        try:
+            import pylink
+        except ImportError as e:
+            log.err(f"Failed to import pylink for RTT coredump extraction: {e}")
+            sys.exit(1)
+
         jlink = pylink.JLink()
         print("Connecting to JLink...")
         jlink.open()
@@ -219,6 +223,12 @@ class CoredumpWestCommand(WestCommand):
         return self._parse_coredump_stream(read_data, is_connected)
 
     def extract_coredump_over_uart(self, serial_port, baudrate=115200):
+        try:
+            import serial
+        except ImportError as e:
+            log.err(f"Failed to import pyserial for UART coredump extraction: {e}")
+            sys.exit(1)
+
         print(f"Opening serial port {serial_port} at {baudrate} baud...")
         try:
             ser = serial.Serial(serial_port, baudrate, timeout=1)

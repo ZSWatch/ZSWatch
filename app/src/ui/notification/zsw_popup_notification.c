@@ -17,7 +17,7 @@
 
 #include <lvgl.h>
 
-#include "ui/notification/zsw_popup_notifcation.h"
+#include "ui/notification/zsw_popup_notification.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 typedef struct {
