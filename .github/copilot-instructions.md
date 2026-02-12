@@ -295,6 +295,13 @@ ZSW_LV_IMG_DECLARE(image_name);              // Declare (at file scope)
 ```
 These macros handle the internal vs. external flash storage transparently.
 
+When adding a new image that should be available from external flash (`S:` storage), convert the generated LVGL `.c` image file to `.bin` using the provided script:
+```bash
+python app/scripts/lvgl_c_array_to_bin_lvgl9.py <path_to_.c_file> app/src/images/binaries/S/
+```
+
+Do not hand-craft LVGL binary headers manually. Use the script so the output format remains consistent with LVGL v9 image binaries used by the project.
+
 ### Color Helpers (from zsw_ui.h)
 ```c
 zsw_color_red()         // Error, alerts
