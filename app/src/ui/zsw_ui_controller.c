@@ -39,6 +39,7 @@
 #include "zsw_power_manager.h"
 #include "zsw_ui_controller.h"
 #include "ui/zsw_ui.h"
+#include "ui/onboarding/zsw_onboarding_ui.h"
 #include "lvgl_editor_gen.h"
 
 typedef enum ui_state {
@@ -70,6 +71,7 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt);
 static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
 static void on_application_manager_close(void);
+static void on_onboarding_done(void);
 
 K_WORK_DEFINE(input_work, run_input_work);
 
@@ -328,6 +330,28 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
     }
 }
 
+static void on_onboarding_done(void)
+{
+    zsw_settings_onboarding_done_t done = true;
+    settings_save_one(ZSW_SETTINGS_ONBOARDING_DONE, &done, sizeof(done));
+    zsw_onboarding_ui_remove();
+    watch_state = WATCHFACE_STATE;
+    watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
+}
+
+static int settings_load_handler_onboarding(const char *key, size_t len,
+                                            settings_read_cb read_cb,
+                                            void *cb_arg, void *param)
+{
+    if (len != sizeof(zsw_settings_onboarding_done_t)) {
+        return -EINVAL;
+    }
+
+    read_cb(cb_arg, param, sizeof(zsw_settings_onboarding_done_t));
+
+    return 0;
+}
+
 int zsw_ui_controller_init(void)
 {
     lv_indev_t *touch_indev;
@@ -380,7 +404,19 @@ int zsw_ui_controller_init(void)
 
     watch_state = WATCHFACE_STATE;
 
-    watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
+    zsw_settings_onboarding_done_t onboarding_done = false;
+    int err = settings_load_subtree_direct(ZSW_SETTINGS_ONBOARDING_DONE,
+                                           settings_load_handler_onboarding,
+                                           &onboarding_done);
+    if (err != 0) {
+        LOG_WRN("Failed to load onboarding setting, assuming first boot");
+    }
+
+    if (!onboarding_done) {
+        zsw_onboarding_ui_show(root_screen, on_onboarding_done);
+    } else {
+        watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
+    }
 
     LOG_INF("UI Controller initialized");
 

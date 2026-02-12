@@ -53,3 +53,7 @@ typedef struct {
 } zsw_settings_watchface_t;
 #define ZSW_SETTINGS_KEY_WATCHFACE "watchface"
 #define ZSW_SETTINGS_WATCHFACE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_WATCHFACE)
+
+typedef bool zsw_settings_onboarding_done_t;
+#define ZSW_SETTINGS_KEY_ONBOARDING_DONE "onboard"
+#define ZSW_SETTINGS_ONBOARDING_DONE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_ONBOARDING_DONE)

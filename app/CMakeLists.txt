@@ -77,6 +77,7 @@ target_sources(app PRIVATE src/ui/notification/zsw_popup_notification.c)
 target_sources(app PRIVATE src/ui/popup/zsw_popup_window.c)
 target_sources(app PRIVATE src/ui/app_picker/app_picker_ui.c)
 target_sources(app PRIVATE src/ui/utils/zsw_ui_utils.c)
+target_sources(app PRIVATE src/ui/onboarding/zsw_onboarding_ui.c)
 
 target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_flash_loader.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
