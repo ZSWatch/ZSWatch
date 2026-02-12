@@ -1,0 +1,23 @@
+diff --git a/modules/lvgl/input/lvgl_pointer_input.c b/modules/lvgl/input/lvgl_pointer_input.c
+index 612741b5cb4..5eeafb69aea 100644
+--- a/modules/lvgl/input/lvgl_pointer_input.c
++++ b/modules/lvgl/input/lvgl_pointer_input.c
+@@ -46,6 +46,18 @@ static void lvgl_pointer_process_event(struct input_event *evt, void *user_data)
+ 	cap = &disp_data->cap;
+ 	point = &data->common_data.pending_event.point;
+ 
++	/*
++	 * Only process absolute coordinate and key/button events.
++	 * Other event types (e.g., INPUT_EV_DEVICE from CST816S gesture reports)
++	 * can have codes that numerically collide with INPUT_ABS_X/Y (e.g.,
++	 * CST816S_GESTURE_CODE_SWIPE_UP = 0x01 == INPUT_ABS_Y), which would
++	 * corrupt the stored coordinates with the gesture event's value (0),
++	 * causing phantom coordinate jumps and incorrect gesture detection.
++	 */
++	if (evt->type != INPUT_EV_ABS && evt->type != INPUT_EV_KEY) {
++		return;
++	}
++
+ 	switch (evt->code) {
+ 	case INPUT_ABS_X:
+ 		if (cfg->swap_xy) {
