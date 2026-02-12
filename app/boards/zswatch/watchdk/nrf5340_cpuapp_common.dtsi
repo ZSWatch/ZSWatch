@@ -185,24 +185,6 @@ zephyr_udc0: &usbd {
         };
     };
 
-    reserved-memory {
-        #address-cells = <1>;
-        #size-cells = <1>;
-        ranges;
-
-        sram0_image: image@20000000 {
-            /* Zephyr image(s) memory */
-        };
-
-        sram0_s: image_s@20000000 {
-            /* Secure image memory */
-        };
-
-        sram0_ns: image_ns@20040000 {
-            /* Non-Secure image memory */
-        };
-    };
-
     sram@2006E000 {
         compatible = "zephyr,memory-region", "mmio-sram";
         reg = <0x2006E000 0x2000>;
@@ -472,68 +454,6 @@ dmic_dev: &pdm0 {
             label = "storage_partition";
             reg = <0xD20000 0x100000 >;
         };
-    };
-};
-
-/ {
-    reserved-memory {
-        #address-cells = <1>;
-        #size-cells = <1>;
-        ranges;
-
-        sram0_image: image@20000000 {
-            /* Zephyr image(s) memory */
-        };
-
-        sram0_s: image_s@20000000 {
-            /* Secure image memory */
-        };
-
-        sram0_ns: image_ns@20040000 {
-            /* Non-Secure image memory */
-        };
-    };
-
-    sram@2006E000 {
-        compatible = "zephyr,memory-region", "mmio-sram";
-        reg = <0x2006E000 0x2000>;
-        zephyr,memory-region = "RetainedMem";
-        status = "okay";
-
-        retainedmem {
-            compatible = "zephyr,retained-ram";
-            status = "okay";
-            #address-cells = <1>;
-            #size-cells = <1>;
-
-            retention_coredump: retention@0 {
-                compatible = "zephyr,retention";
-                status = "okay";
-                reg = <0x0 0x1F00>;
-                prefix = [04 fa];
-                checksum = <1>;
-            };
-
-            retention0: retention@1F00 {
-                compatible = "zephyr,retention";
-                status = "okay";
-                reg = <0x1F00 0xFB>;
-                prefix = [04 fa];
-                checksum = <1>;
-            };
-            // Last byte in RAM is for boot mode.
-            // Du to debugger only supports writing 4 bytes at a time
-            // we need to leave a 3 byte gap between the two retention areas.
-            retention1: retention@1FFF {
-                compatible = "zephyr,retention";
-                status = "okay";
-                reg = <0x1FFF 0x1>;
-            };
-        };
-    };
-
-    chosen {
-        zephyr,boot-mode = &retention1;
     };
 };
 

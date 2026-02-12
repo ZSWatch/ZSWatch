@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if INPUT
-	rsource "cst816s/Kconfig"
 
 	config INPUT_NPM13XX
 		bool "NPM1300 SHIPHOLD button input driver"

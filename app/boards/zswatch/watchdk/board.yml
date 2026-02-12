@@ -3,6 +3,7 @@
 
 board:
   name: watchdk
+  full_name: ZSWatch Watch DevKit
   vendor: zswatch
   socs:
   - name: 'nrf5340'

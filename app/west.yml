@@ -9,7 +9,7 @@ manifest:
   projects:
     - name: sdk-nrf
       remote: sdk
-      revision: v3.1.0
+      revision: v3.3.0-preview1
       path: nrf
       import:
         name-blocklist:

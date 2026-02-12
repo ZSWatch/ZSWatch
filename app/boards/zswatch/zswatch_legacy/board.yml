@@ -3,6 +3,7 @@
 
 board:
   name: zswatch_legacy
+  full_name: ZSWatch Legacy
   vendor: zswatch
   socs:
   - name: 'nrf5340'

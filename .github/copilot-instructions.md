@@ -370,7 +370,7 @@ This creates `.nrf_env.sh` in the workspace root with all necessary environment 
 2. **Then, run west commands by sourcing the environment**:
 ```python
 run_in_terminal(
-    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
+    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
     explanation="Building ZSWatch firmware for Watch DevKit with UART debug logging",
     goal="Build firmware",
     isBackground=True,
@@ -394,14 +394,14 @@ west update
 **When the user asks to build or verify a build, default to Watch DevKit (watchdk@1) with UART debug logging unless they request a different variant.**
 
 ```bash
-west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
+west build --build-dir app/build_dbg_dk app --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
 ```
 
 **Remember to source the environment first:** `source .nrf_env.sh && <west command>`
 
 To flash after building:
 ```bash
-source .nrf_env.sh && west flash --build-dir app/build_dbg_dk
+source .nrf_env.sh && west flash --erase --build-dir app/build_dbg_dk
 ```
 
 ### Board Targets
@@ -421,7 +421,7 @@ When developing code that is **not platform-specific** (application logic, UI, e
 
 **Build:**
 ```bash
-source .nrf_env.sh && west build --build-dir app/build app --pristine --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
+source .nrf_env.sh && west build --build-dir app/build app --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
 ```
 
 **Run (without debugger):**
@@ -464,22 +464,20 @@ For **release builds** (no logging, optimized for size/speed), use `boards/relea
 
 ```bash
 # Watch DevKit with UART debug (DEFAULT)
-west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
+west build --build-dir app/build_dbg_dk app --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
 
 # Watch DevKit with RTT debug (no overlay needed)
-west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_rtt.conf"
+west build --build-dir app/build_dbg_dk app --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_rtt.conf"
 
 # Legacy ZSWatch v5 with RTT debug
-west build --build-dir app/build_dbg_leg_v5 app --pristine --board zswatch_legacy@5/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_rtt.conf"
+west build --build-dir app/build_dbg_leg_v5 app --board zswatch_legacy@5/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_rtt.conf"
 
 # Legacy ZSWatch v4 with UART debug
-west build --build-dir app/build_dbg_leg_v4 app --pristine --board zswatch_legacy@4/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
+west build --build-dir app/build_dbg_leg_v4 app --board zswatch_legacy@4/nrf5340/cpuapp -- -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
 
 # Native simulator (Linux development, CI)
-west build --build-dir app/build app --pristine --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
+west build --build-dir app/build app --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
 ```
-
-Note: `--pristine` forces a clean build. Omit it for incremental builds after the first build.
 
 ### Configuration Layering
 1. `app/prj.conf` — Base configuration (always applied)
@@ -510,7 +508,7 @@ When making code changes, always verify the build compiles successfully before f
 **Always source the nRF environment before running west commands:**
 ```python
 run_in_terminal(
-    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --pristine --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
+    command="source .nrf_env.sh && west build --build-dir app/build_dbg_dk app --board watchdk@1/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=\"boards/debug.conf;boards/log_on_uart.conf\" -DEXTRA_DTC_OVERLAY_FILE=\"boards/log_on_uart.overlay\"",
     explanation="Building ZSWatch firmware to verify changes",
     goal="Verify build",
     isBackground=True,

@@ -37,7 +37,7 @@ static struct bt_le_ext_adv *m_ext_adv;
 
 static struct bt_le_adv_param m_adv_param =
     BT_LE_ADV_PARAM_INIT(BT_LE_ADV_OPT_EXT_ADV |
-                         BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_NO_2M,
+                         BT_LE_ADV_OPT_NO_2M,
                          BT_GAP_ADV_FAST_INT_MIN_2,
                          BT_GAP_ADV_FAST_INT_MAX_2,
                          NULL);
@@ -74,7 +74,8 @@ static struct bt_data m_adv_data[] = {
                   0x00, 0x00, 0x00,
                   0x00,             /* reserved */
                   0x00              /* reserved */
-                 )
+                 ),
+    BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1),
 };
 
 static bool set_adv_params(uint16_t min_ms, uint16_t max_ms)

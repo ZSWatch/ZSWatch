@@ -317,7 +317,7 @@ static void create_coredump_page_ui(lv_obj_t *parent, zsw_coredump_sumary_t *cor
         lv_dropdown_add_option(ui_Dropdown1, coredumps[i].datetime, i);
     }
     if (num_coredumps > 0) {
-        lv_dropdown_set_selected(ui_Dropdown1, 0, LV_ANIM_OFF);
+        lv_dropdown_set_selected(ui_Dropdown1, 0);
         lv_label_set_text_fmt(ui_coredump_info_field, "%s\n%s Line #%d", coredumps[0].datetime, coredumps[0].file,
                               coredumps[0].line);
     }

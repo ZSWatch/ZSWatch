@@ -30,7 +30,7 @@ static void arc_event_pressed(lv_event_t *e);
 
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *ui_digital_watchface;
-static lv_obj_t *ui_iaq_or_pressure_arc;
+static lv_obj_t *ui_pressure_arc;
 static lv_obj_t *ui_pressure_image;
 static lv_obj_t *ui_humidity_arc;
 static lv_obj_t *ui_humidity_icon;
@@ -100,28 +100,28 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     lv_obj_clear_flag(ui_digital_watchface, LV_OBJ_FLAG_SCROLLABLE);
 
-    ui_iaq_or_pressure_arc = lv_arc_create(ui_digital_watchface);
-    lv_obj_set_width(ui_iaq_or_pressure_arc, 240);
-    lv_obj_set_height(ui_iaq_or_pressure_arc, 240);
-    lv_obj_set_align(ui_iaq_or_pressure_arc, LV_ALIGN_CENTER);
+    ui_pressure_arc = lv_arc_create(ui_digital_watchface);
+    lv_obj_set_width(ui_pressure_arc, 240);
+    lv_obj_set_height(ui_pressure_arc, 240);
+    lv_obj_set_align(ui_pressure_arc, LV_ALIGN_CENTER);
 
-    lv_obj_add_flag(ui_iaq_or_pressure_arc, LV_OBJ_FLAG_EVENT_BUBBLE);
-    lv_obj_clear_flag(ui_iaq_or_pressure_arc, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
+    lv_obj_add_flag(ui_pressure_arc, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_clear_flag(ui_pressure_arc, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                       LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_arc_set_value(ui_iaq_or_pressure_arc, 70);
-    lv_arc_set_bg_angles(ui_iaq_or_pressure_arc, 195, 245);
-    lv_arc_set_rotation(ui_iaq_or_pressure_arc, 1);
-    lv_obj_set_style_arc_width(ui_iaq_or_pressure_arc, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_arc_set_range(ui_iaq_or_pressure_arc, 950, 1050);
-    lv_obj_set_style_arc_color(ui_iaq_or_pressure_arc, lv_color_hex(0x4AC73F), LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_iaq_or_pressure_arc, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_width(ui_iaq_or_pressure_arc, 5, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_arc_set_value(ui_pressure_arc, 70);
+    lv_arc_set_bg_angles(ui_pressure_arc, 195, 245);
+    lv_arc_set_rotation(ui_pressure_arc, 1);
+    lv_obj_set_style_arc_width(ui_pressure_arc, 5, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_arc_set_range(ui_pressure_arc, 950, 1050);
+    lv_obj_set_style_arc_color(ui_pressure_arc, lv_color_hex(0x4AC73F), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_opa(ui_pressure_arc, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_arc_width(ui_pressure_arc, 5, LV_PART_INDICATOR | LV_STATE_DEFAULT);
 
-    lv_obj_set_style_bg_color(ui_iaq_or_pressure_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_iaq_or_pressure_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_pressure_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_pressure_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
-    ui_pressure_image = lv_image_create(ui_iaq_or_pressure_arc);
+    ui_pressure_image = lv_image_create(ui_pressure_arc);
     lv_image_set_src(ui_pressure_image, ZSW_LV_IMG_USE(ui_img_pressure_png));
     lv_obj_set_width(ui_pressure_image, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_pressure_image, LV_SIZE_CONTENT);
@@ -540,8 +540,8 @@ static void watchface_set_watch_env_sensors(int pressure)
         return;
     }
 
-    lv_arc_set_range(ui_iaq_or_pressure_arc, 950, 1050);
-    lv_arc_set_value(ui_iaq_or_pressure_arc, pressure / 100);
+    lv_arc_set_range(ui_pressure_arc, 950, 1050);
+    lv_arc_set_value(ui_pressure_arc, pressure / 100);
 }
 
 static void watchface_ui_invalidate_cached(void)

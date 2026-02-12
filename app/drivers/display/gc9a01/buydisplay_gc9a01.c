@@ -313,8 +313,8 @@ static void gc9a01_get_capabilities(const struct device *dev,
     memset(caps, 0, sizeof(struct display_capabilities));
     caps->x_resolution = DISPLAY_WIDTH;
     caps->y_resolution = DISPLAY_HEIGHT;
-    caps->supported_pixel_formats = PIXEL_FORMAT_BGR_565;
-    caps->current_pixel_format = PIXEL_FORMAT_BGR_565;
+    caps->supported_pixel_formats = PIXEL_FORMAT_RGB_565X;
+    caps->current_pixel_format = PIXEL_FORMAT_RGB_565X;
     caps->screen_info = SCREEN_INFO_MONO_MSB_FIRST;
 }
 
