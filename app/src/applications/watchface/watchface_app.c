@@ -116,6 +116,7 @@ static struct battery_sample_event last_batt_evt = {.percent = 100, .mV = 4300};
 static bool running;
 static bool is_connected;
 static bool is_suspended;
+static bool watchface_views_created;
 static lv_obj_t *watchface_root_screen;
 
 static watchface_ui_api_t *watchfaces[MAX_WATCHFACES];
@@ -133,6 +134,7 @@ static int watchface_app_init(void)
     k_work_init_delayable(&date_work.work, general_work);
     running = false;
     is_suspended = false;
+    watchface_views_created = false;
 
     return 0;
 }
@@ -163,6 +165,7 @@ void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app
 
     watchface_root_screen = root_screen;
     watchface_evt_cb = evt_cb;
+    watchface_views_created = false;
 
     lv_obj_add_event_cb(watchface_root_screen, watchface_gesture_cb, LV_EVENT_GESTURE, NULL);
 
@@ -175,12 +178,21 @@ void watchface_app_stop(void)
     running = false;
     is_suspended = false;
     k_work_cancel_delayable_sync(&clock_work.work, &cancel_work_sync);
+    k_work_cancel_delayable_sync(&update_work.work, &cancel_work_sync);
     k_work_cancel_delayable_sync(&date_work.work, &cancel_work_sync);
     k_work_cancel_delayable_sync(&general_work_item.work, &cancel_work_sync);
-    watchfaces[watchface_settings.watchface_index]->remove();
-    zsw_watchface_dropdown_ui_remove();
 
-    lv_obj_remove_event_cb(watchface_root_screen, watchface_gesture_cb);
+    if (watchface_views_created) {
+        watchfaces[watchface_settings.watchface_index]->remove();
+        zsw_watchface_dropdown_ui_remove();
+    }
+
+    if (watchface_root_screen != NULL && lv_obj_is_valid(watchface_root_screen)) {
+        lv_obj_remove_event_cb(watchface_root_screen, watchface_gesture_cb);
+    }
+
+    watchface_views_created = false;
+    watchface_root_screen = NULL;
 }
 
 void watchface_change(int index)
@@ -241,6 +253,9 @@ static void refresh_ui(void)
     uint32_t steps;
     watchfaces[watchface_settings.watchface_index]->set_ble_connected(is_connected);
     watchfaces[watchface_settings.watchface_index]->set_battery_percent(last_batt_evt.percent, last_batt_evt.mV);
+    if (watchfaces[watchface_settings.watchface_index]->set_charging) {
+        watchfaces[watchface_settings.watchface_index]->set_charging(last_batt_evt.is_charging);
+    }
     zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, last_batt_evt.is_charging, last_batt_evt.tte,
                                                last_batt_evt.ttf);
     if (strlen(last_weather_data.report_text) > 0) {
@@ -270,6 +285,7 @@ static void general_work(struct k_work *item)
             // Dropdown
             watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
             zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, brightness_setting);
+            watchface_views_created = true;
             refresh_ui();
 
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
@@ -412,6 +428,9 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 
     if (running && !is_suspended) {
         watchfaces[watchface_settings.watchface_index]->set_battery_percent(event->percent, event->mV);
+        if (watchfaces[watchface_settings.watchface_index]->set_charging) {
+            watchfaces[watchface_settings.watchface_index]->set_charging(event->is_charging);
+        }
         zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, event->is_charging, event->tte, event->ttf);
     }
 }

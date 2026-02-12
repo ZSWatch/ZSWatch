@@ -398,8 +398,32 @@ void zsw_watchface_dropdown_ui_set_battery_info(uint8_t battery_percent, bool is
 
 void zsw_watchface_dropdown_ui_remove(void)
 {
-    lv_obj_remove_event_cb(dropdown_root, on_lvgl_screen_gesture_event_callback);
-    lv_obj_del(ui_down_bg_panel);
+    if (dropdown_root != NULL && lv_obj_is_valid(dropdown_root)) {
+        lv_obj_remove_event_cb(dropdown_root, on_lvgl_screen_gesture_event_callback);
+    }
+
+    if (ui_down_bg_panel != NULL && lv_obj_is_valid(ui_down_bg_panel)) {
+        lv_obj_del(ui_down_bg_panel);
+    }
+
+    ui_down_bg_panel = NULL;
+    ui_up_bg_Panel = NULL;
+    ui_music_info_label = NULL;
+    ui_music_button = NULL;
+    ui_music_label = NULL;
+    ui_flashlight_button = NULL;
+    ui_flashlight_label = NULL;
+    ui_shutdown_button = NULL;
+    ui_shutdown_label = NULL;
+    ui_settings_button = NULL;
+    ui_settings_label = NULL;
+    ui_bri_slider = NULL;
+    ui_light_label = NULL;
+    ui_dropdown_bg_panel = NULL;
+    ui_battery_state = NULL;
+    ui_battery_charge_state = NULL;
+    ui_remaining_time_bat_label = NULL;
+
     dropdown_root = NULL;
     is_shown = false;
 }

@@ -67,6 +67,7 @@ typedef struct watchface_ui_api_t {
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int pressure);
+    void (*set_charging)(bool is_charging);
     void (*ui_invalidate_cached)(void);
     const void *(*get_preview_img)(void);
     const char *name;

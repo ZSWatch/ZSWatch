@@ -41,9 +41,11 @@ static lv_obj_t *ui_colon_label;
 static lv_obj_t *ui_hour_label;
 static lv_obj_t *ui_sec_label;
 static lv_obj_t *ui_battery_arc;
+static lv_obj_t *ui_battery_hitbox;
 static lv_obj_t *ui_battery_arc_icon;
 static lv_obj_t *ui_battery_percent_label;
 static lv_obj_t *ui_step_arc;
+static lv_obj_t *ui_step_hitbox;
 static lv_obj_t *ui_step_arc_icon;
 static lv_obj_t *ui_step_arc_label;
 static lv_obj_t *ui_top_panel;
@@ -56,6 +58,7 @@ static lv_obj_t *ui_weather_icon;
 ZSW_LV_IMG_DECLARE(ui_img_pressure_png);    // assets/pressure.png
 ZSW_LV_IMG_DECLARE(ui_img_temperatures_png);    // assets/temperatures.png
 ZSW_LV_IMG_DECLARE(ui_img_charging_png);    // assets/charging.png
+ZSW_LV_IMG_DECLARE(ui_img_battery_png);     // battery icon (no bolt)
 ZSW_LV_IMG_DECLARE(ui_img_running_png);    // assets/running.png
 ZSW_LV_IMG_DECLARE(ui_img_chat_png);    // assets/chat.png
 ZSW_LV_IMG_DECLARE(ui_img_bluetooth_png);    // assets/bluetooth.png
@@ -282,14 +285,29 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_battery_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_battery_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
+    ui_battery_hitbox = lv_obj_create(ui_digital_watchface);
+    lv_obj_set_width(ui_battery_hitbox, 50);
+    lv_obj_set_height(ui_battery_hitbox, 50);
+    lv_obj_set_x(ui_battery_hitbox, 52);
+    lv_obj_set_y(ui_battery_hitbox, 67);
+    lv_obj_set_align(ui_battery_hitbox, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_battery_hitbox, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_clear_flag(ui_battery_hitbox, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SNAPPABLE |
+                      LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
+                      LV_OBJ_FLAG_SCROLL_CHAIN);
+    lv_obj_set_style_bg_opa(ui_battery_hitbox, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_battery_hitbox, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_battery_hitbox, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_move_foreground(ui_battery_hitbox);
+
     ui_battery_arc_icon = lv_image_create(ui_battery_arc);
-    lv_image_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_charging_png));
+    lv_image_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_battery_png));
     lv_obj_set_width(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_battery_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_battery_arc_icon, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_battery_arc_icon, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_clear_flag(ui_battery_arc_icon,
-                      LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC |
+                      LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE |
+                      LV_OBJ_FLAG_SCROLL_ELASTIC |
                       LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_img_recolor(ui_battery_arc_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_battery_arc_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -325,13 +343,28 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(ui_step_arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_step_arc, 0, LV_PART_KNOB | LV_STATE_DEFAULT);
 
+    ui_step_hitbox = lv_obj_create(ui_digital_watchface);
+    lv_obj_set_width(ui_step_hitbox, 50);
+    lv_obj_set_height(ui_step_hitbox, 50);
+    lv_obj_set_x(ui_step_hitbox, -52);
+    lv_obj_set_y(ui_step_hitbox, 67);
+    lv_obj_set_align(ui_step_hitbox, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_step_hitbox, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_clear_flag(ui_step_hitbox, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SNAPPABLE |
+                      LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
+                      LV_OBJ_FLAG_SCROLL_CHAIN);
+    lv_obj_set_style_bg_opa(ui_step_hitbox, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui_step_hitbox, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_step_hitbox, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_move_foreground(ui_step_hitbox);
+
     ui_step_arc_icon = lv_image_create(ui_step_arc);
     lv_image_set_src(ui_step_arc_icon, ZSW_LV_IMG_USE(ui_img_running_png));
     lv_obj_set_width(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_step_arc_icon, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_step_arc_icon, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_step_arc_icon, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_clear_flag(ui_step_arc_icon, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_SCROLLABLE |
+    lv_obj_clear_flag(ui_step_arc_icon, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
+                      LV_OBJ_FLAG_SCROLLABLE |
                       LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_img_recolor(ui_step_arc_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_img_recolor_opa(ui_step_arc_icon, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -427,8 +460,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     }
 
     // Listeners
-    lv_obj_add_event_cb(ui_battery_arc_icon, arc_event_pressed, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_step_arc_icon, arc_event_pressed, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(ui_battery_hitbox, arc_event_pressed, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(ui_step_hitbox, arc_event_pressed, LV_EVENT_CLICKED, NULL);
 }
 
 static void watchface_remove(void)
@@ -544,6 +577,23 @@ static void watchface_set_watch_env_sensors(int pressure)
     lv_arc_set_value(ui_pressure_arc, pressure / 100);
 }
 
+static void watchface_set_charging(bool is_charging)
+{
+    if (!root_page) {
+        return;
+    }
+
+    if (is_charging) {
+        lv_image_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_charging_png));
+        lv_obj_set_style_img_recolor(ui_battery_arc_icon, lv_color_hex(0xFFD700), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_arc_color(ui_battery_arc, lv_palette_main(LV_PALETTE_GREEN), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    } else {
+        lv_image_set_src(ui_battery_arc_icon, ZSW_LV_IMG_USE(ui_img_battery_png));
+        lv_obj_set_style_img_recolor(ui_battery_arc_icon, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_arc_color(ui_battery_arc, lv_color_hex(0xFFB140), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    }
+}
+
 static void watchface_ui_invalidate_cached(void)
 {
     last_hour = -1;
@@ -561,10 +611,10 @@ static const void *watchface_get_preview_img(void)
 static void arc_event_pressed(lv_event_t *e)
 {
     watchface_app_evt_t evt = {.type = WATCHFACE_APP_EVENT_OPEN_APP};
-    if (lv_event_get_target(e) == ui_battery_arc_icon) {
+    if (lv_event_get_target(e) == ui_battery_hitbox) {
         evt.data.app = WATCHFACE_APP_EVT_CLICK_BATT;
         ui_evt_cb(evt);
-    } else if (lv_event_get_target(e) == ui_step_arc_icon) {
+    } else if (lv_event_get_target(e) == ui_step_hitbox) {
         evt.data.app = WATCHFACE_APP_EVT_CLICK_STEP;
         ui_evt_cb(evt);
     }
@@ -581,6 +631,7 @@ static watchface_ui_api_t ui_api = {
     .set_weather = watchface_set_weather,
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
+    .set_charging = watchface_set_charging,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .get_preview_img = watchface_get_preview_img,
     .name = "ZSWatch Digital",
