@@ -31,4 +31,4 @@ void battery_ui_remove(void);
 
 void battery_ui_add_measurement(int percent, int voltage);
 
-void battery_ui_update(int ttf, int tte, int status, int error, int charging);
+void battery_ui_update(int ttf, int tte, const char *status_text, const char *error_text, int charging);

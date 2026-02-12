@@ -85,8 +85,17 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
     }
 
     if (zbus_chan_read(&battery_sample_data_chan, &initial_sample, K_MSEC(100)) == 0) {
-        battery_ui_update(initial_sample.ttf, initial_sample.tte, initial_sample.status, initial_sample.error,
+#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
+        battery_ui_update(initial_sample.ttf, initial_sample.tte,
+                          zsw_pmic_charger_status_str(initial_sample.status),
+                          zsw_pmic_charger_error_str(initial_sample.error),
                           initial_sample.is_charging);
+#else
+        battery_ui_update(initial_sample.ttf, initial_sample.tte,
+                          "N/A",
+                          "N/A",
+                          initial_sample.is_charging);
+#endif
         battery_ui_add_measurement(initial_sample.percent, initial_sample.mV);
     }
 }
@@ -116,7 +125,17 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
         }
     }
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-        battery_ui_update(event->ttf, event->tte, event->status, event->error, event->is_charging);
+#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
+        battery_ui_update(event->ttf, event->tte,
+                          zsw_pmic_charger_status_str(event->status),
+                          zsw_pmic_charger_error_str(event->error),
+                          event->is_charging);
+#else
+        battery_ui_update(event->ttf, event->tte,
+                          "N/A",
+                          "N/A",
+                          event->is_charging);
+#endif
     }
 }
 

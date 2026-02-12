@@ -97,6 +97,46 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
     }
 }
 
+const char *zsw_pmic_charger_status_str(int status)
+{
+    if (status & NPM1300_CHG_STATUS_CV_MASK) {
+        return "Const. voltage";
+    } else if (status & NPM1300_CHG_STATUS_CC_MASK) {
+        return "Const. current";
+    } else if (status & NPM1300_CHG_STATUS_TRICKLE_MASK) {
+        return "Trickle";
+    } else if (status & NPM1300_CHG_STATUS_COMPLETE_MASK) {
+        return "Complete";
+    }
+    return "Idle";
+}
+
+const char *zsw_pmic_charger_error_str(int error)
+{
+    if (error == 0) {
+        return "None";
+    }
+    if (error & BIT(0)) {
+        return "NTC cold";
+    }
+    if (error & BIT(1)) {
+        return "NTC hot";
+    }
+    if (error & BIT(2)) {
+        return "VBAT low";
+    }
+    if (error & BIT(4)) {
+        return "Trickle timeout";
+    }
+    if (error & BIT(5)) {
+        return "CC timeout";
+    }
+    if (error & BIT(6)) {
+        return "Supplement mode";
+    }
+    return "Unknown";
+}
+
 static bool is_charging_from_status(int status)
 {
     return (status & NPM1300_CHG_STATUS_CC_MASK) || (status & NPM1300_CHG_STATUS_CV_MASK) ||
