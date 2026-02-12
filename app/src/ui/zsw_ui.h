@@ -19,7 +19,7 @@
 
 #include "utils/zsw_ui_utils.h"
 #include "popup/zsw_popup_window.h"
-#include "notification/zsw_popup_notifcation.h"
+#include "notification/zsw_popup_notification.h"
 
 static inline lv_color_t zsw_color_red(void)
 {
