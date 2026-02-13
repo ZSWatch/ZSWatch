@@ -1,0 +1,72 @@
+diff --git a/drivers/input/input_sdl_touch_bottom.c b/drivers/input/input_sdl_touch_bottom.c
+index 266dcccd8db..bc0d644fd58 100644
+--- a/drivers/input/input_sdl_touch_bottom.c
++++ b/drivers/input/input_sdl_touch_bottom.c
+@@ -8,6 +8,21 @@
+ #include <SDL.h>
+ #include "input_sdl_touch_bottom.h"
+ 
++/*
++ * Minimum interval (ms) between reported MOUSEMOTION events while pressed.
++ *
++ * High polling rate mice (1000 Hz+) produce motion events with sub-pixel deltas.
++ * LVGL's gesture detection resets its accumulated gesture distance whenever the
++ * per-reading movement vector falls below gesture_min_velocity (default 3 px).
++ * With tiny per-event deltas this threshold is never exceeded and gestures never
++ * fire.
++ *
++ * Throttling to ~67 Hz ensures each reported position change is large enough
++ * for LVGL's gesture and scroll algorithms to work correctly, matching the
++ * typical update rate of real touch controllers.
++ */
++#define SDL_MOTION_THROTTLE_MS 15
++
+ static bool event_targets_display(SDL_Event *event, struct sdl_input_data *data)
+ {
+ 	SDL_Window *window = NULL;
+@@ -47,14 +62,31 @@ static int sdl_filter(void *arg, SDL_Event *event)
+ 	case SDL_MOUSEBUTTONUP:
+ 		data->pressed = false;
+ 		data->just_released = true;
++		data->x = event->button.x;
++		data->y = event->button.y;
+ 		break;
+ 	case SDL_MOUSEBUTTONDOWN:
+ 		data->pressed = true;
+-		break;
+-	case SDL_MOUSEMOTION:
+ 		data->x = event->button.x;
+ 		data->y = event->button.y;
+ 		break;
++	case SDL_MOUSEMOTION:
++		data->x = event->motion.x;
++		data->y = event->motion.y;
++		/*
++		 * Throttle motion events while pressed to avoid flooding LVGL
++		 * with tiny per-event deltas from high polling rate mice, which
++		 * prevents gesture detection from working correctly.
++		 * Position (data->x/y) is always kept up-to-date so that when
++		 * the next non-throttled event fires, the full position jump is
++		 * reported.
++		 */
++		if (data->pressed &&
++		    (event->motion.timestamp - data->last_motion_ts) < SDL_MOTION_THROTTLE_MS) {
++			return 1;
++		}
++		data->last_motion_ts = event->motion.timestamp;
++		break;
+ 	default:
+ 		return 1;
+ 	}
+diff --git a/drivers/input/input_sdl_touch_bottom.h b/drivers/input/input_sdl_touch_bottom.h
+index 8472517b62c..9496b8fc8eb 100644
+--- a/drivers/input/input_sdl_touch_bottom.h
++++ b/drivers/input/input_sdl_touch_bottom.h
+@@ -28,6 +28,7 @@ struct sdl_input_data {
+ 	int y;
+ 	bool pressed;
+ 	bool just_released;
++	uint32_t last_motion_ts;
+ };
+ 
+ void sdl_input_init_bottom(struct sdl_input_data *data);
