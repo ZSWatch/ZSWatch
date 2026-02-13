@@ -34,8 +34,57 @@ def reset(device_config):
     )
 
 
+# QSPI XIP base for nRF53.
+_QSPI_XIP_BASE = 0x10000000
+
+# MCUboot secondary slot offsets in external flash for watchdk.
+# From pm_static_watchdk_nrf5340_cpuapp_1.yml:
+#   mcuboot_secondary   (image 0): 0x000000 – 0x0D4000
+#   mcuboot_secondary_1 (image 1): 0x0D4000 – 0x114000
+#   mcuboot_secondary_2 (image 2): 0x220000 – 0x320000
+_QSPI_SECONDARY_SLOTS = [
+    (0x000000, 0x0D4000),
+    (0x0D4000, 0x114000),
+    (0x220000, 0x320000),
+]
+
+
+def erase_secondary_slots(device_config):
+    """Erase MCUboot secondary slots in QSPI to clear stale DFU images."""
+    log.info("Erasing MCUboot secondary slots in QSPI.")
+    for start_off, end_off in _QSPI_SECONDARY_SLOTS:
+        start = _QSPI_XIP_BASE + start_off
+        end = _QSPI_XIP_BASE + end_off
+        try:
+            subprocess.run(
+                [
+                    "nrfjprog",
+                    "--family",
+                    "nrf53",
+                    "--snr",
+                    device_config["jlink_serial"],
+                    "--qspiini",
+                    "../boards/zswatch/watchdk/support/qspi_mx25u51245.ini",
+                    "--erasepage",
+                    f"0x{start:X}-0x{end:X}",
+                ],
+                shell=False,
+                stderr=subprocess.STDOUT,
+                stdout=subprocess.PIPE,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            log.error(f"Error erasing QSPI region 0x{start:X}-0x{end:X}: {e.stdout}")
+            raise
+
+
 def flash(device_config):
     """Flash firmware"""
+    # Erase MCUboot secondary slots first to prevent MCUboot from swapping
+    # stale DFU images into the primary slots after a debugger re-flash.
+    erase_secondary_slots(device_config)
+
     log.info("Flashing CP_APPLICATION.")
     try:
         subprocess.run(
