@@ -202,5 +202,3 @@ async def test_shell_command_over_ble(device_config):
     response = await _shell_command_ble(device_config, ["ble_fota", "status"])
     print(f"BLE FOTA status: {response.o}")
     assert "enabled" in response.o.lower()
-
-    await _shell_command_usb(device_config, ["ble_fota", "disable"])
