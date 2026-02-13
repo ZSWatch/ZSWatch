@@ -133,6 +133,9 @@ static void run_input_work(struct k_work *item)
 
 static void open_application_manager_page(void *app_name)
 {
+    if (watch_state != WATCHFACE_STATE) {
+        return;
+    }
     watchface_app_stop();
     is_buttons_for_lvgl = true;
     watch_state = APPLICATION_MANAGER_STATE;
@@ -347,7 +350,10 @@ static int settings_load_handler_onboarding(const char *key, size_t len,
         return -EINVAL;
     }
 
-    read_cb(cb_arg, param, sizeof(zsw_settings_onboarding_done_t));
+    int rc = read_cb(cb_arg, param, sizeof(zsw_settings_onboarding_done_t));
+    if (rc < 0) {
+        return rc;
+    }
 
     return 0;
 }
@@ -402,8 +408,6 @@ int zsw_ui_controller_init(void)
         touch_indev = lv_indev_get_next(touch_indev);
     }
 
-    watch_state = WATCHFACE_STATE;
-
     zsw_settings_onboarding_done_t onboarding_done = false;
     int err = settings_load_subtree_direct(ZSW_SETTINGS_ONBOARDING_DONE,
                                            settings_load_handler_onboarding,
@@ -413,8 +417,10 @@ int zsw_ui_controller_init(void)
     }
 
     if (!onboarding_done) {
+        watch_state = INIT_STATE;
         zsw_onboarding_ui_show(root_screen, on_onboarding_done);
     } else {
+        watch_state = WATCHFACE_STATE;
         watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
     }
 
