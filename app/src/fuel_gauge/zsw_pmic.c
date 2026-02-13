@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <zephyr/kernel.h>
@@ -100,41 +101,57 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
 const char *zsw_pmic_charger_status_str(int status)
 {
     if (status & NPM1300_CHG_STATUS_CV_MASK) {
-        return "Const. voltage";
+        return "C.Volt";
     } else if (status & NPM1300_CHG_STATUS_CC_MASK) {
-        return "Const. current";
+        return "C.Current";
     } else if (status & NPM1300_CHG_STATUS_TRICKLE_MASK) {
         return "Trickle";
     } else if (status & NPM1300_CHG_STATUS_COMPLETE_MASK) {
-        return "Complete";
+        return "Done";
     }
     return "Idle";
 }
 
 const char *zsw_pmic_charger_error_str(int error)
 {
+    static char error_buf[128];
+
     if (error == 0) {
         return "None";
     }
-    if (error & BIT(0)) {
-        return "NTC cold";
+
+    /* nPM1300 BCHGERRREASON register bit mappings */
+    static const struct {
+        int bit;
+        const char *name;
+    } error_map[] = {
+        { BIT(0), "NTC" },
+        /* BIT(1) is reserved */
+        { BIT(2), "VBAT_SNS" },
+        { BIT(3), "VBAT_LOW" },
+        { BIT(4), "TRKL" },
+        { BIT(5), "MEAS_TO" },
+        { BIT(6), "CHG_TO" },
+        { BIT(7), "TRKL_TO" },
+    };
+
+    int pos = 0;
+
+    for (int i = 0; i < ARRAY_SIZE(error_map); i++) {
+        if (error & error_map[i].bit) {
+            if (pos > 0) {
+                pos += snprintf(error_buf + pos, sizeof(error_buf) - pos, "|");
+            }
+            pos += snprintf(error_buf + pos, sizeof(error_buf) - pos, "%s",
+                            error_map[i].name);
+        }
     }
-    if (error & BIT(1)) {
-        return "NTC hot";
+
+    if (pos == 0) {
+        return "ERR";
     }
-    if (error & BIT(2)) {
-        return "VBAT low";
-    }
-    if (error & BIT(4)) {
-        return "Trickle timeout";
-    }
-    if (error & BIT(5)) {
-        return "CC timeout";
-    }
-    if (error & BIT(6)) {
-        return "Supplement mode";
-    }
-    return "Unknown";
+
+    return error_buf;
 }
 
 static bool is_charging_from_status(int status)
