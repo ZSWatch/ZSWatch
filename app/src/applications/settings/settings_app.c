@@ -51,7 +51,7 @@ static void on_aoa_interval_changed(lv_setting_value_t value, bool final);
 static void on_pairing_enable_changed(lv_setting_value_t value, bool final);
 static void on_reset_steps_changed(lv_setting_value_t value, bool final);
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
-static void on_clear_storage_changed(lv_setting_value_t value, bool final);
+static void on_clear_external_flash_changed(lv_setting_value_t value, bool final);
 static void on_factory_reset_changed(lv_setting_value_t value, bool final);
 static void on_ble_log_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
@@ -237,7 +237,7 @@ static lv_settings_item_t developer_page_items[] = {
     {
         .type = LV_SETTINGS_TYPE_BTN,
         .icon = LV_SYMBOL_BACKSPACE,
-        .change_callback = on_clear_storage_changed,
+        .change_callback = on_clear_external_flash_changed,
         .item = {
             .btn = {
                 .name = "Erase external flash",
@@ -445,10 +445,10 @@ static void on_factory_reset_confirm(bool yes_pressed)
     sys_reboot(SYS_REBOOT_COLD);
 }
 
-static void on_clear_storage_changed(lv_setting_value_t value, bool final)
+static void on_clear_external_flash_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
-        zsw_popup_show("Erase all settings?",
+        zsw_popup_show("Erase external flash?",
                        "Are you sure?\nThis can take up to 5 minutes.\nThe watch will restart once done.",
                        on_clear_storage_confirm, 10, true);
     }
