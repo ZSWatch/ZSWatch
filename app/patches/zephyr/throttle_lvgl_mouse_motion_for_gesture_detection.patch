@@ -1,0 +1,80 @@
+diff --git a/modules/lvgl/Kconfig.input b/modules/lvgl/Kconfig.input
+index 6aba1705353..6fcf9ea6d60 100644
+--- a/modules/lvgl/Kconfig.input
++++ b/modules/lvgl/Kconfig.input
+@@ -39,6 +39,18 @@ config LV_Z_POINTER_INPUT_MSGQ_COUNT
+ 	help
+ 	  Size of the pointer message queue buffering input events.
+ 
++config LV_Z_POINTER_MOTION_THROTTLE_MS
++	int "Input pointer motion throttle interval (ms)"
++	default 0
++	range 0 1000
++	depends on LV_Z_POINTER_INPUT
++	help
++	  Minimum time in milliseconds between queued LVGL pointer updates while
++	  the pointer is pressed. A value of 0 disables throttling.
++
++	  This can improve gesture/scroll detection with very high-rate input
++	  sources that otherwise produce tiny per-update deltas.
++
+ config LV_Z_BUTTON_INPUT
+ 	bool "Input lvgl button"
+ 	default y
+diff --git a/modules/lvgl/input/lvgl_pointer_input.c b/modules/lvgl/input/lvgl_pointer_input.c
+index 612741b5cb4..d55cce1c3ca 100644
+--- a/modules/lvgl/input/lvgl_pointer_input.c
++++ b/modules/lvgl/input/lvgl_pointer_input.c
+@@ -20,12 +20,14 @@ struct lvgl_pointer_input_config {
+ 	bool swap_xy;
+ 	bool invert_x;
+ 	bool invert_y;
++	uint16_t motion_throttle_ms;
+ };
+ 
+ struct lvgl_pointer_input_data {
+ 	struct lvgl_common_input_data common_data;
+ 	uint32_t point_x;
+ 	uint32_t point_y;
++	uint32_t last_motion_report_ts;
+ };
+ 
+ static void lvgl_pointer_process_event(struct input_event *evt, void *user_data)
+@@ -73,6 +87,21 @@ static void lvgl_pointer_process_event(struct input_event *evt, void *user_data)
+ 		return;
+ 	}
+ 
++	if (cfg->motion_throttle_ms > 0) {
++		if (data->common_data.pending_event.state == LV_INDEV_STATE_RELEASED) {
++			data->last_motion_report_ts = 0;
++		} else {
++			uint32_t now = k_uptime_get_32();
++
++			if (data->last_motion_report_ts != 0 &&
++			    (now - data->last_motion_report_ts) < cfg->motion_throttle_ms) {
++				return;
++			}
++
++			data->last_motion_report_ts = now;
++		}
++	}
++
+ 	lv_point_t tmp_point = {
+ 		.x = data->point_x,
+ 		.y = data->point_y,
+@@ -153,6 +182,7 @@ int lvgl_pointer_input_init(const struct device *dev)
+ 		.swap_xy = DT_INST_PROP(inst, swap_xy),                                            \
+ 		.invert_x = DT_INST_PROP(inst, invert_x),                                          \
+ 		.invert_y = DT_INST_PROP(inst, invert_y),                                          \
++		.motion_throttle_ms = CONFIG_LV_Z_POINTER_MOTION_THROTTLE_MS,                      \
+ 	};                                                                                         \
+ 	static struct lvgl_pointer_input_data lvgl_pointer_input_data_##inst;                      \
+ 	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &lvgl_pointer_input_data_##inst,                   \
+@@ -178,6 +208,7 @@ static const struct lvgl_pointer_input_config chosen_touch_pointer_config = {
+ #ifdef CONFIG_LV_Z_POINTER_FROM_CHOSEN_TOUCH_INFER_DISPLAY
+ 	.common_config.display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display)),
+ #endif /* CONFIG_LV_Z_POINTER_FROM_CHOSEN_TOUCH_INFER_DISPLAY */
++	.motion_throttle_ms = CONFIG_LV_Z_POINTER_MOTION_THROTTLE_MS,
+ };
+ static struct lvgl_pointer_input_data chosen_touch_pointer_data;
+ 
