@@ -72,6 +72,10 @@
 #include "fuel_gauge/zsw_pmic.h"
 #include "managers/zsw_microphone_manager.h"
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include "managers/zsw_llext_app_manager.h"
+#endif
+
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
 static void run_init_work(struct k_work *item);
@@ -120,6 +124,10 @@ static void run_init_work(struct k_work *item)
                 zsw_filesytem_get_num_rawfs_files(), NUM_RAW_FS_FILES);
         zsw_popup_show("Warning", "Missing files in external flash\nPlease run:\nwest upload_fs", NULL, 5, false);
     }
+#endif
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+    zsw_llext_app_manager_init();
 #endif
 
     LOG_INF("ZSWatch application started");

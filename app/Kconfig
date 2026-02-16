@@ -75,6 +75,11 @@ menu "ZSWatch"
     rsource "src/sensor_fusion/Kconfig"
     rsource "src/ble/Kconfig"
 
+    config ZSW_LLEXT_APPS
+        bool "Enable LLEXT dynamic app loading"
+        default n
+        select LLEXT
+
     menu "Default configuration"
         menu "ZSWatch Init Priorities"
             config DEFAULT_CONFIGURATION_DRIVER_INIT_PRIORITY

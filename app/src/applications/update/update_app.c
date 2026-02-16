@@ -303,6 +303,16 @@ static int update_app_add(void)
     mgmt_callback_register(&upload_callback);
     mgmt_callback_register(&stopped_callback);
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+    /* DEV HACK: Keep SMP BLE registered at boot for LLEXT app uploads.
+     * SMP/MCUmgr code lives in XIP, so we must keep XIP enabled permanently.
+     * Remove this hack once a proper "developer mode" toggle exists.
+     */
+    zsw_xip_enable();
+    ble_fota_enabled = true;
+    usb_fota_enabled = false;
+    LOG_WRN("LLEXT dev mode: SMP BLE kept registered, XIP forced on");
+#else
     ble_fota_enabled = false;
     usb_fota_enabled = false;
 
@@ -310,6 +320,7 @@ static int update_app_add(void)
     if (rc != 0) {
         LOG_WRN("BLE SMP already unregistered or failed to unregister. Check init priority. Error: %d", rc);
     }
+#endif
 #endif
     return 0;
 }
