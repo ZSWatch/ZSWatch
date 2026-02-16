@@ -306,6 +306,7 @@ static int update_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
     /* DEV HACK: Keep SMP BLE registered at boot for LLEXT app uploads.
      * SMP/MCUmgr code lives in XIP, so we must keep XIP enabled permanently.
+     * Schedule SMP registration after BT is ready (runs in main thread).
      * Remove this hack once a proper "developer mode" toggle exists.
      */
     zsw_xip_enable();

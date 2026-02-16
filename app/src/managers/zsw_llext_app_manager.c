@@ -37,7 +37,7 @@ LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
 #define ZSW_LLEXT_MANIFEST_BUF_SIZE 256
-#define ZSW_LLEXT_HEAP_SIZE         (20 * 1024)  /* 20 KB for LLEXT heap */
+#define ZSW_LLEXT_HEAP_SIZE         (40 * 1024)  /* 40 KB for LLEXT heap */
 
 /* Embedded test LLEXT binary (generated at build time) */
 static const uint8_t embedded_llext_buf[] __aligned(4) = {
