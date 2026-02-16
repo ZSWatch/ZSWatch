@@ -10,4 +10,5 @@ target_sources(app PRIVATE zsw_usb_manager.c)
 target_sources_ifdef(CONFIG_ZSW_MIC app PRIVATE zsw_microphone_manager.c)
 
 target_sources_ifdef(CONFIG_ZSW_LLEXT_APPS app PRIVATE zsw_llext_app_manager.c)
+target_sources_ifdef(CONFIG_ZSW_LLEXT_APPS app PRIVATE zsw_llext_xip.c)
 target_sources_ifdef(CONFIG_ZSW_XIP app PRIVATE zsw_xip_manager.c)

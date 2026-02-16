@@ -27,6 +27,7 @@
 
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_llext_app_manager.h"
+#include "managers/zsw_llext_xip.h"
 
 LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
 
@@ -169,6 +170,19 @@ static int load_llext_app(const char *dir_path, const struct llext_manifest *man
     LOG_INF("LLEXT '%s' loaded successfully, finding entry symbol '%s'",
             manifest->name, manifest->entry_symbol);
 
+    /* Install .text/.rodata to XIP flash to reduce steady-state RAM usage.
+     * WARNING: adjust_relocations modifies .text/.data in-place.
+     * If XIP install fails AFTER adjustment, the RAM copies are corrupted
+     * and the LLEXT cannot be used. We must unload on failure.
+     */
+    ret = zsw_llext_xip_install(ext, elf_path);
+    if (ret != 0) {
+        LOG_ERR("XIP install failed for '%s': %d — unloading (RAM data corrupted)",
+                manifest->name, ret);
+        llext_unload(&ext);
+        return ret;
+    }
+
     /* Find the app_entry symbol */
     llext_app_entry_fn entry_fn = llext_find_sym(&ext->exp_tab, manifest->entry_symbol);
     if (entry_fn == NULL) {
@@ -287,6 +301,13 @@ int zsw_llext_app_manager_init(void)
         return ret;
     }
     LOG_INF("LLEXT heap initialized (%zu bytes)", sizeof(llext_heap_buf));
+
+    /* Initialize the XIP allocator for external flash installation */
+    ret = zsw_llext_xip_init();
+    if (ret != 0) {
+        LOG_WRN("XIP allocator init failed: %d (XIP install disabled)", ret);
+        /* Non-fatal: apps will load to RAM only */
+    }
 
     /* NOTE: SMP BLE transport is NOT registered here because MCUmgr code
      * is relocated to external flash (XIP). When XIP is disabled (screen off),
