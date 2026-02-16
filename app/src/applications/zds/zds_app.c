@@ -25,8 +25,8 @@
 #include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
-static void zds_app_start(lv_obj_t *root, lv_group_t *group);
-static void zds_app_stop(void);
+static void zds_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void zds_app_stop(void *user_data);
 
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
 
@@ -43,14 +43,16 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_RANDOM
 };
 
-static void zds_app_start(lv_obj_t *root, lv_group_t *group)
+static void zds_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     zds_ui_show(root);
     zbus_chan_add_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
 }
 
-static void zds_app_stop(void)
+static void zds_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     zbus_chan_rm_obs(&accel_data_chan, &zds_app_accel_lis, K_MSEC(100));
     zds_ui_remove();
 }

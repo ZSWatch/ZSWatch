@@ -51,4 +51,20 @@ menu "Managers"
         module-str = ZSW_MIC_MANAGER
         source "subsys/logging/Kconfig.template.log_config"
     endmenu
+
+    menu "LLEXT App Manager"
+        depends on ZSW_LLEXT_APPS
+
+        module = ZSW_LLEXT_APP_MANAGER
+        module-str = ZSW_LLEXT_APP_MANAGER
+        source "subsys/logging/Kconfig.template.log_config"
+    endmenu
+
+    menu "LLEXT XIP"
+        depends on ZSW_LLEXT_APPS
+
+        module = ZSW_LLEXT_XIP
+        module-str = ZSW_LLEXT_XIP
+        source "subsys/logging/Kconfig.template.log_config"
+    endmenu
 endmenu

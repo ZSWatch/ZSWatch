@@ -30,7 +30,7 @@
 
 LOG_MODULE_REGISTER(app_manager, LOG_LEVEL_INF);
 
-#define MAX_APPS        25
+#define MAX_APPS        35
 #define INVALID_APP_ID  0xFF
 
 static void draw_app_and_folder_view(void);
@@ -146,7 +146,7 @@ static void async_app_start(lv_timer_t *timer)
     __ASSERT(screen_is_on, "Screen expected to be on when starting app.");
     app->current_state = ZSW_APP_STATE_UI_VISIBLE;
 
-    app->start_func(root_obj, group_obj);
+    app->start_func(root_obj, group_obj, app->user_data);
 }
 
 static void async_app_close(lv_timer_t *timer)
@@ -160,7 +160,7 @@ static void async_app_close(lv_timer_t *timer)
 
         if (!back_button_consumed) {
             apps[current_app]->current_state = ZSW_APP_STATE_STOPPED;
-            apps[current_app]->stop_func();
+            apps[current_app]->stop_func(apps[current_app]->user_data);
             current_app = INVALID_APP_ID;
             if (app_launch_only) {
                 zsw_app_manager_delete();
@@ -275,7 +275,7 @@ void zsw_app_manager_delete(void)
     if (current_app < num_apps) {
         LOG_DBG("Stop force %d", current_app);
         apps[current_app]->current_state = ZSW_APP_STATE_STOPPED;
-        apps[current_app]->stop_func();
+        apps[current_app]->stop_func(apps[current_app]->user_data);
     }
     delete_root_object();
 }

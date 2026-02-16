@@ -36,7 +36,7 @@ class UploadFsWestCommand(WestCommand):
             "--type",
             type=str,
             default="raw",
-            help="raw or fs. fs to load littlefs image, raw to load custom binary",
+            help="raw or lfs. lfs to load littlefs image, raw to load custom binary",
         )
 
         parser.add_argument(
@@ -177,10 +177,11 @@ class UploadFsWestCommand(WestCommand):
             partition = partition if partition else "littlefs_storage"
         if args.read_file is None:
             if args.type == "raw":
-                source_dir = f"{images_path}/S"
-                partition = partition if partition else "lvgl_raw_partition"
-                create_custom_raw_fs_image(filename, source_dir, block_size)
-                qspi_flash_address = qspi_flash_address + 0x520000
+                print("DON*T USE THIS FOR LLEXT APPS, use tyoe lfs!")
+                #source_dir = f"{images_path}/S"
+                #partition = partition if partition else "lvgl_raw_partition"
+                #create_custom_raw_fs_image(filename, source_dir, block_size)
+                #qspi_flash_address = qspi_flash_address + 0x520000
                 print("lvgl_raw_partition partition address:", qspi_flash_address)
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"

@@ -19,6 +19,12 @@
 #include <lvgl.h>
 #include "assert.h"
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+/* In LLEXT builds, include the image data directly so the LLEXT module
+ * is self-contained — the firmware doesn't export individual image symbols. */
+#include "cardinal_point.c"
+#endif
+
 static lv_obj_t *root_page = NULL;
 
 static lv_obj_t *compass_img;
@@ -38,7 +44,9 @@ static void create_ui(lv_obj_t *compass_panel)
     lv_obj_t *cal_btn;
     lv_obj_t *cal_btn_label;
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
     LV_IMG_DECLARE(cardinal_point)
+#endif
 
     cal_btn = lv_btn_create(compass_panel);
     lv_obj_set_style_pad_all(cal_btn, 3, LV_PART_MAIN);

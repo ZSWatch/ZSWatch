@@ -18,8 +18,8 @@ LOG_MODULE_REGISTER(timer_app, LOG_LEVEL_DBG);
 #define SETTINGS_KEY_TIMERS         "timers"
 #define SETTINGS_TIMERS_LIST         SETTINGS_NAME_TIMER_APP "/" SETTINGS_KEY_TIMERS
 
-static void timer_app_start(lv_obj_t *root, lv_group_t *group);
-static void timer_app_stop(void);
+static void timer_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void timer_app_stop(void *user_data);
 
 static void on_timer_created_cb(uint32_t hour, uint32_t min, uint32_t sec, ui_timer_type_t type);
 static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id);
@@ -42,8 +42,9 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_ROOT
 };
 
-static void timer_app_start(lv_obj_t *root, lv_group_t *group)
+static void timer_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     timer_ui_show(root, on_timer_created_cb, on_timer_event_cb);
     for (int i = 0; i < TIMER_UI_MAX_TIMERS; i++) {
         if (timers[i].used) {
@@ -54,8 +55,9 @@ static void timer_app_start(lv_obj_t *root, lv_group_t *group)
     zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &timer_app_1s_event_listener);
 }
 
-static void timer_app_stop(void)
+static void timer_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     app_is_open = false;
     timer_ui_remove();
     zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &timer_app_1s_event_listener);

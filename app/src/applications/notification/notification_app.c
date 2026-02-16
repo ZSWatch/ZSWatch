@@ -27,8 +27,8 @@
 
 LOG_MODULE_REGISTER(notification_app, CONFIG_NOTIFICATION_APP_LOG_LEVEL);
 
-static void notification_app_start(lv_obj_t *root, lv_group_t *group);
-static void notification_app_stop(void);
+static void notification_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void notification_app_stop(void *user_data);
 static void notification_app_zbus_notification_callback(const struct zbus_channel *chan);
 static void notification_app_zbus_notification_remove_callback(const struct zbus_channel *chan);
 static void notification_app_on_ui_available(void);
@@ -82,12 +82,13 @@ static void notification_app_on_ui_available(void)
 {
     // When screen turns off and UI is not available, we miss notifications being added or removed.
     // Just recreate the UI to be in sync with the notification manager.
-    notification_app_stop();
-    notification_app_start(root_obj, notification_group);
+    notification_app_stop(NULL);
+    notification_app_start(root_obj, notification_group, NULL);
 }
 
-static void notification_app_start(lv_obj_t *root, lv_group_t *group)
+static void notification_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     static uint32_t num_notifications;
 
     // TODO: Can we remove this buffer in some way because we already have one notification buffer?
@@ -105,8 +106,9 @@ static void notification_app_start(lv_obj_t *root, lv_group_t *group)
     }
 }
 
-static void notification_app_stop(void)
+static void notification_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     notifications_ui_page_close();
 }
 

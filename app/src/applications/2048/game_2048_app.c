@@ -24,8 +24,8 @@
 #include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
-static void game_2048_app_start(lv_obj_t *root, lv_group_t *group);
-static void game_2048_app_stop(void);
+static void game_2048_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void game_2048_app_stop(void *user_data);
 
 ZSW_LV_IMG_DECLARE(icon_2048);
 
@@ -37,13 +37,15 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_GAMES
 };
 
-static void game_2048_app_start(lv_obj_t *root, lv_group_t *group)
+static void game_2048_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     game_2048_ui_show(root);
 }
 
-static void game_2048_app_stop(void)
+static void game_2048_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     game_2048_ui_remove();
 }
 

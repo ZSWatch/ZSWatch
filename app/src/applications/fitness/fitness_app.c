@@ -57,8 +57,8 @@ typedef struct {
     uint32_t steps;
 } zsw_step_sample_t;
 
-static void fitness_app_start(lv_obj_t *root, lv_group_t *group);
-static void fitness_app_stop(void);
+static void fitness_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void fitness_app_stop(void *user_data);
 
 static void step_sample_work(struct k_work *work);
 
@@ -186,8 +186,9 @@ static void shift_char_array_n_left(char **arr, int n, int size)
     }
 }
 
-static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
+static void fitness_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     zsw_timeval_t time;
     uint32_t steps;
     uint16_t step_weekdays[DAYS_IN_WEEK] = {0};
@@ -214,8 +215,9 @@ static void fitness_app_start(lv_obj_t *root, lv_group_t *group)
     }
 }
 
-static void fitness_app_stop(void)
+static void fitness_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     fitness_ui_remove();
 }
 

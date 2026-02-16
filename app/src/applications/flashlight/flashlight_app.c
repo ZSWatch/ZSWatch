@@ -21,8 +21,8 @@
 #include "managers/zsw_app_manager.h"
 #include "drivers/zsw_display_control.h"
 
-static void flashlight_app_start(lv_obj_t *root, lv_group_t *group);
-static void flashlight_app_stop(void);
+static void flashlight_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void flashlight_app_stop(void *user_data);
 
 static application_t app = {
     .name = "Flashlight",
@@ -34,14 +34,16 @@ static application_t app = {
 
 static uint8_t original_brightness;
 
-static void flashlight_app_start(lv_obj_t *root, lv_group_t *group)
+static void flashlight_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     original_brightness = zsw_display_control_get_brightness();
     flashlight_ui_show(root);
 }
 
-static void flashlight_app_stop(void)
+static void flashlight_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     flashlight_ui_remove();
     zsw_display_control_set_brightness(original_brightness);
 }
