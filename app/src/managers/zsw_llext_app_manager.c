@@ -203,6 +203,15 @@ static int load_llext_app(const char *dir_path, const struct llext_manifest *man
     /* Register with the main app manager */
     zsw_app_manager_add_application(app);
 
+    /* Free ALL remaining LLEXT heap allocations.  After XIP install, .text and
+     * .rodata are in XIP flash and .data/.bss are in the static data pool — all
+     * marked mem_on_heap=false.  llext_unload() frees the remaining metadata
+     * (sym_tab, exp_tab, strtab, shstrtab, sect_hdrs) and the struct itself,
+     * giving the next app load the full 40 KB heap.
+     */
+    LOG_INF("Freeing LLEXT struct and metadata for '%s'", manifest->name);
+    llext_unload(&ext);
+
     /* Track this LLEXT app */
     zsw_llext_app_t *llext_app = &llext_apps[num_llext_apps];
     strncpy(llext_app->name, manifest->name, sizeof(llext_app->name) - 1);
@@ -380,10 +389,17 @@ int zsw_llext_app_manager_init(void)
 
     LOG_INF("LLEXT app scan complete: %d filesystem app(s) loaded", num_llext_apps);
 
-    /* Always load the embedded test app as a development reference */
-    ret = load_embedded_llext_app();
-    if (ret != 0) {
-        LOG_WRN("Failed to load embedded LLEXT app: %d", ret);
+    /* Load embedded test app only when no filesystem apps were found.
+     * The embedded app stays fully in RAM (no XIP) so it wastes heap space;
+     * skip it when real filesystem apps are available.
+     */
+    if (num_llext_apps == 0) {
+        ret = load_embedded_llext_app();
+        if (ret != 0) {
+            LOG_WRN("Failed to load embedded LLEXT app: %d", ret);
+        }
+    } else {
+        LOG_INF("Filesystem apps loaded, skipping embedded LLEXT");
     }
 
     if (num_llext_apps > 0) {

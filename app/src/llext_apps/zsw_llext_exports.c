@@ -37,39 +37,27 @@
 #include "events/light_event.h"
 #include "events/music_event.h"
 
-/* Zephyr kernel */
+/* ---- Zephyr kernel ---- */
 EXPORT_SYMBOL(k_msleep);
 EXPORT_SYMBOL(k_malloc);
 EXPORT_SYMBOL(k_free);
+EXPORT_SYMBOL(k_uptime_get);
 EXPORT_SYMBOL(printk);
 
-/* ZSWatch app manager */
+/* ---- ZSWatch app manager ---- */
 EXPORT_SYMBOL(zsw_app_manager_add_application);
 EXPORT_SYMBOL(zsw_app_manager_app_close_request);
 EXPORT_SYMBOL(zsw_app_manager_exit_app);
 EXPORT_SYMBOL(zsw_app_manager_get_num_apps);
 
-/* LVGL core — curated subset, add more as needed by apps.
- * Note: lv_obj_clear_flag is a macro alias for lv_obj_remove_flag (lv_api_map_v8.h),
- * so we only export lv_obj_remove_flag.
- */
+/* ---- LVGL core objects ---- */
 EXPORT_SYMBOL(lv_obj_create);
 EXPORT_SYMBOL(lv_obj_delete);
 EXPORT_SYMBOL(lv_obj_set_size);
 EXPORT_SYMBOL(lv_obj_set_width);
 EXPORT_SYMBOL(lv_obj_set_height);
-EXPORT_SYMBOL(lv_obj_set_style_bg_color);
-EXPORT_SYMBOL(lv_obj_set_style_bg_opa);
-EXPORT_SYMBOL(lv_obj_set_style_border_width);
-EXPORT_SYMBOL(lv_obj_set_style_text_font);
-EXPORT_SYMBOL(lv_obj_set_style_text_color);
-EXPORT_SYMBOL(lv_obj_set_style_text_align);
-EXPORT_SYMBOL(lv_obj_set_style_pad_left);
-EXPORT_SYMBOL(lv_obj_set_style_pad_right);
-EXPORT_SYMBOL(lv_obj_set_style_pad_top);
-EXPORT_SYMBOL(lv_obj_set_style_pad_bottom);
-EXPORT_SYMBOL(lv_obj_set_style_pad_row);
-EXPORT_SYMBOL(lv_obj_set_style_pad_column);
+EXPORT_SYMBOL(lv_obj_set_x);
+EXPORT_SYMBOL(lv_obj_set_y);
 EXPORT_SYMBOL(lv_obj_set_align);
 EXPORT_SYMBOL(lv_obj_align);
 EXPORT_SYMBOL(lv_obj_set_flex_flow);
@@ -79,24 +67,70 @@ EXPORT_SYMBOL(lv_obj_set_scrollbar_mode);
 EXPORT_SYMBOL(lv_obj_remove_flag);
 EXPORT_SYMBOL(lv_obj_add_flag);
 EXPORT_SYMBOL(lv_obj_remove_style_all);
+EXPORT_SYMBOL(lv_obj_add_event_cb);
 
+/* ---- LVGL style setters ---- */
+EXPORT_SYMBOL(lv_obj_set_style_bg_color);
+EXPORT_SYMBOL(lv_obj_set_style_bg_opa);
+EXPORT_SYMBOL(lv_obj_set_style_border_width);
+EXPORT_SYMBOL(lv_obj_set_style_border_color);
+EXPORT_SYMBOL(lv_obj_set_style_border_opa);
+EXPORT_SYMBOL(lv_obj_set_style_text_font);
+EXPORT_SYMBOL(lv_obj_set_style_text_color);
+EXPORT_SYMBOL(lv_obj_set_style_text_align);
+EXPORT_SYMBOL(lv_obj_set_style_text_opa);
+EXPORT_SYMBOL(lv_obj_set_style_pad_left);
+EXPORT_SYMBOL(lv_obj_set_style_pad_right);
+EXPORT_SYMBOL(lv_obj_set_style_pad_top);
+EXPORT_SYMBOL(lv_obj_set_style_pad_bottom);
+EXPORT_SYMBOL(lv_obj_set_style_pad_row);
+EXPORT_SYMBOL(lv_obj_set_style_pad_column);
+EXPORT_SYMBOL(lv_obj_set_style_pad_gap);
+EXPORT_SYMBOL(lv_obj_set_style_line_color);
+EXPORT_SYMBOL(lv_obj_set_style_line_opa);
+EXPORT_SYMBOL(lv_obj_set_style_line_width);
+EXPORT_SYMBOL(lv_obj_set_style_size);
+EXPORT_SYMBOL(lv_obj_set_style_width);
+EXPORT_SYMBOL(lv_obj_set_style_height);
+
+/* ---- LVGL color (non-inline helpers) ---- */
+EXPORT_SYMBOL(lv_color_hex);
+
+/* ---- Zephyr internal ---- */
+EXPORT_SYMBOL(assert_post_action);
+
+/* ---- LVGL label ---- */
 EXPORT_SYMBOL(lv_label_create);
 EXPORT_SYMBOL(lv_label_set_text);
 EXPORT_SYMBOL(lv_label_set_text_fmt);
 
+/* ---- LVGL image ---- */
 EXPORT_SYMBOL(lv_image_create);
 EXPORT_SYMBOL(lv_image_set_src);
 
+/* ---- LVGL chart ---- */
+EXPORT_SYMBOL(lv_chart_create);
+EXPORT_SYMBOL(lv_chart_set_type);
+EXPORT_SYMBOL(lv_chart_set_point_count);
+EXPORT_SYMBOL(lv_chart_set_axis_range);
+EXPORT_SYMBOL(lv_chart_set_div_line_count);
+EXPORT_SYMBOL(lv_chart_add_series);
+EXPORT_SYMBOL(lv_chart_set_next_value);
+
+/* ---- LVGL color (non-inline helpers) ---- */
 EXPORT_SYMBOL(lv_color_make);
 EXPORT_SYMBOL(lv_color_white);
 
-/* Zbus runtime API */
+/* ---- LVGL event ---- */
+EXPORT_SYMBOL(lv_event_get_code);
+
+/* ---- Zbus runtime API ---- */
 EXPORT_SYMBOL(zbus_chan_read);
 EXPORT_SYMBOL(zbus_chan_add_obs);
 EXPORT_SYMBOL(zbus_chan_rm_obs);
 EXPORT_SYMBOL(zbus_chan_pub);
 
-/* Zbus channels — so LLEXT apps can observe/read them */
+/* ---- Zbus channels ---- */
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(activity_state_data_chan);

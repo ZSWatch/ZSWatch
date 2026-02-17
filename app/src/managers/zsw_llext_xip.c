@@ -77,6 +77,34 @@ static uint32_t xip_partition_size; /* Total partition size (from flash_area) */
 static const struct device *qspi_dev;
 
 /* --------------------------------------------------------------------------
+ * Static Data Pool for LLEXT .data/.bss sections
+ *
+ * .data and .bss must persist at stable addresses because XIP code references
+ * them via absolute addresses baked in during relocation.  Placing them on the
+ * LLEXT heap causes fragmentation (tiny .data/.bss blocks between freed .text
+ * and .rodata) that prevents loading subsequent apps.  This static pool lets
+ * us reclaim the entire LLEXT heap after each app load.
+ * -------------------------------------------------------------------------- */
+
+#define DATA_POOL_SIZE 1024
+static uint8_t __aligned(8) data_pool[DATA_POOL_SIZE];
+static size_t data_pool_offset;
+
+static void *data_pool_alloc(size_t align, size_t size)
+{
+    size_t aligned_off = ROUND_UP(data_pool_offset, align);
+
+    if (aligned_off + size > DATA_POOL_SIZE) {
+        LOG_ERR("Data pool exhausted (need %zu at offset %zu, pool %d)",
+                size, aligned_off, DATA_POOL_SIZE);
+        return NULL;
+    }
+    void *ptr = &data_pool[aligned_off];
+    data_pool_offset = aligned_off + size;
+    return ptr;
+}
+
+/* --------------------------------------------------------------------------
  * ELF Section-to-LLEXT Memory Region Mapping
  *
  * Maps ELF section indices to LLEXT memory regions. Built during relocation
@@ -94,7 +122,8 @@ static const struct device *qspi_dev;
 static int xip_alloc_space(const char *name, size_t text_size, size_t rodata_size,
                            uint32_t *out_text_offset, uint32_t *out_rodata_offset);
 static int adjust_relocations(struct llext *ext, const char *elf_path,
-                              uintptr_t xip_text, uintptr_t xip_rodata);
+                              uintptr_t xip_text, uintptr_t xip_rodata,
+                              uintptr_t pool_data, uintptr_t pool_bss);
 static int write_section_to_xip(const struct flash_area *fa, uint32_t offset,
                                 const void *data, size_t size);
 
@@ -120,6 +149,7 @@ int zsw_llext_xip_init(void)
 
     xip_alloc_count = 0;
     xip_next_offset = 0;
+    data_pool_offset = 0;
 
     LOG_INF("XIP allocator init: partition at flash 0x%x, CPU 0x%08x, size %u KB",
             XIP_PARTITION_OFFSET, XIP_PARTITION_CPU_ADDR, xip_partition_size / 1024);
@@ -132,21 +162,27 @@ int zsw_llext_xip_install(struct llext *ext, const char *elf_path)
     const struct flash_area *fa;
     int ret;
 
-    /* 1. Check that .text and .rodata are currently in heap (RAM) */
-    if (!ext->mem[LLEXT_MEM_TEXT] || !ext->mem_on_heap[LLEXT_MEM_TEXT]) {
+    /* 1. Gather section info */
+    void *ram_text = ext->mem[LLEXT_MEM_TEXT];
+    void *ram_rodata = ext->mem[LLEXT_MEM_RODATA];
+    void *ram_data = ext->mem[LLEXT_MEM_DATA];
+    void *ram_bss = ext->mem[LLEXT_MEM_BSS];
+    size_t text_size = ext->mem_size[LLEXT_MEM_TEXT];
+    size_t rodata_size = ext->mem_size[LLEXT_MEM_RODATA];
+    size_t data_size = ext->mem_size[LLEXT_MEM_DATA];
+    size_t bss_size = ext->mem_size[LLEXT_MEM_BSS];
+
+    if (!ram_text || !ext->mem_on_heap[LLEXT_MEM_TEXT]) {
         LOG_ERR("XIP install: .text not in heap");
         return -EINVAL;
     }
 
-    size_t text_size = ext->mem_size[LLEXT_MEM_TEXT];
-    size_t rodata_size = ext->mem_size[LLEXT_MEM_RODATA];
-    void *ram_text = ext->mem[LLEXT_MEM_TEXT];
-    void *ram_rodata = ext->mem[LLEXT_MEM_RODATA];
+    LOG_INF("XIP install '%s': .text=%zu @ %p, .rodata=%zu @ %p, "
+            ".data=%zu @ %p, .bss=%zu @ %p",
+            ext->name, text_size, ram_text, rodata_size, ram_rodata,
+            data_size, ram_data, bss_size, ram_bss);
 
-    LOG_INF("XIP install '%s': .text=%zu bytes @ %p, .rodata=%zu bytes @ %p",
-            ext->name, text_size, ram_text, rodata_size, ram_rodata);
-
-    /* 2. Allocate XIP space */
+    /* 2. Allocate XIP space for .text and .rodata */
     uint32_t text_xip_offset, rodata_xip_offset;
     ret = xip_alloc_space(ext->name, text_size, rodata_size,
                           &text_xip_offset, &rodata_xip_offset);
@@ -158,18 +194,54 @@ int zsw_llext_xip_install(struct llext *ext, const char *elf_path)
     uintptr_t xip_rodata_addr = (rodata_size > 0) ?
         (XIP_PARTITION_CPU_ADDR + rodata_xip_offset) : 0;
 
-    LOG_INF("XIP addresses: .text=0x%08lx, .rodata=0x%08lx",
-            (unsigned long)xip_text_addr,
-            (unsigned long)xip_rodata_addr);
+    /* 3. Allocate static pool space for .data and .bss */
+    uintptr_t pool_data_addr = 0;
+    uintptr_t pool_bss_addr = 0;
 
-    /* 3. Adjust relocations in RAM copies for XIP target addresses */
-    ret = adjust_relocations(ext, elf_path, xip_text_addr, xip_rodata_addr);
+    if (data_size > 0) {
+        void *p = data_pool_alloc(sizeof(void *), data_size);
+        if (!p) {
+            LOG_ERR("Failed to alloc data pool for .data (%zu bytes)", data_size);
+            return -ENOMEM;
+        }
+        pool_data_addr = (uintptr_t)p;
+    }
+
+    if (bss_size > 0) {
+        void *p = data_pool_alloc(sizeof(void *), bss_size);
+        if (!p) {
+            LOG_ERR("Failed to alloc data pool for .bss (%zu bytes)", bss_size);
+            return -ENOMEM;
+        }
+        pool_bss_addr = (uintptr_t)p;
+    }
+
+    LOG_INF("XIP targets: .text=0x%08lx, .rodata=0x%08lx, .data=0x%08lx, .bss=0x%08lx",
+            (unsigned long)xip_text_addr, (unsigned long)xip_rodata_addr,
+            (unsigned long)pool_data_addr, (unsigned long)pool_bss_addr);
+
+    /* 4. Adjust relocations in RAM copies for all target addresses.
+     *    This patches .text, .data and .rodata IN PLACE on the heap so that
+     *    absolute addresses reference the final XIP / pool locations.
+     */
+    ret = adjust_relocations(ext, elf_path, xip_text_addr, xip_rodata_addr,
+                             pool_data_addr, pool_bss_addr);
     if (ret < 0) {
         LOG_ERR("Failed to adjust relocations: %d", ret);
         return ret;
     }
 
-    /* 4. Write sections to XIP flash */
+    /* 5. Copy .data to static pool (content already adjusted) and zero .bss */
+    if (data_size > 0 && ram_data) {
+        memcpy((void *)pool_data_addr, ram_data, data_size);
+        LOG_INF("XIP: .data copied to pool (%zu bytes)", data_size);
+    }
+    if (bss_size > 0) {
+        memset((void *)pool_bss_addr, 0, bss_size);
+        LOG_INF("XIP: .bss zeroed in pool (%zu bytes)", bss_size);
+    }
+
+    /* 6. Write .text and .rodata to XIP flash */
     ret = flash_area_open(XIP_PARTITION_ID, &fa);
     if (ret < 0) {
         LOG_ERR("Failed to open XIP partition for write: %d", ret);
@@ -210,37 +282,55 @@ xip_restore:
         return ret;
     }
 
-    /* 5. Update LLEXT struct to point to XIP, free RAM copies */
-    void *old_text = ext->mem[LLEXT_MEM_TEXT];
+    /* 7. Update LLEXT struct and free heap copies for all four sections.
+     *    Save old RAM addresses for ADJUST_PTR (sym/exp table fixup).
+     */
+    uintptr_t ram_text_base = (uintptr_t)ram_text;
+    uintptr_t ram_rodata_base = (uintptr_t)ram_rodata;
+    uintptr_t ram_data_base = (uintptr_t)ram_data;
+    uintptr_t ram_bss_base = (uintptr_t)ram_bss;
+
+    /* .text -> XIP flash */
     ext->mem[LLEXT_MEM_TEXT] = (void *)xip_text_addr;
     ext->mem_on_heap[LLEXT_MEM_TEXT] = false;
-    ext->alloc_size -= ROUND_UP(text_size, sizeof(void *));
+    LOG_INF("XIP: .text moved %p -> 0x%08lx", ram_text, (unsigned long)xip_text_addr);
+    xip_llext_free(ram_text);
 
-    LOG_INF("XIP: .text moved %p -> 0x%08lx", old_text, (unsigned long)xip_text_addr);
-    xip_llext_free(old_text);
-
+    /* .rodata -> XIP flash */
     if (rodata_size > 0 && ram_rodata) {
-        void *old_rodata = ext->mem[LLEXT_MEM_RODATA];
         ext->mem[LLEXT_MEM_RODATA] = (void *)xip_rodata_addr;
         ext->mem_on_heap[LLEXT_MEM_RODATA] = false;
-        ext->alloc_size -= ROUND_UP(rodata_size, sizeof(void *));
-
         LOG_INF("XIP: .rodata moved %p -> 0x%08lx",
-                old_rodata, (unsigned long)xip_rodata_addr);
-        xip_llext_free(old_rodata);
+                ram_rodata, (unsigned long)xip_rodata_addr);
+        xip_llext_free(ram_rodata);
     }
 
-    /* 6. Adjust symbol table entries that point into moved sections.
-     * Both the address (addr) AND name pointer need adjustment if
-     * they reside in the moved regions.
-     */
-    uintptr_t ram_text_base = (uintptr_t)old_text;
-    uintptr_t ram_rodata_base = (uintptr_t)ram_rodata;
+    /* .data -> static pool */
+    if (data_size > 0 && ram_data) {
+        ext->mem[LLEXT_MEM_DATA] = (void *)pool_data_addr;
+        ext->mem_on_heap[LLEXT_MEM_DATA] = false;
+        LOG_INF("XIP: .data moved %p -> 0x%08lx", ram_data, (unsigned long)pool_data_addr);
+        xip_llext_free(ram_data);
+    }
+
+    /* .bss -> static pool */
+    if (bss_size > 0 && ram_bss) {
+        ext->mem[LLEXT_MEM_BSS] = (void *)pool_bss_addr;
+        ext->mem_on_heap[LLEXT_MEM_BSS] = false;
+        LOG_INF("XIP: .bss moved %p -> 0x%08lx", ram_bss, (unsigned long)pool_bss_addr);
+        xip_llext_free(ram_bss);
+    }
+
+    /* 8. Adjust symbol/export table pointers for all moved ranges */
     intptr_t text_delta = (intptr_t)xip_text_addr - (intptr_t)ram_text_base;
     intptr_t rodata_delta = (rodata_size > 0) ?
         ((intptr_t)xip_rodata_addr - (intptr_t)ram_rodata_base) : 0;
+    intptr_t data_delta = (data_size > 0) ?
+        ((intptr_t)pool_data_addr - (intptr_t)ram_data_base) : 0;
+    intptr_t bss_delta = (bss_size > 0) ?
+        ((intptr_t)pool_bss_addr - (intptr_t)ram_bss_base) : 0;
 
-    /* Helper macro to adjust a pointer if it falls in a moved range */
+    /* Helper macro to adjust a pointer if it falls in any moved range */
     #define ADJUST_PTR(ptr, type) do { \
         uintptr_t _a = (uintptr_t)(ptr); \
         if (_a >= ram_text_base && _a < ram_text_base + text_size) { \
@@ -248,6 +338,12 @@ xip_restore:
         } else if (rodata_size > 0 && \
                    _a >= ram_rodata_base && _a < ram_rodata_base + rodata_size) { \
             (ptr) = (type)(void *)(_a + rodata_delta); \
+        } else if (data_size > 0 && \
+                   _a >= ram_data_base && _a < ram_data_base + data_size) { \
+            (ptr) = (type)(void *)(_a + data_delta); \
+        } else if (bss_size > 0 && \
+                   _a >= ram_bss_base && _a < ram_bss_base + bss_size) { \
+            (ptr) = (type)(void *)(_a + bss_delta); \
         } \
     } while (0)
 
@@ -268,7 +364,7 @@ xip_restore:
     #undef ADJUST_PTR
 
     LOG_INF("XIP install '%s' complete: freed ~%zu bytes from heap",
-            ext->name, text_size + rodata_size);
+            ext->name, text_size + rodata_size + data_size + bss_size);
 
     return 0;
 }
@@ -425,7 +521,8 @@ static int elf_read_at(struct fs_file_t *file, off_t offset, void *buf, size_t l
 }
 
 static int adjust_relocations(struct llext *ext, const char *elf_path,
-                              uintptr_t xip_text, uintptr_t xip_rodata)
+                              uintptr_t xip_text, uintptr_t xip_rodata,
+                              uintptr_t pool_data, uintptr_t pool_bss)
 {
     struct fs_file_t file;
     elf_ehdr_t ehdr;
@@ -434,15 +531,24 @@ static int adjust_relocations(struct llext *ext, const char *elf_path,
 
     uintptr_t ram_text = (uintptr_t)ext->mem[LLEXT_MEM_TEXT];
     uintptr_t ram_rodata = (uintptr_t)ext->mem[LLEXT_MEM_RODATA];
+    uintptr_t ram_data = (uintptr_t)ext->mem[LLEXT_MEM_DATA];
+    uintptr_t ram_bss = (uintptr_t)ext->mem[LLEXT_MEM_BSS];
     size_t text_size = ext->mem_size[LLEXT_MEM_TEXT];
     size_t rodata_size = ext->mem_size[LLEXT_MEM_RODATA];
+    size_t data_size = ext->mem_size[LLEXT_MEM_DATA];
+    size_t bss_size = ext->mem_size[LLEXT_MEM_BSS];
 
     intptr_t text_delta = (intptr_t)xip_text - (intptr_t)ram_text;
     intptr_t rodata_delta = (rodata_size > 0) ?
         ((intptr_t)xip_rodata - (intptr_t)ram_rodata) : 0;
+    intptr_t data_delta = (data_size > 0 && pool_data != 0) ?
+        ((intptr_t)pool_data - (intptr_t)ram_data) : 0;
+    intptr_t bss_delta = (bss_size > 0 && pool_bss != 0) ?
+        ((intptr_t)pool_bss - (intptr_t)ram_bss) : 0;
 
-    LOG_INF("Reloc adjust: text_delta=0x%lx, rodata_delta=0x%lx",
-            (unsigned long)text_delta, (unsigned long)rodata_delta);
+    LOG_INF("Reloc adjust: text=0x%lx, rodata=0x%lx, data=0x%lx, bss=0x%lx",
+            (unsigned long)text_delta, (unsigned long)rodata_delta,
+            (unsigned long)data_delta, (unsigned long)bss_delta);
 
     /* Open ELF file */
     fs_file_t_init(&file);
@@ -531,7 +637,8 @@ static int adjust_relocations(struct llext *ext, const char *elf_path,
      * Only process relocations for sections that are the PRIMARY section
      * for their LLEXT memory region. This avoids misidentifying offsets
      * when multiple ELF sections map to the same region type.
-     * We only adjust .text and .data — export table is adjusted separately in step 6.
+     * Process .text, .data, and .rodata — all may contain absolute addresses
+     * that need adjustment. Export table is adjusted via ADJUST_PTR in the caller.
      */
     for (int s = 0; s < shnum; s++) {
         if (shdrs[s].sh_type != SHT_REL) {
@@ -546,10 +653,11 @@ static int adjust_relocations(struct llext *ext, const char *elf_path,
 
         int source_mem_idx = sect_mem_map[target_sect_idx];
 
-        /* Only process relocs for TEXT and DATA regions — these are
+        /* Process relocs for TEXT, DATA, and RODATA regions — these are
          * the sections where we need to patch absolute addresses in-place.
          * EXPORT table is handled separately via exp_tab/sym_tab adjustment. */
-        if (source_mem_idx != LLEXT_MEM_TEXT && source_mem_idx != LLEXT_MEM_DATA) {
+        if (source_mem_idx != LLEXT_MEM_TEXT && source_mem_idx != LLEXT_MEM_DATA &&
+            source_mem_idx != LLEXT_MEM_RODATA) {
             LOG_DBG("Skipping relocs for section %d (mem_idx=%d)", target_sect_idx, source_mem_idx);
             continue;
         }
@@ -657,6 +765,10 @@ static int adjust_relocations(struct llext *ext, const char *elf_path,
                     delta = text_delta;
                 } else if (target_mem == LLEXT_MEM_RODATA && rodata_size > 0) {
                     delta = rodata_delta;
+                } else if (target_mem == LLEXT_MEM_DATA && data_size > 0) {
+                    delta = data_delta;
+                } else if (target_mem == LLEXT_MEM_BSS && bss_size > 0) {
+                    delta = bss_delta;
                 } else {
                     continue; /* Target not being moved */
                 }

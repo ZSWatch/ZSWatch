@@ -26,6 +26,12 @@
 #include <lvgl.h>
 #include "managers/zsw_app_manager.h"
 
+/* Image data compiled into .rodata → goes to XIP alongside code.
+ * We #include the image .c file because add_llext_target only
+ * supports a single source file for ELF object builds.
+ */
+#include "images/battery_app_icon.c"
+
 static void about_ext_start(lv_obj_t *root, lv_group_t *group);
 static void about_ext_stop(void);
 
@@ -33,6 +39,7 @@ static lv_obj_t *root_page;
 
 static application_t app = {
     .name = "About LLEXT",
+    .icon = &battery_app_icon,
     .start_func = about_ext_start,
     .stop_func = about_ext_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM,
