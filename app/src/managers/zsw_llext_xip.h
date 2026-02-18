@@ -18,86 +18,47 @@
 #pragma once
 
 #include <zephyr/llext/llext.h>
-#include <stddef.h>
-#include <stdint.h>
 
 /**
- * @brief XIP partition allocator and flash writer for LLEXT apps.
+ * @brief Post-load XIP installer for PIC LLEXT apps.
  *
- * Manages a linear allocator within the llext_xip_partition (external flash)
- * to store relocated .text and .rodata sections. After LLEXT loads an app
- * fully into RAM, this module:
- *   1. Allocates space in the XIP partition
- *   2. Re-parses ELF relocation entries to adjust absolute addresses
- *   3. Writes the adjusted sections to flash
- *   4. Updates the LLEXT struct to point to XIP addresses
- *   5. Frees the original RAM copies
+ * After llext_load() loads a PIC (ET_DYN / -fPIC) extension fully into RAM,
+ * this module moves .text and .rodata to XIP flash verbatim (no relocation
+ * patching needed — PIC code uses GOT indirection in RAM).
+ *
+ * Result: .text/.rodata execute from flash, .got/.data/.bss stay in RAM.
+ * Typical RAM savings: 90-97% (a 200KB app uses ~6KB RAM instead of ~200KB).
  */
-
-/** XIP base CPU address (external flash mapped at 0x10000000 on nRF5340) */
-#define ZSW_XIP_BASE_ADDR       0x10000000
-
-/** Flash sector size for erase alignment */
-#define ZSW_XIP_SECTOR_SIZE     4096
-
-/** Maximum number of XIP-installed apps */
-#define ZSW_XIP_MAX_APPS        16
 
 /**
  * @brief Initialize the XIP allocator.
  *
- * Must be called once before any install operations. Resets the allocator
- * and erases tracking state (allocations are rebuilt each boot).
+ * Opens the llext_xip_partition and records its size. Must be called once
+ * before any install operations.
  *
  * @return 0 on success, negative errno on failure
  */
 int zsw_llext_xip_init(void);
 
 /**
- * @brief Install an LLEXT app's .text and .rodata into XIP flash.
+ * @brief Install a PIC LLEXT's .text/.rodata into XIP flash.
  *
- * After llext_load() has loaded the app fully into RAM with all relocations
- * applied, this function:
- *   1. Allocates space in the XIP partition for .text and .rodata
- *   2. Re-reads the ELF file to find relocation entries
- *   3. Adjusts absolute addresses that reference the moved sections
- *   4. Writes the adjusted sections to XIP flash
- *   5. Updates ext->mem[] pointers to XIP addresses
- *   6. Frees the original RAM heap copies
- *   7. Adjusts symbol table entries
+ * Writes .text and .rodata from the LLEXT heap to the XIP flash partition,
+ * updates ext->mem[] to point to XIP CPU addresses, frees heap copies,
+ * and adjusts symbol/export table pointers.
  *
- * @param ext           Loaded LLEXT (from llext_load, all sections in RAM)
- * @param elf_path      Path to the .llext ELF file on filesystem
- * @return 0 on success, negative errno on failure.
- *         On failure, the LLEXT is left in its original RAM state.
- */
-int zsw_llext_xip_install(struct llext *ext, const char *elf_path);
-
-/**
- * @brief Allocate XIP partition space for .text and .rodata sections.
+ * Only one LLEXT should be installed at a time (call zsw_llext_xip_reset()
+ * after unloading to reclaim flash space).
  *
- * @param name          App name (for logging)
- * @param text_size     Size of .text in bytes
- * @param rodata_size   Size of .rodata in bytes (0 if none)
- * @param out_text_offset   Output: partition offset for .text
- * @param out_rodata_offset Output: partition offset for .rodata
+ * @param ext  Loaded LLEXT (from llext_load())
  * @return 0 on success, negative errno on failure
  */
-int zsw_llext_xip_alloc(const char *name, size_t text_size, size_t rodata_size,
-                        uint32_t *out_text_offset, uint32_t *out_rodata_offset);
+int zsw_llext_xip_install(struct llext *ext);
 
 /**
- * @brief Convert a partition offset to a CPU-visible XIP address.
- */
-uintptr_t zsw_llext_xip_cpu_addr(uint32_t partition_offset);
-
-/**
- * @brief Allocate space in the persistent static data pool.
+ * @brief Reset the XIP allocator.
  *
- * Used by the streaming loader to place .data/.bss outside the LLEXT heap.
- *
- * @param align  Alignment requirement
- * @param size   Number of bytes to allocate
- * @return Pointer to allocated memory, or NULL if pool exhausted
+ * Resets the flash offset to 0, allowing the space to be reused by the next
+ * app. Call this after llext_unload() when done with an app.
  */
-void *zsw_llext_data_pool_alloc(size_t align, size_t size);
+void zsw_llext_xip_reset(void);

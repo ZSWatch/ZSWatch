@@ -99,9 +99,173 @@
 
 5. **Linker-pulled symbols**: The LLEXT build process (`add_llext_target`) links additional libraries, pulling in symbols like `zsw_history_*` and `settings_*` that aren't directly referenced by the app code. These must be exported even if unused at runtime.
 
-### Remaining Steps
+### Remaining Steps (ET_REL phase)
 
 - [ ] Investigate first-boot crash (stale XIP data after firmware flash causes data bus error, auto-recovers on reboot)
 - [ ] Convert more built-in apps to LLEXT (compass, music control, etc.)
 - [ ] OTA LLEXT app upload flow (upload individual apps without reflashing firmware)
 - [ ] App lifecycle improvements (unload/reload individual LLEXT apps)
+
+---
+
+## Phase 2: PIC (`-fPIC`) + ET_DYN Migration
+
+### Motivation
+
+The current ET_REL streaming loader works but has fundamental limitations:
+1. **500+ lines of relocation patching** directly into flash, supporting only `R_ARM_ABS32` and `R_ARM_THM_CALL`
+2. **Not upstreamable** — the relocation logic duplicates and diverges from Zephyr's `arch_elf_relocate()`
+3. **Fragile** — adding new relocation types requires encoding/decoding ARM instructions in a streaming context
+4. **Custom ELF parser** (916 lines) instead of using Zephyr's built-in `llext_load()`
+
+With **PIC (`-fPIC`) + ET_DYN**, the compiler emits position-independent code that accesses all globals/functions through a GOT (Global Offset Table). The GOT is small (~100 bytes), lives in RAM, and is the *only* thing that needs relocation. `.text` and `.rodata` can be copied **verbatim** to XIP flash — no instruction patching whatsoever.
+
+### Current Status: NOT STARTED (code changes)
+
+Research complete. All gaps identified. Ready to implement.
+
+### Architecture Comparison
+
+**Current (ET_REL + custom relocation in flash):**
+```
+ELF (.o, ET_REL)
+  → Custom parser: read shdrs, symtab, strtab
+  → Stream .text/.rodata in 4KB chunks:
+      read chunk → scan relocs → patch R_ARM_ABS32/THM_CALL in buffer → write to flash
+  → Copy .data to RAM pool, apply relocs in-place
+  → Zero .bss in RAM pool
+  → Scan symtab for entry function
+```
+
+**Target (ET_DYN + PIC, no instruction patching):**
+```
+ELF (.so, ET_DYN via -fPIC -shared)
+  → Stream .text/.rodata to XIP flash VERBATIM (no patching!)
+  → Allocate .got + .data + .bss in RAM
+  → Zephyr's llext_link() fills GOT entries + R_ARM_RELATIVE
+  → Entry symbol via llext_find_sym()
+```
+
+### Detailed Research Findings
+
+#### 1. Zephyr LLEXT Already Supports ET_DYN
+
+`zephyr/subsys/llext/llext_load.c` has full ET_DYN support:
+- Parses program headers (PT_LOAD segments)
+- Validates VMAs, handles `.dynsym` / `.dynstr`
+- Merges regions by permission (RX → TEXT, RW → DATA, R → RODATA)
+- Computes `load_bias = ext->mem[LLEXT_MEM_TEXT]`
+- Originally built for Xtensa but architecture-generic
+
+#### 2. Kconfig Gate Blocks ARM
+
+```kconfig
+# zephyr/subsys/llext/Kconfig line 82-90
+config LLEXT_BUILD_PIC
+    bool "Use -fPIC when building LLEXT"
+    depends on XTENSA          # <-- BLOCKS ARM
+    default y if LLEXT_TYPE_ELF_SHAREDLIB
+```
+
+**Fix**: Change `depends on XTENSA` → `depends on XTENSA || ARM`
+
+#### 3. ARM CMake Missing `-fPIC`
+
+```cmake
+# zephyr/cmake/compiler/gcc/target_arm.cmake lines 54-66
+set(LLEXT_REMOVE_FLAGS
+  -fno-pic -fno-pie           # ✅ Already removes anti-PIC flags
+  -ffunction-sections -fdata-sections -Os
+)
+set(LLEXT_APPEND_FLAGS
+  -mlong-calls -mthumb        # ❌ Missing -fPIC
+)
+```
+
+**Fix**: Add `-fPIC` to `LLEXT_APPEND_FLAGS` (conditionally on `CONFIG_LLEXT_BUILD_PIC`)
+
+#### 4. ARM Relocation Handler — What's There vs. What's Missing
+
+`zephyr/arch/arm/core/elf.c` switch statement (line 356):
+
+| Relocation | Type | Status | Formula | Used For |
+|------------|------|--------|---------|----------|
+| `R_ARM_RELATIVE` | 23 | ✅ Handled | `*loc += load_bias` | Self-referencing pointers |
+| `R_ARM_GLOB_DAT` | 21 | ✅ Handled | `*loc = S` | GOT entries (external symbols) |
+| `R_ARM_JUMP_SLOT` | 22 | ✅ Handled | `*loc = S` | PLT entries |
+| `R_ARM_GOT_BREL` | 26 | ❌ **MISSING** | `*loc = S - GOT_ORG` | GOT-relative offset |
+| `R_ARM_GOT_PREL` | 96 | ❌ **MISSING** | `*loc = GOT(S) - P` | PC-relative GOT access |
+
+**Note**: Need to build with `-fPIC` first and inspect `readelf -r` output to see which relocation types the compiler actually emits for Cortex-M Thumb-2. The GOT_BREL handler may not be needed if the compiler uses GLOB_DAT + RELATIVE only.
+
+#### 5. `.got` Section → RAM (Correct)
+
+`.got` has flags `SHF_WRITE | SHF_ALLOC` → `llext_mem.c` maps to `LLEXT_MEM_DATA` → allocated in LLEXT heap (RAM). This is correct — GOT must be writable during load, readable at runtime.
+
+#### 6. `load_bias` Computation (Correct for XIP)
+
+```c
+// zephyr/arch/arm/core/elf.c line 331
+const uintptr_t load_bias = (uintptr_t)ext->mem[LLEXT_MEM_TEXT];
+```
+
+For XIP, `ext->mem[LLEXT_MEM_TEXT]` = XIP CPU address (e.g., `0x10E20000 + offset`). `R_ARM_RELATIVE` adds this to adjust pointers linked at VMA 0.
+
+#### 7. XIP Memory Map
+
+```
+External QSPI Flash (64 MB total):
+  llext_xip_partition:
+    Physical offset: 0xE20000
+    CPU address:     0x10E20000 (memory-mapped via QSPI XIP)
+    Size:            4 MB (0x400000)
+
+  Linear allocator: next_offset starts at 0
+    CPU addr = 0x10E20000 + offset
+    Sector size: 4096 bytes
+```
+
+#### 8. Extension Build Pipeline
+
+```cmake
+add_llext_target(battery_real_ext ...)
+```
+When `CONFIG_LLEXT_TYPE_ELF_SHAREDLIB=y`:
+- `add_llext_target()` uses CMake `SHARED` library type
+- Adds `-shared` to linker flags
+- Combined with `-fPIC`, produces ET_DYN ELF
+- `.llext` files copied to LFS source dir for `west upload_fs`
+
+#### 9. `-mlong-calls` + `-fPIC` Interaction
+
+Both flags are needed simultaneously:
+- `-mlong-calls`: Required because XIP `.text` is at `0x10E20000`, far from firmware `.text` at `0x00000000`
+- `-fPIC`: Makes code position-independent via GOT
+
+With `-fPIC`, function calls to external symbols go through a PLT/GOT sequence instead of direct BL instructions. `-mlong-calls` ensures the PLT stubs can reach the GOT. These should be compatible.
+
+#### 10. Key Concern: LVGL Symbol Count
+
+The battery extension uses ~50 LVGL symbols. All must be exported from firmware. The current `zsw_llext_exports.c` already handles this. With ET_DYN, `llext_link()` resolves symbols by name from the export table — same mechanism.
+
+### Implementation Plan
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Kconfig: `LLEXT_BUILD_PIC` allow ARM | Not started |
+| 2 | cmake: Add `-fPIC` to ARM LLEXT flags | Not started |
+| 3 | `arch/arm/core/elf.c`: Add `R_ARM_GOT_BREL` handler | Not started |
+| 4 | `app/prj.conf`: Enable `LLEXT_TYPE_ELF_SHAREDLIB` + `LLEXT_BUILD_PIC` | Not started |
+| 5 | Build and inspect generated ELF with `readelf -a` | Not started |
+| 6 | Rewrite streaming loader (remove reloc patching) | Not started |
+| 7 | Update app manager for new loader | Not started |
+| 8 | Build → Flash → Upload LFS → Test | Not started |
+| 9 | Debug and iterate | Not started |
+
+### Risk Areas
+
+1. **Unknown relocation types**: Compiler may emit relocations not yet handled in `arch_elf_relocate()`. Must inspect `readelf -r` output after first PIC build.
+2. **`-mlong-calls` + `-fPIC`**: Untested combination on Cortex-M for Zephyr LLEXT. May produce unexpected PLT/veneer patterns.
+3. **ET_DYN binary size**: Extra sections (`.dynamic`, `.dynsym`, `.dynstr`, `.got`, `.plt`, `.hash`) increase ELF size. Need to verify fit in LFS.
+4. **XIP + GOT lifetime**: GOT in RAM must persist while app runs. If LLEXT heap is reused, GOT would be corrupted. Current data pool approach may need adaptation.
+5. **First-boot crash**: Existing issue with stale XIP data. PIC may mitigate (no instruction patching) or exacerbate (different flash layout).

@@ -1,0 +1,32 @@
+diff --git a/cmake/compiler/gcc/target_arm.cmake b/cmake/compiler/gcc/target_arm.cmake
+index 4e4523c43c5..269dbdccfce 100644
+--- a/cmake/compiler/gcc/target_arm.cmake
++++ b/cmake/compiler/gcc/target_arm.cmake
+@@ -61,8 +61,14 @@ set(LLEXT_REMOVE_FLAGS
+ set(LLEXT_APPEND_FLAGS
+   -mlong-calls
+   -mthumb
++  -nostdlib
++  -nodefaultlibs
+ )
+ 
++if(CONFIG_LLEXT_BUILD_PIC)
++  list(APPEND LLEXT_APPEND_FLAGS -fPIC)
++endif()
++
+ list(APPEND LLEXT_EDK_REMOVE_FLAGS
+     --sysroot=.*
+     -fmacro-prefix-map=.*
+diff --git a/subsys/llext/Kconfig b/subsys/llext/Kconfig
+index c7c11ba6497..2eb52b89cf3 100644
+--- a/subsys/llext/Kconfig
++++ b/subsys/llext/Kconfig
+@@ -80,7 +80,7 @@ config LLEXT_DATA_HEAP_SIZE
+ 
+ config LLEXT_BUILD_PIC
+ 	bool "Use -fPIC when building LLEXT"
+-	depends on XTENSA
++	depends on XTENSA || ARM
+ 	default y if LLEXT_TYPE_ELF_SHAREDLIB
+ 	help
+ 	  By default LLEXT compilation is performed with -fno-pic -fno-pie compiler

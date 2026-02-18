@@ -46,6 +46,7 @@
 
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_llext_app_manager.h"
+#include "managers/zsw_llext_xip.h"
 #include <lvgl.h>
 
 LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
@@ -226,7 +227,18 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
         return;
     }
 
-    LOG_INF("LLEXT '%s' loaded, finding entry symbol '%s'", la->name, la->entry_symbol);
+    LOG_INF("LLEXT '%s' loaded to RAM, installing .text/.rodata to XIP flash", la->name);
+
+    /* Move .text/.rodata from heap to XIP flash — frees ~95% of heap usage */
+    ret = zsw_llext_xip_install(la->ext);
+    if (ret != 0) {
+        LOG_ERR("XIP install failed for '%s': %d", la->name, ret);
+        llext_unload(&la->ext);
+        la->ext = NULL;
+        return;
+    }
+
+    LOG_INF("LLEXT '%s' XIP installed, finding entry symbol '%s'", la->name, la->entry_symbol);
 
     /* Find and call the extension's app_entry to get the application_t */
     llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, la->entry_symbol);
@@ -290,7 +302,10 @@ static void proxy_stop_common(int idx)
         active_llext_app = NULL;
     }
 
-    LOG_INF("LLEXT '%s' unloaded, heap freed", la->name);
+    /* Reset XIP allocator so flash space can be reused by next app */
+    zsw_llext_xip_reset();
+
+    LOG_INF("LLEXT '%s' unloaded, heap + XIP freed", la->name);
 }
 
 /* --------------------------------------------------------------------------
@@ -533,6 +548,12 @@ int zsw_llext_app_manager_init(void)
     ret = fs_mkdir(ZSW_LLEXT_APPS_BASE_PATH);
     if (ret < 0 && ret != -EEXIST) {
         LOG_WRN("Failed to create apps directory: %d", ret);
+    }
+
+    /* Initialize XIP flash allocator */
+    ret = zsw_llext_xip_init();
+    if (ret < 0) {
+        LOG_WRN("XIP init failed: %d (continuing without XIP)", ret);
     }
 
     LOG_INF("Scanning for LLEXT apps in %s", ZSW_LLEXT_APPS_BASE_PATH);
