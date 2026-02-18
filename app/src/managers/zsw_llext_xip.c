@@ -86,7 +86,7 @@ static const struct device *qspi_dev;
  * us reclaim the entire LLEXT heap after each app load.
  * -------------------------------------------------------------------------- */
 
-#define DATA_POOL_SIZE 1024
+#define DATA_POOL_SIZE 4096
 static uint8_t __aligned(8) data_pool[DATA_POOL_SIZE];
 static size_t data_pool_offset;
 
@@ -128,7 +128,28 @@ static int write_section_to_xip(const struct flash_area *fa, uint32_t offset,
                                 const void *data, size_t size);
 
 /* --------------------------------------------------------------------------
- * Public API
+ * Public API — Helpers used by both xip_install() and stream_loader
+ * -------------------------------------------------------------------------- */
+
+int zsw_llext_xip_alloc(const char *name, size_t text_size, size_t rodata_size,
+                        uint32_t *out_text_offset, uint32_t *out_rodata_offset)
+{
+    return xip_alloc_space(name, text_size, rodata_size,
+                           out_text_offset, out_rodata_offset);
+}
+
+uintptr_t zsw_llext_xip_cpu_addr(uint32_t partition_offset)
+{
+    return XIP_PARTITION_CPU_ADDR + partition_offset;
+}
+
+void *zsw_llext_data_pool_alloc(size_t align, size_t size)
+{
+    return data_pool_alloc(align, size);
+}
+
+/* --------------------------------------------------------------------------
+ * Public API — XIP Init
  * -------------------------------------------------------------------------- */
 
 int zsw_llext_xip_init(void)

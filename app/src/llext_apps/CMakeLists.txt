@@ -45,6 +45,31 @@ if(CONFIG_ZSW_LLEXT_APPS)
         COMMENT "Copying battery_ext.llext to LFS source"
     )
 
+    # ---- battery_real_ext LLEXT app (real battery app with full UI) ----
+    add_llext_target(battery_real_ext
+        OUTPUT  ${PROJECT_BINARY_DIR}/llext/battery_real_ext.llext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/battery_real_ext/battery_real_ext_app.c
+    )
+    target_include_directories(battery_real_ext_llext_lib PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/managers
+        ${CMAKE_SOURCE_DIR}/src/applications
+        ${CMAKE_SOURCE_DIR}/src/applications/battery
+        ${CMAKE_SOURCE_DIR}/src/ui
+    )
+
+    # -mlong-calls required for LLEXT apps: XIP .text is far from firmware .text
+    target_compile_options(about_ext_llext_lib PRIVATE -mlong-calls)
+    target_compile_options(battery_ext_llext_lib PRIVATE -mlong-calls)
+    target_compile_options(battery_real_ext_llext_lib PRIVATE -mlong-calls)
+
+    add_custom_command(TARGET battery_real_ext POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${PROJECT_BINARY_DIR}/llext/battery_real_ext.llext
+            ${LFS_APPS_DIR}/battery_real_ext/app.llext
+        COMMENT "Copying battery_real_ext.llext to LFS source"
+    )
+
     # Ensure LLEXT apps are built as part of the main firmware build
-    add_dependencies(app about_ext battery_ext)
+    add_dependencies(app about_ext battery_ext battery_real_ext)
 endif()

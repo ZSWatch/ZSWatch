@@ -72,3 +72,32 @@ int zsw_llext_xip_init(void);
  *         On failure, the LLEXT is left in its original RAM state.
  */
 int zsw_llext_xip_install(struct llext *ext, const char *elf_path);
+
+/**
+ * @brief Allocate XIP partition space for .text and .rodata sections.
+ *
+ * @param name          App name (for logging)
+ * @param text_size     Size of .text in bytes
+ * @param rodata_size   Size of .rodata in bytes (0 if none)
+ * @param out_text_offset   Output: partition offset for .text
+ * @param out_rodata_offset Output: partition offset for .rodata
+ * @return 0 on success, negative errno on failure
+ */
+int zsw_llext_xip_alloc(const char *name, size_t text_size, size_t rodata_size,
+                        uint32_t *out_text_offset, uint32_t *out_rodata_offset);
+
+/**
+ * @brief Convert a partition offset to a CPU-visible XIP address.
+ */
+uintptr_t zsw_llext_xip_cpu_addr(uint32_t partition_offset);
+
+/**
+ * @brief Allocate space in the persistent static data pool.
+ *
+ * Used by the streaming loader to place .data/.bss outside the LLEXT heap.
+ *
+ * @param align  Alignment requirement
+ * @param size   Number of bytes to allocate
+ * @return Pointer to allocated memory, or NULL if pool exhausted
+ */
+void *zsw_llext_data_pool_alloc(size_t align, size_t size);

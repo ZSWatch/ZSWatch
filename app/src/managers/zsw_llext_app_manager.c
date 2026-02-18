@@ -20,14 +20,15 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/llext/llext.h>
-#include <zephyr/llext/fs_loader.h>
 #include <zephyr/llext/buf_loader.h>
 #include "cJSON.h"
 #include <string.h>
 
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_llext_app_manager.h"
+#include "managers/zsw_llext_stream_loader.h"
 #include "managers/zsw_llext_xip.h"
+#include <lvgl.h>
 
 LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
 
@@ -38,7 +39,7 @@ LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
 #define ZSW_LLEXT_MANIFEST_BUF_SIZE 256
-#define ZSW_LLEXT_HEAP_SIZE         (40 * 1024)  /* 40 KB for LLEXT heap */
+#define ZSW_LLEXT_HEAP_SIZE         (40 * 1024) /* 40 KB for LLEXT heap */
 
 /* Embedded test LLEXT binary (generated at build time) */
 static const uint8_t embedded_llext_buf[] __aligned(4) = {
@@ -156,68 +157,38 @@ static int load_llext_app(const char *dir_path, const struct llext_manifest *man
 
     LOG_INF("Loading LLEXT app '%s' from %s (%zu bytes)", manifest->name, elf_path, entry.size);
 
-    /* Phase 1: Load everything into RAM using FS loader */
-    struct llext_fs_loader fs_loader = LLEXT_FS_LOADER(elf_path);
-    struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
-    struct llext *ext = NULL;
-
-    ret = llext_load(&fs_loader.loader, manifest->name, &ext, &ldr_parm);
-    if (ret != 0) {
-        LOG_ERR("Failed to load LLEXT '%s': %d", manifest->name, ret);
-        return ret;
-    }
-
-    LOG_INF("LLEXT '%s' loaded successfully, finding entry symbol '%s'",
-            manifest->name, manifest->entry_symbol);
-
-    /* Install .text/.rodata to XIP flash to reduce steady-state RAM usage.
-     * WARNING: adjust_relocations modifies .text/.data in-place.
-     * If XIP install fails AFTER adjustment, the RAM copies are corrupted
-     * and the LLEXT cannot be used. We must unload on failure.
+    /* Use the streaming loader: ELF is parsed incrementally, .text/.rodata
+     * go directly to XIP flash, .data/.bss go to the static data pool.
+     * No LLEXT heap is consumed — the heap buffer serves as scratch space.
      */
-    ret = zsw_llext_xip_install(ext, elf_path);
-    if (ret != 0) {
-        LOG_ERR("XIP install failed for '%s': %d — unloading (RAM data corrupted)",
-                manifest->name, ret);
-        llext_unload(&ext);
-        return ret;
-    }
+    struct zsw_stream_load_result stream_result;
 
-    /* Find the app_entry symbol */
-    llext_app_entry_fn entry_fn = llext_find_sym(&ext->exp_tab, manifest->entry_symbol);
-    if (entry_fn == NULL) {
-        LOG_ERR("Entry symbol '%s' not found in LLEXT '%s'",
-                manifest->entry_symbol, manifest->name);
-        llext_unload(&ext);
-        return -ENOENT;
+    ret = zsw_llext_stream_load(elf_path, manifest->entry_symbol,
+                                llext_heap_buf, sizeof(llext_heap_buf),
+                                &stream_result);
+    if (ret != 0) {
+        LOG_ERR("Stream load failed for '%s': %d", manifest->name, ret);
+        return ret;
     }
 
     /* Call app_entry() to get the application_t pointer */
+    llext_app_entry_fn entry_fn = (llext_app_entry_fn)stream_result.entry_fn;
     application_t *app = entry_fn();
+
     if (app == NULL) {
         LOG_ERR("app_entry() returned NULL for LLEXT '%s'", manifest->name);
-        llext_unload(&ext);
         return -EINVAL;
     }
 
     /* Register with the main app manager */
     zsw_app_manager_add_application(app);
 
-    /* Free ALL remaining LLEXT heap allocations.  After XIP install, .text and
-     * .rodata are in XIP flash and .data/.bss are in the static data pool — all
-     * marked mem_on_heap=false.  llext_unload() frees the remaining metadata
-     * (sym_tab, exp_tab, strtab, shstrtab, sect_hdrs) and the struct itself,
-     * giving the next app load the full 40 KB heap.
-     */
-    LOG_INF("Freeing LLEXT struct and metadata for '%s'", manifest->name);
-    llext_unload(&ext);
-
     /* Track this LLEXT app */
     zsw_llext_app_t *llext_app = &llext_apps[num_llext_apps];
     strncpy(llext_app->name, manifest->name, sizeof(llext_app->name) - 1);
     strncpy(llext_app->dir_path, dir_path, sizeof(llext_app->dir_path) - 1);
     llext_app->loaded = true;
-    llext_app->ext = ext;
+    llext_app->ext = NULL;  /* streaming loader does not create an llext struct */
     llext_app->app = app;
     num_llext_apps++;
 
@@ -230,6 +201,16 @@ static int load_embedded_llext_app(void)
     struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
     struct llext *ext = NULL;
     int ret;
+
+    /* Initialize the LLEXT heap — only needed for the embedded app path
+     * which uses llext_load(). The streaming loader uses the same buffer
+     * as scratch space, so heap init must happen here (after scan completes).
+     */
+    ret = llext_heap_init(llext_heap_buf, sizeof(llext_heap_buf));
+    if (ret != 0) {
+        LOG_ERR("Failed to initialize LLEXT heap: %d", ret);
+        return ret;
+    }
 
     size_t buf_len = sizeof(embedded_llext_buf);
     LOG_INF("Loading embedded LLEXT app (%zu bytes)", buf_len);
@@ -293,7 +274,28 @@ static void llext_auto_start_work_handler(struct k_work *work)
         }
     }
     LOG_INF("=== LLEXT verification complete: %d app(s) ready ===", num_llext_apps);
-    LOG_INF("Total apps registered in app manager: %d", zsw_app_manager_get_num_apps());
+
+    /* Auto-open the Battery LLEXT app for testing via delayed work.
+     * Create a full-screen root and call start_func directly. */
+    for (int i = 0; i < num_llext_apps; i++) {
+        if (llext_apps[i].app && strcmp(llext_apps[i].app->name, "Battery") == 0) {
+            application_t *bat_app = llext_apps[i].app;
+
+            LOG_INF("Auto-opening '%s' via delayed work", bat_app->name);
+
+            lv_obj_t *root = lv_obj_create(lv_scr_act());
+            lv_obj_set_size(root, 240, 240);
+            lv_obj_set_style_pad_all(root, 0, LV_PART_MAIN);
+            lv_obj_set_style_border_width(root, 0, LV_PART_MAIN);
+            lv_obj_set_style_radius(root, 0, LV_PART_MAIN);
+            lv_obj_align(root, LV_ALIGN_CENTER, 0, 0);
+
+            bat_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+            bat_app->start_func(root, NULL);
+            LOG_INF("'%s' start_func returned OK", bat_app->name);
+            break;
+        }
+    }
 }
 
 int zsw_llext_app_manager_init(void)
@@ -302,14 +304,6 @@ int zsw_llext_app_manager_init(void)
     struct fs_dirent entry;
     int ret;
     char manifest_buf[ZSW_LLEXT_MANIFEST_BUF_SIZE];
-
-    /* Initialize the LLEXT heap before any loading */
-    ret = llext_heap_init(llext_heap_buf, sizeof(llext_heap_buf));
-    if (ret != 0) {
-        LOG_ERR("Failed to initialize LLEXT heap: %d", ret);
-        return ret;
-    }
-    LOG_INF("LLEXT heap initialized (%zu bytes)", sizeof(llext_heap_buf));
 
     /* Initialize the XIP allocator for external flash installation */
     ret = zsw_llext_xip_init();
