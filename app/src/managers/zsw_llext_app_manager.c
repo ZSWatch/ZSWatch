@@ -47,7 +47,7 @@
 #include "managers/zsw_llext_xip.h"
 #include <lvgl.h>
 
-LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
 
 /*
  * ARM PIC LLEXT apps are compiled with -msingle-pic-base -mpic-register=r9.
@@ -82,9 +82,11 @@ static __always_inline void llext_set_r9(void *got_base)
 #endif
 
 /* Set to the name of the LLEXT app to auto-open at boot for debugging.
- * Set to NULL to disable. */
+ * Set to NULL (or comment out) to disable. */
 //#define ZSW_LLEXT_AUTO_OPEN_APP  "battery_real_ext"
+#ifdef ZSW_LLEXT_AUTO_OPEN_APP
 #define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
+#endif
 
 /* --------------------------------------------------------------------------
  * Configuration
@@ -96,7 +98,7 @@ static __always_inline void llext_set_r9(void *got_base)
 #define ZSW_LLEXT_ENTRY_SYMBOL      "app_entry"
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
-#define ZSW_LLEXT_HEAP_SIZE         (45 * 1024)
+#define ZSW_LLEXT_HEAP_SIZE         (25 * 1024)
 
 /* --------------------------------------------------------------------------
  * Types
@@ -269,14 +271,14 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
     /* Compute GOT base address for R9 register (ARM -msingle-pic-base) */
     if (xip_ctx.got_found && la->ext->mem[LLEXT_MEM_DATA] != NULL) {
         la->got_base = (uint8_t *)la->ext->mem[LLEXT_MEM_DATA] + xip_ctx.got_offset;
-        LOG_INF("GOT base = %p (DATA %p + offset %zu)",
+        LOG_DBG("GOT base = %p (DATA %p + offset %zu)",
                 la->got_base, la->ext->mem[LLEXT_MEM_DATA], xip_ctx.got_offset);
     } else {
         LOG_WRN("No .got found — R9 will be NULL (non-PIC or no GOT)");
         la->got_base = NULL;
     }
 
-    LOG_INF("LLEXT '%s' loaded, finding entry '%s'", la->name, ZSW_LLEXT_ENTRY_SYMBOL);
+    LOG_DBG("LLEXT '%s' loaded, finding entry '%s'", la->name, ZSW_LLEXT_ENTRY_SYMBOL);
 
     /* Find and call the extension's app_entry to get the application_t */
     llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, ZSW_LLEXT_ENTRY_SYMBOL);
@@ -301,8 +303,8 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
     la->loaded = true;
     active_llext_app = la;
 
-    LOG_INF("LLEXT '%s' ready (name='%s', category=%d)",
-            la->name, la->real_app->name, la->real_app->category);
+    LOG_INF("LLEXT '%s' ready (name='%s')",
+            la->name, la->real_app->name);
 
     /* Start the real app UI */
     la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;

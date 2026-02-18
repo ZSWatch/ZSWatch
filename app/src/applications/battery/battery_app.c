@@ -190,5 +190,7 @@ static int battery_app_add(void)
     return 0;
 }
 
-/* Disabled: battery app is now loaded as LLEXT from filesystem */
-/* SYS_INIT(battery_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY); */
+#ifndef CONFIG_ZSW_LLEXT_APPS
+/* When LLEXT is enabled, battery app is loaded from filesystem as a dynamic extension */
+SYS_INIT(battery_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

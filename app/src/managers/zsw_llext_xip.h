@@ -85,22 +85,6 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
                                 void *user_data);
 
 /**
- * @brief Post-load install: move .text/.rodata from heap to XIP flash.
- *
- * Only use this if the pre_copy_hook was NOT used during loading. Writes
- * .text and .rodata from the LLEXT heap to the XIP flash partition, updates
- * ext->mem[] to point to XIP CPU addresses, frees heap copies, and adjusts
- * symbol/export table pointers.
- *
- * Only one LLEXT should be installed at a time (call zsw_llext_xip_reset()
- * after unloading to reclaim flash space).
- *
- * @param ext  Loaded LLEXT (from llext_load())
- * @return 0 on success, negative errno on failure
- */
-int zsw_llext_xip_install(struct llext *ext);
-
-/**
  * @brief Reset the XIP allocator.
  *
  * Resets the flash offset to 0, allowing the space to be reused by the next

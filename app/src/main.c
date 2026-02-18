@@ -128,9 +128,6 @@ static void run_init_work(struct k_work *item)
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
     zsw_llext_app_manager_init();
-    /* DEV HACK: Use fast BLE advertising so mcumgr can connect for LLEXT uploads */
-    ble_comm_set_fast_adv_interval();
-    ble_comm_set_short_connection_interval();
 #endif
 
     LOG_INF("ZSWatch application started");

@@ -48,11 +48,6 @@ int _zsw_xip_disable(const char *requester)
 {
     LOG_WRN("XIP DISABLE(0) request from: %s", requester);
 
-#ifdef CONFIG_ZSW_LLEXT_APPS
-    LOG_WRN("XIP DISABLE blocked (LLEXT dev mode)");
-    return 0;
-#endif
-
     if (!qspi_dev) {
         return 0;
     }

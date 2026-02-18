@@ -42,7 +42,7 @@
 
 #include "managers/zsw_llext_xip.h"
 
-LOG_MODULE_REGISTER(llext_xip, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(llext_xip, CONFIG_ZSW_LLEXT_XIP_LOG_LEVEL);
 
 /*
  * Access the LLEXT heap directly for freeing relocated sections.
@@ -132,14 +132,14 @@ static int write_to_flash(const struct flash_area *fa, uint32_t offset,
     uint32_t erase_size = SECTOR_ALIGN(size);
     int ret;
 
-    LOG_INF("XIP flash: erase %u bytes at offset 0x%x", erase_size, offset);
+    LOG_DBG("XIP flash: erase %u bytes at offset 0x%x", erase_size, offset);
     ret = flash_area_erase(fa, offset, erase_size);
     if (ret < 0) {
         LOG_ERR("Flash erase failed at 0x%x: %d", offset, ret);
         return ret;
     }
 
-    LOG_INF("XIP flash: write %zu bytes at offset 0x%x", size, offset);
+    LOG_DBG("XIP flash: write %zu bytes at offset 0x%x", size, offset);
     return flash_write_aligned(fa, offset, data, size);
 }
 
@@ -273,7 +273,7 @@ static uintptr_t xip_stream_region(struct llext_loader *ldr,
     /* Advance allocator */
     xip_next_offset += aligned_size;
 
-    LOG_INF("XIP stream %s: %zu bytes -> 0x%08lx (prepad=%zu)",
+    LOG_DBG("XIP stream %s: %zu bytes -> 0x%08lx (prepad=%zu)",
             region_name, data_len, (unsigned long)xip_addr, prepad);
 
     return xip_addr;
@@ -341,7 +341,7 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
 
                 ctx->got_offset = got_vma - data_vma;
                 ctx->got_found = true;
-                LOG_INF(".got at VMA 0x%zx, DATA region offset %zu",
+                LOG_DBG(".got at VMA 0x%zx, DATA region offset %zu",
                         (size_t)got_vma, ctx->got_offset);
                 break;
             }
@@ -355,129 +355,9 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
     return 0;
 }
 
-/* --------------------------------------------------------------------------
- * Post-load XIP Install (legacy — requires .text to fit in heap)
- * -------------------------------------------------------------------------- */
-
-int zsw_llext_xip_install(struct llext *ext)
-{
-    const struct flash_area *fa;
-    int ret;
-
-    void *ram_text = ext->mem[LLEXT_MEM_TEXT];
-    void *ram_rodata = ext->mem[LLEXT_MEM_RODATA];
-    size_t text_size = ext->mem_size[LLEXT_MEM_TEXT];
-    size_t rodata_size = ext->mem_size[LLEXT_MEM_RODATA];
-
-    if (!ram_text || !ext->mem_on_heap[LLEXT_MEM_TEXT]) {
-        LOG_ERR("XIP install: .text not on heap");
-        return -EINVAL;
-    }
-
-    /* Calculate space needed (sector-aligned) */
-    uint32_t aligned_text = SECTOR_ALIGN(text_size);
-    uint32_t aligned_rodata = (rodata_size > 0) ? SECTOR_ALIGN(rodata_size) : 0;
-    uint32_t total = aligned_text + aligned_rodata;
-
-    if (xip_next_offset + total > xip_partition_size) {
-        LOG_ERR("XIP: not enough flash (need %u, have %u)",
-                total, xip_partition_size - xip_next_offset);
-        return -ENOSPC;
-    }
-
-    uint32_t text_offset = xip_next_offset;
-    uint32_t rodata_offset = xip_next_offset + aligned_text;
-
-    uintptr_t xip_text_addr = XIP_PARTITION_CPU_ADDR + text_offset;
-    uintptr_t xip_rodata_addr = (rodata_size > 0) ?
-        (XIP_PARTITION_CPU_ADDR + rodata_offset) : 0;
-
-    LOG_INF("XIP install '%s': .text=%zu->0x%08lx, .rodata=%zu->0x%08lx",
-            ext->name, text_size, (unsigned long)xip_text_addr,
-            rodata_size, (unsigned long)xip_rodata_addr);
-
-    /* Open partition and write sections */
-    ret = flash_area_open(XIP_PARTITION_ID, &fa);
-    if (ret < 0) {
-        LOG_ERR("Failed to open XIP partition: %d", ret);
-        return ret;
-    }
-
-    ret = write_to_flash(fa, text_offset, ram_text, text_size);
-    if (ret < 0) {
-        flash_area_close(fa);
-        return ret;
-    }
-
-    if (rodata_size > 0 && ram_rodata) {
-        ret = write_to_flash(fa, rodata_offset, ram_rodata, rodata_size);
-        if (ret < 0) {
-            flash_area_close(fa);
-            return ret;
-        }
-    }
-
-    flash_area_close(fa);
-
-    /* Invalidate instruction cache so CPU sees new flash content */
-    sys_cache_instr_invd_all();
-
-    /* Advance allocator */
-    xip_next_offset += total;
-
-    /* Save old RAM addresses for sym/exp table pointer fixup */
-    uintptr_t old_text = (uintptr_t)ram_text;
-    uintptr_t old_rodata = (uintptr_t)ram_rodata;
-    size_t old_text_size = text_size;
-    size_t old_rodata_size = rodata_size;
-
-    /* Free heap copies and redirect to XIP addresses */
-    k_heap_free(&llext_heap, ram_text);
-    ext->mem[LLEXT_MEM_TEXT] = (void *)xip_text_addr;
-    ext->mem_on_heap[LLEXT_MEM_TEXT] = false;
-
-    if (rodata_size > 0 && ram_rodata) {
-        k_heap_free(&llext_heap, ram_rodata);
-        ext->mem[LLEXT_MEM_RODATA] = (void *)xip_rodata_addr;
-        ext->mem_on_heap[LLEXT_MEM_RODATA] = false;
-    }
-
-    /* Fix sym_tab and exp_tab pointers that reference moved regions */
-    intptr_t text_delta = (intptr_t)xip_text_addr - (intptr_t)old_text;
-    intptr_t rodata_delta = (rodata_size > 0) ?
-        ((intptr_t)xip_rodata_addr - (intptr_t)old_rodata) : 0;
-
-    #define ADJUST_PTR(ptr, type) do { \
-        uintptr_t _a = (uintptr_t)(ptr); \
-        if (_a >= old_text && _a < old_text + old_text_size) { \
-            (ptr) = (type)(void *)(_a + text_delta); \
-        } else if (old_rodata_size > 0 && \
-                   _a >= old_rodata && _a < old_rodata + old_rodata_size) { \
-            (ptr) = (type)(void *)(_a + rodata_delta); \
-        } \
-    } while (0)
-
-    for (size_t i = 0; i < ext->exp_tab.sym_cnt; i++) {
-        ADJUST_PTR(ext->exp_tab.syms[i].addr, void *);
-        ADJUST_PTR(ext->exp_tab.syms[i].name, const char *);
-    }
-
-    for (size_t i = 0; i < ext->sym_tab.sym_cnt; i++) {
-        ADJUST_PTR(ext->sym_tab.syms[i].addr, void *);
-        ADJUST_PTR(ext->sym_tab.syms[i].name, const char *);
-    }
-
-    #undef ADJUST_PTR
-
-    LOG_INF("XIP install '%s' complete: freed %zu bytes from heap, "
-            ".text+.rodata now in flash",
-            ext->name, text_size + rodata_size);
-
-    return 0;
-}
 
 void zsw_llext_xip_reset(void)
 {
     xip_next_offset = 0;
-    LOG_INF("XIP allocator reset");
+    LOG_DBG("XIP allocator reset");
 }
