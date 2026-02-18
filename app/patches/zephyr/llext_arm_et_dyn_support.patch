@@ -1,0 +1,246 @@
+diff --git a/include/zephyr/llext/llext.h b/include/zephyr/llext/llext.h
+index 9e601ebf8dd..494937bb5aa 100644
+--- a/include/zephyr/llext/llext.h
++++ b/include/zephyr/llext/llext.h
+@@ -194,6 +194,22 @@ struct llext_load_param {
+ 	 *       before the extension can be unloaded via @ref llext_unload.
+ 	 */
+ 	bool keep_section_info;
++
++	/**
++	 * Optional callback invoked after section mapping but before region
++	 * allocation. Can be used to pre-install read-only regions (TEXT,
++	 * RODATA) into external storage (e.g., XIP flash) without heap
++	 * allocation. If the callback sets ext->mem[mem_idx] for a region,
++	 * that region will be skipped during copy_regions.
++	 *
++	 * @param ldr Loader (call llext_seek/llext_read to access ELF data)
++	 * @param ext Extension being loaded
++	 * @param user_data Opaque user data
++	 * @return 0 on success, negative error code on failure
++	 */
++	int (*pre_copy_hook)(struct llext_loader *ldr, struct llext *ext,
++			    void *user_data);
++	void *pre_copy_hook_user_data;
+ };
+ 
+ /** Default initializer for @ref llext_load_param */
+diff --git a/subsys/llext/llext_link.c b/subsys/llext/llext_link.c
+index c08c2f03894..7911016053d 100644
+--- a/subsys/llext/llext_link.c
++++ b/subsys/llext/llext_link.c
+@@ -235,9 +235,36 @@ int llext_lookup_symbol(struct llext_loader *ldr, struct llext *ext, uintptr_t *
+ 		 *
+ 		 * For regular symbols, the link address is obtained by adding st_value to the start
+ 		 * address of the section in which the target symbol resides.
++		 *
++		 * For ET_DYN (shared libraries), st_value is an absolute VMA rather than a
++		 * section-relative offset.  Map it to the loaded region containing that VMA.
+ 		 */
+-		*link_addr =
+-			(uintptr_t)llext_loaded_sect_ptr(ldr, ext, sym->st_shndx) + sym->st_value;
++		if (IS_ENABLED(CONFIG_LLEXT_TYPE_ELF_SHAREDLIB) && ldr->hdr.e_type == ET_DYN) {
++			bool found = false;
++
++			for (enum llext_mem m = 0; m < LLEXT_MEM_COUNT; m++) {
++				if (ldr->sects[m].sh_type != SHT_NULL &&
++				    ext->mem[m] != NULL &&
++				    ldr->sects[m].sh_addr <= sym->st_value &&
++				    sym->st_value < ldr->sects[m].sh_addr +
++						    ldr->sects[m].sh_size) {
++					*link_addr = (uintptr_t)ext->mem[m] +
++						     (sym->st_value -
++						      ldr->sects[m].sh_addr);
++					found = true;
++					break;
++				}
++			}
++			if (!found) {
++				LOG_ERR("ET_DYN: cannot map sym VMA %#zx (%s)",
++					(size_t)sym->st_value, name);
++				return -ENOEXEC;
++			}
++		} else {
++			*link_addr = (uintptr_t)llext_loaded_sect_ptr(ldr, ext,
++								      sym->st_shndx) +
++				     sym->st_value;
++		}
+ 	} else {
+ 		LOG_ERR("cannot apply relocation: "
+ 			"target symbol has unexpected section index %d (%#x)",
+@@ -320,10 +347,13 @@ static int llext_link_plt(struct llext_loader *ldr, struct llext *ext, elf_shdr_
+ 		 * beginning of the .text section in the ELF file can be
+ 		 * applied to the memory location of mem[LLEXT_MEM_TEXT].
+ 		 *
+-		 * This is valid only for LLEXT_STORAGE_WRITABLE loaders
+-		 * since the buffer will be directly modified.
++		 * For LLEXT_STORAGE_WRITABLE loaders this directly modifies
++		 * the buffer. For ET_DYN shared libraries loaded from other
++		 * storage types, sections are heap-allocated copies and
++		 * therefore also writable.
+ 		 */
+-		if (ldr->storage != LLEXT_STORAGE_WRITABLE) {
++		if (ldr->storage != LLEXT_STORAGE_WRITABLE &&
++		    ldr->hdr.e_type != ET_DYN) {
+ 			LOG_ERR("PLT: cannot link read-only ELF file");
+ 			continue;
+ 		}
+@@ -482,6 +512,137 @@ int llext_link(struct llext_loader *ldr, struct llext *ext, const struct llext_l
+ 			continue;
+ 		}
+ 
++		/*
++		 * On ARM, .rel.dyn contains R_ARM_RELATIVE / R_ARM_GLOB_DAT /
++		 * R_ARM_ABS32 relocations for ET_DYN shared libraries. Its
++		 * sh_info is 0 (NULL section) so the generic path below would
++		 * skip it.  We handle it directly here because:
++		 *  - The generic path needs sh_info to point to a real SHF_ALLOC
++		 *    section, which .rel.dyn doesn't.
++		 *  - llext_link_plt() uses arch_elf_relocate_local/global which
++		 *    ARM doesn't implement.
++		 *  - r_offset in .rel.dyn entries are VMAs that must be mapped
++		 *    to loaded region addresses (not relative to a single section).
++		 */
++#define R_ARM_ABS32_     2
++#define R_ARM_GLOB_DAT_  21
++#define R_ARM_JUMP_SLOT_ 22
++#define R_ARM_RELATIVE_  23
++
++		if (IS_ENABLED(CONFIG_ARM) && strcmp(name, ".rel.dyn") == 0) {
++
++			for (int j = 0; j < rel_cnt; j++) {
++				ret = llext_seek(ldr, shdr->sh_offset + j * shdr->sh_entsize);
++				if (ret != 0) {
++					return ret;
++				}
++
++				ret = llext_read(ldr, &rel, shdr->sh_entsize);
++				if (ret != 0) {
++					return ret;
++				}
++
++				elf_word reloc_type = ELF32_R_TYPE(rel.r_info);
++
++				/* Map r_offset (VMA) to a loaded memory address */
++				uintptr_t loc = 0;
++
++				for (enum llext_mem m = 0; m < LLEXT_MEM_COUNT; m++) {
++					if (ldr->sects[m].sh_type != SHT_NULL &&
++					    ext->mem[m] != NULL &&
++					    ldr->sects[m].sh_addr <= rel.r_offset &&
++					    rel.r_offset < ldr->sects[m].sh_addr +
++							   ldr->sects[m].sh_size) {
++						loc = (uintptr_t)ext->mem[m] +
++						      (rel.r_offset - ldr->sects[m].sh_addr);
++						break;
++					}
++				}
++
++				if (loc == 0) {
++					LOG_WRN("rel.dyn: VMA %#zx not in any loaded region",
++						(size_t)rel.r_offset);
++					continue;
++				}
++
++				switch (reloc_type) {
++				case R_ARM_RELATIVE_: {
++					/*
++					 * The value at loc is a VMA from the ELF.
++					 * Replace it with the runtime address by
++					 * finding which loaded region contains it.
++					 */
++					uint32_t target_vma = *(uint32_t *)loc;
++					bool resolved = false;
++
++					for (enum llext_mem m = 0; m < LLEXT_MEM_COUNT; m++) {
++						if (ldr->sects[m].sh_type != SHT_NULL &&
++						    ext->mem[m] != NULL &&
++						    ldr->sects[m].sh_addr <= target_vma &&
++						    target_vma < ldr->sects[m].sh_addr +
++								ldr->sects[m].sh_size) {
++							*(uint32_t *)loc =
++								(uint32_t)((uintptr_t)ext->mem[m] +
++								(target_vma -
++								 ldr->sects[m].sh_addr));
++							resolved = true;
++							break;
++						}
++					}
++
++					if (!resolved) {
++						LOG_WRN("R_ARM_RELATIVE: VMA %#x not found",
++							target_vma);
++					}
++					break;
++				}
++
++				case R_ARM_GLOB_DAT_:
++				case R_ARM_JUMP_SLOT_:
++				case R_ARM_ABS32_: {
++					elf_sym_t sym;
++					uintptr_t sym_addr;
++
++					ret = llext_read_symbol(ldr, ext, &rel, &sym);
++					if (ret != 0) {
++						link_err = ret;
++						break;
++					}
++
++					const char *sname = llext_symbol_name(ldr, ext, &sym);
++
++					ret = llext_lookup_symbol(ldr, ext, &sym_addr,
++								  &rel, &sym, sname, shdr);
++					if (ret != 0) {
++						link_err = ret;
++						break;
++					}
++
++					if (reloc_type == R_ARM_ABS32_) {
++						*(uint32_t *)loc += sym_addr;
++					} else {
++						*(uint32_t *)loc = sym_addr;
++					}
++
++					LOG_INF("rel[%d] @%p: %s -> %#lx",
++						j, (void *)loc, sname, sym_addr);
++					break;
++				}
++
++				default:
++					LOG_WRN("rel.dyn: unhandled type %d", reloc_type);
++					break;
++				}
++			}
++
++			continue;
++		}
++
++#undef R_ARM_ABS32_
++#undef R_ARM_GLOB_DAT_
++#undef R_ARM_JUMP_SLOT_
++#undef R_ARM_RELATIVE_
++
+ 		if (!(ext->sect_hdrs[shdr->sh_info].sh_flags & SHF_ALLOC)) {
+ 			/* ignore relocations acting on volatile (debug) sections */
+ 			continue;
+diff --git a/subsys/llext/llext_load.c b/subsys/llext/llext_load.c
+index 131825df360..2f621c83ebd 100644
+--- a/subsys/llext/llext_load.c
++++ b/subsys/llext/llext_load.c
+@@ -833,6 +833,16 @@ int do_llext_load(struct llext_loader *ldr, struct llext *ext,
+ 		goto out;
+ 	}
+ 
++	if (ldr_parm->pre_copy_hook) {
++		LOG_DBG("Calling pre-copy hook...");
++		ret = ldr_parm->pre_copy_hook(ldr, ext,
++					      ldr_parm->pre_copy_hook_user_data);
++		if (ret != 0) {
++			LOG_ERR("Pre-copy hook failed, ret %d", ret);
++			goto out;
++		}
++	}
++
+ 	LOG_DBG("Allocate and copy regions...");
+ 	ret = llext_copy_regions(ldr, ext, ldr_parm);
+ 	if (ret != 0) {

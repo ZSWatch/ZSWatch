@@ -1,8 +1,15 @@
 diff --git a/cmake/compiler/gcc/target_arm.cmake b/cmake/compiler/gcc/target_arm.cmake
-index 4e4523c43c5..269dbdccfce 100644
+index 4e4523c43c5..3c2f4251a2b 100644
 --- a/cmake/compiler/gcc/target_arm.cmake
 +++ b/cmake/compiler/gcc/target_arm.cmake
-@@ -61,8 +61,14 @@ set(LLEXT_REMOVE_FLAGS
+@@ -55,14 +55,26 @@ set(LLEXT_REMOVE_FLAGS
+   -ffunction-sections
+   -fdata-sections
+   -Os
++  -ffixed-r9
+ )
+ 
+ # Flags to be added to llext code compilation
  set(LLEXT_APPEND_FLAGS
    -mlong-calls
    -mthumb
@@ -11,7 +18,12 @@ index 4e4523c43c5..269dbdccfce 100644
  )
  
 +if(CONFIG_LLEXT_BUILD_PIC)
-+  list(APPEND LLEXT_APPEND_FLAGS -fPIC)
++  list(APPEND LLEXT_APPEND_FLAGS
++    -fPIC
++    -msingle-pic-base
++    -mno-pic-data-is-text-relative
++    -mpic-register=r9
++  )
 +endif()
 +
  list(APPEND LLEXT_EDK_REMOVE_FLAGS

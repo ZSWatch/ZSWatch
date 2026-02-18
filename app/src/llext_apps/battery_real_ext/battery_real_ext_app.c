@@ -18,14 +18,13 @@
 /*
  * LLEXT version of the full Battery app.
  *
- * Both the app logic (battery_app) and the complete multi-page UI
- * (battery_ui) are compiled into this single LLEXT module.
+ * Battery app logic and UI (battery_ui.c) are compiled into this LLEXT module
+ * as separate source files linked into a single shared library.
  *
- * Differences from the built-in version:
+ * Differences from the original built-in version:
  *   - No history persistence (no settings / zsw_history)
  *   - Zbus observer registered at runtime (not compile-time)
  *   - Icon image compiled into .rodata → lives in XIP flash
- *   - battery_ui.c is #included so everything is one compilation unit
  */
 
 #include <zephyr/kernel.h>
@@ -45,12 +44,8 @@
 /* ---- Image data compiled into .rodata (goes to XIP alongside code) ---- */
 #include "images/battery_app_icon.c"
 
-/* ---- Full battery UI (all 3 pages: chart, charger info, regulator info) ----
- * We #include the .c file because add_llext_target only supports a single
- * source file for ELF object builds.  The preprocessor merges everything
- * into one translation unit.
- */
-#include "applications/battery/battery_ui.c"
+/* ---- Full battery UI (all 3 pages: chart, charger info, regulator info) ---- */
+#include "battery_ui.h"
 
 /* ---------- Forward declarations ---------- */
 static void battery_app_start(lv_obj_t *root, lv_group_t *group);
@@ -85,16 +80,30 @@ static application_t app = {
 
 /* ---------- App lifecycle ---------- */
 
+/* Debug helper to read R9 */
+static inline uintptr_t read_r9(void)
+{
+    uintptr_t val;
+    __asm__ volatile("mov %0, r9" : "=r"(val));
+    return val;
+}
+
 static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 {
     LV_UNUSED(group);
     struct battery_sample_event initial_sample;
+    uintptr_t r9_before, r9_after;
 
-    printk("battery_real_ext: start\n");
+    r9_before = read_r9();
+    printk("battery_real_ext: start (R9 before printk=0x%08lx)\n", (unsigned long)r9_before);
+    r9_after = read_r9();
+    printk("battery_real_ext: R9 after printk=0x%08lx\n", (unsigned long)r9_after);
 
 #if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
+    printk("battery_real_ext: calling battery_ui_show (R9=0x%08lx)\n", (unsigned long)read_r9());
     battery_ui_show(root, on_battery_hist_clear_cb, 1, true);
 #else
+    printk("battery_real_ext: calling battery_ui_show (R9=0x%08lx)\n", (unsigned long)read_r9());
     battery_ui_show(root, on_battery_hist_clear_cb, 1, false);
 #endif
 

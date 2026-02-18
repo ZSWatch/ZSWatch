@@ -10,6 +10,12 @@ project(ZSWatchFW)
 
 set(XIP_RELOCATE_SOURCES "")
 
+# Reserve R9 for LLEXT PIC apps - firmware must never use R9 as scratch
+# so LLEXT GOT pointer stays valid across firmware calls.
+if(CONFIG_ARM AND CONFIG_LLEXT)
+  zephyr_cc_option(-ffixed-r9)
+endif()
+
 zephyr_compile_definitions(
   -DNRF53_ERRATA_159_ENABLE_WORKAROUND=0 # Not allowing 128MHz CPU with QPSI at same time. We take the risk of this errata that may cause currupt QPSI data.
 )

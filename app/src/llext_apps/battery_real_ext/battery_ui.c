@@ -15,11 +15,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <battery/battery_ui.h>
 #include "battery_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
 #include <assert.h>
+#include <zephyr/sys/printk.h>
+
+/* Debug helper to read R9 */
+static inline uintptr_t read_r9(void)
+{
+    uintptr_t val;
+    __asm__ volatile("mov %0, r9" : "=r"(val));
+    return val;
+}
 
 // Common
 static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);
@@ -92,10 +100,12 @@ static on_clear_history on_clear_history_cb;
 
 void battery_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_samples, bool include_pmic_ui)
 {
+    printk("battery_ui_show: ENTER R9=0x%08lx\n", (unsigned long)read_r9());
     assert(root_page == NULL);
     on_clear_history_cb = clear_hist_cb;
     pmic_ui_enabled = include_pmic_ui;
     // Create the root container
+    printk("battery_ui_show: calling lv_obj_create, R9=0x%08lx\n", (unsigned long)read_r9());
     root_page = lv_obj_create(root);
     // Remove the default border
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);

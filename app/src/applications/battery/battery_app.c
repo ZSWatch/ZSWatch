@@ -22,12 +22,11 @@
 #include <zephyr/settings/settings.h>
 
 #include "history/zsw_history.h"
-#include "battery/battery_ui.h"
+#include "battery_ui.h"
 #include "events/battery_event.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "fuel_gauge/zsw_pmic.h"
-#include "battery_ui.h"
 
 #define SETTING_BATTERY_HIST    "battery/hist"
 #define SAMPLE_INTERVAL_MIN     15

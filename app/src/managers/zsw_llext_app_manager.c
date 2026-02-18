@@ -19,10 +19,10 @@
  * @file zsw_llext_app_manager.c
  * @brief LLEXT app manager with deferred (on-demand) loading.
  *
- * At boot, the filesystem is scanned for LLEXT app directories. Each app's
- * manifest.json is read to extract metadata (name, entry symbol). A lightweight
- * proxy application_t is registered with the app manager for each discovered
- * app. The actual LLEXT shared library is NOT loaded at boot.
+ * At boot, the filesystem is scanned for LLEXT app directories. Each app
+ * directory must contain an app.llext file. A lightweight proxy application_t
+ * is registered with the app manager for each discovered app. The actual
+ * LLEXT shared library is NOT loaded at boot.
  *
  * When the user opens an LLEXT app, the proxy's start_func loads the ELF from
  * the filesystem, calls the extension's app_entry to obtain the real
@@ -39,9 +39,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/llext/llext.h>
-#include <zephyr/llext/buf_loader.h>
 #include <zephyr/llext/fs_loader.h>
-#include "cJSON.h"
 #include <string.h>
 
 #include "managers/zsw_app_manager.h"
@@ -51,23 +49,54 @@
 
 LOG_MODULE_REGISTER(llext_app_mgr, LOG_LEVEL_INF);
 
+/*
+ * ARM PIC LLEXT apps are compiled with -msingle-pic-base -mpic-register=r9.
+ * R9 must hold the GOT base address whenever LLEXT code runs.
+ *
+ * The firmware is compiled with -ffixed-r9 so it never uses R9 as a scratch
+ * register. This ensures R9 is preserved across calls from LLEXT to firmware.
+ *
+ * We still initialize R9 before the first call into LLEXT code.
+ */
+#ifdef CONFIG_ARM
+
+/* Helper to set R9 before entering LLEXT code */
+static __always_inline void llext_set_r9(void *got_base)
+{
+    __asm__ volatile("mov r9, %0" : : "r"(got_base) : "r9");
+}
+
+#define LLEXT_CALL_ENTRY(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
+#define LLEXT_CALL_START(got, fn, root, grp) do { llext_set_r9(got); (fn)(root, grp); } while (0)
+#define LLEXT_CALL_STOP(got, fn) do { llext_set_r9(got); (fn)(); } while (0)
+#define LLEXT_CALL_BACK(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
+#define LLEXT_CALL_VOID(got, fn) do { llext_set_r9(got); (fn)(); } while (0)
+
+#else
+/* Non-ARM: direct calls */
+#define LLEXT_CALL_ENTRY(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
+#define LLEXT_CALL_START(got, fn, root, grp) do { (void)(got); (fn)(root, grp); } while (0)
+#define LLEXT_CALL_STOP(got, fn) do { (void)(got); (fn)(); } while (0)
+#define LLEXT_CALL_BACK(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
+#define LLEXT_CALL_VOID(got, fn) do { (void)(got); (fn)(); } while (0)
+#endif
+
+/* Set to the name of the LLEXT app to auto-open at boot for debugging.
+ * Set to NULL to disable. */
+//#define ZSW_LLEXT_AUTO_OPEN_APP  "battery_real_ext"
+#define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
+
 /* --------------------------------------------------------------------------
  * Configuration
  * -------------------------------------------------------------------------- */
 
 #define ZSW_LLEXT_MAX_APPS          10
 #define ZSW_LLEXT_APPS_BASE_PATH    "/lvgl_lfs/apps"
-#define ZSW_LLEXT_MANIFEST_NAME     "manifest.json"
 #define ZSW_LLEXT_ELF_NAME          "app.llext"
+#define ZSW_LLEXT_ENTRY_SYMBOL      "app_entry"
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
-#define ZSW_LLEXT_MANIFEST_BUF_SIZE 256
 #define ZSW_LLEXT_HEAP_SIZE         (45 * 1024)
-
-/* Embedded test LLEXT binary (generated at build time) */
-static const uint8_t embedded_llext_buf[] __aligned(4) = {
-#include "about_ext.inc"
-};
 
 /* --------------------------------------------------------------------------
  * Types
@@ -78,7 +107,6 @@ typedef application_t *(*llext_app_entry_fn)(void);
 typedef struct {
     char name[ZSW_LLEXT_MAX_NAME_LEN];
     char dir_path[ZSW_LLEXT_MAX_PATH_LEN];
-    char entry_symbol[ZSW_LLEXT_MAX_NAME_LEN];
 
     /* Proxy app registered with the main app manager at discovery time.
      * Its start/stop functions are trampolines that trigger deferred loading.
@@ -88,8 +116,8 @@ typedef struct {
     /* Runtime state — populated when the LLEXT is actually loaded */
     struct llext *ext;
     application_t *real_app;  /* Points into LLEXT memory, valid only while loaded */
+    void *got_base;           /* GOT base address — loaded into R9 before calling LLEXT */
     bool loaded;
-    bool is_embedded;
 } zsw_llext_app_t;
 
 /* --------------------------------------------------------------------------
@@ -104,10 +132,10 @@ static zsw_llext_app_t *active_llext_app;
 static uint8_t llext_heap_buf[ZSW_LLEXT_HEAP_SIZE] __aligned(8);
 static bool heap_initialized;
 
-/* Auto-start delayed work for testing */
-#define LLEXT_AUTO_START_DELAY_MS   5000
-static void llext_auto_start_work_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(llext_auto_start_work, llext_auto_start_work_handler);
+#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
+static void auto_open_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(auto_open_work, auto_open_work_handler);
+#endif
 
 /* --------------------------------------------------------------------------
  * Forward Declarations — Proxy Trampolines
@@ -167,7 +195,11 @@ static bool llext_proxy_back(void)
 {
     if (active_llext_app && active_llext_app->real_app &&
         active_llext_app->real_app->back_func) {
-        return active_llext_app->real_app->back_func();
+        bool consumed;
+
+        LLEXT_CALL_BACK(active_llext_app->got_base,
+                        active_llext_app->real_app->back_func, consumed);
+        return consumed;
     }
     return false;
 }
@@ -176,7 +208,8 @@ static void llext_proxy_ui_unavailable(void)
 {
     if (active_llext_app && active_llext_app->real_app &&
         active_llext_app->real_app->ui_unavailable_func) {
-        active_llext_app->real_app->ui_unavailable_func();
+        LLEXT_CALL_VOID(active_llext_app->got_base,
+                        active_llext_app->real_app->ui_unavailable_func);
     }
 }
 
@@ -184,7 +217,8 @@ static void llext_proxy_ui_available(void)
 {
     if (active_llext_app && active_llext_app->real_app &&
         active_llext_app->real_app->ui_available_func) {
-        active_llext_app->real_app->ui_available_func();
+        LLEXT_CALL_VOID(active_llext_app->got_base,
+                        active_llext_app->real_app->ui_available_func);
     }
 }
 
@@ -201,11 +235,11 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
         LOG_INF("LLEXT '%s' already loaded, calling start_func", la->name);
         active_llext_app = la;
         la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-        la->real_app->start_func(root, group);
+        LLEXT_CALL_START(la->got_base, la->real_app->start_func, root, group);
         return;
     }
 
-    LOG_INF("Deferred loading LLEXT '%s' from %s", la->name, la->dir_path);
+    LOG_INF("Loading LLEXT '%s' from %s", la->name, la->dir_path);
 
     ret = ensure_heap_init();
     if (ret != 0) {
@@ -213,62 +247,66 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
         return;
     }
 
-    /* Load the ELF from filesystem */
+    /* Load the ELF from filesystem, streaming .text/.rodata directly to XIP flash */
     char elf_path[ZSW_LLEXT_MAX_PATH_LEN];
 
     snprintk(elf_path, sizeof(elf_path), "%s/%s", la->dir_path, ZSW_LLEXT_ELF_NAME);
 
     struct llext_fs_loader fs_loader = LLEXT_FS_LOADER(elf_path);
     struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
+    struct zsw_llext_xip_context xip_ctx = {0};
+
+    ldr_parm.pre_copy_hook = zsw_llext_xip_pre_copy_hook;
+    ldr_parm.pre_copy_hook_user_data = &xip_ctx;
 
     ret = llext_load(&fs_loader.loader, la->name, &la->ext, &ldr_parm);
     if (ret != 0) {
         LOG_ERR("llext_load failed for '%s': %d", la->name, ret);
+        zsw_llext_xip_reset();
         return;
     }
 
-    LOG_INF("LLEXT '%s' loaded to RAM, installing .text/.rodata to XIP flash", la->name);
-
-    /* Move .text/.rodata from heap to XIP flash — frees ~95% of heap usage */
-    ret = zsw_llext_xip_install(la->ext);
-    if (ret != 0) {
-        LOG_ERR("XIP install failed for '%s': %d", la->name, ret);
-        llext_unload(&la->ext);
-        la->ext = NULL;
-        return;
+    /* Compute GOT base address for R9 register (ARM -msingle-pic-base) */
+    if (xip_ctx.got_found && la->ext->mem[LLEXT_MEM_DATA] != NULL) {
+        la->got_base = (uint8_t *)la->ext->mem[LLEXT_MEM_DATA] + xip_ctx.got_offset;
+        LOG_INF("GOT base = %p (DATA %p + offset %zu)",
+                la->got_base, la->ext->mem[LLEXT_MEM_DATA], xip_ctx.got_offset);
+    } else {
+        LOG_WRN("No .got found — R9 will be NULL (non-PIC or no GOT)");
+        la->got_base = NULL;
     }
 
-    LOG_INF("LLEXT '%s' XIP installed, finding entry symbol '%s'", la->name, la->entry_symbol);
+    LOG_INF("LLEXT '%s' loaded, finding entry '%s'", la->name, ZSW_LLEXT_ENTRY_SYMBOL);
 
     /* Find and call the extension's app_entry to get the application_t */
-    llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, la->entry_symbol);
+    llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, ZSW_LLEXT_ENTRY_SYMBOL);
 
     if (entry_fn == NULL) {
-        LOG_ERR("Entry symbol '%s' not found in LLEXT '%s'", la->entry_symbol, la->name);
+        LOG_ERR("Entry symbol '%s' not found in LLEXT '%s'", ZSW_LLEXT_ENTRY_SYMBOL, la->name);
         llext_unload(&la->ext);
         la->ext = NULL;
+        zsw_llext_xip_reset();
         return;
     }
 
-    la->real_app = entry_fn();
+    LLEXT_CALL_ENTRY(la->got_base, entry_fn, la->real_app);
     if (la->real_app == NULL) {
         LOG_ERR("app_entry() returned NULL for LLEXT '%s'", la->name);
         llext_unload(&la->ext);
         la->ext = NULL;
+        zsw_llext_xip_reset();
         return;
     }
 
     la->loaded = true;
     active_llext_app = la;
 
-    LOG_INF("LLEXT '%s' ready: real_name='%s', category=%d",
+    LOG_INF("LLEXT '%s' ready (name='%s', category=%d)",
             la->name, la->real_app->name, la->real_app->category);
 
     /* Start the real app UI */
     la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-    la->real_app->start_func(root, group);
-
-    LOG_INF("LLEXT '%s' start_func completed", la->name);
+    LLEXT_CALL_START(la->got_base, la->real_app->start_func, root, group);
 }
 
 static void proxy_stop_common(int idx)
@@ -284,14 +322,14 @@ static void proxy_stop_common(int idx)
 
     /* Call the real stop function */
     if (la->real_app && la->real_app->stop_func) {
-        la->real_app->stop_func();
+        LLEXT_CALL_STOP(la->got_base, la->real_app->stop_func);
     }
 
     la->real_app = NULL;
+    la->got_base = NULL;
 
     /* Unload the extension and free all heap memory */
     if (la->ext) {
-        LOG_INF("Unloading LLEXT '%s'", la->name);
         llext_unload(&la->ext);
         la->ext = NULL;
     }
@@ -305,59 +343,7 @@ static void proxy_stop_common(int idx)
     /* Reset XIP allocator so flash space can be reused by next app */
     zsw_llext_xip_reset();
 
-    LOG_INF("LLEXT '%s' unloaded, heap + XIP freed", la->name);
-}
-
-/* --------------------------------------------------------------------------
- * Manifest Reading
- * -------------------------------------------------------------------------- */
-
-static int read_manifest(const char *dir_path, zsw_llext_app_t *app)
-{
-    char path[ZSW_LLEXT_MAX_PATH_LEN];
-    char buf[ZSW_LLEXT_MANIFEST_BUF_SIZE];
-    struct fs_file_t file;
-    ssize_t bytes_read;
-    int ret;
-
-    snprintk(path, sizeof(path), "%s/%s", dir_path, ZSW_LLEXT_MANIFEST_NAME);
-
-    fs_file_t_init(&file);
-    ret = fs_open(&file, path, FS_O_READ);
-    if (ret < 0) {
-        return ret;
-    }
-
-    bytes_read = fs_read(&file, buf, sizeof(buf) - 1);
-    fs_close(&file);
-
-    if (bytes_read <= 0) {
-        return -EIO;
-    }
-    buf[bytes_read] = '\0';
-
-    cJSON *root = cJSON_Parse(buf);
-
-    if (root == NULL) {
-        LOG_WRN("Failed to parse manifest %s", path);
-        return -EINVAL;
-    }
-
-    cJSON *name_obj = cJSON_GetObjectItem(root, "name");
-    cJSON *entry_obj = cJSON_GetObjectItem(root, "entry_symbol");
-
-    if (cJSON_IsString(name_obj)) {
-        strncpy(app->name, name_obj->valuestring, sizeof(app->name) - 1);
-    }
-
-    if (cJSON_IsString(entry_obj)) {
-        strncpy(app->entry_symbol, entry_obj->valuestring, sizeof(app->entry_symbol) - 1);
-    } else {
-        strncpy(app->entry_symbol, "app_entry", sizeof(app->entry_symbol) - 1);
-    }
-
-    cJSON_Delete(root);
-    return 0;
+    LOG_INF("LLEXT '%s' unloaded", la->name);
 }
 
 /* --------------------------------------------------------------------------
@@ -367,6 +353,7 @@ static int read_manifest(const char *dir_path, zsw_llext_app_t *app)
 static int discover_llext_app(const char *dir_path, const char *dir_name)
 {
     int idx;
+    int ret;
     zsw_llext_app_t *la;
     application_t *proxy;
 
@@ -379,16 +366,7 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
     la = &llext_apps[idx];
     memset(la, 0, sizeof(*la));
     strncpy(la->dir_path, dir_path, sizeof(la->dir_path) - 1);
-
-    /* Try to read manifest for app name and entry symbol */
-    int ret = read_manifest(dir_path, la);
-
-    if (ret < 0) {
-        /* No manifest — use directory name and default entry symbol */
-        strncpy(la->name, dir_name, sizeof(la->name) - 1);
-        strncpy(la->entry_symbol, "app_entry", sizeof(la->entry_symbol) - 1);
-        LOG_INF("No manifest for '%s', using dir name", dir_name);
-    }
+    strncpy(la->name, dir_name, sizeof(la->name) - 1);
 
     /* Verify the ELF file exists */
     char elf_path[ZSW_LLEXT_MAX_PATH_LEN];
@@ -426,115 +404,6 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
 }
 
 /* --------------------------------------------------------------------------
- * Embedded LLEXT (fallback when no filesystem apps exist)
- * -------------------------------------------------------------------------- */
-
-static int load_embedded_llext_app(void)
-{
-    struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
-    struct llext *ext = NULL;
-    int ret;
-
-    ret = ensure_heap_init();
-    if (ret != 0) {
-        return ret;
-    }
-
-    LOG_INF("Loading embedded LLEXT app (%zu bytes)", sizeof(embedded_llext_buf));
-
-    struct llext_buf_loader buf_loader = LLEXT_BUF_LOADER(
-        (const uint8_t *)embedded_llext_buf, sizeof(embedded_llext_buf));
-
-    ret = llext_load(&buf_loader.loader, "about_ext_emb", &ext, &ldr_parm);
-    if (ret != 0) {
-        LOG_ERR("Failed to load embedded LLEXT: %d", ret);
-        return ret;
-    }
-
-    llext_app_entry_fn entry_fn = llext_find_sym(&ext->exp_tab, "app_entry");
-
-    if (entry_fn == NULL) {
-        LOG_ERR("Entry symbol 'app_entry' not found in embedded LLEXT");
-        llext_unload(&ext);
-        return -ENOENT;
-    }
-
-    application_t *app = entry_fn();
-
-    if (app == NULL) {
-        LOG_ERR("app_entry() returned NULL for embedded LLEXT");
-        llext_unload(&ext);
-        return -EINVAL;
-    }
-
-    /* Register the real app directly (embedded stays loaded forever) */
-    zsw_app_manager_add_application(app);
-
-    /* Track it */
-    zsw_llext_app_t *la = &llext_apps[num_llext_apps];
-
-    memset(la, 0, sizeof(*la));
-    strncpy(la->name, "about_ext_emb", sizeof(la->name) - 1);
-    strncpy(la->dir_path, "(embedded)", sizeof(la->dir_path) - 1);
-    la->loaded = true;
-    la->is_embedded = true;
-    la->ext = ext;
-    la->real_app = app;
-    num_llext_apps++;
-
-    LOG_INF("Embedded LLEXT '%s' loaded and registered (total: %d)",
-            app->name, num_llext_apps);
-
-    return 0;
-}
-
-/* --------------------------------------------------------------------------
- * Auto-Start (for testing)
- * -------------------------------------------------------------------------- */
-
-static void llext_auto_start_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-
-    if (num_llext_apps == 0) {
-        LOG_WRN("No LLEXT apps discovered, cannot auto-start");
-        return;
-    }
-
-    LOG_INF("=== LLEXT Auto-Start Verification ===");
-    for (int i = 0; i < num_llext_apps; i++) {
-        zsw_llext_app_t *la = &llext_apps[i];
-
-        LOG_INF("  App[%d]: '%s' at %s (loaded=%d, embedded=%d)",
-                i, la->name, la->dir_path, la->loaded, la->is_embedded);
-    }
-    LOG_INF("=== %d app(s) discovered ===", num_llext_apps);
-
-    /* Try to auto-start 'battery_real_ext' for testing, otherwise first app */
-    zsw_llext_app_t *target = &llext_apps[0];
-
-    for (int i = 0; i < num_llext_apps; i++) {
-        if (strcmp(llext_apps[i].name, "battery_real_ext") == 0) {
-            target = &llext_apps[i];
-            break;
-        }
-    }
-
-    LOG_INF("Auto-opening '%s' for testing (deferred load)", target->name);
-
-    lv_obj_t *root = lv_obj_create(lv_scr_act());
-
-    lv_obj_set_size(root, 240, 240);
-    lv_obj_set_style_pad_all(root, 0, LV_PART_MAIN);
-    lv_obj_set_style_border_width(root, 0, LV_PART_MAIN);
-    lv_obj_set_style_radius(root, 0, LV_PART_MAIN);
-    lv_obj_align(root, LV_ALIGN_CENTER, 0, 0);
-
-    target->proxy_app.current_state = ZSW_APP_STATE_UI_VISIBLE;
-    target->proxy_app.start_func(root, NULL);
-}
-
-/* --------------------------------------------------------------------------
  * Public API
  * -------------------------------------------------------------------------- */
 
@@ -561,13 +430,8 @@ int zsw_llext_app_manager_init(void)
     fs_dir_t_init(&dir);
     ret = fs_opendir(&dir, ZSW_LLEXT_APPS_BASE_PATH);
     if (ret < 0) {
-        if (ret == -ENOENT) {
-            LOG_INF("No apps directory, loading embedded test app");
-            load_embedded_llext_app();
-        } else {
-            LOG_ERR("Failed to open apps directory: %d", ret);
-        }
-        goto schedule;
+        LOG_WRN("No apps directory found (%d), no LLEXT apps available", ret);
+        return 0;
     }
 
     /* Discover all LLEXT apps (scan dirs, register proxies, NO loading) */
@@ -595,22 +459,43 @@ int zsw_llext_app_manager_init(void)
 
     LOG_INF("LLEXT discovery complete: %d app(s) found", num_llext_apps);
 
-    /* Load embedded app only when no filesystem apps exist */
-    if (num_llext_apps == 0) {
-        ret = load_embedded_llext_app();
-        if (ret != 0) {
-            LOG_WRN("Failed to load embedded LLEXT: %d", ret);
+#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
+    /* Schedule auto-open for debugging */
+    for (int i = 0; i < num_llext_apps; i++) {
+        if (strcmp(llext_apps[i].name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
+            LOG_INF("Auto-open '%s' scheduled in %d ms",
+                    ZSW_LLEXT_AUTO_OPEN_APP, ZSW_LLEXT_AUTO_OPEN_DELAY_MS);
+            k_work_schedule(&auto_open_work, K_MSEC(ZSW_LLEXT_AUTO_OPEN_DELAY_MS));
+            break;
         }
     }
-
-schedule:
-    if (num_llext_apps > 0) {
-        LOG_INF("Scheduling auto-start in %d ms", LLEXT_AUTO_START_DELAY_MS);
-        k_work_schedule(&llext_auto_start_work, K_MSEC(LLEXT_AUTO_START_DELAY_MS));
-    }
+#endif
 
     return 0;
 }
+
+/* --------------------------------------------------------------------------
+ * Debug: Auto-Open App at Boot
+ * -------------------------------------------------------------------------- */
+
+#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
+static void auto_open_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    for (int i = 0; i < num_llext_apps; i++) {
+        if (strcmp(llext_apps[i].name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
+            LOG_INF("Auto-opening LLEXT app '%s'", ZSW_LLEXT_AUTO_OPEN_APP);
+            lv_obj_t *root = lv_obj_create(lv_screen_active());
+
+            lv_obj_set_size(root, LV_PCT(100), LV_PCT(100));
+            proxy_start_common(i, root, NULL);
+            return;
+        }
+    }
+    LOG_WRN("Auto-open: app '%s' not found", ZSW_LLEXT_AUTO_OPEN_APP);
+}
+#endif
 
 static int zsw_llext_app_manager_sys_init(void)
 {

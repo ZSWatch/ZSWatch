@@ -18,16 +18,37 @@
 #pragma once
 
 #include <zephyr/llext/llext.h>
+#include <zephyr/llext/loader.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 /**
- * @brief Post-load XIP installer for PIC LLEXT apps.
+ * @brief Context struct for the XIP pre-copy hook.
  *
- * After llext_load() loads a PIC (ET_DYN / -fPIC) extension fully into RAM,
- * this module moves .text and .rodata to XIP flash verbatim (no relocation
- * patching needed — PIC code uses GOT indirection in RAM).
+ * Pass a pointer to this as pre_copy_hook_user_data. The hook fills in the
+ * GOT offset so the caller can compute the runtime GOT base address after
+ * loading (needed for -msingle-pic-base R9 setup on ARM).
+ */
+struct zsw_llext_xip_context {
+    size_t got_offset;  /**< Offset of .got section within LLEXT_MEM_DATA region */
+    bool got_found;     /**< True if .got section was found in the ELF */
+};
+
+/**
+ * @brief XIP support for PIC LLEXT apps.
  *
- * Result: .text/.rodata execute from flash, .got/.data/.bss stay in RAM.
- * Typical RAM savings: 90-97% (a 200KB app uses ~6KB RAM instead of ~200KB).
+ * Two modes of operation:
+ *
+ * **Streaming mode (recommended)**: Use zsw_llext_xip_pre_copy_hook as a
+ * pre_copy_hook in llext_load_param. This streams .text/.rodata from the ELF
+ * file directly to XIP flash during loading — the full .text section is NEVER
+ * allocated on heap. This allows loading apps whose .text section is larger
+ * than the available LLEXT heap.
+ *
+ * **Post-load mode (legacy)**: Call zsw_llext_xip_install() after llext_load().
+ * Copies .text/.rodata from heap to XIP flash and frees heap copies.
+ * Requires the LLEXT heap to be large enough to hold the full .text section
+ * temporarily.
  */
 
 /**
@@ -41,11 +62,35 @@
 int zsw_llext_xip_init(void);
 
 /**
- * @brief Install a PIC LLEXT's .text/.rodata into XIP flash.
+ * @brief Pre-copy hook: stream .text/.rodata directly from ELF to XIP flash.
  *
- * Writes .text and .rodata from the LLEXT heap to the XIP flash partition,
- * updates ext->mem[] to point to XIP CPU addresses, frees heap copies,
- * and adjusts symbol/export table pointers.
+ * Intended for use as llext_load_param.pre_copy_hook. Reads the TEXT and
+ * RODATA region info from ldr->sects[], streams the data from the ELF loader
+ * to XIP flash in small chunks, and sets ext->mem[] so that llext_copy_regions
+ * skips these regions entirely.
+ *
+ * This avoids allocating the (potentially large) .text section on heap.
+ *
+ * Additionally, if user_data is non-NULL and points to a
+ * struct zsw_llext_xip_context, the hook scans section headers to locate the
+ * .got section and records its offset within the DATA region. This is needed
+ * for -msingle-pic-base builds where R9 must be set to the GOT base address.
+ *
+ * @param ldr       ELF loader handle (used for llext_seek/llext_read)
+ * @param ext       Extension being loaded
+ * @param user_data Optional pointer to struct zsw_llext_xip_context (or NULL)
+ * @return 0 on success, negative errno on failure
+ */
+int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
+                                void *user_data);
+
+/**
+ * @brief Post-load install: move .text/.rodata from heap to XIP flash.
+ *
+ * Only use this if the pre_copy_hook was NOT used during loading. Writes
+ * .text and .rodata from the LLEXT heap to the XIP flash partition, updates
+ * ext->mem[] to point to XIP CPU addresses, frees heap copies, and adjusts
+ * symbol/export table pointers.
  *
  * Only one LLEXT should be installed at a time (call zsw_llext_xip_reset()
  * after unloading to reclaim flash space).
