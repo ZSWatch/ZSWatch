@@ -40,6 +40,10 @@ if(CONFIG_ZSW_LLEXT_APPS)
         # 4) -mlong-calls: XIP .text lives far from firmware .text on nRF5340
         target_compile_options(${name}_llext_lib PRIVATE -mlong-calls)
 
+        # 5) Keep .text.iflash as a separate section (not merged into .text)
+        #    so post-load can find and copy it to internal flash
+        target_link_options(${name}_llext_lib PRIVATE -Wl,--unique=.text.iflash)
+
         # 5) Copy built .llext to LFS source tree so west upload_fs picks it up
         add_custom_command(TARGET ${name} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory ${LFS_APPS_DIR}/${name}
@@ -69,6 +73,44 @@ if(CONFIG_ZSW_LLEXT_APPS)
             ${CMAKE_SOURCE_DIR}/src/applications
             ${CMAKE_SOURCE_DIR}/src/ui
             ${CMAKE_CURRENT_SOURCE_DIR}/battery_real_ext
+    )
+
+    add_zsw_llext_app(qr_code_ext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/qr_code_ext/qr_code_ext_app.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/images
+            ${CMAKE_SOURCE_DIR}/src/drivers
+    )
+
+    add_zsw_llext_app(compass_ext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/compass_ext/compass_ext_app.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/images
+            ${CMAKE_SOURCE_DIR}/src/sensors
+            ${CMAKE_SOURCE_DIR}/src/sensor_fusion
+            ${CMAKE_SOURCE_DIR}/src/ui
+            ${CMAKE_SOURCE_DIR}/src/ui/popup
+    )
+
+    add_zsw_llext_app(calculator_ext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/calculator_ext/calculator_ext_app.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/images
+    )
+
+    add_zsw_llext_app(trivia_ext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/trivia_ext/trivia_ext_app.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/images
+            ${CMAKE_SOURCE_DIR}/src/ble
+    )
+
+    add_zsw_llext_app(weather_ext
+        SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/weather_ext/weather_ext_app.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/images
+            ${CMAKE_SOURCE_DIR}/src/ble
+            ${CMAKE_SOURCE_DIR}/src/ui
     )
 
 endif()

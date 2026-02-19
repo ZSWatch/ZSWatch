@@ -108,6 +108,40 @@
 
 ---
 
+## Step 7: Internal Flash Split Module (LLEXT_IFLASH) ✅
+
+### Problem
+When the display sleeps, `zsw_xip_disable()` turns off the QSPI XIP memory window. Any LLEXT code still executing from XIP (e.g., zbus callbacks, timer handlers) causes an IBUSERR bus fault.
+
+### Solution
+Single ELF per app; tag background-safe functions with `LLEXT_IFLASH`. Post-load:
+1. Copy `.text.iflash` section from XIP to a dedicated internal flash partition
+2. Scan the ENTIRE LLEXT DATA region for function pointers referencing the old XIP address
+3. Redirect them to internal flash (handles `.data.rel.ro` zbus observer structs, `.got` entries, etc.)
+
+### Key Implementation Details
+
+- **Section attribute**: `#define LLEXT_IFLASH __attribute__((section(".text.iflash"), noinline, used))`
+- **Linker flag**: `-Wl,--unique=.text.iflash` prevents GNU ld from merging the section into `.text`
+- **Partition**: `llext_core_partition` at 0xe4000, 48 KB (nRF5340 internal flash)
+- **Thumb bit handling**: ARM Thumb function pointers have bit 0 set; cleared for range comparison, preserved in patched value
+- **DATA region scan**: Using `ext->mem_size[LLEXT_MEM_DATA]` to scan the entire writable region, not just the GOT. This is critical because zbus `ZBUS_LISTENER_DEFINE` stores callback pointers in `.data.rel.ro`, which is part of DATA but before the GOT.
+- **Activity state sync**: LLEXT app manager subscribes to `activity_state_data_chan` and updates `real_app->current_state` when the screen turns on/off. This ensures LLEXT_IFLASH callbacks can check the app state and avoid calling XIP functions when the screen is off.
+- **PIC constraint**: LLEXT_IFLASH functions must NOT call other LLEXT functions in `.text` (XIP) when XIP is disabled. Use direct struct member access instead of inline wrapper functions that the compiler might emit as out-of-line GOT calls (e.g., `chan->message` instead of `zbus_chan_const_msg(chan)`).
+
+### Files
+
+- `app/src/managers/zsw_llext_iflash.h` — `LLEXT_IFLASH` macro + API
+- `app/src/managers/zsw_llext_iflash.c` — post-load copy + DATA region patching
+- `app/src/managers/zsw_llext_xip.h` — added `text_base_vma` to XIP context
+- `app/src/managers/zsw_llext_xip.c` — captures `text_base_vma` in pre-copy hook
+- `app/src/managers/zsw_llext_app_manager.c` — calls `zsw_llext_iflash_install()` post-load, adds activity state listener
+- `app/src/llext_apps/battery_real_ext/battery_real_ext_app.c` — `zbus_battery_callback` tagged with `LLEXT_IFLASH`
+- `app/src/llext_apps/CMakeLists.txt` — added `--unique=.text.iflash` linker flag
+- `app/src/managers/CMakeLists.txt` — added `zsw_llext_iflash.c`
+
+---
+
 ## Phase 2: PIC (`-fPIC`) + ET_DYN Migration
 
 ### Motivation

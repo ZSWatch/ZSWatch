@@ -30,8 +30,10 @@
  * loading (needed for -msingle-pic-base R9 setup on ARM).
  */
 struct zsw_llext_xip_context {
-    size_t got_offset;  /**< Offset of .got section within LLEXT_MEM_DATA region */
-    bool got_found;     /**< True if .got section was found in the ELF */
+    size_t got_offset;      /**< Offset of .got section within LLEXT_MEM_DATA region */
+    size_t got_size;        /**< Size of .got section in bytes */
+    uintptr_t text_base_vma; /**< Original VMA of the TEXT region start */
+    bool got_found;         /**< True if .got section was found in the ELF */
 };
 
 /**

@@ -242,3 +242,171 @@ EXPORT_SYMBOL(zsw_history_get);
 EXPORT_SYMBOL(zsw_history_load);
 EXPORT_SYMBOL(zsw_history_save);
 EXPORT_SYMBOL(zsw_history_samples);
+
+/* ---- Display control (QR code app) ---- */
+#include "drivers/zsw_display_control.h"
+EXPORT_SYMBOL(zsw_display_control_get_brightness);
+EXPORT_SYMBOL(zsw_display_control_set_brightness);
+
+/* ---- Sensor fusion / magnetometer (compass app) ---- */
+#include "sensor_fusion/zsw_sensor_fusion.h"
+#include "zsw_magnetometer.h"
+EXPORT_SYMBOL(zsw_sensor_fusion_init);
+EXPORT_SYMBOL(zsw_sensor_fusion_deinit);
+EXPORT_SYMBOL(zsw_sensor_fusion_get_heading);
+EXPORT_SYMBOL(zsw_magnetometer_start_calibration);
+EXPORT_SYMBOL(zsw_magnetometer_stop_calibration);
+
+/* ---- Popup window (compass app) ---- */
+#include "ui/popup/zsw_popup_window.h"
+EXPORT_SYMBOL(zsw_popup_show);
+EXPORT_SYMBOL(zsw_popup_remove);
+
+/* ---- LVGL timer ---- */
+EXPORT_SYMBOL(lv_timer_create);
+EXPORT_SYMBOL(lv_timer_delete);
+
+/* ---- LVGL image (additional) ---- */
+EXPORT_SYMBOL(lv_image_set_pivot);
+EXPORT_SYMBOL(lv_image_set_rotation);
+
+/* ---- LVGL button ---- */
+EXPORT_SYMBOL(lv_button_create);
+
+/* ---- LVGL object (additional) ---- */
+EXPORT_SYMBOL(lv_obj_set_pos);
+EXPORT_SYMBOL(lv_obj_center);
+EXPORT_SYMBOL(lv_obj_set_flex_grow);
+EXPORT_SYMBOL(lv_obj_set_user_data);
+EXPORT_SYMBOL(lv_obj_get_user_data);
+EXPORT_SYMBOL(lv_obj_has_flag);
+EXPORT_SYMBOL(lv_obj_set_style_pad_all);
+EXPORT_SYMBOL(lv_obj_set_style_shadow_width);
+EXPORT_SYMBOL(lv_obj_set_style_arc_color);
+EXPORT_SYMBOL(lv_obj_set_style_arc_opa);
+
+/* ---- LVGL color (additional) ---- */
+EXPORT_SYMBOL(lv_palette_main);
+EXPORT_SYMBOL(lv_color_black);
+
+/* ---- LVGL tick ---- */
+EXPORT_SYMBOL(lv_tick_get);
+EXPORT_SYMBOL(lv_tick_elaps);
+
+/* ---- LVGL label (additional) ---- */
+EXPORT_SYMBOL(lv_label_set_long_mode);
+
+/* ---- LVGL event (additional) ---- */
+EXPORT_SYMBOL(lv_event_get_target);
+EXPORT_SYMBOL(lv_event_get_target_obj);
+EXPORT_SYMBOL(lv_event_get_user_data);
+
+/* ---- LVGL msgbox ---- */
+EXPORT_SYMBOL(lv_msgbox_create);
+EXPORT_SYMBOL(lv_msgbox_add_text);
+EXPORT_SYMBOL(lv_msgbox_add_footer_button);
+EXPORT_SYMBOL(lv_msgbox_close);
+
+/* ---- LVGL spinner ---- */
+EXPORT_SYMBOL(lv_spinner_create);
+EXPORT_SYMBOL(lv_spinner_set_anim_params);
+
+/* ---- Kernel work queue (calculator, weather) ---- */
+EXPORT_SYMBOL(k_work_init);
+EXPORT_SYMBOL(k_work_submit);
+EXPORT_SYMBOL(k_work_cancel);
+EXPORT_SYMBOL(k_work_init_delayable);
+EXPORT_SYMBOL(k_work_reschedule);
+EXPORT_SYMBOL(k_work_cancel_delayable);
+
+/* ---- Kernel msgq (calculator) ---- */
+EXPORT_SYMBOL(k_msgq_init);
+EXPORT_SYMBOL(k_msgq_put);
+EXPORT_SYMBOL(k_msgq_get);
+
+/* ---- Kernel thread (calculator) ---- */
+EXPORT_SYMBOL(k_thread_create);
+EXPORT_SYMBOL(k_thread_join);
+
+/* ---- SMF state machine (calculator) ---- */
+#include <zephyr/smf.h>
+EXPORT_SYMBOL(smf_set_initial);
+EXPORT_SYMBOL(smf_run_state);
+EXPORT_SYMBOL(smf_set_state);
+
+/* ---- C library (calculator, weather, trivia) ---- */
+EXPORT_SYMBOL(strtod);
+EXPORT_SYMBOL(snprintf);
+EXPORT_SYMBOL(sprintf);
+EXPORT_SYMBOL(strlen);
+EXPORT_SYMBOL(strncpy);
+EXPORT_SYMBOL(memset);
+EXPORT_SYMBOL(memcpy);
+
+/* ---- BLE HTTP (trivia, weather) ---- */
+#include "ble/ble_http.h"
+#include "ble/ble_comm.h"
+EXPORT_SYMBOL(zsw_ble_http_get);
+EXPORT_SYMBOL(ble_comm_request_gps_status);
+
+/* ---- cJSON (trivia, weather) ---- */
+#include "cJSON.h"
+EXPORT_SYMBOL(cJSON_Parse);
+EXPORT_SYMBOL(cJSON_GetObjectItem);
+EXPORT_SYMBOL(cJSON_GetArrayItem);
+EXPORT_SYMBOL(cJSON_GetArraySize);
+EXPORT_SYMBOL(cJSON_Delete);
+
+/* ---- ZSWatch clock (weather) ---- */
+#include "zsw_clock.h"
+EXPORT_SYMBOL(zsw_clock_get_time);
+
+/* ---- ZSWatch weather utils (weather) ---- */
+EXPORT_SYMBOL(zsw_ui_utils_icon_from_wmo_weather_code);
+EXPORT_SYMBOL(wmo_code_to_weather_code);
+
+/* ---- ARM EABI (additional float/double helpers) ---- */
+extern double __aeabi_dmul(double, double);
+extern double __aeabi_dsub(double, double);
+extern double __aeabi_dadd(double, double);
+extern int __aeabi_dcmpeq(double, double);
+extern int __aeabi_dcmplt(double, double);
+extern int __aeabi_dcmple(double, double);
+extern int __aeabi_dcmpge(double, double);
+extern int __aeabi_dcmpgt(double, double);
+extern int __aeabi_d2iz(double);
+extern float __aeabi_d2f(double);
+extern float __aeabi_fmul(float, float);
+extern float __aeabi_fdiv(float, float);
+extern float __aeabi_fadd(float, float);
+extern float __aeabi_fsub(float, float);
+extern int __aeabi_fcmpeq(float, float);
+extern int __aeabi_fcmplt(float, float);
+extern int __aeabi_fcmple(float, float);
+extern int __aeabi_fcmpge(float, float);
+extern int __aeabi_fcmpgt(float, float);
+extern double __aeabi_ul2d(unsigned long long);
+extern double __aeabi_l2d(long long);
+extern float __aeabi_i2f(int);
+EXPORT_SYMBOL(__aeabi_dmul);
+EXPORT_SYMBOL(__aeabi_dsub);
+EXPORT_SYMBOL(__aeabi_dadd);
+EXPORT_SYMBOL(__aeabi_dcmpeq);
+EXPORT_SYMBOL(__aeabi_dcmplt);
+EXPORT_SYMBOL(__aeabi_dcmple);
+EXPORT_SYMBOL(__aeabi_dcmpge);
+EXPORT_SYMBOL(__aeabi_dcmpgt);
+EXPORT_SYMBOL(__aeabi_d2iz);
+EXPORT_SYMBOL(__aeabi_d2f);
+EXPORT_SYMBOL(__aeabi_fmul);
+EXPORT_SYMBOL(__aeabi_fdiv);
+EXPORT_SYMBOL(__aeabi_fadd);
+EXPORT_SYMBOL(__aeabi_fsub);
+EXPORT_SYMBOL(__aeabi_fcmpeq);
+EXPORT_SYMBOL(__aeabi_fcmplt);
+EXPORT_SYMBOL(__aeabi_fcmple);
+EXPORT_SYMBOL(__aeabi_fcmpge);
+EXPORT_SYMBOL(__aeabi_fcmpgt);
+EXPORT_SYMBOL(__aeabi_ul2d);
+EXPORT_SYMBOL(__aeabi_l2d);
+EXPORT_SYMBOL(__aeabi_i2f);

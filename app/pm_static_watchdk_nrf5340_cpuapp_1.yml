@@ -98,6 +98,11 @@ llext_xip_partition:
   end_address: 0x1220000
   region: external_flash
   size: 0x400000
+llext_core_partition:
+  address: 0xe4000
+  end_address: 0xf0000
+  region: flash_primary
+  size: 0xc000
 otp:
   address: 0xff8100
   end_address: 0xff83fc

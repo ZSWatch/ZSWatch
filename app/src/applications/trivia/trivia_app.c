@@ -68,6 +68,7 @@ static void trivia_app_stop(void *user_data)
     trivia_ui_remove();
 }
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 static int trivia_app_add(void)
 {
     zsw_app_manager_add_application(&app);
@@ -143,3 +144,4 @@ static void on_button_click(trivia_button_t trivia_button)
 }
 
 SYS_INIT(trivia_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

@@ -97,6 +97,7 @@ static void timer_callback(lv_timer_t *timer)
     }
 }
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 static int compass_app_add(void)
 {
     zsw_app_manager_add_application(&app);
@@ -104,3 +105,4 @@ static int compass_app_add(void)
 }
 
 SYS_INIT(compass_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

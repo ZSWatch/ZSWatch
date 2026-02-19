@@ -231,4 +231,6 @@ static int weather_app_add(void)
     return 0;
 }
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 SYS_INIT(weather_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

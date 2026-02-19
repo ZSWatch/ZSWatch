@@ -329,6 +329,8 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
 
         ctx->got_found = false;
         ctx->got_offset = 0;
+        ctx->got_size = 0;
+        ctx->text_base_vma = ldr->sects[LLEXT_MEM_TEXT].sh_addr;
 
         const char *shstrtab = ext->mem[LLEXT_MEM_SHSTRTAB];
 
@@ -340,9 +342,10 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
                 uintptr_t data_vma = ldr->sects[LLEXT_MEM_DATA].sh_addr;
 
                 ctx->got_offset = got_vma - data_vma;
+                ctx->got_size = ext->sect_hdrs[i].sh_size;
                 ctx->got_found = true;
-                LOG_DBG(".got at VMA 0x%zx, DATA region offset %zu",
-                        (size_t)got_vma, ctx->got_offset);
+                LOG_DBG(".got at VMA 0x%zx, DATA region offset %zu, size %zu",
+                        (size_t)got_vma, ctx->got_offset, ctx->got_size);
                 break;
             }
         }

@@ -45,7 +45,10 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_llext_app_manager.h"
 #include "managers/zsw_llext_xip.h"
+#include "managers/zsw_llext_iflash.h"
 #include "managers/zsw_xip_manager.h"
+#include "events/activity_event.h"
+#include <zephyr/zbus/zbus.h>
 #include <lvgl.h>
 
 LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
@@ -84,7 +87,7 @@ static __always_inline void llext_set_r9(void *got_base)
 
 /* Set to the name of the LLEXT app to auto-open at boot for debugging.
  * Set to NULL (or comment out) to disable. */
-//#define ZSW_LLEXT_AUTO_OPEN_APP  "battery_real_ext"
+//#define ZSW_LLEXT_AUTO_OPEN_APP  "weather_ext"
 #ifdef ZSW_LLEXT_AUTO_OPEN_APP
 #define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
 #endif
@@ -99,7 +102,7 @@ static __always_inline void llext_set_r9(void *got_base)
 #define ZSW_LLEXT_ENTRY_SYMBOL      "app_entry"
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
-#define ZSW_LLEXT_HEAP_SIZE         (25 * 1024)
+#define ZSW_LLEXT_HEAP_SIZE         (10 * 1024)
 
 /* --------------------------------------------------------------------------
  * Types
@@ -139,6 +142,47 @@ static bool heap_initialized;
 static void auto_open_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(auto_open_work, auto_open_work_handler);
 #endif
+
+/* --------------------------------------------------------------------------
+ * Activity State Tracking
+ * --------------------------------------------------------------------------
+ * Keep the active LLEXT app's real_app->current_state in sync with screen
+ * state. This is essential for auto-opened apps (which bypass zsw_app_manager)
+ * and as a safety net for normally launched apps.
+ * -------------------------------------------------------------------------- */
+
+ZBUS_CHAN_DECLARE(activity_state_data_chan);
+static void llext_activity_state_cb(const struct zbus_channel *chan);
+ZBUS_LISTENER_DEFINE(llext_activity_state_lis, llext_activity_state_cb);
+
+static void llext_activity_state_cb(const struct zbus_channel *chan)
+{
+    const struct activity_state_event *event = zbus_chan_const_msg(chan);
+
+    if (active_llext_app == NULL || active_llext_app->real_app == NULL) {
+        return;
+    }
+
+    if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
+        if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_HIDDEN) {
+            active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+            LOG_INF("LLEXT '%s' UI -> visible", active_llext_app->name);
+            if (active_llext_app->real_app->ui_available_func) {
+                LLEXT_CALL_VOID(active_llext_app->got_base,
+                                active_llext_app->real_app->ui_available_func);
+            }
+        }
+    } else {
+        if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_VISIBLE) {
+            active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
+            LOG_INF("LLEXT '%s' UI -> hidden", active_llext_app->name);
+            if (active_llext_app->real_app->ui_unavailable_func) {
+                LLEXT_CALL_VOID(active_llext_app->got_base,
+                                active_llext_app->real_app->ui_unavailable_func);
+            }
+        }
+    }
+}
 
 /* --------------------------------------------------------------------------
  * Forward Declarations
@@ -188,19 +232,27 @@ static bool llext_proxy_back(void)
 
 static void llext_proxy_ui_unavailable(void)
 {
-    if (active_llext_app && active_llext_app->real_app &&
-        active_llext_app->real_app->ui_unavailable_func) {
-        LLEXT_CALL_VOID(active_llext_app->got_base,
-                        active_llext_app->real_app->ui_unavailable_func);
+    if (active_llext_app && active_llext_app->real_app) {
+        /* Sync state to the real app struct so the LLEXT's own state check
+         * (e.g., app.current_state != UI_VISIBLE) works correctly. */
+        active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
+
+        if (active_llext_app->real_app->ui_unavailable_func) {
+            LLEXT_CALL_VOID(active_llext_app->got_base,
+                            active_llext_app->real_app->ui_unavailable_func);
+        }
     }
 }
 
 static void llext_proxy_ui_available(void)
 {
-    if (active_llext_app && active_llext_app->real_app &&
-        active_llext_app->real_app->ui_available_func) {
-        LLEXT_CALL_VOID(active_llext_app->got_base,
-                        active_llext_app->real_app->ui_available_func);
+    if (active_llext_app && active_llext_app->real_app) {
+        active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+
+        if (active_llext_app->real_app->ui_available_func) {
+            LLEXT_CALL_VOID(active_llext_app->got_base,
+                            active_llext_app->real_app->ui_available_func);
+        }
     }
 }
 
@@ -279,15 +331,18 @@ static void proxy_start_common(zsw_llext_app_t *la, lv_obj_t *root, lv_group_t *
         return;
     }
 
+    /* Post-load: copy .text.iflash sections to internal flash and patch GOT.
+     * This makes tagged background functions (zbus callbacks, timers) safe
+     * to execute when XIP is disabled (screen off). */
+    LOG_INF("iflash: text_base_vma=0x%08lx",
+            (unsigned long)xip_ctx.text_base_vma);
+    ret = zsw_llext_iflash_install(la->ext, xip_ctx.text_base_vma);
+    if (ret < 0) {
+        LOG_WRN("iflash install failed: %d (continuing without iflash)", ret);
+    }
+
     la->loaded = true;
     active_llext_app = la;
-
-    /* Hold an XIP enable reference for the lifetime of this loaded LLEXT.
-     * This prevents zsw_xip_disable() (e.g. from display sleep) from turning
-     * off XIP while the LLEXT's .text/.rodata live in XIP flash, which would
-     * cause an IBUSERR on any subsequent call into LLEXT code (e.g. a zbus
-     * callback firing on the sysworkq). Released in proxy_stop_common(). */
-    zsw_xip_enable();
 
     /* Update the proxy icon now that we have the real app's icon */
     la->proxy_app.icon = la->real_app->icon;
@@ -330,8 +385,8 @@ static void proxy_stop_common(zsw_llext_app_t *la)
         active_llext_app = NULL;
     }
 
-    /* Release the XIP enable reference taken at load time */
-    zsw_xip_disable();
+    /* Reset internal flash allocator so space can be reused */
+    zsw_llext_iflash_reset();
 
     /* Reset XIP allocator so flash space can be reused by next app */
     zsw_llext_xip_reset();
@@ -427,6 +482,19 @@ int zsw_llext_app_manager_init(void)
     ret = zsw_llext_xip_init();
     if (ret < 0) {
         LOG_WRN("XIP init failed: %d (continuing without XIP)", ret);
+    }
+
+    /* Initialize internal flash allocator for iflash sections */
+    ret = zsw_llext_iflash_init();
+    if (ret < 0) {
+        LOG_WRN("Internal flash init failed: %d (continuing without iflash)", ret);
+    }
+
+    /* Subscribe to activity state so we can sync real_app->current_state */
+    ret = zbus_chan_add_obs(&activity_state_data_chan,
+                           &llext_activity_state_lis, K_MSEC(100));
+    if (ret < 0) {
+        LOG_WRN("Failed to add activity state observer: %d", ret);
     }
 
     LOG_INF("Scanning for LLEXT apps in %s", ZSW_LLEXT_APPS_BASE_PATH);

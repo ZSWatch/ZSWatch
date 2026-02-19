@@ -35,6 +35,7 @@ static void calculator_app_stop(void *user_data)
     calculator_ui_remove();
 }
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 static int calculator_app_add(void)
 {
     zsw_app_manager_add_application(&app);
@@ -42,3 +43,4 @@ static int calculator_app_add(void)
 }
 
 SYS_INIT(calculator_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif
