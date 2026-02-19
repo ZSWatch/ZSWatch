@@ -417,7 +417,7 @@ int zsw_llext_app_manager_init(void)
     struct fs_dirent entry;
     int ret;
 
-    /* Ensure the apps directory exists for mcumgr uploads */
+    /* Ensure the apps base directory exists */
     ret = fs_mkdir(ZSW_LLEXT_APPS_BASE_PATH);
     if (ret < 0 && ret != -EEXIST) {
         LOG_WRN("Failed to create apps directory: %d", ret);
@@ -510,3 +510,43 @@ static int zsw_llext_app_manager_sys_init(void)
 }
 
 SYS_INIT(zsw_llext_app_manager_sys_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
+int zsw_llext_app_manager_prepare_app_dir(const char *app_id)
+{
+    char dir_path[ZSW_LLEXT_MAX_PATH_LEN];
+    int ret;
+
+    snprintk(dir_path, sizeof(dir_path), "%s/%s", ZSW_LLEXT_APPS_BASE_PATH, app_id);
+
+    ret = fs_mkdir(dir_path);
+    if (ret < 0 && ret != -EEXIST) {
+        LOG_WRN("llext: mkdir %s: %d", dir_path, ret);
+        return ret;
+    }
+
+    LOG_INF("llext: app dir ready: %s", dir_path);
+    return 0;
+}
+
+int zsw_llext_app_manager_remove_app(const char *app_id)
+{
+    char elf_path[ZSW_LLEXT_MAX_PATH_LEN];
+    char dir_path[ZSW_LLEXT_MAX_PATH_LEN];
+    int ret;
+
+    snprintk(dir_path, sizeof(dir_path), "%s/%s", ZSW_LLEXT_APPS_BASE_PATH, app_id);
+    snprintk(elf_path, sizeof(elf_path), "%s/%s", dir_path, ZSW_LLEXT_ELF_NAME);
+
+    ret = fs_unlink(elf_path);
+    if (ret < 0 && ret != -ENOENT) {
+        LOG_WRN("llext: unlink %s: %d", elf_path, ret);
+    }
+
+    ret = fs_unlink(dir_path);
+    if (ret < 0 && ret != -ENOENT) {
+        LOG_WRN("llext: rmdir %s: %d", dir_path, ret);
+    }
+
+    LOG_INF("llext: removed app '%s'", app_id);
+    return 0;
+}

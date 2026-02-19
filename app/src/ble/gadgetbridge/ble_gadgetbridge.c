@@ -19,6 +19,7 @@
 #include "events/music_event.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+#include "managers/zsw_llext_app_manager.h"
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -661,6 +662,44 @@ static int parse_log_command(char *data, int len)
     return 0;
 }
 
+// {"t":"llext","op":"mkdir","id":"about_ext"}
+// {"t":"llext","op":"rm","id":"about_ext"}
+static int parse_llext_command(char *data, int len)
+{
+    (void)len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("llext: failed to parse JSON");
+        return -EINVAL;
+    }
+
+    cJSON *op_json = cJSON_GetObjectItem(root, "op");
+    cJSON *id_json = cJSON_GetObjectItem(root, "id");
+
+    if (!cJSON_IsString(op_json) || !cJSON_IsString(id_json)) {
+        LOG_WRN("llext: missing 'op' or 'id'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    const char *op = op_json->valuestring;
+    const char *app_id = id_json->valuestring;
+    int ret;
+
+    if (strcmp(op, "mkdir") == 0) {
+        ret = zsw_llext_app_manager_prepare_app_dir(app_id);
+    } else if (strcmp(op, "rm") == 0) {
+        ret = zsw_llext_app_manager_remove_app(app_id);
+    } else {
+        LOG_WRN("llext: unknown op '%s'", op);
+        ret = -EINVAL;
+    }
+
+    cJSON_Delete(root);
+    return ret;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -716,6 +755,10 @@ static int parse_data(char *data, int len)
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
         ble_gadgetbridge_send_version_info();
         return 0;
+    }
+
+    if (strlen("llext") == type_len && strncmp(type, "llext", type_len) == 0) {
+        return parse_llext_command(data, len);
     }
 
     return 0;
