@@ -150,12 +150,12 @@ static bool toggle_usb_fota(void)
             if (ret) {
                 zsw_xip_disable();
                 LOG_ERR("Failed to enable USB via manager: %d", ret);
-                update_ui_set_status("Status: USB enable failed");
+                update_ui_set_status("USB enable failed");
                 usb_fota_enabled = false; // Revert state
                 update_ui_update_usb_button_state(false);
                 return false;
             }
-            update_ui_set_status("Status: USB FOTA enabled - Ready for updates");
+            update_ui_set_status("USB FOTA ready " LV_SYMBOL_OK);
             update_ui_update_usb_button_state(true);
             return true;
         }
@@ -164,13 +164,13 @@ static bool toggle_usb_fota(void)
             int ret = zsw_usb_manager_disable();
             if (ret) {
                 LOG_ERR("Failed to disable USB via manager: %d", ret);
-                update_ui_set_status("Status: USB disable failed");
+                update_ui_set_status("USB disable failed");
                 usb_fota_enabled = true; // Revert state
                 update_ui_update_usb_button_state(true);
                 return false;
             }
             zsw_xip_disable();
-            update_ui_set_status("Status: USB FOTA disabled");
+            update_ui_set_status("USB disabled");
             LOG_INF("USB stack disabled");
             update_ui_update_usb_button_state(false);
             return true;
@@ -188,7 +188,7 @@ static bool toggle_ble_fota(void)
         int rc = smp_bt_register();
         if (rc != 0) {
             LOG_ERR("Failed to register BLE SMP: %d", rc);
-            update_ui_set_status("Status: BLE FOTA enable failed");
+            update_ui_set_status("BLE enable failed");
             update_ui_update_ble_button_state(false);
             zsw_xip_disable();
             return false;
@@ -196,7 +196,7 @@ static bool toggle_ble_fota(void)
         ble_comm_set_fast_adv_interval();
         ble_comm_set_short_connection_interval();
         ble_fota_enabled = true;
-        update_ui_set_status("Status: BLE FOTA enabled - Ready for updates");
+        update_ui_set_status("BLE FOTA ready " LV_SYMBOL_OK);
         LOG_INF("BLE FOTA enabled");
         update_ui_update_ble_button_state(true);
         return true;
@@ -204,7 +204,7 @@ static bool toggle_ble_fota(void)
         int rc = smp_bt_unregister();
         if (rc != 0) {
             LOG_ERR("Failed to unregister BLE SMP: %d", rc);
-            update_ui_set_status("Status: BLE FOTA disable failed");
+            update_ui_set_status("BLE disable failed");
             update_ui_update_ble_button_state(true);
             return false;
         }
@@ -213,7 +213,7 @@ static bool toggle_ble_fota(void)
         ble_fota_enabled = false;
         // Disable XIP after disabling MCUmgr
         zsw_xip_disable();
-        update_ui_set_status("Status: BLE FOTA disabled");
+        update_ui_set_status("BLE disabled");
         LOG_INF("BLE FOTA disabled");
         update_ui_update_ble_button_state(false);
         return true;
@@ -272,14 +272,14 @@ SHELL_CMD_REGISTER(ble_fota, NULL, "Enable/disable BLE FOTA (enable|disable|stat
 #else
 static bool toggle_ble_fota(void)
 {
-    update_ui_set_status("Status: BLE FOTA not available on POSIX");
+    update_ui_set_status("BLE FOTA N/A on POSIX");
     update_ui_update_ble_button_state(false);
     return false;
 }
 
 static bool toggle_usb_fota(void)
 {
-    update_ui_set_status("Status: USB FOTA not available on POSIX");
+    update_ui_set_status("USB FOTA N/A on POSIX");
     update_ui_update_usb_button_state(false);
     return false;
 }
