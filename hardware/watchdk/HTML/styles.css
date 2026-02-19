@@ -1,0 +1,981 @@
+
+
+/* Colors =================================================================== */
+
+:root {
+    --light-bg-color: #ffffff;
+    --dark-bg-color: #1e1e2f;
+    --light-bg-color-banner: #dfdfdf;
+    --dark-bg-color-banner: #27293d;
+    --light-text-color: #444444;
+    --dark-text-color: #e5e5e5;
+    --light-hover-color: #902ec9;
+    --light-hover-color-act: #652f85;
+    --dark-hover-color: #ffa500;
+    --dark-hover-color-act: #cc8400;
+    --dark-text-color-accent: #a3a3c2;
+    --light-text-color-accent: #444444;
+    --light-banner-hover: #b0b0b0;
+    --dark-banner-hover: #383b4b;
+    --text-color-accent: #a3a3c2;
+}
+
+/* Main body ================================================================ */
+
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--dark-bg-color);
+    color: var(--dark-text-color);
+    transition:
+        background-color 0.4s ease,
+        color 0.4s ease,
+        transition: scrollbar-color 0.2s ease-in-out;
+}
+
+body.dark-mode {
+    --text-color-accent: var(--dark-text-color-accent);
+    background-color: var(--dark-bg-color);
+    color: var(--dark-text-color);
+}
+
+body.light-mode {
+    --text-color-accent: var(--light-text-color-accent);
+    background-color: var(--light-bg-color);
+    color: var(--light-text-color);
+}
+
+/* Top Menu ================================================================= */
+
+/* Layout is as follows */
+/* [X/☰] [↩] [↪] <Category Path> <Title> (Logo) [☾/☀] [🏠︎] */
+
+#topmenu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: var(--dark-bg-color-banner);
+    padding: 10px 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.light-mode #topmenu {
+    background-color: var(--light-bg-color-banner);
+}
+
+body.dark-mode #topmenu {
+    background-color: var(--dark-bg-color-banner);
+}
+
+/* Buttons ================================================================== */
+
+/* button corresponds to the navigation buttons (forward, backward, home) */
+
+button, #open-navbar, #close-navbar {
+    background: none;
+    border: none;
+    color: var(--dark-text-color);
+    cursor: pointer;
+    transition: color 0.3s ease;
+    user-select: none;
+}
+
+body.light-mode #topmenu button,
+body.light-mode #topmenu #open-navbar,
+body.light-mode #topmenu #close-navbar {
+    color: var(--light-text-color);
+}
+
+body.dark-mode #topmenu button,
+body.dark-mode #topmenu #open-navbar,
+body.dark-mode #topmenu #close-navbar {
+    color: var(--dark-text-color);
+}
+
+button {
+    font-size: 20px;
+    margin: 0 10px;
+}
+
+#open-navbar, #close-navbar {
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    text-align: center;
+    font-size: 28px;
+    margin-left: 15px;
+}
+
+/* Hover effects */
+
+button:hover, #open-navbar:hover, #close-navbar:hover {
+    color: var(--dark-hover-color);
+}
+
+body.dark-mode #topmenu button:hover,
+body.dark-mode #topmenu #open-navbar:hover,
+body.dark-mode #topmenu #close-navbar:hover {
+    color: var(--dark-hover-color);
+}
+
+body.light-mode #topmenu button:hover,
+body.light-mode #topmenu #open-navbar:hover,
+body.light-mode #topmenu #close-navbar:hover {
+    color: var(--light-hover-color);
+}
+
+/* Active effects */
+
+button:active, #open-navbar:active, #close-navbar:active {
+    color: var(--dark-hover-color-act);
+    transition: none;
+}
+
+body.dark-mode #topmenu button:active,
+body.dark-mode #topmenu #open-navbar:active,
+body.dark-mode #topmenu #close-navbar:active {
+    color: var(--dark-hover-color-act);
+}
+
+body.light-mode #topmenu button:active,
+body.light-mode #topmenu #open-navbar:active,
+body.light-mode #topmenu #close-navbar:active {
+    color: var(--light-hover-color-act);
+}
+
+/* Sidebar Navigation ======================================================= */
+
+.navbar {
+    position: fixed;
+    width: 0; /* Initially collapsed */
+    height: calc(100% - var(--top-menu-height, 60px));
+    top: var(--top-menu-height, 60px);
+    left: 0;
+    background-color: #27293d;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition:
+        width 0.5s ease,
+        padding-left 0.5s ease,
+        scrollbar-color 0.2s ease-in-out,
+        background-color 0.2s ease-in-out;
+    box-sizing: border-box;
+    padding-top: 0;
+    padding-bottom: 40px;
+}
+
+
+body.dark-mode .navbar {
+    background-color: var(--dark-bg-color-banner);
+}
+
+body.light-mode .navbar {
+    background-color: var(--light-bg-color-banner);
+}
+
+.navbar > ul:first-child {
+    margin-top: 20px; /* Padding between top menu and first element of navbar */
+}
+
+/* Side Navigation Outputs -------------------------------------------------- */
+
+.navbar-output {
+    padding: 8px 30px;
+    text-decoration: none;
+    font-size: 16px;
+    color: var(--dark-text-color);
+    display: block;
+    transition: color 0.3s ease;
+    border-radius: 4px;
+}
+
+body.light-mode .navbar-output {
+    color: var(--light-text-color);
+}
+
+body.dark-mode .navbar-output {
+    color: var(--dark-text-color);
+}
+
+/* Hover effects */
+
+.navbar-output:hover {
+    color: var(--dark-hover-color);
+    background-color: var(--dark-banner-hover);
+}
+
+body.dark-mode .navbar-output:hover {
+    color: var(--dark-hover-color);
+    background-color: var(--dark-banner-hover);
+}
+
+body.light-mode .navbar-output:hover {
+    color: var(--light-hover-color);
+    background-color: var(--light-banner-hover);
+}
+
+/* Active effects */
+
+.navbar-output:active {
+    color: var(--dark-hover-color-act);
+}
+
+body.dark-mode .navbar-output:active {
+    color: var(--dark-hover-color-act);
+}
+
+body.light-mode .navbar-output:active {
+    color: var(--light-hover-color-act);
+}
+
+/* Side Navigation Categories ----------------------------------------------- */
+
+.navbar-category {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    user-select: none; /* Prevent text selection */
+}
+
+.navbar-category .folder > span {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--dark-text-color-accent);
+    padding: 10px 20px;
+    margin-bottom: 0px;
+    width: 100%;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 4px;
+}
+
+.navbar-category .folder-contents {
+    list-style: none;
+    margin-left: 20px;
+    padding: 0;
+}
+
+body.dark-mode .navbar-category .folder > span {
+    color: var(--dark-text-color-accent);
+}
+
+body.light-mode .navbar-category .folder > span {
+    color: var(--light-text-color);
+}
+
+/* Hover effects */
+
+.navbar-category .folder > span:hover {
+    background-color: var(--dark-banner-hover);
+    color: var(--dark-hover-color);
+}
+
+body.dark-mode .navbar-category .folder > span:hover {
+    color: var(--dark-hover-color);
+    background-color: var(--dark-banner-hover);
+}
+
+body.light-mode .navbar-category .folder > span:hover {
+    color: var(--light-hover-color);
+    background-color: var(--light-banner-hover);
+}
+
+/* Active effects */
+
+.navbar-category .folder > span:active {
+    color: var(--dark-hover-color);
+    transition: none;
+}
+
+body.dark-mode .navbar-category .folder > span:active {
+    color: var(--dark-hover-color-act);
+}
+
+body.light-mode .navbar-category .folder > span:active {
+    color: var(--light-hover-color-act);
+}
+
+/* Chevron (arrow) styling -------------------------------------------------- */
+
+.chevron {
+    display: block;
+    width: 0;
+    height: 0;
+    border: 8px solid transparent;
+    border-left-color: #606077;
+    margin-right: 8px;
+    transform-origin: 25% 50%;
+    transition: transform 0.3s ease, border-left-color 0.3s ease;
+    pointer-events: none;
+}
+
+body.dark-mode .chevron {
+    border-left-color: #606077;
+}
+
+body.light-mode .chevron {
+    border-left-color: #909090;
+}
+
+/* We change styles for when the chevron is pointing down */
+
+.folder.open > span .chevron {
+    border-left-color: var(--dark-text-color-accent);
+    transform: rotate(90deg);
+}
+
+body.dark-mode .folder.open > span .chevron {
+    border-left-color: var(--dark-text-color-accent);
+}
+
+body.light-mode .folder.open > span .chevron {
+    border-left-color: var(--light-text-color-accent);
+}
+
+/* Hover effects */
+
+body.dark-mode .folder > span:hover .chevron {
+    border-left-color: var(--dark-hover-color)
+}
+
+body.light-mode .folder > span:hover .chevron {
+    border-left-color: var(--light-hover-color)
+}
+
+/* Active effects */
+
+body.dark-mode .folder > span:active .chevron {
+    border-left-color: var(--dark-hover-color-act)
+}
+
+
+body.light-mode .folder > span:active .chevron {
+    border-left-color: var(--light-hover-color-act)
+}
+
+/* Main content ============================================================= */
+
+#main {
+    transition: margin-left 0.5s;
+    padding: 16px;
+    margin-top: 80px;
+}
+
+/* Comment field of output is used as a title for each output */
+
+.output-comment {
+    font-size: 1.4em;
+    font-weight: 500;
+    color: var(--dark-text-color);
+    margin: 20px 0 10px 0;
+    text-align: center;
+}
+
+body.light-mode .output-comment {
+    color: var(--light-text-color);
+}
+
+body.dark-mode .output-comment {
+    color: var(--dark-text-color);
+}
+
+/* Kibot version ------------------------------------------------------------ */
+
+.generator {
+    text-align: right;
+    font-size: 0.6em;
+    text-decoration: none;
+}
+
+.generator a {
+    text-decoration: none; /* Removes the underline */
+}
+
+/* Dark Mode: Regular Text */
+body.dark-mode .generator {
+    color: var(--dark-text-color-accent);
+}
+
+/* Dark Mode: Hyperlinks */
+body.dark-mode .generator a {
+    color: var(--dark-hover-color); /* Hyperlink */
+}
+
+/* Light Mode: Regular Text */
+body.light-mode .generator {
+    color: var(--light-text-color-accent);
+}
+
+/* Light Mode: Hyperlinks */
+body.light-mode .generator a {
+    color: var(--light-hover-color); /* Hyperlink */
+}
+
+/* Category boxes (folder) -------------------------------------------------- */
+
+.category-box {
+    z-index: 1000;
+    background-color: var(--dark-bg-color-banner);
+    border: 1px solid var(--dark-bg-color-banner);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 400px;
+    height: 140;
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-bottom: 0px;
+}
+
+body.light-mode .category-box {
+    color: var(--light-text-color);
+    background-color: var(--light-bg-color-banner);
+    border: var(--light-bg-color-banner);
+}
+
+
+body.dark-mode .category-box {
+    color: var(--dark-text-color);
+    background-color: var(--dark-bg-color-banner);
+    border: var(--dark-bg-color-banner);
+}
+
+.category-box img {
+    margin-top: 10px;
+    max-width: 100%;
+    max-height: 100%;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.category-title {
+    font-size: 1.4em;
+    font-weight: 500;
+    text-align: center;
+    color: #e5e5e5;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+body.light-mode .category-title {
+    color: var(--light-text-color);
+}
+
+body.dark-mode .category-title {
+    color: var(--dark-text-color);
+}
+
+/* Hover effects */
+
+.category-box:hover {
+    background-color: var(--dark-banner-hover);
+    transform: scale(1.05); /* Slight zoom effect */
+    cursor: pointer;
+}
+
+body.light-mode .category-box:hover {
+    background-color: var(--light-banner-hover);
+}
+
+body.dark-mode .category-box:hover {
+    background-color: var(--dark-banner-hover);
+}
+
+/* Output boxes (files) ----------------------------------------------------- */
+
+.output-box {
+    z-index: 999;
+    background-color: var(--dark-bg-color-banner);
+    border: 1px solid var(--dark-bg-color-banner);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 300px;
+    height: 140px;
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* Offset the scroll position */
+.output-virtual-box {
+    position: relative;
+    padding-top: var(--top-menu-height, 80px);
+    margin-top: calc(-1 * var(--top-menu-height, 80px));
+    pointer-events: none; /* Make it non-interactive */
+}
+
+.output-virtual-box > * {
+    pointer-events: auto; /* Allow its children to remain interactive */
+}
+
+/* Some files (e.g. PDF, PNG) have wider output boxes */
+
+.output-box.wide {
+    width: 400px;
+    height: auto;
+}
+
+.output-box img {
+    margin-top: 10px;
+    max-width: 100%;
+    max-height: 100%;
+    height: auto;
+    margin-bottom: 0px;
+}
+
+/* The output boxes are centered and wrap around */
+
+.items-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+body.light-mode .output-box {
+    color: var(--light-text-color);
+    background-color: var(--light-bg-color-banner);
+    border: var(--light-bg-color-banner);
+}
+
+body.dark-mode .output-box {
+    color: var(--dark-text-color);
+    background-color: var(--dark-bg-color-banner);
+    border: var(--dark-bg-color-banner);
+}
+
+/* Hover effects */
+
+.output-box:hover {
+    background-color: var(--dark-banner-hover);
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+body.light-mode .output-box:hover {
+    background-color: var(--light-banner-hover);
+}
+
+body.dark-mode .output-box:hover {
+    background-color: var(--dark-banner-hover);
+}
+
+/* Name of the output below the icon */
+
+.output-box .output-name {
+    color: #8997c6;
+    font-size: 14px;
+    margin-top: 0px;
+    text-align: center;
+}
+
+body.light-mode .output-box .output-name {
+    color: var(--light-text-color-accent);
+}
+
+body.dark-mode .output-box .output-name {
+    color: #8997c6;
+}
+
+/* Filename below the icon */
+
+.output-box .filename {
+    text-decoration: none;
+    color: var(--dark-text-color);
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 7px;
+}
+
+body.light-mode .output-box .filename {
+    color: var(--light-text-color);
+}
+
+body.dark-mode .output-box .filename {
+    color: var(--dark-text-color);
+}
+
+/* Theme Toggle Switch ====================================================== */
+
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 25px;
+    margin-left: 10px;
+}
+
+/* Hide the default checkbox button */
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.theme-switch span {
+    position: absolute;
+    cursor: pointer;
+    background-color: var(--light-banner-hover);
+    border-radius: 25px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: 0.4s;
+}
+
+.theme-switch span::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 3px;
+    background-color: var(--light-bg-color);
+    border-radius: 50%;
+    transition: none; /* Disable animation by default */
+}
+
+.theme-switch span.animate::before {
+    transition: transform 0.4s ease, background-color 0.4s ease;
+}
+
+.theme-switch input:checked + span {
+    background-color: var(--dark-bg-color);
+}
+
+.theme-switch input:checked + span::before {
+    transform: translateX(25px);
+    background-color: var(--dark-text-color);
+}
+
+/* Scrollbar ================================================================ */
+
+body, html {
+    scroll-behavior: smooth;
+    scrollbar-width: auto;
+}
+
+body.dark-mode .navbar {
+    scrollbar-color: var(--dark-banner-hover) var(--dark-bg-color);
+}
+
+body.light-mode .navbar {
+    scrollbar-color: var(--light-banner-hover) var(--light-bg-color);
+}
+
+/* WebKit Scrollbar Styles */
+body::-webkit-scrollbar, .navbar::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+body::-webkit-scrollbar-thumb, .navbar::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+    background: var(--dark-banner-hover);
+    border: 2px solid var(--dark-bg-color);
+}
+
+body::-webkit-scrollbar-track, .navbar::-webkit-scrollbar-track {
+    border-radius: 6px;
+    background: var(--dark-bg-color);
+}
+
+body.dark-mode::-webkit-scrollbar-thumb:hover, .navbar.dark-mode::-webkit-scrollbar-thumb:hover {
+    background: #44475a !important;
+}
+
+body.light-mode::-webkit-scrollbar-thumb, .navbar.light-mode::-webkit-scrollbar-thumb {
+    background: var(--light-banner-hover);
+    border: 2px solid var(--light-bg-color);
+}
+
+body.light-mode::-webkit-scrollbar-track, .navbar.light-mode::-webkit-scrollbar-track {
+    background: var(--light-bg-color);
+}
+
+body.light-mode::-webkit-scrollbar-thumb:hover, .navbar.light-mode::-webkit-scrollbar-thumb:hover {
+    background: #909090 !important;
+}
+
+body::-webkit-scrollbar-corner, .navbar::-webkit-scrollbar-corner {
+    background: var(--dark-bg-color);
+}
+
+/* Markdown ================================================================= */
+
+.markdown-content {
+    font-family: Roboto, sans-serif;
+    line-height: 1.6;
+    padding: 15px;
+    border-radius: 5px;
+    max-width: calc(100% - 180px);
+    white-space: pre-wrap; /* Handle preformatted text */
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+body.light-mode .markdown-content {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    color: #444444;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+body.dark-mode .markdown-content {
+    background-color: #1e1e2f;
+    border: 1px solid #44475a;
+    color: #e5e5e5;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+/* Tables */
+.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+body.light-mode .markdown-content table th,
+body.light-mode .markdown-content table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    background-color: #ffffff;
+    color: #444444;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+body.dark-mode .markdown-content table th,
+body.dark-mode .markdown-content table td {
+    border: 1px solid #44475a;
+    padding: 8px;
+    text-align: left;
+    background-color: #27293d;
+    color: #e5e5e5;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+/* Code Blocks */
+.markdown-content pre {
+    background-color: var(--dark-bg-color-banner);
+    color: var(--dark-text-color); /* Matches dark theme text */
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body.light-mode .markdown-content pre {
+    background-color: var(--light-bg-color-banner);
+    color: var(--light-text-color);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body.dark-mode .markdown-content pre {
+    background-color: var(--dark-bg-color-banner);
+    color: var(--dark-text-color);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Inline Code */
+.markdown-content code {
+    background-color: var(--light-bg-color-banner);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body.light-mode .markdown-content code {
+    background-color: var(--light-bg-color-banner);
+    color: var(--light-text-color);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body.dark-mode .markdown-content code {
+    background-color: var(--dark-bg-color-banner);
+    color: var(--dark-text-color);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Links */
+body.light-mode .markdown-content a {
+    color: var(--light-hover-color);
+    text-decoration: none;
+    transition: color 0.4s ease;
+}
+
+body.dark-mode .markdown-content a {
+    color: var(--dark-hover-color);
+    text-decoration: none;
+    transition: color 0.4s ease;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+/* Images */
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 10px auto;
+    transition: opacity 0.4s ease;
+}
+
+.markdown-content pre::-webkit-scrollbar {
+    height: 12px; /* Horizontal scrollbar height */
+}
+
+.markdown-content pre::-webkit-scrollbar-thumb {
+    background: var(--dark-banner-hover); /* Match other scrollbar thumb color */
+    border-radius: 6px; /* Round edges */
+    border: 2px solid var(--dark-bg-color); /* Outer border matches background */
+}
+
+.markdown-content pre::-webkit-scrollbar-track {
+    background: var(--dark-bg-color); /* Match the background color */
+    border-radius: 6px;
+}
+
+body.light-mode .markdown-content pre::-webkit-scrollbar-thumb {
+    background: var(--light-banner-hover); /* Light mode thumb color */
+    border: 2px solid var(--light-bg-color); /* Light mode border */
+}
+
+body.light-mode .markdown-content pre::-webkit-scrollbar-track {
+    background: var(--light-bg-color); /* Light mode track background */
+}
+
+
+/* Search bar =============================================================== */
+
+#search-container,
+#search-bar,
+#autocomplete-list,
+#autocomplete-list li {
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+#search-container {
+    padding: 10px;
+    background-color: transparent;
+    margin-top: 10px;
+    top: 0;
+    z-index: 1001;
+    width: calc(100% - 10px);
+    box-sizing: border-box;
+}
+
+#search-bar {
+    width: 100%; /* Match the width of the container */
+    padding: 8px;
+    border: 1px solid var(--light-text-color-accent);
+    border-radius: 4px;
+    outline: none;
+    background-color: transparent;
+    color: var(--light-text-color);
+    box-sizing: border-box; /* Ensure padding is included in width */
+}
+
+#search-bar::placeholder {
+    color: var(--light-text-color-accent);
+}
+
+#autocomplete-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 5px 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--light-bg-color-banner);
+    border: 1px solid var(--light-text-color-accent);
+    border-radius: 4px;
+    position: absolute;
+    z-index: 1001;
+    width: auto; /* Width will be dynamically calculated */
+    box-sizing: border-box;
+    display: none; /* Hidden by default */
+}
+
+#autocomplete-list li {
+    padding: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: var(--light-text-color);
+}
+
+#autocomplete-list li:hover {
+    background-color: var(--light-banner-hover);
+    color: var(--light-hover-color);
+}
+
+.dark-mode #search-bar {
+    color: var(--dark-text-color);
+    border-color: var(--dark-text-color-accent);
+}
+
+.dark-mode #search-bar::placeholder {
+    color: var(--dark-text-color-accent);
+}
+
+.dark-mode #autocomplete-list {
+    background-color: var(--dark-bg-color-banner);
+    border-color: var(--dark-text-color-accent);
+}
+
+.dark-mode #autocomplete-list li {
+    color: var(--dark-text-color);
+}
+
+.dark-mode #autocomplete-list li:hover {
+    background-color: var(--dark-banner-hover);
+    color: var(--dark-hover-color);
+}
+
+.highlighted {
+    background-color: var(--light-banner-hover); /* Same as hover background */
+    color: var(--light-hover-color); /* Same as hover text color */
+}
+
+body.dark-mode .highlighted {
+    background-color: var(--dark-banner-hover); /* Same as hover background */
+    color: var(--dark-hover-color); /* Same as hover text color */
+}
+
+/* New classes to remove transitions on page load =========================== */
+
+body.no-transition,
+.no-transition .output-box,
+body.no-transition .theme-switch span,
+body.no-transition button,
+body.no-transition #close-navbar,
+body.no-transition #home-button,
+body.no-transition #back-button,
+body.no-transition #forward-button,
+body.no-transition #topmenu,
+body.no-transition .navbar-category .folder > span,
+body.no-transition .navbar-output,
+body.no-transition .category-box,
+#search-bar {
+    transition: none !important; /* Disable transition during page load */
+}
+

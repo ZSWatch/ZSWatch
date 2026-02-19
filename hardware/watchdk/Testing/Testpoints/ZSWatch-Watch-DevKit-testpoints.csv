@@ -1,0 +1,11 @@
+Testpoint Ref.,Net,Net Class,X,Y,Side,Pad Type,Value,Footprint
+TP401,/Project Architecture/Power Management/VBUS-In,Default,233.3000,-124.2000,top,,VBUS-In,TestPoint_Pad_D1.0mm
+TP402,/Project Architecture/Peripherals/VBAT,Default,230.6000,-116.7250,top,,VBAT,TestPoint_Pad_D1.0mm
+TP403,/Project Architecture/Power Management/VSYS,Default,237.3000,-125.8000,top,,VSYS,TestPoint_Pad_D1.0mm
+TP404,+1V8,Default,213.8000,-125.1000,top,,+1V8,TestPoint_Pad_D1.0mm
+TP405,+3V0,Default,213.4000,-118.7000,top,,+3V0,TestPoint_Pad_D1.0mm
+TP501,/Project Architecture/MCU/MIC-CLK,Default,172.2000,-172.9000,top,,MIC-CLK,TestPoint_Pad_D1.0mm
+TP502,/Project Architecture/MCU/MIC-DATA,Default,170.2000,-176.6000,top,,MIC-Data,TestPoint_Pad_D1.0mm
+TP503,/Project Architecture/MCU/VIB-EN,Vibration-Motor,222.2000,-133.3000,top,,VIB-EN,TestPoint_Pad_D1.0mm
+TP504,/Project Architecture/MCU/VIB-PWM,Vibration-Motor,222.2000,-129.2000,top,,VIB-PWM,TestPoint_Pad_D1.0mm
+TP601,RESETn,Default,254.7000,-142.2000,top,,Reset,TestPoint_Pad_D1.0mm
