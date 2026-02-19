@@ -75,7 +75,16 @@ static void on_onboarding_done(void);
 
 K_WORK_DEFINE(input_work, run_input_work);
 
+static void auto_launch_da7212_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(auto_launch_da7212_work, auto_launch_da7212_work_handler);
+
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
+
+static void auto_launch_da7212_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    lv_async_call(open_application_manager_page, "DA7212 Test");
+}
 
 static void run_input_work(struct k_work *item)
 {
@@ -411,6 +420,9 @@ int zsw_ui_controller_init(void)
         watch_state = WATCHFACE_STATE;
         watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
     }
+
+    /* Auto-launch DA7212 test app after 2 seconds */
+    k_work_schedule(&auto_launch_da7212_work, K_SECONDS(2));
 
     LOG_INF("UI Controller initialized");
 

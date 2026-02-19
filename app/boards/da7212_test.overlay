@@ -13,11 +13,9 @@
  *     Pin 6: GND        → EVB GND
  *   GPIO header (X605):
  *     Pin 4: P1.14      → EVB BCLK (SCK)
- *   I2C header (X504):
- *     Pin 1: +1V8       → EVB VDD_IO (already shared)
- *     Pin 2: SDA P0.27  → EVB SDA
- *     Pin 3: SCL P0.25  → EVB SCL
- *     Pin 4: GND        → EVB GND
+ *   I2C (dedicated i2c3 instance):
+ *     SDA P0.22  → EVB SDA
+ *     SCL P0.05  → EVB SCL
  */
 
 &pinctrl {
@@ -36,6 +34,21 @@
                     <NRF_PSEL(I2S_SCK_M, 1, 14)>,
                     <NRF_PSEL(I2S_LRCK_M, 1, 9)>,
                     <NRF_PSEL(I2S_SDOUT, 1, 10)>;
+            low-power-enable;
+        };
+    };
+
+    i2c3_default: i2c3_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 22)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 5)>;
+        };
+    };
+
+    i2c3_sleep: i2c3_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 22)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 5)>;
             low-power-enable;
         };
     };
@@ -65,7 +78,14 @@
     clock-source = "ACLK";
 };
 
-&i2c1 {
+&i2c3 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_FAST>;
+    pinctrl-0 = <&i2c3_default>;
+    pinctrl-1 = <&i2c3_sleep>;
+    pinctrl-names = "default", "sleep";
+
     audio_codec: da7212@1a {
         compatible = "dlg,da7212";
         reg = <0x1a>;
