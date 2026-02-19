@@ -26,8 +26,8 @@
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 
-static void about_app_start(lv_obj_t *root, lv_group_t *group);
-static void about_app_stop(void);
+static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void about_app_stop(void *user_data);
 
 ZSW_LV_IMG_DECLARE(templates);
 
@@ -39,8 +39,9 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
-static void about_app_start(lv_obj_t *root, lv_group_t *group)
+static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     char version[50];
     char sdk_version[50];
     char build_time[50];
@@ -58,8 +59,9 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group)
     about_ui_show(root, CONFIG_BOARD_TARGET, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
 }
 
-static void about_app_stop(void)
+static void about_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     about_ui_remove();
 }
 

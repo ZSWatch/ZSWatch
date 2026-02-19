@@ -37,8 +37,8 @@ LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 #define WEATHER_BACKGROUND_FETCH_INTERVAL_S (30 * 60)
 
 // Functions needed for all applications
-static void weather_app_start(lv_obj_t *root, lv_group_t *group);
-static void weather_app_stop(void);
+static void weather_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void weather_app_stop(void *user_data);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void periodic_fetch_weather_data(struct k_work *work);
 static void publish_weather_data(struct k_work *work);
@@ -191,8 +191,9 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     }
 }
 
-static void weather_app_start(lv_obj_t *root, lv_group_t *group)
+static void weather_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     weather_ui_show(root);
     if (last_update_gps_time == 0 || k_uptime_delta(&last_update_gps_time) > MAX_GPS_AGED_TIME_MS) {
         LOG_DBG("GPS data is too old, request GPS\n");
@@ -213,8 +214,9 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
     weather_ui_set_time(time.tm.tm_hour, time.tm.tm_min, time.tm.tm_sec);
 }
 
-static void weather_app_stop(void)
+static void weather_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     k_work_cancel_delayable(&weather_data_timeout_work);
     weather_ui_remove();
     ble_comm_request_gps_status(false);

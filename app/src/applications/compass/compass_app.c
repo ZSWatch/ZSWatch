@@ -29,8 +29,8 @@
 LOG_MODULE_REGISTER(compass_app, LOG_LEVEL_DBG);
 
 // Functions needed for all applications
-static void compass_app_start(lv_obj_t *root, lv_group_t *group);
-static void compass_app_stop(void);
+static void compass_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void compass_app_stop(void *user_data);
 
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
@@ -50,15 +50,17 @@ static lv_timer_t *refresh_timer;
 static bool is_calibrating;
 static uint32_t cal_start_ms;
 
-static void compass_app_start(lv_obj_t *root, lv_group_t *group)
+static void compass_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     compass_ui_show(root, on_start_calibration);
     refresh_timer = lv_timer_create(timer_callback, CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,  NULL);
     zsw_sensor_fusion_init();
 }
 
-static void compass_app_stop(void)
+static void compass_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     if (refresh_timer) {
         lv_timer_del(refresh_timer);
     }

@@ -28,8 +28,8 @@
 
 LOG_MODULE_REGISTER(mic_app, LOG_LEVEL_DBG);
 
-static void mic_app_start(lv_obj_t *root, lv_group_t *group);
-static void mic_app_stop(void);
+static void mic_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void mic_app_stop(void *user_data);
 
 static struct k_work spectrum_update_work;
 static void spectrum_update_work_handler(struct k_work *work);
@@ -55,8 +55,9 @@ static application_t app = {
 
 static size_t sample_buffer_index = 0;
 
-static void mic_app_start(lv_obj_t *root, lv_group_t *group)
+static void mic_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     k_work_init(&spectrum_update_work, spectrum_update_work_handler);
 
     int ret = spectrum_analyzer_init();
@@ -71,8 +72,9 @@ static void mic_app_start(lv_obj_t *root, lv_group_t *group)
     LOG_INF("Microphone app started");
 }
 
-static void mic_app_stop(void)
+static void mic_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     k_work_cancel(&spectrum_update_work);
 
     if (zsw_microphone_manager_is_recording()) {

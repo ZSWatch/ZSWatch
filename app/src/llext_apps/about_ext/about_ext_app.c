@@ -30,23 +30,24 @@
  * We #include the image .c file because add_llext_target only
  * supports a single source file for ELF object builds.
  */
-#include "images/battery_app_icon.c"
+#include "about_ext_icon.c"
 
-static void about_ext_start(lv_obj_t *root, lv_group_t *group);
-static void about_ext_stop(void);
+static void about_ext_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void about_ext_stop(void *user_data);
 
 static lv_obj_t *root_page;
 
 static application_t app = {
     .name = "About LLEXT",
-    .icon = &battery_app_icon,
+    .icon = &circuit_icon,
     .start_func = about_ext_start,
     .stop_func = about_ext_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
-static void about_ext_start(lv_obj_t *root, lv_group_t *group)
+static void about_ext_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     printk("about_ext: start\n");
 
     root_page = lv_obj_create(root);
@@ -85,8 +86,9 @@ static void about_ext_start(lv_obj_t *root, lv_group_t *group)
     lv_obj_set_style_text_align(info, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 }
 
-static void about_ext_stop(void)
+static void about_ext_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     printk("about_ext: stop\n");
     lv_obj_delete(root_page);
     root_page = NULL;

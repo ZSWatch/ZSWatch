@@ -27,8 +27,8 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
-static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group);
-static void sensors_summary_app_stop(void);
+static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void sensors_summary_app_stop(void *user_data);
 static void on_close_sensors_summary(void);
 static void on_ref_set(void);
 
@@ -47,8 +47,9 @@ static application_t app = {
 static lv_timer_t *refresh_timer;
 static float relative_pressure;
 
-static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group)
+static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     sensors_summary_ui_show(root, on_close_sensors_summary, on_ref_set);
 
     // Set inital relative pressure.
@@ -60,8 +61,9 @@ static void sensors_summary_app_start(lv_obj_t *root, lv_group_t *group)
                                     NULL);
 }
 
-static void sensors_summary_app_stop(void)
+static void sensors_summary_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     // Cleanup after ourselves
     // TODO need mechanism so that multiple user can request ODR without
     // breaking for another when changed.

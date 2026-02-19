@@ -42,14 +42,14 @@
 #endif
 
 /* ---- Image data compiled into .rodata (goes to XIP alongside code) ---- */
-#include "images/battery_app_icon.c"
+#include "battery_app_icon.c"
 
 /* ---- Full battery UI (all 3 pages: chart, charger info, regulator info) ---- */
 #include "battery_ui.h"
 
 /* ---------- Forward declarations ---------- */
-static void battery_app_start(lv_obj_t *root, lv_group_t *group);
-static void battery_app_stop(void);
+static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void battery_app_stop(void *user_data);
 static void zbus_battery_callback(const struct zbus_channel *chan);
 static void on_battery_hist_clear_cb(void);
 
@@ -88,8 +88,9 @@ static inline uintptr_t read_r9(void)
     return val;
 }
 
-static void battery_app_start(lv_obj_t *root, lv_group_t *group)
+static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     LV_UNUSED(group);
     struct battery_sample_event initial_sample;
     uintptr_t r9_before, r9_after;
@@ -123,8 +124,9 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
     }
 }
 
-static void battery_app_stop(void)
+static void battery_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     printk("battery_real_ext: stop\n");
     battery_ui_remove();
 }

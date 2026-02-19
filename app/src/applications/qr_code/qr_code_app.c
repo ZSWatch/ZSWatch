@@ -24,8 +24,8 @@
 #include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
-static void qr_code_app_start(lv_obj_t *root, lv_group_t *group);
-static void qr_code_app_stop(void);
+static void qr_code_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void qr_code_app_stop(void *user_data);
 
 ZSW_LV_IMG_DECLARE(qr_code_icon);
 
@@ -39,15 +39,17 @@ static application_t app = {
 
 static uint8_t original_brightness;
 
-static void qr_code_app_start(lv_obj_t *root, lv_group_t *group)
+static void qr_code_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     original_brightness = zsw_display_control_get_brightness();
     zsw_display_control_set_brightness(100);
     qr_code_ui_show(root);
 }
 
-static void qr_code_app_stop(void)
+static void qr_code_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     zsw_display_control_set_brightness(original_brightness);
     qr_code_ui_remove();
 }

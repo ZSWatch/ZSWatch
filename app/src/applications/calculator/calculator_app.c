@@ -10,8 +10,8 @@
 LOG_MODULE_REGISTER(calculator_app, LOG_LEVEL_DBG);
 
 // Functions needed for all applications
-static void calculator_app_start(lv_obj_t *root, lv_group_t *group);
-static void calculator_app_stop(void);
+static void calculator_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void calculator_app_stop(void *user_data);
 
 ZSW_LV_IMG_DECLARE(statistic_icon);
 
@@ -23,13 +23,15 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
-static void calculator_app_start(lv_obj_t *root, lv_group_t *group)
+static void calculator_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     calculator_ui_show(root);
 }
 
-static void calculator_app_stop(void)
+static void calculator_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     calculator_ui_remove();
 }
 

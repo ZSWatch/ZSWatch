@@ -33,8 +33,8 @@
 #define SAMPLE_INTERVAL_MS      (SAMPLE_INTERVAL_MIN * 60 * 1000)
 #define MAX_SAMPLES             (7 * 24 * (60 / SAMPLE_INTERVAL_MIN)) // One week of 15 minute samples
 
-static void battery_app_start(lv_obj_t *root, lv_group_t *group);
-static void battery_app_stop(void);
+static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void battery_app_stop(void *user_data);
 
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void on_battery_hist_clear_cb(void);
@@ -67,8 +67,9 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
-static void battery_app_start(lv_obj_t *root, lv_group_t *group)
+static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     zsw_battery_sample_t sample;
     struct battery_sample_event initial_sample;
 
@@ -99,8 +100,9 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
     }
 }
 
-static void battery_app_stop(void)
+static void battery_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     battery_ui_remove();
 }
 

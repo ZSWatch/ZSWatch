@@ -32,8 +32,8 @@
 LOG_MODULE_REGISTER(trivia_app, CONFIG_ZSW_TRIVIA_APP_LOG_LEVEL);
 
 // Functions needed for all applications
-static void trivia_app_start(lv_obj_t *root, lv_group_t *group);
-static void trivia_app_stop(void);
+static void trivia_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void trivia_app_stop(void *user_data);
 static void on_button_click(trivia_button_t trivia_button);
 static void request_new_question(void);
 
@@ -54,15 +54,17 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_GAMES
 };
 
-static void trivia_app_start(lv_obj_t *root, lv_group_t *group)
+static void trivia_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     LOG_DBG("Trivia app start");
     trivia_ui_show(root, on_button_click);
     request_new_question();
 }
 
-static void trivia_app_stop(void)
+static void trivia_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     trivia_ui_remove();
 }
 

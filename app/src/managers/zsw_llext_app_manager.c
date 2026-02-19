@@ -45,6 +45,7 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_llext_app_manager.h"
 #include "managers/zsw_llext_xip.h"
+#include "managers/zsw_xip_manager.h"
 #include <lvgl.h>
 
 LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
@@ -67,16 +68,16 @@ static __always_inline void llext_set_r9(void *got_base)
 }
 
 #define LLEXT_CALL_ENTRY(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_START(got, fn, root, grp) do { llext_set_r9(got); (fn)(root, grp); } while (0)
-#define LLEXT_CALL_STOP(got, fn) do { llext_set_r9(got); (fn)(); } while (0)
+#define LLEXT_CALL_START(got, fn, root, grp) do { llext_set_r9(got); (fn)(root, grp, NULL); } while (0)
+#define LLEXT_CALL_STOP(got, fn) do { llext_set_r9(got); (fn)(NULL); } while (0)
 #define LLEXT_CALL_BACK(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
 #define LLEXT_CALL_VOID(got, fn) do { llext_set_r9(got); (fn)(); } while (0)
 
 #else
 /* Non-ARM: direct calls */
 #define LLEXT_CALL_ENTRY(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_START(got, fn, root, grp) do { (void)(got); (fn)(root, grp); } while (0)
-#define LLEXT_CALL_STOP(got, fn) do { (void)(got); (fn)(); } while (0)
+#define LLEXT_CALL_START(got, fn, root, grp) do { (void)(got); (fn)(root, grp, NULL); } while (0)
+#define LLEXT_CALL_STOP(got, fn) do { (void)(got); (fn)(NULL); } while (0)
 #define LLEXT_CALL_BACK(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
 #define LLEXT_CALL_VOID(got, fn) do { (void)(got); (fn)(); } while (0)
 #endif
@@ -140,32 +141,11 @@ static K_WORK_DELAYABLE_DEFINE(auto_open_work, auto_open_work_handler);
 #endif
 
 /* --------------------------------------------------------------------------
- * Forward Declarations — Proxy Trampolines
+ * Forward Declarations
  * -------------------------------------------------------------------------- */
 
-static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group);
-static void proxy_stop_common(int idx);
-
-/*
- * Each LLEXT app slot needs a unique function pointer for start/stop so the
- * app manager can distinguish them. We generate small trampolines per slot.
- */
-#define DEFINE_PROXY(n) \
-    static void proxy_start_##n(lv_obj_t *r, lv_group_t *g) { proxy_start_common(n, r, g); } \
-    static void proxy_stop_##n(void) { proxy_stop_common(n); }
-
-DEFINE_PROXY(0) DEFINE_PROXY(1) DEFINE_PROXY(2) DEFINE_PROXY(3) DEFINE_PROXY(4)
-DEFINE_PROXY(5) DEFINE_PROXY(6) DEFINE_PROXY(7) DEFINE_PROXY(8) DEFINE_PROXY(9)
-
-static const application_start_fn proxy_start_fns[ZSW_LLEXT_MAX_APPS] = {
-    proxy_start_0, proxy_start_1, proxy_start_2, proxy_start_3, proxy_start_4,
-    proxy_start_5, proxy_start_6, proxy_start_7, proxy_start_8, proxy_start_9,
-};
-
-static const application_stop_fn proxy_stop_fns[ZSW_LLEXT_MAX_APPS] = {
-    proxy_stop_0, proxy_stop_1, proxy_stop_2, proxy_stop_3, proxy_stop_4,
-    proxy_stop_5, proxy_stop_6, proxy_stop_7, proxy_stop_8, proxy_stop_9,
-};
+static void proxy_start_common(zsw_llext_app_t *la, lv_obj_t *root, lv_group_t *group);
+static void proxy_stop_common(zsw_llext_app_t *la);
 
 /* --------------------------------------------------------------------------
  * Heap Management
@@ -228,9 +208,8 @@ static void llext_proxy_ui_available(void)
  * Deferred Load / Unload
  * -------------------------------------------------------------------------- */
 
-static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
+static void proxy_start_common(zsw_llext_app_t *la, lv_obj_t *root, lv_group_t *group)
 {
-    zsw_llext_app_t *la = &llext_apps[idx];
     int ret;
 
     if (la->loaded && la->real_app) {
@@ -303,6 +282,16 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
     la->loaded = true;
     active_llext_app = la;
 
+    /* Hold an XIP enable reference for the lifetime of this loaded LLEXT.
+     * This prevents zsw_xip_disable() (e.g. from display sleep) from turning
+     * off XIP while the LLEXT's .text/.rodata live in XIP flash, which would
+     * cause an IBUSERR on any subsequent call into LLEXT code (e.g. a zbus
+     * callback firing on the sysworkq). Released in proxy_stop_common(). */
+    zsw_xip_enable();
+
+    /* Update the proxy icon now that we have the real app's icon */
+    la->proxy_app.icon = la->real_app->icon;
+
     LOG_INF("LLEXT '%s' ready (name='%s')",
             la->name, la->real_app->name);
 
@@ -311,9 +300,8 @@ static void proxy_start_common(int idx, lv_obj_t *root, lv_group_t *group)
     LLEXT_CALL_START(la->got_base, la->real_app->start_func, root, group);
 }
 
-static void proxy_stop_common(int idx)
+static void proxy_stop_common(zsw_llext_app_t *la)
 {
-    zsw_llext_app_t *la = &llext_apps[idx];
 
     if (!la->loaded) {
         LOG_WRN("LLEXT '%s' not loaded, nothing to stop", la->name);
@@ -342,10 +330,23 @@ static void proxy_stop_common(int idx)
         active_llext_app = NULL;
     }
 
+    /* Release the XIP enable reference taken at load time */
+    zsw_xip_disable();
+
     /* Reset XIP allocator so flash space can be reused by next app */
     zsw_llext_xip_reset();
 
     LOG_INF("LLEXT '%s' unloaded", la->name);
+}
+
+static void llext_proxy_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+{
+    proxy_start_common((zsw_llext_app_t *)user_data, root, group);
+}
+
+static void llext_proxy_stop(void *user_data)
+{
+    proxy_stop_common((zsw_llext_app_t *)user_data);
 }
 
 /* --------------------------------------------------------------------------
@@ -383,17 +384,18 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
         return ret;
     }
 
-    /* Set up the proxy application_t with trampoline functions */
+    /* Set up the proxy application_t — start/stop delivered via user_data */
     proxy = &la->proxy_app;
     proxy->name = la->name;
     proxy->icon = NULL;
-    proxy->start_func = proxy_start_fns[idx];
-    proxy->stop_func = proxy_stop_fns[idx];
+    proxy->start_func = llext_proxy_start;
+    proxy->stop_func = llext_proxy_stop;
     proxy->back_func = llext_proxy_back;
     proxy->ui_unavailable_func = llext_proxy_ui_unavailable;
     proxy->ui_available_func = llext_proxy_ui_available;
     proxy->category = ZSW_APP_CATEGORY_ROOT;
     proxy->hidden = false;
+    proxy->user_data = la;
 
     /* Register the proxy with the main app manager */
     zsw_app_manager_add_application(proxy);
@@ -491,7 +493,7 @@ static void auto_open_work_handler(struct k_work *work)
             lv_obj_t *root = lv_obj_create(lv_screen_active());
 
             lv_obj_set_size(root, LV_PCT(100), LV_PCT(100));
-            proxy_start_common(i, root, NULL);
+            proxy_start_common(&llext_apps[i], root, NULL);
             return;
         }
     }

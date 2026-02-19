@@ -34,8 +34,8 @@
 #endif
 
 static void zbus_fetch_fusion_data_callback(const struct zbus_channel *chan);
-static void fusion_app_start(lv_obj_t *root, lv_group_t *group);
-static void fusion_app_stop(void);
+static void fusion_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void fusion_app_stop(void *user_data);
 static void fusion_app_ui_unavailable(void);
 static void fusion_app_ui_available(void);
 static void on_close_fusion(void);
@@ -65,8 +65,9 @@ static uint32_t render_frames = 0;
 static float last_render_hz = 0.0f;
 static float latest_yaw_deg = 0.0f;
 
-static void fusion_app_start(lv_obj_t *root, lv_group_t *group)
+static void fusion_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     fusion_ui_show(root, on_close_fusion, on_zero_yaw);
     zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &accel_app_lis);
     zsw_sensor_fusion_init();
@@ -77,8 +78,9 @@ static void fusion_app_start(lv_obj_t *root, lv_group_t *group)
     }
 }
 
-static void fusion_app_stop(void)
+static void fusion_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &accel_app_lis);
     zsw_sensor_fusion_deinit();
     if (cube_timer) {

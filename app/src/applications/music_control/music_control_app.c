@@ -29,8 +29,8 @@
 #include "ui/utils/zsw_ui_utils.h"
 
 // Functions needed for all applications
-static void music_control_app_start(lv_obj_t *root, lv_group_t *group);
-static void music_control_app_stop(void);
+static void music_control_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
+static void music_control_app_stop(void *user_data);
 
 static void timer_callback(lv_timer_t *timer);
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
@@ -96,8 +96,9 @@ void music_on_next_clicked(lv_event_t *e)
     zbus_chan_pub(&music_control_data_chan, &music_event, K_MSEC(50));
 }
 
-static void music_control_app_start(lv_obj_t *root, lv_group_t *group)
+static void music_control_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
+    ARG_UNUSED(user_data);
     progress_timer = lv_timer_create(timer_callback, 1000, NULL);
 
     // Create the music app UI - images come from globals.xml
@@ -106,8 +107,9 @@ static void music_control_app_start(lv_obj_t *root, lv_group_t *group)
     handle_update_ui(NULL);
 }
 
-static void music_control_app_stop(void)
+static void music_control_app_stop(void *user_data)
 {
+    ARG_UNUSED(user_data);
     lv_timer_del(progress_timer);
     lv_obj_del(music_ui_root);
 }
