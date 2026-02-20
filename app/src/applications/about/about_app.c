@@ -28,8 +28,6 @@
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
 #include <zephyr/llext/symbol.h>
-#else
-ZSW_LV_IMG_DECLARE(templates);
 #endif
 
 static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
@@ -37,11 +35,7 @@ static void about_app_stop(void *user_data);
 
 static application_t app = {
     .name = "About",
-#ifdef CONFIG_ZSW_LLEXT_APPS
-    /* icon set at runtime in app_entry() — PIC linker drops static relocation */
-#else
     .icon = ZSW_LV_IMG_USE(templates),
-#endif
     .start_func = about_app_start,
     .stop_func = about_app_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM,
@@ -73,22 +67,19 @@ static void about_app_stop(void *user_data)
     about_ui_remove();
 }
 
+static int about_app_add(void)
+{
+    zsw_app_manager_add_application(&app);
+    return 0;
+}
+
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
-    /* Set icon at runtime — static relocation is lost by the PIC linker */
-    app.icon = "S:templates.bin";
-    zsw_app_manager_add_application(&app);
+    about_app_add();
     return &app;
 }
 EXPORT_SYMBOL(app_entry);
 #else
-static int about_app_add(void)
-{
-    zsw_app_manager_add_application(&app);
-
-    return 0;
-}
-
 SYS_INIT(about_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 #endif

@@ -17,9 +17,12 @@
 
 #pragma once
 
-#include <zephyr/llext/llext.h>
 #include <stdbool.h>
 #include <stddef.h>
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+
+#include <zephyr/llext/llext.h>
 
 /**
  * @brief Mark a function for internal flash execution.
@@ -101,3 +104,13 @@ void zsw_llext_iflash_reset(void);
  * @return Trampoline function pointer (internal flash), or NULL on failure
  */
 void *zsw_llext_create_trampoline(void *func);
+
+#else /* !CONFIG_ZSW_LLEXT_APPS */
+
+/** @brief No-op when LLEXT is disabled. */
+#define LLEXT_IFLASH
+
+/** @brief Identity (no-op) when LLEXT is disabled — returns func unchanged. */
+#define zsw_llext_create_trampoline(func) (func)
+
+#endif /* CONFIG_ZSW_LLEXT_APPS */
