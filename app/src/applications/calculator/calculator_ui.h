@@ -5,3 +5,7 @@
 void calculator_ui_show(lv_obj_t *root);
 void calculator_ui_remove(void);
 void calculator_ui_update_display(const char *text);
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+void calculator_ui_init(void);
+#endif

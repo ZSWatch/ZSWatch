@@ -3,7 +3,17 @@
 #include "smf_calculator_thread.h"
 
 #include <string.h>
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/sys/printk.h>
+#include "managers/zsw_llext_iflash.h"
+#define LOG_MODULE_REGISTER(...)
+#define LOG_DBG(...)
+#define LOG_INF(fmt, ...)  printk(fmt "\n", ##__VA_ARGS__)
+#define LOG_ERR(fmt, ...)  printk(fmt "\n", ##__VA_ARGS__)
+#else
 #include <zephyr/logging/log.h>
+#endif
 
 LOG_MODULE_REGISTER(calculator_ui, LOG_LEVEL_INF);
 
@@ -15,7 +25,11 @@ LOG_MODULE_REGISTER(calculator_ui, LOG_LEVEL_INF);
 
 // Work item for display updates
 static void display_update_work_handler(struct k_work *work);
+#ifdef CONFIG_ZSW_LLEXT_APPS
+static struct k_work display_update_work;
+#else
 static K_WORK_DEFINE(display_update_work, display_update_work_handler);
+#endif
 
 // Buffer for display text used in work handler
 static char display_text_buffer[CALCULATOR_STRING_LENGTH];
@@ -232,4 +246,12 @@ void calculator_ui_update_display(const char *text)
     // LVGL has to be called from system workqueue
     k_work_submit(&display_update_work);
 }
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+void calculator_ui_init(void)
+{
+    k_work_init(&display_update_work,
+                (k_work_handler_t)zsw_llext_create_trampoline((void *)display_update_work_handler));
+}
+#endif
 

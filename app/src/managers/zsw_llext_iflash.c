@@ -88,6 +88,12 @@ static const uint8_t trampoline_code[8] = {
 static uint32_t iflash_next_offset;
 static uint32_t iflash_partition_size;
 
+/* Runtime trampoline sector allocator.
+ * Erases one 4 KB sector on first use, then packs up to
+ * IFLASH_SECTOR_SIZE / TRAMPOLINE_SIZE = 256 trampolines per sector. */
+static uint32_t runtime_tramp_sector = UINT32_MAX; /* partition-relative offset */
+static uint32_t runtime_tramp_used;                 /* bytes used in current sector */
+
 /* --------------------------------------------------------------------------
  * Public API
  * -------------------------------------------------------------------------- */
@@ -126,7 +132,7 @@ int zsw_llext_iflash_init(void)
 static int flash_write_aligned(const struct flash_area *fa, uint32_t offset,
                                const void *data, size_t size)
 {
-    int ret;
+    int ret = 0;
     size_t write_size = ROUND_UP(size, 4);
 
     if (write_size == size) {
@@ -390,5 +396,97 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *g
 void zsw_llext_iflash_reset(void)
 {
     iflash_next_offset = 0;
+    runtime_tramp_sector = UINT32_MAX;
+    runtime_tramp_used = 0;
     LOG_DBG("Internal flash allocator reset");
 }
+
+/* --------------------------------------------------------------------------
+ * Runtime trampoline creation (callable from LLEXT apps)
+ * -------------------------------------------------------------------------- */
+
+#ifdef CONFIG_ARM
+void *zsw_llext_create_trampoline(void *func)
+{
+    if (func == NULL) {
+        return NULL;
+    }
+
+    /* Read R9 — valid because caller is LLEXT code with R9 = GOT base.
+     * Firmware is compiled with -ffixed-r9 so R9 is preserved through
+     * the call into this firmware function. */
+    void *got_base;
+
+    __asm__ volatile("mov %0, r9" : "=r"(got_base));
+
+    const struct flash_area *fa;
+    int ret = flash_area_open(IFLASH_PARTITION_ID, &fa);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to open flash for runtime trampoline: %d", ret);
+        return NULL;
+    }
+
+    /* Allocate and erase a new sector if the current one is full or unset */
+    if (runtime_tramp_sector == UINT32_MAX ||
+        runtime_tramp_used + TRAMPOLINE_SIZE > IFLASH_SECTOR_SIZE) {
+
+        if (iflash_next_offset + IFLASH_SECTOR_SIZE > iflash_partition_size) {
+            LOG_ERR("No iflash space for runtime trampoline sector");
+            flash_area_close(fa);
+            return NULL;
+        }
+
+        ret = flash_area_erase(fa, iflash_next_offset, IFLASH_SECTOR_SIZE);
+        if (ret < 0) {
+            LOG_ERR("Failed to erase runtime trampoline sector: %d", ret);
+            flash_area_close(fa);
+            return NULL;
+        }
+
+        runtime_tramp_sector = iflash_next_offset;
+        runtime_tramp_used = 0;
+        iflash_next_offset += IFLASH_SECTOR_SIZE;
+
+        LOG_INF("Allocated runtime trampoline sector at 0x%x",
+                IFLASH_PARTITION_OFFSET + runtime_tramp_sector);
+    }
+
+    /* Build 16-byte trampoline: set R9 to GOT base, then jump to func */
+    uint8_t tramp[TRAMPOLINE_SIZE];
+    uint32_t gb = (uint32_t)(uintptr_t)got_base;
+    uint32_t ta = (uint32_t)(uintptr_t)func;
+
+    memcpy(tramp, trampoline_code, sizeof(trampoline_code));
+    memcpy(tramp + 8, &gb, 4);
+    memcpy(tramp + 12, &ta, 4);
+
+    /* Write trampoline into the pre-erased sector */
+    uint32_t write_offset = runtime_tramp_sector + runtime_tramp_used;
+
+    ret = flash_write_aligned(fa, write_offset, tramp, TRAMPOLINE_SIZE);
+    flash_area_close(fa);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to write runtime trampoline: %d", ret);
+        return NULL;
+    }
+
+    uintptr_t tramp_cpu = IFLASH_CPU_ADDR(IFLASH_PARTITION_OFFSET + write_offset);
+
+    runtime_tramp_used += TRAMPOLINE_SIZE;
+
+    sys_cache_instr_invd_all();
+
+    LOG_DBG("Runtime trampoline: func %p -> tramp 0x%08lx (GOT %p)",
+            func, (unsigned long)(tramp_cpu | 1), got_base);
+
+    return (void *)(tramp_cpu | 1); /* Thumb bit set */
+}
+#else
+void *zsw_llext_create_trampoline(void *func)
+{
+    /* Non-ARM: no R9/PIC trampoline needed */
+    return func;
+}
+#endif /* CONFIG_ARM */

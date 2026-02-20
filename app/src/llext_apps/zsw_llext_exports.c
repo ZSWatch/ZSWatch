@@ -323,6 +323,10 @@ EXPORT_SYMBOL(lv_msgbox_close);
 EXPORT_SYMBOL(lv_spinner_create);
 EXPORT_SYMBOL(lv_spinner_set_anim_params);
 
+/* ---- LLEXT runtime trampoline API ---- */
+#include "managers/zsw_llext_iflash.h"
+EXPORT_SYMBOL(zsw_llext_create_trampoline);
+
 /* ---- Kernel work queue (calculator, weather) ---- */
 EXPORT_SYMBOL(k_work_init);
 EXPORT_SYMBOL(k_work_submit);
@@ -330,6 +334,20 @@ EXPORT_SYMBOL(k_work_cancel);
 EXPORT_SYMBOL(k_work_init_delayable);
 EXPORT_SYMBOL(k_work_reschedule);
 EXPORT_SYMBOL(k_work_cancel_delayable);
+
+/* ---- Kernel thread (calculator) ---- */
+EXPORT_SYMBOL(k_thread_create);
+
+/* ---- Kernel message queue (calculator) ---- */
+EXPORT_SYMBOL(k_msgq_init);
+EXPORT_SYMBOL(k_msgq_put);
+EXPORT_SYMBOL(k_msgq_get);
+
+/* ---- Zephyr SMF (calculator) ---- */
+#include <zephyr/smf.h>
+EXPORT_SYMBOL(smf_set_initial);
+EXPORT_SYMBOL(smf_run_state);
+EXPORT_SYMBOL(smf_set_state);
 
 /* ---- C library (calculator, weather, trivia) ---- */
 EXPORT_SYMBOL(strtod);

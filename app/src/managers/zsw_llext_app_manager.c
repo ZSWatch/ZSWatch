@@ -101,7 +101,7 @@ static __always_inline void llext_set_r9(void *got_base)
 #define ZSW_LLEXT_ENTRY_SYMBOL      "app_entry"
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
-#define ZSW_LLEXT_HEAP_SIZE         (30 * 1024)
+#define ZSW_LLEXT_HEAP_SIZE         (36 * 1024)
 
 /* --------------------------------------------------------------------------
  * Types

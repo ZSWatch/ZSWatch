@@ -4,6 +4,26 @@
 */
 #include "calculator_ui.h"
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/kernel.h>
+#include <zephyr/sys/printk.h>
+#include "managers/zsw_llext_iflash.h"
+#include "smf_calculator_thread.h"
+/* LLEXT: redirect Zephyr logging to printk */
+#define LOG_MODULE_REGISTER(...)
+#define LOG_DBG(...)
+#define LOG_INF(fmt, ...)  printk(fmt "\n", ##__VA_ARGS__)
+#define LOG_WRN(fmt, ...)  printk(fmt "\n", ##__VA_ARGS__)
+#define LOG_ERR(fmt, ...)  printk(fmt "\n", ##__VA_ARGS__)
+/* Forward declaration — defined at end of file */
+static void smf_calculator_thread(void *arg1, void *arg2, void *arg3);
+/* Runtime-allocated kernel objects */
+static char __aligned(4) msgq_buf[8 * sizeof(struct calculator_event)];
+static struct k_msgq event_msgq;
+static struct k_thread smf_thread_data;
+static k_thread_stack_t smf_stack_buf[SMF_THREAD_STACK_SIZE] __aligned(8);
+#endif
+
 static void update_display(const char *text)
 {
     calculator_ui_update_display(text);
@@ -11,7 +31,15 @@ static void update_display(const char *text)
 
 void calculator_smf_init(void)
 {
-    /* Thread is automatically started by K_THREAD_DEFINE */
+#ifdef CONFIG_ZSW_LLEXT_APPS
+    k_msgq_init(&event_msgq, msgq_buf, sizeof(struct calculator_event), 8);
+    void *tramp_entry = zsw_llext_create_trampoline((void *)smf_calculator_thread);
+    k_thread_create(&smf_thread_data, smf_stack_buf, sizeof(smf_stack_buf),
+                    (k_thread_entry_t)tramp_entry, NULL, NULL, NULL,
+                    SMF_THREAD_PRIORITY, 0, K_NO_WAIT);
+    printk("calculator: SMF thread created with trampoline\n");
+#endif
+    /* For non-LLEXT build, thread is automatically started by K_THREAD_DEFINE */
 }
 
 void calculator_smf_deinit(void)
@@ -29,14 +57,20 @@ void calculator_smf_deinit(void)
 #include <zephyr/smf.h>
 #include <stdbool.h>
 #include "smf_calculator_thread.h"
+#ifndef CONFIG_ZSW_LLEXT_APPS
 #include <zephyr/logging/log.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 LOG_MODULE_REGISTER(smf_thread, LOG_LEVEL_DBG);
+#endif
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 K_MSGQ_DEFINE(event_msgq, sizeof(struct calculator_event), 8, 1);
+#endif
 
 /* In theory can still overflow. A double can be hundreds of characters long */
 #define RESULT_STRING_LENGTH 64
@@ -743,5 +777,7 @@ static void smf_calculator_thread(void *arg1, void *arg2, void *arg3)
     }
 }
 
+#ifndef CONFIG_ZSW_LLEXT_APPS
 K_THREAD_DEFINE(smf_calculator, SMF_THREAD_STACK_SIZE, smf_calculator_thread, NULL, NULL, NULL,
                 SMF_THREAD_PRIORITY, 0, 0);
+#endif

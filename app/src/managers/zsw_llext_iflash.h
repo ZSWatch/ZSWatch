@@ -70,3 +70,34 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *g
  * Call this when the LLEXT module is unloaded.
  */
 void zsw_llext_iflash_reset(void);
+
+/**
+ * @brief Create an R9-restoring trampoline for a function pointer at runtime.
+ *
+ * LLEXT apps must call this when passing function pointers to firmware APIs
+ * that will store and call them later on a context where R9 is not set
+ * (e.g., k_work_init, k_timer_init, k_thread_create, zbus_chan_add_obs).
+ *
+ * The returned pointer wraps the original function with a small stub that
+ * sets R9 (GOT base) before jumping to the real function, ensuring the
+ * LLEXT app's global variables are accessible when the callback executes.
+ *
+ * Must be called from LLEXT context (R9 must hold the correct GOT base).
+ * The trampoline is allocated in internal flash and persists until
+ * zsw_llext_iflash_reset() is called.
+ *
+ * On non-ARM platforms, returns the function pointer unchanged.
+ *
+ * Example usage from an LLEXT app:
+ * @code
+ * static void my_work_handler(struct k_work *work) { ... }
+ *
+ * // In app_entry() or start_func():
+ * k_work_init(&my_work,
+ *             (k_work_handler_t)zsw_llext_create_trampoline((void *)my_work_handler));
+ * @endcode
+ *
+ * @param func  Original function pointer (may be XIP or iflash address)
+ * @return Trampoline function pointer (internal flash), or NULL on failure
+ */
+void *zsw_llext_create_trampoline(void *func);
