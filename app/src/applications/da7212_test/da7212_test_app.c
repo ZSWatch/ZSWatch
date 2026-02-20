@@ -30,10 +30,11 @@ LOG_MODULE_REGISTER(da7212_test, LOG_LEVEL_INF);
 
 #define I2S_CODEC_TX_NODE DT_ALIAS(i2s_codec_tx)
 
-#define SAMPLE_FREQUENCY    16000
+#define SAMPLE_FREQUENCY    48000
 #define SAMPLE_BIT_WIDTH    16
 #define BYTES_PER_SAMPLE    2
 #define NUMBER_OF_CHANNELS  2
+/* 10ms worth of stereo samples per block */
 #define SAMPLES_PER_BLOCK   (SAMPLE_FREQUENCY / 100 * NUMBER_OF_CHANNELS)
 #define BLOCK_SIZE          (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
 #define BLOCK_COUNT         4
@@ -75,10 +76,16 @@ static const unsigned int sine_pcm_len = sizeof(sine_pcm);
 
 K_MEM_SLAB_DEFINE_STATIC(audio_mem_slab, BLOCK_SIZE, BLOCK_COUNT, 4);
 
+#define STREAM_THREAD_STACK_SIZE 1024
+#define STREAM_THREAD_PRIORITY   10
+
+K_THREAD_STACK_DEFINE(stream_stack, STREAM_THREAD_STACK_SIZE);
+static struct k_thread stream_thread_data;
+static k_tid_t stream_tid;
+
 static const struct device *i2s_dev;
 static const struct device *codec_dev;
-static bool streaming;
-static struct k_work_delayable stream_work;
+static volatile bool streaming;
 
 /**
  * Fill an I2S block buffer with repeated copies of the sine wave PCM data.
@@ -86,7 +93,7 @@ static struct k_work_delayable stream_work;
 static int fill_buf_with_sine(void **buf_out)
 {
     void *buf;
-    int ret = k_mem_slab_alloc(&audio_mem_slab, &buf, K_NO_WAIT);
+    int ret = k_mem_slab_alloc(&audio_mem_slab, &buf, K_FOREVER);
     if (ret < 0) {
         return ret;
     }
@@ -115,38 +122,34 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
-static void stream_work_handler(struct k_work *work)
+/*
+ * Streaming thread: continuously fills the I2S TX queue.
+ * i2s_write() blocks (up to config.timeout ms) when the queue is full,
+ * so this loop self-paces to the hardware consumption rate.
+ */
+static void stream_thread_fn(void *arg1, void *arg2, void *arg3)
 {
-    ARG_UNUSED(work);
+    ARG_UNUSED(arg1); ARG_UNUSED(arg2); ARG_UNUSED(arg3);
 
-    if (!streaming) {
-        return;
-    }
-
-    int ret;
-    void *buf;
-
-    for (int i = 0; i < INITIAL_BLOCKS; i++) {
-        ret = fill_buf_with_sine(&buf);
+    while (streaming) {
+        void *buf;
+        int ret = fill_buf_with_sine(&buf);
         if (ret < 0) {
-            LOG_WRN("No slab buffers available");
+            LOG_ERR("fill_buf_with_sine failed: %d", ret);
             break;
         }
 
         ret = i2s_write(i2s_dev, buf, BLOCK_SIZE);
         if (ret < 0) {
-            LOG_ERR("i2s_write failed: %d", ret);
             k_mem_slab_free(&audio_mem_slab, buf);
-            streaming = false;
-            da7212_test_ui_set_status("Write error!");
-            da7212_test_ui_set_playing(false);
+            if (streaming) {
+                LOG_ERR("i2s_write failed: %d", ret);
+                streaming = false;
+                da7212_test_ui_set_status("Write error!");
+                da7212_test_ui_set_playing(false);
+            }
             return;
         }
-    }
-
-    /* Keep feeding data */
-    if (streaming) {
-        k_work_schedule(&stream_work, K_MSEC(50));
     }
 }
 
@@ -211,8 +214,12 @@ static void start_playback(void)
     da7212_test_ui_set_status("Playing 440 Hz");
     da7212_test_ui_set_playing(true);
 
-    /* Schedule continuous feeding */
-    k_work_schedule(&stream_work, K_MSEC(50));
+    /* Spawn the streaming thread to keep the I2S queue full */
+    stream_tid = k_thread_create(&stream_thread_data, stream_stack,
+                                 K_THREAD_STACK_SIZEOF(stream_stack),
+                                 stream_thread_fn, NULL, NULL, NULL,
+                                 STREAM_THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(stream_tid, "da7212_stream");
 }
 
 static void stop_playback(void)
@@ -220,11 +227,15 @@ static void stop_playback(void)
     LOG_INF("Stopping playback");
     streaming = false;
 
-    k_work_cancel_delayable(&stream_work);
-
+    /* TRIGGER_DROP aborts in-flight DMA and unblocks any pending i2s_write() */
     int ret = i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
     if (ret < 0) {
         LOG_WRN("I2S drop trigger failed: %d", ret);
+    }
+
+    if (stream_tid) {
+        k_thread_join(&stream_thread_data, K_MSEC(500));
+        stream_tid = NULL;
     }
 
     da7212_test_ui_set_status("Stopped");
@@ -246,8 +257,7 @@ static void da7212_test_app_start(lv_obj_t *root, lv_group_t *group)
 
     i2s_dev = DEVICE_DT_GET(I2S_CODEC_TX_NODE);
     codec_dev = DEVICE_DT_GET(DT_NODELABEL(audio_codec));
-
-    k_work_init_delayable(&stream_work, stream_work_handler);
+    stream_tid = NULL;
 
     da7212_test_ui_show(root, on_play_stop);
 
@@ -286,7 +296,10 @@ static void da7212_test_app_start(lv_obj_t *root, lv_group_t *group)
     }
 
     LOG_INF("DA7212 codec configured OK");
-    da7212_test_ui_set_status("Ready - press Play");
+    da7212_test_ui_set_status("Auto-starting...");
+
+    /* Auto-start playback so output can be verified via logs alone */
+    start_playback();
 }
 
 static void da7212_test_app_stop(void)

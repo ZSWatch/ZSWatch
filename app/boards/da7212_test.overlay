@@ -58,7 +58,7 @@
     codec_mclk: codec-mclk {
         compatible = "fixed-clock";
         #clock-cells = <0>;
-        clock-frequency = <4096000>;
+        clock-frequency = <12288000>;
     };
 
     aliases {
