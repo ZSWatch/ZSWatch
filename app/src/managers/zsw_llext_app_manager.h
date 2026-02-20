@@ -48,3 +48,15 @@ int zsw_llext_app_manager_prepare_app_dir(const char *app_id);
  * @return 0 on success, negative errno on failure.
  */
 int zsw_llext_app_manager_remove_app(const char *app_id);
+
+/**
+ * @brief Load an LLEXT app at runtime (hot-load).
+ *
+ * Loads and registers an app from /lvgl_lfs/apps/<app_id>/app.llext
+ * without requiring a reboot. On success, shows a popup notification
+ * indicating the app is installed and ready.
+ *
+ * @param app_id  Filesystem-safe app identifier (directory name).
+ * @return 0 on success, negative errno on failure.
+ */
+int zsw_llext_app_manager_load_app(const char *app_id);

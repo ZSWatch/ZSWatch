@@ -62,6 +62,15 @@ bool app_picker_ui_is_folder_open(void);
  */
 void app_picker_ui_close_folder(void);
 
+/**
+ * @brief Refresh the app picker if currently open.
+ *
+ * Rebuilds the app list and updates the display. Safe to call even
+ * when the picker is not shown (no-op in that case).
+ * Must be called from LVGL thread context.
+ */
+void app_picker_ui_refresh(void);
+
 /*
  * Public event callbacks - these are used by XML-generated UI code
  * and must be accessible externally

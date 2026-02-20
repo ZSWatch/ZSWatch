@@ -11,12 +11,15 @@
 #include <math.h>
 #include <cJSON.h>
 
+#include <zephyr/sys/reboot.h>
+
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
 #include "ble/ble_log_backend.h"
 #include "ble/ble_transport.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
+#include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
 #ifdef CONFIG_ZSW_LLEXT_APPS
@@ -664,8 +667,61 @@ static int parse_log_command(char *data, int len)
     return 0;
 }
 
+// ---------------------------------------------------------------------------
+// SMP (MCUmgr) enable/disable via companion app
+// ---------------------------------------------------------------------------
+// {"t":"smp","status":true}   -> enable SMP + XIP, start auto-disable timer
+// {"t":"smp","status":false}  -> disable SMP + XIP, cancel timer
+
+static int parse_smp_command(char *data, int len)
+{
+    (void)len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse smp command");
+        return -EINVAL;
+    }
+
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+    if (!cJSON_IsBool(status)) {
+        LOG_WRN("smp command missing 'status'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    bool enable = cJSON_IsTrue(status);
+    cJSON_Delete(root);
+
+    int rc;
+    if (enable) {
+        rc = zsw_smp_manager_enable(true);
+    } else {
+        rc = zsw_smp_manager_disable();
+    }
+
+    return rc;
+}
+
+// ---------------------------------------------------------------------------
+// Reset / reboot
+// ---------------------------------------------------------------------------
+// {"t":"reset"}
+static int parse_reset_command(char *data, int len)
+{
+    (void)data;
+    (void)len;
+    LOG_INF("Reboot requested via companion app");
+    /* Short delay to let the BLE response/ACK go out */
+    k_sleep(K_MSEC(500));
+    sys_reboot(SYS_REBOOT_COLD);
+    /* unreachable */
+    return 0;
+}
+
 // {"t":"llext","op":"mkdir","id":"about_ext"}
 // {"t":"llext","op":"rm","id":"about_ext"}
+// {"t":"llext","op":"load","id":"about_ext"}
 #ifdef CONFIG_ZSW_LLEXT_APPS
 static int parse_llext_command(char *data, int len)
 {
@@ -694,6 +750,8 @@ static int parse_llext_command(char *data, int len)
         ret = zsw_llext_app_manager_prepare_app_dir(app_id);
     } else if (strcmp(op, "rm") == 0) {
         ret = zsw_llext_app_manager_remove_app(app_id);
+    } else if (strcmp(op, "load") == 0) {
+        ret = zsw_llext_app_manager_load_app(app_id);
     } else {
         LOG_WRN("llext: unknown op '%s'", op);
         ret = -EINVAL;
@@ -767,6 +825,14 @@ static int parse_data(char *data, int len)
 #else
         return -ENOTSUP;
 #endif
+    }
+
+    if (strlen("smp") == type_len && strncmp(type, "smp", type_len) == 0) {
+        return parse_smp_command(data, len);
+    }
+
+    if (strlen("reset") == type_len && strncmp(type, "reset", type_len) == 0) {
+        return parse_reset_command(data, len);
     }
 
     return 0;
