@@ -17,12 +17,16 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 int _zsw_xip_enable(const char *requester);
 int _zsw_xip_disable(const char *requester);
+bool _zsw_xip_is_enabled(void);
 
 #ifdef CONFIG_ZSW_XIP
 #define zsw_xip_enable() _zsw_xip_enable(__FUNCTION__)
 #define zsw_xip_disable() _zsw_xip_disable(__FUNCTION__)
+#define zsw_xip_is_enabled() _zsw_xip_is_enabled()
 #else
 #define zsw_xip_enable() (0)
 #define zsw_xip_disable() (0)

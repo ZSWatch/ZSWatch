@@ -44,10 +44,13 @@ LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
 #define SETTING_BATTERY_HIST    "battery/hist"
 #define SAMPLE_INTERVAL_MIN     15
 #define SAMPLE_INTERVAL_MS      (SAMPLE_INTERVAL_MIN * 60 * 1000)
-#define SAMPLE_INTERVAL_TICKS   ((int64_t)SAMPLE_INTERVAL_MS * CONFIG_SYS_CLOCK_TICKS_PER_SEC / 1000)
+#define SAMPLE_INTERVAL_TICKS   k_ms_to_ticks_ceil64(SAMPLE_INTERVAL_MS)
 #define MAX_SAMPLES             (7 * 24 * (60 / SAMPLE_INTERVAL_MIN)) // One week of 15 minute samples
 
-
+/* Use z_impl_k_uptime_ticks() directly instead of k_uptime_get().
+* k_uptime_get() is an inline wrapper that -fPIC can compile into
+* an out-of-line GOT-indirect call to XIP .text. */
+extern int64_t z_impl_k_uptime_ticks(void);
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
 static void battery_app_stop(void *user_data);
@@ -57,20 +60,10 @@ static int decompress_voltage_from_byte(uint8_t voltage_byte);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
-static void zbus_battery_callback(const struct zbus_channel *chan);
+static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 
-static struct zbus_observer_data battery_obs_data = {
-    .enabled = true,
-};
-
-static struct zbus_observer battery_ble_listener = {
-#if defined(CONFIG_ZBUS_OBSERVER_NAME)
-    .name = "bat_lis",
-#endif
-    .type = ZBUS_OBSERVER_LISTENER_TYPE,
-    .data = &battery_obs_data,
-    .callback = zbus_battery_callback,
-};
+static struct zbus_observer_data battery_app_obs_data = { .enabled = true };
+static struct zbus_observer battery_app_battery_event;
 
 static int64_t last_battery_sample_ticks;
 
@@ -130,20 +123,17 @@ static void battery_app_stop(void *user_data)
 }
 
 LLEXT_IFLASH
-static void zbus_battery_callback(const struct zbus_channel *chan)
+static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 {
-    /* Use direct struct member access instead of zbus_chan_const_msg().
-     * zbus_chan_const_msg() is static-inline in the header but -fPIC can
-     * emit an out-of-line copy in XIP .text, which is unreachable from
-     * IFLASH when XIP is disabled. */
     const struct battery_sample_event *event =
         (const struct battery_sample_event *)chan->message;
 
-    /* Use z_impl_k_uptime_ticks() directly instead of k_uptime_get().
-     * k_uptime_get() is an inline wrapper that -fPIC can compile into
-     * an out-of-line GOT-indirect call to XIP .text. */
-    extern int64_t z_impl_k_uptime_ticks(void);
+
     int64_t now_ticks = z_impl_k_uptime_ticks();
+
+    LOG_WRN("Battery event: %d mV, %d%%, ttf=%d, tte=%d, status=%d, error=%d, is_charging=%d",
+            event->mV, event->percent, event->ttf, event->tte,
+            event->status, event->error, event->is_charging);
 
     if ((now_ticks - last_battery_sample_ticks) >= SAMPLE_INTERVAL_TICKS) {
         zsw_battery_sample_t sample;
@@ -207,12 +197,6 @@ static int decompress_voltage_from_byte(uint8_t voltage_byte)
 
 static int battery_app_add(void)
 {
-    int ret = zbus_chan_add_obs(&battery_sample_data_chan,
-                                &battery_ble_listener, K_MSEC(100));
-    if (ret != 0) {
-        LOG_ERR("Failed to add zbus observer: %d", ret);
-    }
-
     zsw_app_manager_add_application(&app);
 
     if (settings_subsys_init()) {
@@ -233,6 +217,12 @@ static int battery_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
+    battery_app_battery_event.name = "battery_app_bat_lis";
+    battery_app_battery_event.type = ZBUS_OBSERVER_LISTENER_TYPE;
+    battery_app_battery_event.data = &battery_app_obs_data;
+    battery_app_battery_event.callback = zsw_llext_create_trampoline((void *)zbus_battery_sample_data_callback);
+    zbus_chan_add_obs(&battery_sample_data_chan, &battery_app_battery_event, K_MSEC(100));
+
     battery_app_add();
     return &app;
 }

@@ -85,13 +85,6 @@ static __always_inline void llext_set_r9(void *got_base)
 #define LLEXT_CALL_VOID(got, fn) do { (void)(got); (fn)(); } while (0)
 #endif
 
-/* Set to the name of the LLEXT app to auto-open at boot for debugging.
- * Set to NULL (or comment out) to disable. */
-//#define ZSW_LLEXT_AUTO_OPEN_APP  "Trivia"
-#ifdef ZSW_LLEXT_AUTO_OPEN_APP
-#define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
-#endif
-
 /* --------------------------------------------------------------------------
  * Configuration
  * -------------------------------------------------------------------------- */
@@ -139,13 +132,9 @@ static int num_llext_apps;
 static zsw_llext_app_t *active_llext_app;
 
 /* Heap buffer for LLEXT dynamic allocations */
+// TODO: Might change this for a common heap
 static uint8_t llext_heap_buf[ZSW_LLEXT_HEAP_SIZE] __aligned(8);
 static bool heap_initialized;
-
-#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
-static void auto_open_work_handler(struct k_work *work);
-static K_WORK_DELAYABLE_DEFINE(auto_open_work, auto_open_work_handler);
-#endif
 
 static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
 static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
@@ -486,52 +475,8 @@ int zsw_llext_app_manager_init(void)
 
     LOG_INF("LLEXT discovery complete: %d app(s) found", num_llext_apps);
 
-#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
-    /* Schedule auto-open for debugging */
-    for (int i = 0; i < num_llext_apps; i++) {
-        if (llext_apps[i].real_app &&
-            strcmp(llext_apps[i].real_app->name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
-            LOG_INF("Auto-open '%s' scheduled in %d ms",
-                    ZSW_LLEXT_AUTO_OPEN_APP, ZSW_LLEXT_AUTO_OPEN_DELAY_MS);
-            k_work_schedule(&auto_open_work, K_MSEC(ZSW_LLEXT_AUTO_OPEN_DELAY_MS));
-            break;
-        }
-    }
-#endif
-
     return 0;
 }
-
-/* --------------------------------------------------------------------------
- * Debug: Auto-Open App at Boot
- * -------------------------------------------------------------------------- */
-
-#if defined(ZSW_LLEXT_AUTO_OPEN_APP)
-static void auto_open_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-
-    for (int i = 0; i < num_llext_apps; i++) {
-        if (llext_apps[i].real_app &&
-            strcmp(llext_apps[i].real_app->name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
-            zsw_llext_app_t *la = &llext_apps[i];
-
-            if (!la->loaded || !la->real_app) {
-                LOG_WRN("Auto-open: '%s' not loaded", ZSW_LLEXT_AUTO_OPEN_APP);
-                return;
-            }
-            LOG_INF("Auto-opening LLEXT app '%s'", ZSW_LLEXT_AUTO_OPEN_APP);
-            lv_obj_t *root = lv_obj_create(lv_screen_active());
-
-            lv_obj_set_size(root, LV_PCT(100), LV_PCT(100));
-            /* Call the wrapped start (sets R9 and active_llext_app) */
-            la->real_app->start_func(root, NULL, la->real_app->user_data);
-            return;
-        }
-    }
-    LOG_WRN("Auto-open: app '%s' not found", ZSW_LLEXT_AUTO_OPEN_APP);
-}
-#endif
 
 static int zsw_llext_app_manager_sys_init(void)
 {
