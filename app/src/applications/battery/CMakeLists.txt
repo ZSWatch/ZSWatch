@@ -1,12 +1,22 @@
 # Copyright (c) 2025 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
-# battery_ui.c/h live in the LLEXT app directory (shared with battery_real_ext).
-set(BATTERY_UI_DIR ${CMAKE_SOURCE_DIR}/src/llext_apps/battery_real_ext)
-
-FILE(GLOB app_sources *.c)
-target_sources(app PRIVATE ${app_sources} ${BATTERY_UI_DIR}/battery_ui.c)
-target_include_directories(app PRIVATE ${BATTERY_UI_DIR})
-
-# Export UI files for relocation to external flash (save internal flash)
-set(RELOCATE_FILES ${RELOCATE_FILES} ${BATTERY_UI_DIR}/battery_ui.c PARENT_SCOPE)
+if(CONFIG_ZSW_LLEXT_APPS)
+    add_zsw_llext_app(battery_ext
+        SOURCES
+            ${CMAKE_CURRENT_SOURCE_DIR}/battery_app.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/battery_ui.c
+        EXTRA_INCLUDES
+            ${CMAKE_SOURCE_DIR}/src/applications
+            ${CMAKE_SOURCE_DIR}/src/ui
+            ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+else()
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/battery_app.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/battery_ui.c
+    )
+    set(RELOCATE_FILES ${RELOCATE_FILES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/battery_ui.c
+        PARENT_SCOPE)
+endif()

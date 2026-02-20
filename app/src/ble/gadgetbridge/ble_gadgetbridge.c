@@ -19,7 +19,9 @@
 #include "events/music_event.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+#ifdef CONFIG_ZSW_LLEXT_APPS
 #include "managers/zsw_llext_app_manager.h"
+#endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -664,6 +666,7 @@ static int parse_log_command(char *data, int len)
 
 // {"t":"llext","op":"mkdir","id":"about_ext"}
 // {"t":"llext","op":"rm","id":"about_ext"}
+#ifdef CONFIG_ZSW_LLEXT_APPS
 static int parse_llext_command(char *data, int len)
 {
     (void)len;
@@ -699,6 +702,7 @@ static int parse_llext_command(char *data, int len)
     cJSON_Delete(root);
     return ret;
 }
+#endif
 
 static int parse_data(char *data, int len)
 {
@@ -758,7 +762,11 @@ static int parse_data(char *data, int len)
     }
 
     if (strlen("llext") == type_len && strncmp(type, "llext", type_len) == 0) {
+#ifdef CONFIG_ZSW_LLEXT_APPS
         return parse_llext_command(data, len);
+#else
+        return -ENOTSUP;
+#endif
     }
 
     return 0;

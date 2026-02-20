@@ -57,10 +57,11 @@ int zsw_llext_iflash_init(void);
  *
  * @param ext            Loaded LLEXT extension
  * @param text_base_vma  Original ELF VMA of the TEXT region start
+ * @param got_base       GOT base address for this LLEXT (used for R9 trampolines)
  * @return 0 on success (also 0 if no .text.iflash sections found),
  *         negative errno on failure
  */
-int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma);
+int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *got_base);
 
 /**
  * @brief Reset the internal flash allocator.

@@ -232,3 +232,4 @@ void calculator_ui_update_display(const char *text)
     // LVGL has to be called from system workqueue
     k_work_submit(&display_update_work);
 }
+

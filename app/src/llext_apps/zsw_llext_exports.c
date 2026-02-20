@@ -38,6 +38,7 @@
 #include "events/music_event.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "history/zsw_history.h"
+#include "filesystem/zsw_filesystem.h"
 
 #include <zephyr/settings/settings.h>
 
@@ -87,6 +88,13 @@ EXPORT_SYMBOL(lv_obj_set_style_text_font);
 EXPORT_SYMBOL(lv_obj_set_style_text_color);
 EXPORT_SYMBOL(lv_obj_set_style_text_align);
 EXPORT_SYMBOL(lv_obj_set_style_text_opa);
+
+/* ---- LVGL fonts ---- */
+EXPORT_SYMBOL(lv_font_montserrat_10);
+EXPORT_SYMBOL(lv_font_montserrat_12);
+EXPORT_SYMBOL(lv_font_montserrat_16);
+EXPORT_SYMBOL(lv_font_montserrat_18);
+
 EXPORT_SYMBOL(lv_obj_set_style_pad_left);
 EXPORT_SYMBOL(lv_obj_set_style_pad_right);
 EXPORT_SYMBOL(lv_obj_set_style_pad_top);
@@ -205,6 +213,10 @@ EXPORT_SYMBOL(music_control_data_chan);
 /* ---- ZSWatch UI utils ---- */
 EXPORT_SYMBOL(zsw_ui_utils_seconds_to_day_hour_min);
 
+/* ---- ZSWatch filesystem (about app) ---- */
+EXPORT_SYMBOL(zsw_filesytem_get_total_size);
+EXPORT_SYMBOL(zsw_filesytem_get_num_rawfs_files);
+
 /* ---- ZSWatch PMIC (conditional) ---- */
 #if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
 EXPORT_SYMBOL(zsw_pmic_charger_status_str);
@@ -319,21 +331,6 @@ EXPORT_SYMBOL(k_work_init_delayable);
 EXPORT_SYMBOL(k_work_reschedule);
 EXPORT_SYMBOL(k_work_cancel_delayable);
 
-/* ---- Kernel msgq (calculator) ---- */
-EXPORT_SYMBOL(k_msgq_init);
-EXPORT_SYMBOL(k_msgq_put);
-EXPORT_SYMBOL(k_msgq_get);
-
-/* ---- Kernel thread (calculator) ---- */
-EXPORT_SYMBOL(k_thread_create);
-EXPORT_SYMBOL(k_thread_join);
-
-/* ---- SMF state machine (calculator) ---- */
-#include <zephyr/smf.h>
-EXPORT_SYMBOL(smf_set_initial);
-EXPORT_SYMBOL(smf_run_state);
-EXPORT_SYMBOL(smf_set_state);
-
 /* ---- C library (calculator, weather, trivia) ---- */
 EXPORT_SYMBOL(strtod);
 EXPORT_SYMBOL(snprintf);
@@ -410,3 +407,6 @@ EXPORT_SYMBOL(__aeabi_fcmpgt);
 EXPORT_SYMBOL(__aeabi_ul2d);
 EXPORT_SYMBOL(__aeabi_l2d);
 EXPORT_SYMBOL(__aeabi_i2f);
+
+extern unsigned int __aeabi_d2uiz(double);
+EXPORT_SYMBOL(__aeabi_d2uiz);

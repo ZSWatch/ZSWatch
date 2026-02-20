@@ -61,6 +61,26 @@ LOG_MODULE_REGISTER(llext_iflash, CONFIG_ZSW_LLEXT_XIP_LOG_LEVEL);
 /** Section name for functions that must survive XIP-off */
 #define IFLASH_SECTION_NAME        ".text.iflash"
 
+#ifdef CONFIG_ARM
+/**
+ * ARM Thumb2 R9-restoring trampoline (16 bytes).
+ * Sets R9 to the LLEXT's GOT base before jumping to the real iflash function.
+ * This allows iflash callbacks (e.g. zbus listeners) to run correctly on
+ * threads that don't have R9 set (sysworkq, timer ISR, etc.).
+ *
+ * Layout:
+ *   +0: ldr r9, [pc, #4]   ; 0xF8DF 0x9004 — load GOT base from +8
+ *   +4: ldr pc, [pc, #4]   ; 0xF8DF 0xF004 — load target from +12 & branch
+ *   +8: .word GOT_BASE
+ *  +12: .word TARGET_ADDR  ; with thumb bit set
+ */
+#define TRAMPOLINE_SIZE  16
+static const uint8_t trampoline_code[8] = {
+    0xDF, 0xF8, 0x04, 0x90,   /* ldr r9, [pc, #4] (little-endian Thumb2) */
+    0xDF, 0xF8, 0x04, 0xF0,   /* ldr pc, [pc, #4] (little-endian Thumb2) */
+};
+#endif /* CONFIG_ARM */
+
 /* --------------------------------------------------------------------------
  * Linear Allocator
  * -------------------------------------------------------------------------- */
@@ -138,7 +158,7 @@ static int flash_write_aligned(const struct flash_area *fa, uint32_t offset,
     return ret;
 }
 
-int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma)
+int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *got_base)
 {
     const struct flash_area *fa;
     int ret;
@@ -244,6 +264,90 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma)
                 (void *)data, data_size, data_entries,
                 (unsigned long)xip_addr, (unsigned long)(xip_addr + sect_size));
 
+#ifdef CONFIG_ARM
+        /* Count how many DATA entries need trampolines */
+        int num_tramps = 0;
+
+        for (size_t d = 0; d < data_entries; d++) {
+            uintptr_t addr = data[d] & ~1UL;
+
+            if (addr >= xip_addr && addr < xip_addr + sect_size) {
+                num_tramps++;
+            }
+        }
+
+        if (num_tramps > 0) {
+            /* Allocate iflash space for trampolines (after the code) */
+            uint32_t tramp_total = ROUND_UP(num_tramps * TRAMPOLINE_SIZE, 4);
+            uint32_t tramp_aligned = SECTOR_ALIGN(tramp_total);
+
+            if (iflash_next_offset + tramp_aligned > iflash_partition_size) {
+                LOG_ERR("Internal flash: not enough space for %d trampolines",
+                        num_tramps);
+                return -ENOMEM;
+            }
+
+            /* Open partition, erase trampoline sectors, write trampolines */
+            ret = flash_area_open(IFLASH_PARTITION_ID, &fa);
+            if (ret < 0) {
+                LOG_ERR("Failed to open flash for trampolines: %d", ret);
+                return ret;
+            }
+
+            ret = flash_area_erase(fa, iflash_next_offset, tramp_aligned);
+            if (ret < 0) {
+                LOG_ERR("Trampoline erase failed: %d", ret);
+                flash_area_close(fa);
+                return ret;
+            }
+
+            /* Generate R9-restoring trampolines and patch DATA entries */
+            int tramp_idx = 0;
+
+            for (size_t d = 0; d < data_entries; d++) {
+                uintptr_t addr = data[d] & ~1UL;
+
+                if (addr >= xip_addr && addr < xip_addr + sect_size) {
+                    uintptr_t old_val = data[d];
+                    uintptr_t thumb_bit = old_val & 1UL;
+                    uintptr_t iflash_func = iflash_addr + (addr - xip_addr) + thumb_bit;
+
+                    /* Build trampoline: code + GOT base + target */
+                    uint32_t tramp_off = iflash_next_offset +
+                                         tramp_idx * TRAMPOLINE_SIZE;
+                    uintptr_t tramp_cpu = IFLASH_CPU_ADDR(
+                        IFLASH_PARTITION_OFFSET + tramp_off);
+                    uint8_t tramp[TRAMPOLINE_SIZE];
+                    uint32_t gb = (uint32_t)(uintptr_t)got_base;
+                    uint32_t ta = (uint32_t)iflash_func;
+
+                    memcpy(tramp, trampoline_code, sizeof(trampoline_code));
+                    memcpy(tramp + 8, &gb, 4);
+                    memcpy(tramp + 12, &ta, 4);
+
+                    ret = flash_write_aligned(fa, tramp_off,
+                                              tramp, TRAMPOLINE_SIZE);
+                    if (ret < 0) {
+                        LOG_ERR("Trampoline write failed: %d", ret);
+                        flash_area_close(fa);
+                        return ret;
+                    }
+
+                    data[d] = tramp_cpu | 1; /* Thumb bit */
+                    patched++;
+                    tramp_idx++;
+                    LOG_DBG("DATA[%zu]: 0x%08lx -> tramp 0x%08lx -> func 0x%08lx",
+                            d, (unsigned long)old_val,
+                            (unsigned long)(tramp_cpu | 1),
+                            (unsigned long)iflash_func);
+                }
+            }
+
+            flash_area_close(fa);
+            iflash_next_offset += tramp_aligned;
+        }
+#else
+        /* Non-ARM: direct remapping (no R9 needed) */
         for (size_t d = 0; d < data_entries; d++) {
             /* Clear Thumb bit for address comparison */
             uintptr_t addr = data[d] & ~1UL;
@@ -259,6 +363,7 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma)
                         (unsigned long)old_val, (unsigned long)new_val);
             }
         }
+#endif /* CONFIG_ARM */
 
         LOG_INF("Patched %d DATA entries for %s", patched, IFLASH_SECTION_NAME);
     }

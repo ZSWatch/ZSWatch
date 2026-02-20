@@ -195,6 +195,28 @@ Zephyr's `LOG_MODULE_REGISTER()` macro uses `STRUCT_SECTION_ITERABLE` which
 relies on linker sections not available in dynamically loaded code. Use
 `printk()` for debug output instead.
 
+### No spawning kernel threads
+LLEXT apps **cannot create new kernel threads** (`k_thread_create()`). The
+LLEXT code is compiled as PIC (position-independent code) using R9 as the GOT
+(Global Offset Table) base register. All global variable accesses go through
+the GOT, so R9 must be set correctly.
+
+When `k_thread_create()` spawns a new thread, the thread starts with a fresh
+register context where R9 = 0. The thread entry function — which is LLEXT
+code — immediately tries to access globals via R9, causing a BUS FAULT
+(dereferencing address `0 + GOT_offset`).
+
+This is a chicken-and-egg problem: to restore R9, the thread entry would need
+to read `saved_got_base` from the GOT, but reading the GOT requires R9 to
+already be set. Inline assembly to set R9 also fails because the compiler
+rejects modifying the PIC register in PIC-compiled code
+(`"PIC register clobbered by 'r9' in 'asm'"`).
+
+**Workaround**: If your app needs background processing, use `k_work_submit()`
+or `k_work_schedule()` to run work items on the system workqueue. These execute
+in the system workqueue thread context where R9 is not relevant (the work
+handler is called via a function pointer the kernel already resolved).
+
 ### Symbol export requirement
 Every firmware function or global variable called by an LLEXT app must be
 explicitly listed in `zsw_llext_exports.c` with `EXPORT_SYMBOL()`. Missing

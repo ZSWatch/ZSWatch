@@ -26,7 +26,12 @@
 #include "sensor_fusion/zsw_sensor_fusion.h"
 #include "ui/utils/zsw_ui_utils.h"
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/llext/symbol.h>
+#else
 LOG_MODULE_REGISTER(compass_app, LOG_LEVEL_DBG);
+ZSW_LV_IMG_DECLARE(move);
+#endif
 
 // Functions needed for all applications
 static void compass_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
@@ -36,11 +41,13 @@ static void compass_app_stop(void *user_data);
 static void timer_callback(lv_timer_t *timer);
 static void on_start_calibration(void);
 
-ZSW_LV_IMG_DECLARE(move);
-
 static application_t app = {
     .name = "Compass",
+#ifdef CONFIG_ZSW_LLEXT_APPS
+    /* icon set at runtime in app_entry() — PIC linker drops static relocation */
+#else
     .icon = ZSW_LV_IMG_USE(move),
+#endif
     .start_func = compass_app_start,
     .stop_func = compass_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT,
@@ -97,7 +104,16 @@ static void timer_callback(lv_timer_t *timer)
     }
 }
 
-#ifndef CONFIG_ZSW_LLEXT_APPS
+#ifdef CONFIG_ZSW_LLEXT_APPS
+application_t *app_entry(void)
+{
+    /* Set icon at runtime — static relocation is lost by the PIC linker */
+    app.icon = "S:move.bin";
+    zsw_app_manager_add_application(&app);
+    return &app;
+}
+EXPORT_SYMBOL(app_entry);
+#else
 static int compass_app_add(void)
 {
     zsw_app_manager_add_application(&app);

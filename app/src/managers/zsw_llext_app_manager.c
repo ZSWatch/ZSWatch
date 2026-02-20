@@ -17,21 +17,20 @@
 
 /**
  * @file zsw_llext_app_manager.c
- * @brief LLEXT app manager with deferred (on-demand) loading.
+ * @brief LLEXT app manager — loads all extensions at boot.
  *
  * At boot, the filesystem is scanned for LLEXT app directories. Each app
- * directory must contain an app.llext file. A lightweight proxy application_t
- * is registered with the app manager for each discovered app. The actual
- * LLEXT shared library is NOT loaded at boot.
+ * directory must contain an app.llext file. Each LLEXT is loaded and its
+ * app_entry() is called — mirroring the SYS_INIT pattern used by built-in
+ * apps. app_entry() performs initialization (settings, zbus observers, etc.)
+ * and self-registers with the app manager via zsw_app_manager_add_application().
  *
- * When the user opens an LLEXT app, the proxy's start_func loads the ELF from
- * the filesystem, calls the extension's app_entry to obtain the real
- * application_t, and then invokes the real start_func. When the user closes
- * the app, the proxy's stop_func calls the real stop_func and then unloads
- * the entire LLEXT, freeing all heap memory.
+ * After app_entry() returns, the manager wraps the registered application_t's
+ * function pointers with R9-aware trampolines so the GOT base is set
+ * correctly before any LLEXT code executes.
  *
- * This ensures only ONE LLEXT is loaded at a time, keeping heap usage minimal.
- * The 45 KB LLEXT heap is sufficient for any single extension.
+ * LLEXTs remain loaded for the lifetime of the system — there is no unload
+ * on app-close. This matches the lifecycle of built-in SYS_INIT apps.
  */
 
 #include <zephyr/kernel.h>
@@ -87,7 +86,7 @@ static __always_inline void llext_set_r9(void *got_base)
 
 /* Set to the name of the LLEXT app to auto-open at boot for debugging.
  * Set to NULL (or comment out) to disable. */
-//#define ZSW_LLEXT_AUTO_OPEN_APP  "weather_ext"
+// #define ZSW_LLEXT_AUTO_OPEN_APP  "calculator_ext"
 #ifdef ZSW_LLEXT_AUTO_OPEN_APP
 #define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
 #endif
@@ -102,7 +101,7 @@ static __always_inline void llext_set_r9(void *got_base)
 #define ZSW_LLEXT_ENTRY_SYMBOL      "app_entry"
 #define ZSW_LLEXT_MAX_PATH_LEN      80
 #define ZSW_LLEXT_MAX_NAME_LEN      32
-#define ZSW_LLEXT_HEAP_SIZE         (10 * 1024)
+#define ZSW_LLEXT_HEAP_SIZE         (30 * 1024)
 
 /* --------------------------------------------------------------------------
  * Types
@@ -114,16 +113,18 @@ typedef struct {
     char name[ZSW_LLEXT_MAX_NAME_LEN];
     char dir_path[ZSW_LLEXT_MAX_PATH_LEN];
 
-    /* Proxy app registered with the main app manager at discovery time.
-     * Its start/stop functions are trampolines that trigger deferred loading.
-     */
-    application_t proxy_app;
-
-    /* Runtime state — populated when the LLEXT is actually loaded */
+    /* Runtime state — populated when the LLEXT is loaded at boot */
     struct llext *ext;
-    application_t *real_app;  /* Points into LLEXT memory, valid only while loaded */
+    application_t *real_app;  /* Points into LLEXT .data, valid for lifetime */
     void *got_base;           /* GOT base address — loaded into R9 before calling LLEXT */
     bool loaded;
+
+    /* Original function pointers from the real app — saved before wrapping */
+    void (*orig_start_func)(lv_obj_t *, lv_group_t *, void *);
+    void (*orig_stop_func)(void *);
+    bool (*orig_back_func)(void);
+    void (*orig_ui_unavailable_func)(void);
+    void (*orig_ui_available_func)(void);
 } zsw_llext_app_t;
 
 /* --------------------------------------------------------------------------
@@ -167,29 +168,22 @@ static void llext_activity_state_cb(const struct zbus_channel *chan)
         if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_HIDDEN) {
             active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
             LOG_INF("LLEXT '%s' UI -> visible", active_llext_app->name);
-            if (active_llext_app->real_app->ui_available_func) {
+            if (active_llext_app->orig_ui_available_func) {
                 LLEXT_CALL_VOID(active_llext_app->got_base,
-                                active_llext_app->real_app->ui_available_func);
+                                active_llext_app->orig_ui_available_func);
             }
         }
     } else {
         if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_VISIBLE) {
             active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
             LOG_INF("LLEXT '%s' UI -> hidden", active_llext_app->name);
-            if (active_llext_app->real_app->ui_unavailable_func) {
+            if (active_llext_app->orig_ui_unavailable_func) {
                 LLEXT_CALL_VOID(active_llext_app->got_base,
-                                active_llext_app->real_app->ui_unavailable_func);
+                                active_llext_app->orig_ui_unavailable_func);
             }
         }
     }
 }
-
-/* --------------------------------------------------------------------------
- * Forward Declarations
- * -------------------------------------------------------------------------- */
-
-static void proxy_start_common(zsw_llext_app_t *la, lv_obj_t *root, lv_group_t *group);
-static void proxy_stop_common(zsw_llext_app_t *la);
 
 /* --------------------------------------------------------------------------
  * Heap Management
@@ -214,198 +208,100 @@ static int ensure_heap_init(void)
 }
 
 /* --------------------------------------------------------------------------
- * Active App Callbacks (shared by all proxies — only one LLEXT is active)
+ * R9-Aware Wrapper Functions
+ * --------------------------------------------------------------------------
+ * These replace the real app's function pointers after app_entry() so that
+ * R9 (GOT base) is set correctly before LLEXT code executes.
+ *
+ * start_func / stop_func receive user_data which carries the zsw_llext_app_t*.
+ * back_func / ui_*_func take no arguments — they use active_llext_app which
+ * is valid because these are only called on the currently running app.
  * -------------------------------------------------------------------------- */
 
-static bool llext_proxy_back(void)
+static void llext_wrapped_start(lv_obj_t *root, lv_group_t *group, void *user_data)
 {
-    if (active_llext_app && active_llext_app->real_app &&
-        active_llext_app->real_app->back_func) {
+    zsw_llext_app_t *la = (zsw_llext_app_t *)user_data;
+
+    active_llext_app = la;
+    la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
+    LLEXT_CALL_START(la->got_base, la->orig_start_func, root, group);
+}
+
+static void llext_wrapped_stop(void *user_data)
+{
+    zsw_llext_app_t *la = (zsw_llext_app_t *)user_data;
+
+    if (la->orig_stop_func) {
+        LLEXT_CALL_STOP(la->got_base, la->orig_stop_func);
+    }
+
+    if (active_llext_app == la) {
+        active_llext_app = NULL;
+    }
+}
+
+static bool llext_wrapped_back(void)
+{
+    if (active_llext_app && active_llext_app->orig_back_func) {
         bool consumed;
 
         LLEXT_CALL_BACK(active_llext_app->got_base,
-                        active_llext_app->real_app->back_func, consumed);
+                        active_llext_app->orig_back_func, consumed);
         return consumed;
     }
     return false;
 }
 
-static void llext_proxy_ui_unavailable(void)
+static void llext_wrapped_ui_unavailable(void)
 {
     if (active_llext_app && active_llext_app->real_app) {
-        /* Sync state to the real app struct so the LLEXT's own state check
-         * (e.g., app.current_state != UI_VISIBLE) works correctly. */
         active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
 
-        if (active_llext_app->real_app->ui_unavailable_func) {
+        if (active_llext_app->orig_ui_unavailable_func) {
             LLEXT_CALL_VOID(active_llext_app->got_base,
-                            active_llext_app->real_app->ui_unavailable_func);
+                            active_llext_app->orig_ui_unavailable_func);
         }
     }
 }
 
-static void llext_proxy_ui_available(void)
+static void llext_wrapped_ui_available(void)
 {
     if (active_llext_app && active_llext_app->real_app) {
         active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
 
-        if (active_llext_app->real_app->ui_available_func) {
+        if (active_llext_app->orig_ui_available_func) {
             LLEXT_CALL_VOID(active_llext_app->got_base,
-                            active_llext_app->real_app->ui_available_func);
+                            active_llext_app->orig_ui_available_func);
         }
     }
 }
 
 /* --------------------------------------------------------------------------
- * Deferred Load / Unload
+ * Wrap an application_t's function pointers with R9-aware trampolines
  * -------------------------------------------------------------------------- */
 
-static void proxy_start_common(zsw_llext_app_t *la, lv_obj_t *root, lv_group_t *group)
+static void wrap_app_functions(zsw_llext_app_t *la)
 {
-    int ret;
+    application_t *app = la->real_app;
 
-    if (la->loaded && la->real_app) {
-        LOG_INF("LLEXT '%s' already loaded, calling start_func", la->name);
-        active_llext_app = la;
-        la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-        LLEXT_CALL_START(la->got_base, la->real_app->start_func, root, group);
-        return;
-    }
+    /* Save originals */
+    la->orig_start_func = app->start_func;
+    la->orig_stop_func = app->stop_func;
+    la->orig_back_func = app->back_func;
+    la->orig_ui_unavailable_func = app->ui_unavailable_func;
+    la->orig_ui_available_func = app->ui_available_func;
 
-    LOG_INF("Loading LLEXT '%s' from %s", la->name, la->dir_path);
-
-    ret = ensure_heap_init();
-    if (ret != 0) {
-        LOG_ERR("Heap init failed: %d", ret);
-        return;
-    }
-
-    /* Load the ELF from filesystem, streaming .text/.rodata directly to XIP flash */
-    char elf_path[ZSW_LLEXT_MAX_PATH_LEN];
-
-    snprintk(elf_path, sizeof(elf_path), "%s/%s", la->dir_path, ZSW_LLEXT_ELF_NAME);
-
-    struct llext_fs_loader fs_loader = LLEXT_FS_LOADER(elf_path);
-    struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
-    struct zsw_llext_xip_context xip_ctx = {0};
-
-    ldr_parm.pre_copy_hook = zsw_llext_xip_pre_copy_hook;
-    ldr_parm.pre_copy_hook_user_data = &xip_ctx;
-
-    ret = llext_load(&fs_loader.loader, la->name, &la->ext, &ldr_parm);
-    if (ret != 0) {
-        LOG_ERR("llext_load failed for '%s': %d", la->name, ret);
-        zsw_llext_xip_reset();
-        return;
-    }
-
-    /* Compute GOT base address for R9 register (ARM -msingle-pic-base) */
-    if (xip_ctx.got_found && la->ext->mem[LLEXT_MEM_DATA] != NULL) {
-        la->got_base = (uint8_t *)la->ext->mem[LLEXT_MEM_DATA] + xip_ctx.got_offset;
-        LOG_DBG("GOT base = %p (DATA %p + offset %zu)",
-                la->got_base, la->ext->mem[LLEXT_MEM_DATA], xip_ctx.got_offset);
-    } else {
-        LOG_WRN("No .got found — R9 will be NULL (non-PIC or no GOT)");
-        la->got_base = NULL;
-    }
-
-    LOG_DBG("LLEXT '%s' loaded, finding entry '%s'", la->name, ZSW_LLEXT_ENTRY_SYMBOL);
-
-    /* Find and call the extension's app_entry to get the application_t */
-    llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, ZSW_LLEXT_ENTRY_SYMBOL);
-
-    if (entry_fn == NULL) {
-        LOG_ERR("Entry symbol '%s' not found in LLEXT '%s'", ZSW_LLEXT_ENTRY_SYMBOL, la->name);
-        llext_unload(&la->ext);
-        la->ext = NULL;
-        zsw_llext_xip_reset();
-        return;
-    }
-
-    LLEXT_CALL_ENTRY(la->got_base, entry_fn, la->real_app);
-    if (la->real_app == NULL) {
-        LOG_ERR("app_entry() returned NULL for LLEXT '%s'", la->name);
-        llext_unload(&la->ext);
-        la->ext = NULL;
-        zsw_llext_xip_reset();
-        return;
-    }
-
-    /* Post-load: copy .text.iflash sections to internal flash and patch GOT.
-     * This makes tagged background functions (zbus callbacks, timers) safe
-     * to execute when XIP is disabled (screen off). */
-    LOG_INF("iflash: text_base_vma=0x%08lx",
-            (unsigned long)xip_ctx.text_base_vma);
-    ret = zsw_llext_iflash_install(la->ext, xip_ctx.text_base_vma);
-    if (ret < 0) {
-        LOG_WRN("iflash install failed: %d (continuing without iflash)", ret);
-    }
-
-    la->loaded = true;
-    active_llext_app = la;
-
-    /* Update the proxy icon now that we have the real app's icon */
-    la->proxy_app.icon = la->real_app->icon;
-
-    LOG_INF("LLEXT '%s' ready (name='%s')",
-            la->name, la->real_app->name);
-
-    /* Start the real app UI */
-    la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-    LLEXT_CALL_START(la->got_base, la->real_app->start_func, root, group);
-}
-
-static void proxy_stop_common(zsw_llext_app_t *la)
-{
-
-    if (!la->loaded) {
-        LOG_WRN("LLEXT '%s' not loaded, nothing to stop", la->name);
-        return;
-    }
-
-    LOG_INF("Stopping LLEXT '%s'", la->name);
-
-    /* Call the real stop function */
-    if (la->real_app && la->real_app->stop_func) {
-        LLEXT_CALL_STOP(la->got_base, la->real_app->stop_func);
-    }
-
-    la->real_app = NULL;
-    la->got_base = NULL;
-
-    /* Unload the extension and free all heap memory */
-    if (la->ext) {
-        llext_unload(&la->ext);
-        la->ext = NULL;
-    }
-
-    la->loaded = false;
-
-    if (active_llext_app == la) {
-        active_llext_app = NULL;
-    }
-
-    /* Reset internal flash allocator so space can be reused */
-    zsw_llext_iflash_reset();
-
-    /* Reset XIP allocator so flash space can be reused by next app */
-    zsw_llext_xip_reset();
-
-    LOG_INF("LLEXT '%s' unloaded", la->name);
-}
-
-static void llext_proxy_start(lv_obj_t *root, lv_group_t *group, void *user_data)
-{
-    proxy_start_common((zsw_llext_app_t *)user_data, root, group);
-}
-
-static void llext_proxy_stop(void *user_data)
-{
-    proxy_stop_common((zsw_llext_app_t *)user_data);
+    /* Replace with R9-aware wrappers */
+    app->start_func = llext_wrapped_start;
+    app->stop_func = llext_wrapped_stop;
+    app->back_func = la->orig_back_func ? llext_wrapped_back : NULL;
+    app->ui_unavailable_func = la->orig_ui_unavailable_func ? llext_wrapped_ui_unavailable : NULL;
+    app->ui_available_func = la->orig_ui_available_func ? llext_wrapped_ui_available : NULL;
+    app->user_data = la;
 }
 
 /* --------------------------------------------------------------------------
- * App Discovery (no loading, just filesystem scan + proxy registration)
+ * App Discovery — load LLEXT, call app_entry(), wrap, keep loaded
  * -------------------------------------------------------------------------- */
 
 static int discover_llext_app(const char *dir_path, const char *dir_name)
@@ -413,7 +309,6 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
     int idx;
     int ret;
     zsw_llext_app_t *la;
-    application_t *proxy;
 
     if (num_llext_apps >= ZSW_LLEXT_MAX_APPS) {
         LOG_ERR("Maximum LLEXT apps reached (%d)", ZSW_LLEXT_MAX_APPS);
@@ -439,25 +334,76 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
         return ret;
     }
 
-    /* Set up the proxy application_t — start/stop delivered via user_data */
-    proxy = &la->proxy_app;
-    proxy->name = la->name;
-    proxy->icon = NULL;
-    proxy->start_func = llext_proxy_start;
-    proxy->stop_func = llext_proxy_stop;
-    proxy->back_func = llext_proxy_back;
-    proxy->ui_unavailable_func = llext_proxy_ui_unavailable;
-    proxy->ui_available_func = llext_proxy_ui_available;
-    proxy->category = ZSW_APP_CATEGORY_ROOT;
-    proxy->hidden = false;
-    proxy->user_data = la;
+    /* Load the LLEXT */
+    ret = ensure_heap_init();
+    if (ret != 0) {
+        return ret;
+    }
 
-    /* Register the proxy with the main app manager */
-    zsw_app_manager_add_application(proxy);
+    struct llext_fs_loader fs_loader = LLEXT_FS_LOADER(elf_path);
+    struct llext_load_param ldr_parm = LLEXT_LOAD_PARAM_DEFAULT;
+    struct zsw_llext_xip_context xip_ctx = {0};
 
+    ldr_parm.pre_copy_hook = zsw_llext_xip_pre_copy_hook;
+    ldr_parm.pre_copy_hook_user_data = &xip_ctx;
+
+    ret = llext_load(&fs_loader.loader, la->name, &la->ext, &ldr_parm);
+    if (ret != 0) {
+        LOG_ERR("llext_load failed for '%s': %d", la->name, ret);
+        return ret;
+    }
+
+    /* Compute GOT base address for R9 register */
+    if (xip_ctx.got_found && la->ext->mem[LLEXT_MEM_DATA] != NULL) {
+        la->got_base = (uint8_t *)la->ext->mem[LLEXT_MEM_DATA] + xip_ctx.got_offset;
+        LOG_DBG("GOT base = %p (DATA %p + offset %zu)",
+                la->got_base, la->ext->mem[LLEXT_MEM_DATA], xip_ctx.got_offset);
+    } else {
+        LOG_WRN("No .got found for '%s' — R9 will be NULL", la->name);
+        la->got_base = NULL;
+    }
+
+    /* Find and call app_entry() — this mirrors SYS_INIT for built-in apps.
+     * app_entry() does initialization (settings, zbus, etc.) and calls
+     * zsw_app_manager_add_application() to self-register. */
+    llext_app_entry_fn entry_fn = llext_find_sym(&la->ext->exp_tab, ZSW_LLEXT_ENTRY_SYMBOL);
+
+    if (entry_fn == NULL) {
+        LOG_ERR("Entry symbol '%s' not found in '%s'", ZSW_LLEXT_ENTRY_SYMBOL, la->name);
+        llext_unload(&la->ext);
+        la->ext = NULL;
+        return -ENOENT;
+    }
+
+    LLEXT_CALL_ENTRY(la->got_base, entry_fn, la->real_app);
+    if (la->real_app == NULL) {
+        LOG_ERR("app_entry() returned NULL for '%s'", la->name);
+        llext_unload(&la->ext);
+        la->ext = NULL;
+        return -EINVAL;
+    }
+
+    /* Install iflash sections for background callbacks */
+    ret = zsw_llext_iflash_install(la->ext, xip_ctx.text_base_vma, la->got_base);
+    if (ret < 0) {
+        LOG_WRN("iflash install failed for '%s': %d", la->name, ret);
+    }
+
+    la->loaded = true;
     num_llext_apps++;
-    LOG_INF("Discovered LLEXT app '%s' at %s (%zu bytes, slot %d)",
-            la->name, elf_path, entry.size, idx);
+
+    /* Wrap the real app's function pointers with R9-aware trampolines */
+    wrap_app_functions(la);
+
+    LOG_INF("Loaded LLEXT app '%s' (name='%s', icon=%p, slot %d)",
+            la->name, la->real_app->name, la->real_app->icon, idx);
+    if (la->real_app->icon) {
+        const uint8_t *ibytes = (const uint8_t *)la->real_app->icon;
+        LOG_INF("  icon bytes: %02x %02x %02x %02x '%c%c%c%c'",
+                ibytes[0], ibytes[1], ibytes[2], ibytes[3],
+                ibytes[0] > 0x20 ? ibytes[0] : '.', ibytes[1] > 0x20 ? ibytes[1] : '.',
+                ibytes[2] > 0x20 ? ibytes[2] : '.', ibytes[3] > 0x20 ? ibytes[3] : '.');
+    }
 
     return 0;
 }
@@ -506,7 +452,7 @@ int zsw_llext_app_manager_init(void)
         return 0;
     }
 
-    /* Discover all LLEXT apps (scan dirs, register proxies, NO loading) */
+    /* Discover all LLEXT apps (load, call app_entry, wrap, keep loaded) */
     while (true) {
         ret = fs_readdir(&dir, &entry);
         if (ret < 0 || entry.name[0] == '\0') {
@@ -557,11 +503,18 @@ static void auto_open_work_handler(struct k_work *work)
 
     for (int i = 0; i < num_llext_apps; i++) {
         if (strcmp(llext_apps[i].name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
+            zsw_llext_app_t *la = &llext_apps[i];
+
+            if (!la->loaded || !la->real_app) {
+                LOG_WRN("Auto-open: '%s' not loaded", ZSW_LLEXT_AUTO_OPEN_APP);
+                return;
+            }
             LOG_INF("Auto-opening LLEXT app '%s'", ZSW_LLEXT_AUTO_OPEN_APP);
             lv_obj_t *root = lv_obj_create(lv_screen_active());
 
             lv_obj_set_size(root, LV_PCT(100), LV_PCT(100));
-            proxy_start_common(&llext_apps[i], root, NULL);
+            /* Call the wrapped start (sets R9 and active_llext_app) */
+            la->real_app->start_func(root, NULL, la->real_app->user_data);
             return;
         }
     }
