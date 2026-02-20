@@ -21,6 +21,7 @@
 
 #include "qr_code_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "managers/zsw_llext_iflash.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
@@ -65,6 +66,7 @@ static int qr_code_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     qr_code_app_add();
     return &app;
 }

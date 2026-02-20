@@ -23,7 +23,7 @@
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
 
 static bool first_xip_disable_done = false;
-static bool xip_enabled = true;
+static bool xip_enabled = true; /* QSPI driver enables XIP during init */
 
 LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 

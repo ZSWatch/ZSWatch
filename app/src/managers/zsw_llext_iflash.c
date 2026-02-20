@@ -445,6 +445,7 @@ void *zsw_llext_create_trampoline(void *func)
 
     return create_trampoline_with_got(func, got_base);
 }
+
 #else
 void *zsw_llext_create_trampoline(void *func)
 {

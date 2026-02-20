@@ -184,7 +184,7 @@ static bool toggle_ble_fota(void)
     bool is_enabled = zsw_smp_manager_is_enabled();
 
     if (!is_enabled) {
-        int rc = zsw_smp_manager_enable(false); /* No auto-disable when manually enabled via UI */
+        int rc = zsw_smp_manager_enable(false);
         if (rc != 0) {
             LOG_ERR("Failed to enable BLE SMP: %d", rc);
             update_ui_set_status("BLE enable failed");

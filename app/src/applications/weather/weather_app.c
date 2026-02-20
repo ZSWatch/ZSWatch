@@ -281,6 +281,7 @@ static int weather_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     weather_app_add();
     return &app;
 }

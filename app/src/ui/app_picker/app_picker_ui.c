@@ -248,12 +248,9 @@ static void populate_slot(int slot_index, picker_item_t *item)
 
         if (app_icons[slot_index]) {
             if (app->icon) {
-                LOG_DBG("Slot %d app '%s': icon=%p '%s'", slot_index, app->name ? app->name : "?",
-                        app->icon, (const char *)app->icon);
                 lv_image_set_src(app_icons[slot_index], app->icon);
                 lv_obj_remove_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
             } else {
-                LOG_DBG("Slot %d app '%s': icon=NULL, hiding", slot_index, app->name ? app->name : "?");
                 lv_obj_add_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
             }
             lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_TRANSP, LV_PART_MAIN);
@@ -522,7 +519,6 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
 void app_picker_ui_refresh(void)
 {
     if (picker_root == NULL) {
-        /* Picker not open — nothing to refresh */
         return;
     }
 
@@ -531,7 +527,6 @@ void app_picker_ui_refresh(void)
     build_picker_items();
     total_pages = calculate_page_count();
 
-    /* Clamp current page if item count reduced */
     if (current_page >= total_pages) {
         current_page = total_pages > 0 ? total_pages - 1 : 0;
     }

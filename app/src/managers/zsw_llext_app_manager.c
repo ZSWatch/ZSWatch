@@ -46,9 +46,7 @@
 #include "managers/zsw_llext_xip.h"
 #include "managers/zsw_llext_iflash.h"
 #include "managers/zsw_xip_manager.h"
-#include "events/activity_event.h"
 #include "ui/popup/zsw_popup_window.h"
-#include <zephyr/zbus/zbus.h>
 #include <lvgl.h>
 
 LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
@@ -63,26 +61,13 @@ LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
  * We still initialize R9 before the first call into LLEXT code.
  */
 #ifdef CONFIG_ARM
-
-/* Helper to set R9 before entering LLEXT code */
 static __always_inline void llext_set_r9(void *got_base)
 {
     __asm__ volatile("mov r9, %0" : : "r"(got_base) : "r9");
 }
-
 #define LLEXT_CALL_ENTRY(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_START(got, fn, root, grp) do { llext_set_r9(got); (fn)(root, grp, NULL); } while (0)
-#define LLEXT_CALL_STOP(got, fn) do { llext_set_r9(got); (fn)(NULL); } while (0)
-#define LLEXT_CALL_BACK(got, fn, result) do { llext_set_r9(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_VOID(got, fn) do { llext_set_r9(got); (fn)(); } while (0)
-
 #else
-/* Non-ARM: direct calls */
 #define LLEXT_CALL_ENTRY(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_START(got, fn, root, grp) do { (void)(got); (fn)(root, grp, NULL); } while (0)
-#define LLEXT_CALL_STOP(got, fn) do { (void)(got); (fn)(NULL); } while (0)
-#define LLEXT_CALL_BACK(got, fn, result) do { (void)(got); (result) = (fn)(); } while (0)
-#define LLEXT_CALL_VOID(got, fn) do { (void)(got); (fn)(); } while (0)
 #endif
 
 /* --------------------------------------------------------------------------
@@ -110,15 +95,8 @@ typedef struct {
     /* Runtime state — populated when the LLEXT is loaded at boot */
     struct llext *ext;
     application_t *real_app;  /* Points into LLEXT .data, valid for lifetime */
-    void *got_base;           /* GOT base address — loaded into R9 before calling LLEXT */
+    void *got_base;           /* GOT base address — baked into trampolines */
     bool loaded;
-
-    /* Original function pointers from the real app — saved before wrapping */
-    void (*orig_start_func)(lv_obj_t *, lv_group_t *, void *);
-    void (*orig_stop_func)(void *);
-    bool (*orig_back_func)(void);
-    void (*orig_ui_unavailable_func)(void);
-    void (*orig_ui_available_func)(void);
 } zsw_llext_app_t;
 
 static void show_app_installed_popup_work_handler(struct k_work *work);
@@ -129,7 +107,6 @@ static void show_app_installed_popup_work_handler(struct k_work *work);
 
 static zsw_llext_app_t llext_apps[ZSW_LLEXT_MAX_APPS];
 static int num_llext_apps;
-static zsw_llext_app_t *active_llext_app;
 
 /* Heap buffer for LLEXT dynamic allocations */
 // TODO: Might change this for a common heap
@@ -138,47 +115,6 @@ static bool heap_initialized;
 
 static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
 static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
-
-/* --------------------------------------------------------------------------
- * Activity State Tracking
- * --------------------------------------------------------------------------
- * Keep the active LLEXT app's real_app->current_state in sync with screen
- * state. This is essential for auto-opened apps (which bypass zsw_app_manager)
- * and as a safety net for normally launched apps.
- * -------------------------------------------------------------------------- */
-
-ZBUS_CHAN_DECLARE(activity_state_data_chan);
-static void llext_activity_state_cb(const struct zbus_channel *chan);
-ZBUS_LISTENER_DEFINE(llext_activity_state_lis, llext_activity_state_cb);
-
-static void llext_activity_state_cb(const struct zbus_channel *chan)
-{
-    const struct activity_state_event *event = zbus_chan_const_msg(chan);
-
-    if (active_llext_app == NULL || active_llext_app->real_app == NULL) {
-        return;
-    }
-
-    if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
-        if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_HIDDEN) {
-            active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-            LOG_INF("LLEXT '%s' UI -> visible", active_llext_app->name);
-            if (active_llext_app->orig_ui_available_func) {
-                LLEXT_CALL_VOID(active_llext_app->got_base,
-                                active_llext_app->orig_ui_available_func);
-            }
-        }
-    } else {
-        if (active_llext_app->real_app->current_state == ZSW_APP_STATE_UI_VISIBLE) {
-            active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
-            LOG_INF("LLEXT '%s' UI -> hidden", active_llext_app->name);
-            if (active_llext_app->orig_ui_unavailable_func) {
-                LLEXT_CALL_VOID(active_llext_app->got_base,
-                                active_llext_app->orig_ui_unavailable_func);
-            }
-        }
-    }
-}
 
 /* --------------------------------------------------------------------------
  * Heap Management
@@ -203,100 +139,7 @@ static int ensure_heap_init(void)
 }
 
 /* --------------------------------------------------------------------------
- * R9-Aware Wrapper Functions
- * --------------------------------------------------------------------------
- * These replace the real app's function pointers after app_entry() so that
- * R9 (GOT base) is set correctly before LLEXT code executes.
- *
- * start_func / stop_func receive user_data which carries the zsw_llext_app_t*.
- * back_func / ui_*_func take no arguments — they use active_llext_app which
- * is valid because these are only called on the currently running app.
- * -------------------------------------------------------------------------- */
-
-static void llext_wrapped_start(lv_obj_t *root, lv_group_t *group, void *user_data)
-{
-    zsw_llext_app_t *la = (zsw_llext_app_t *)user_data;
-
-    active_llext_app = la;
-    la->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-    LLEXT_CALL_START(la->got_base, la->orig_start_func, root, group);
-}
-
-static void llext_wrapped_stop(void *user_data)
-{
-    zsw_llext_app_t *la = (zsw_llext_app_t *)user_data;
-
-    if (la->orig_stop_func) {
-        LLEXT_CALL_STOP(la->got_base, la->orig_stop_func);
-    }
-
-    if (active_llext_app == la) {
-        active_llext_app = NULL;
-    }
-}
-
-static bool llext_wrapped_back(void)
-{
-    if (active_llext_app && active_llext_app->orig_back_func) {
-        bool consumed;
-
-        LLEXT_CALL_BACK(active_llext_app->got_base,
-                        active_llext_app->orig_back_func, consumed);
-        return consumed;
-    }
-    return false;
-}
-
-static void llext_wrapped_ui_unavailable(void)
-{
-    if (active_llext_app && active_llext_app->real_app) {
-        active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_HIDDEN;
-
-        if (active_llext_app->orig_ui_unavailable_func) {
-            LLEXT_CALL_VOID(active_llext_app->got_base,
-                            active_llext_app->orig_ui_unavailable_func);
-        }
-    }
-}
-
-static void llext_wrapped_ui_available(void)
-{
-    if (active_llext_app && active_llext_app->real_app) {
-        active_llext_app->real_app->current_state = ZSW_APP_STATE_UI_VISIBLE;
-
-        if (active_llext_app->orig_ui_available_func) {
-            LLEXT_CALL_VOID(active_llext_app->got_base,
-                            active_llext_app->orig_ui_available_func);
-        }
-    }
-}
-
-/* --------------------------------------------------------------------------
- * Wrap an application_t's function pointers with R9-aware trampolines
- * -------------------------------------------------------------------------- */
-
-static void wrap_app_functions(zsw_llext_app_t *la)
-{
-    application_t *app = la->real_app;
-
-    /* Save originals */
-    la->orig_start_func = app->start_func;
-    la->orig_stop_func = app->stop_func;
-    la->orig_back_func = app->back_func;
-    la->orig_ui_unavailable_func = app->ui_unavailable_func;
-    la->orig_ui_available_func = app->ui_available_func;
-
-    /* Replace with R9-aware wrappers */
-    app->start_func = llext_wrapped_start;
-    app->stop_func = llext_wrapped_stop;
-    app->back_func = la->orig_back_func ? llext_wrapped_back : NULL;
-    app->ui_unavailable_func = la->orig_ui_unavailable_func ? llext_wrapped_ui_unavailable : NULL;
-    app->ui_available_func = la->orig_ui_available_func ? llext_wrapped_ui_available : NULL;
-    app->user_data = la;
-}
-
-/* --------------------------------------------------------------------------
- * App Discovery — load LLEXT, call app_entry(), wrap, keep loaded
+ * App Discovery — load LLEXT, call app_entry(), keep loaded
  * -------------------------------------------------------------------------- */
 
 static int discover_llext_app(const char *dir_path, const char *dir_name)
@@ -390,9 +233,6 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
     la->loaded = true;
     num_llext_apps++;
 
-    /* Wrap the real app's function pointers with R9-aware trampolines */
-    wrap_app_functions(la);
-
     LOG_INF("Loaded LLEXT app '%s' (name='%s', icon=%p, slot %d)",
             la->name, la->real_app->name, la->real_app->icon, idx);
     if (la->real_app->icon) {
@@ -432,13 +272,6 @@ int zsw_llext_app_manager_init(void)
     ret = zsw_llext_iflash_init();
     if (ret < 0) {
         LOG_WRN("Internal flash init failed: %d (continuing without iflash)", ret);
-    }
-
-    /* Subscribe to activity state so we can sync real_app->current_state */
-    ret = zbus_chan_add_obs(&activity_state_data_chan,
-                           &llext_activity_state_lis, K_MSEC(100));
-    if (ret < 0) {
-        LOG_WRN("Failed to add activity state observer: %d", ret);
     }
 
     LOG_INF("Scanning for LLEXT apps in %s", ZSW_LLEXT_APPS_BASE_PATH);
