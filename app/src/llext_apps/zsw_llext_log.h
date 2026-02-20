@@ -19,11 +19,6 @@
  * @file zsw_llext_log.h
  * @brief Logging for LLEXT dynamic apps via the Zephyr log subsystem.
  *
- * Zephyr's LOG_MODULE_REGISTER uses linker-section magic that is incompatible
- * with dynamically loaded LLEXT modules.  This header provides drop-in
- * replacements so existing LOG_DBG / LOG_INF / LOG_WRN / LOG_ERR calls
- * keep working inside LLEXT apps.
- *
  * All messages are routed through a single Zephyr log module registered in
  * the firmware ("llext_app").  The log level is controlled by one Kconfig:
  * CONFIG_ZSW_LLEXT_LOG_LEVEL.

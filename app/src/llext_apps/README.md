@@ -192,8 +192,26 @@ zbus_chan_rm_obs(&my_channel, &my_listener);
 
 ### No LOG_MODULE_REGISTER
 Zephyr's `LOG_MODULE_REGISTER()` macro uses `STRUCT_SECTION_ITERABLE` which
-relies on linker sections not available in dynamically loaded code. Use
-`printk()` for debug output instead.
+relies on linker sections not available in dynamically loaded code.
+
+Instead, include `zsw_llext_log.h` which provides drop-in `LOG_ERR()`,
+`LOG_WRN()`, `LOG_INF()`, `LOG_DBG()` macros that route through a
+firmware-side log source. The header also provides a no-op
+`LOG_MODULE_REGISTER()` so existing code compiles unchanged:
+
+```c
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include "zsw_llext_log.h"
+#else
+#include <zephyr/logging/log.h>
+#endif
+
+LOG_MODULE_REGISTER(my_app, LOG_LEVEL_INF);
+```
+
+**Note:** `LOG_*` calls in `LLEXT_IFLASH` functions are safe — `zsw_llext_log()`
+detects when the format string is in XIP flash and XIP is disabled, and
+silently skips the log instead of faulting.
 
 ### No spawning kernel threads
 LLEXT apps **cannot create new kernel threads** (`k_thread_create()`). The
@@ -260,6 +278,61 @@ Image `.c` files can be `#include`d into the LLEXT source. They become part of
 `.rodata` and are moved to XIP flash at load time, costing zero RAM. Use the
 same image format as built-in apps (LVGL v9 C arrays).
 
+### LLEXT_IFLASH — running code when XIP is off
+
+Some LLEXT functions (e.g. zbus callbacks, background work items) may execute
+when the screen — and therefore XIP flash — is disabled. Marking such functions
+with `LLEXT_IFLASH` causes their `.text` to be copied to **internal** flash
+(the `llext_core_partition` at `0xE4000`, 48 KB) so they remain callable
+regardless of XIP state.
+
+```c
+#include "managers/zsw_llext_iflash.h"
+
+LLEXT_IFLASH
+static void my_zbus_callback(const struct zbus_channel *chan)
+{
+    /* This runs from internal flash — safe even when XIP is off */
+}
+```
+
+The trampoline created by `zsw_llext_create_trampoline()` restores the GOT
+base register (R9) before jumping to the internal-flash copy, so PIC code
+works correctly.
+
+**Known limitation — .rodata stays in XIP:**
+The `LLEXT_IFLASH` attribute only covers the function's `.text` (machine code).
+String literals, format strings, and `const` arrays used by the function remain
+in `.rodata` on XIP flash. If XIP is off when the function runs, accessing
+those read-only data causes a **bus fault**.
+
+Current mitigations:
+- `LOG_*` macros (via `zsw_llext_log()`) include a runtime XIP guard — if
+  the format string points into XIP and XIP is disabled, the log call is
+  silently skipped instead of faulting.
+- Other `.rodata` accesses in `LLEXT_IFLASH` functions (e.g. string literals
+  passed to helper functions, `const` lookup tables) are **not yet protected**
+  and should be avoided.
+
+**Future plan — copy .rodata to internal flash:**
+The long-term fix is to extend `zsw_llext_iflash_install()` to also copy the
+LLEXT's `.rodata` section to internal flash (alongside `.text.iflash`) and
+patch all GOT/DATA references. The `.rodata` sections are small for most apps
+(~0.3–1 KB), making this feasible within the 48 KB partition budget.
+
+Image pixel data (LVGL C arrays) would need to be placed in a separate
+`.rodata.extflash` section to keep large image data in XIP while still
+copying small string/const data to internal flash.
+
+See the `LLEXT_IFLASH` audit notes in the codebase for details on affected
+apps and section sizes.
+
+Image .c files would tag their arrays with a section attribute (e.g., .rodata.extflash), keeping them in XIP. The linker keeps that section separate via --unique=.rodata.extflash. The install routine copies .rodata (strings, small consts) to internal flash but skips .rodata.extflash.
+
+Pro: Regular app code needs zero changes — all string literals, format strings, etc. are automatically safe
+Pro: Only image .c files need one attribute on their array declaration (a well-defined, small set)
+Con: Image files need to follow a convention (but they already need special handling anyway)
+
 ## Architecture Reference
 
 ### Manager files
@@ -269,6 +342,8 @@ same image format as built-in apps (LVGL v9 C arrays).
 | `src/managers/zsw_llext_app_manager.h` | Public API (`zsw_llext_app_manager_init()`) |
 | `src/managers/zsw_llext_xip.c` | XIP flash installer (erase/write/pointer fixup) |
 | `src/managers/zsw_llext_xip.h` | XIP API (`zsw_llext_xip_init/install/reset`) |
+| `src/managers/zsw_llext_iflash.c` | Internal-flash installer for `LLEXT_IFLASH` functions |
+| `src/managers/zsw_llext_iflash.h` | `LLEXT_IFLASH` macro, trampoline API |
 
 ### App discovery convention
 The LLEXT app manager scans `/lvgl_lfs/apps/` at boot. Each subdirectory

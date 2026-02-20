@@ -23,6 +23,7 @@
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
 
 static bool first_xip_disable_done = false;
+static bool xip_enabled = true;
 
 LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 
@@ -41,6 +42,7 @@ int _zsw_xip_enable(const char *requester)
     }
 
     nrf_qspi_nor_xip_enable(qspi_dev, true);
+    xip_enabled = true;
     return 0;
 }
 
@@ -65,5 +67,11 @@ int _zsw_xip_disable(const char *requester)
     }
 
     nrf_qspi_nor_xip_enable(qspi_dev, false);
+    xip_enabled = false;
     return 0;
+}
+
+bool zsw_xip_is_enabled(void)
+{
+    return xip_enabled;
 }

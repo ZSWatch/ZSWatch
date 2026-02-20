@@ -253,7 +253,6 @@ static void weather_app_stop(void *user_data)
 
 static int weather_app_add(void)
 {
-    /* Initialize work items — trampolines are identity (no-op) in non-LLEXT builds */
     k_work_init_delayable(&weather_app_fetch_work,
                           (k_work_handler_t)zsw_llext_create_trampoline(
                               (void *)periodic_fetch_weather_data));
