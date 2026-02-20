@@ -87,7 +87,7 @@ static __always_inline void llext_set_r9(void *got_base)
 
 /* Set to the name of the LLEXT app to auto-open at boot for debugging.
  * Set to NULL (or comment out) to disable. */
-// #define ZSW_LLEXT_AUTO_OPEN_APP  "calculator_ext"
+//#define ZSW_LLEXT_AUTO_OPEN_APP  "Trivia"
 #ifdef ZSW_LLEXT_AUTO_OPEN_APP
 #define ZSW_LLEXT_AUTO_OPEN_DELAY_MS  5000
 #endif
@@ -128,6 +128,8 @@ typedef struct {
     void (*orig_ui_available_func)(void);
 } zsw_llext_app_t;
 
+static void show_app_installed_popup_work_handler(struct k_work *work);
+
 /* --------------------------------------------------------------------------
  * Static Data
  * -------------------------------------------------------------------------- */
@@ -144,6 +146,9 @@ static bool heap_initialized;
 static void auto_open_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(auto_open_work, auto_open_work_handler);
 #endif
+
+static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
+static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
 
 /* --------------------------------------------------------------------------
  * Activity State Tracking
@@ -376,18 +381,21 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
         return -ENOENT;
     }
 
+    /* Install iflash sections BEFORE calling app_entry() so that function
+     * pointers resolved through GOT inside app_entry() (e.g. for trampolines)
+     * already point to the internal-flash copies, making them safe for
+     * background execution when XIP is disabled. */
+    ret = zsw_llext_iflash_install(la->ext, xip_ctx.text_base_vma, la->got_base);
+    if (ret < 0) {
+        LOG_WRN("iflash install failed for '%s': %d", la->name, ret);
+    }
+
     LLEXT_CALL_ENTRY(la->got_base, entry_fn, la->real_app);
     if (la->real_app == NULL) {
         LOG_ERR("app_entry() returned NULL for '%s'", la->name);
         llext_unload(&la->ext);
         la->ext = NULL;
         return -EINVAL;
-    }
-
-    /* Install iflash sections for background callbacks */
-    ret = zsw_llext_iflash_install(la->ext, xip_ctx.text_base_vma, la->got_base);
-    if (ret < 0) {
-        LOG_WRN("iflash install failed for '%s': %d", la->name, ret);
     }
 
     la->loaded = true;
@@ -481,7 +489,8 @@ int zsw_llext_app_manager_init(void)
 #if defined(ZSW_LLEXT_AUTO_OPEN_APP)
     /* Schedule auto-open for debugging */
     for (int i = 0; i < num_llext_apps; i++) {
-        if (strcmp(llext_apps[i].name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
+        if (llext_apps[i].real_app &&
+            strcmp(llext_apps[i].real_app->name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
             LOG_INF("Auto-open '%s' scheduled in %d ms",
                     ZSW_LLEXT_AUTO_OPEN_APP, ZSW_LLEXT_AUTO_OPEN_DELAY_MS);
             k_work_schedule(&auto_open_work, K_MSEC(ZSW_LLEXT_AUTO_OPEN_DELAY_MS));
@@ -503,7 +512,8 @@ static void auto_open_work_handler(struct k_work *work)
     ARG_UNUSED(work);
 
     for (int i = 0; i < num_llext_apps; i++) {
-        if (strcmp(llext_apps[i].name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
+        if (llext_apps[i].real_app &&
+            strcmp(llext_apps[i].real_app->name, ZSW_LLEXT_AUTO_OPEN_APP) == 0) {
             zsw_llext_app_t *la = &llext_apps[i];
 
             if (!la->loaded || !la->real_app) {
@@ -549,24 +559,6 @@ int zsw_llext_app_manager_prepare_app_dir(const char *app_id)
     LOG_INF("llext: app dir ready: %s", dir_path);
     return 0;
 }
-
-static void show_app_removed_popup_work_handler(struct k_work *work);
-static K_WORK_DEFINE(show_app_removed_popup_work, show_app_removed_popup_work_handler);
-static char removed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
-
-static void show_app_removed_popup_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-
-    char popup_body[80];
-    snprintk(popup_body, sizeof(popup_body), "'%s' deleted.\nRestart to take effect.", removed_app_name);
-    zsw_popup_show("App Removed", popup_body, NULL, 5, false);
-}
-
-static void show_app_installed_popup_work_handler(struct k_work *work);
-static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
-static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
-
 static void show_app_installed_popup_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
@@ -594,11 +586,6 @@ int zsw_llext_app_manager_remove_app(const char *app_id)
     if (ret < 0 && ret != -ENOENT) {
         LOG_WRN("llext: rmdir %s: %d", dir_path, ret);
     }
-
-    /* Show popup notification from LVGL thread context */
-    strncpy(removed_app_name, app_id, sizeof(removed_app_name) - 1);
-    removed_app_name[sizeof(removed_app_name) - 1] = '\0';
-    k_work_submit(&show_app_removed_popup_work);
 
     LOG_INF("llext: removed app '%s'", app_id);
     return 0;

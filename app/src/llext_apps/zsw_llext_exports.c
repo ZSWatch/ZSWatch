@@ -53,6 +53,10 @@ EXPORT_SYMBOL(k_free);
 EXPORT_SYMBOL(k_uptime_get);
 EXPORT_SYMBOL(printk);
 
+/* ---- LLEXT logging ---- */
+extern void zsw_llext_log(uint8_t level, const char *fmt, ...);
+EXPORT_SYMBOL(zsw_llext_log);
+
 /* ---- ZSWatch app manager ---- */
 EXPORT_SYMBOL(zsw_app_manager_add_application);
 EXPORT_SYMBOL(zsw_app_manager_app_close_request);

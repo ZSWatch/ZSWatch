@@ -22,6 +22,7 @@ if(CONFIG_ZSW_LLEXT_APPS)
         target_include_directories(${name}_llext_lib PRIVATE
             ${CMAKE_SOURCE_DIR}/src
             ${CMAKE_SOURCE_DIR}/src/managers
+            ${CMAKE_SOURCE_DIR}/src/llext_apps
         )
 
         # 3) App-specific extra includes

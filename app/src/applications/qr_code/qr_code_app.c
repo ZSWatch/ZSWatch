@@ -25,8 +25,6 @@
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
 #include <zephyr/llext/symbol.h>
-#else
-ZSW_LV_IMG_DECLARE(qr_code_icon);
 #endif
 
 // Functions needed for all applications
@@ -35,11 +33,7 @@ static void qr_code_app_stop(void *user_data);
 
 static application_t app = {
     .name = "QR",
-#ifdef CONFIG_ZSW_LLEXT_APPS
-    /* icon set at runtime in app_entry() — PIC linker drops static relocation */
-#else
     .icon = ZSW_LV_IMG_USE(qr_code_icon),
-#endif
     .start_func = qr_code_app_start,
     .stop_func = qr_code_app_stop,
     .category = ZSW_APP_CATEGORY_RANDOM,
@@ -62,22 +56,19 @@ static void qr_code_app_stop(void *user_data)
     qr_code_ui_remove();
 }
 
+static int qr_code_app_add(void)
+{
+    zsw_app_manager_add_application(&app);
+    return 0;
+}
+
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
-    /* Set icon at runtime — static relocation is lost by the PIC linker */
-    app.icon = "S:qr_code_icon.bin";
-    zsw_app_manager_add_application(&app);
+    qr_code_app_add();
     return &app;
 }
 EXPORT_SYMBOL(app_entry);
 #else
-static int qr_code_app_add(void)
-{
-    zsw_app_manager_add_application(&app);
-
-    return 0;
-}
-
 SYS_INIT(qr_code_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 #endif

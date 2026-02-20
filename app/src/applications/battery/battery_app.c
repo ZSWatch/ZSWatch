@@ -20,10 +20,11 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
 
+#include "managers/zsw_llext_iflash.h"
+
 #ifdef CONFIG_ZSW_LLEXT_APPS
 #include <zephyr/llext/symbol.h>
-#include <zephyr/sys/printk.h>
-#include "managers/zsw_llext_iflash.h"
+#include "zsw_llext_log.h"
 #else
 #include <zephyr/logging/log.h>
 #endif
@@ -38,17 +39,15 @@
 #include "fuel_gauge/zsw_pmic.h"
 #endif
 
+LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
+
 #define SETTING_BATTERY_HIST    "battery/hist"
 #define SAMPLE_INTERVAL_MIN     15
 #define SAMPLE_INTERVAL_MS      (SAMPLE_INTERVAL_MIN * 60 * 1000)
+#define SAMPLE_INTERVAL_TICKS   ((int64_t)SAMPLE_INTERVAL_MS * CONFIG_SYS_CLOCK_TICKS_PER_SEC / 1000)
 #define MAX_SAMPLES             (7 * 24 * (60 / SAMPLE_INTERVAL_MIN)) // One week of 15 minute samples
 
-#ifdef CONFIG_ZSW_LLEXT_APPS
-#define SAMPLE_INTERVAL_TICKS   ((int64_t)SAMPLE_INTERVAL_MS * CONFIG_SYS_CLOCK_TICKS_PER_SEC / 1000)
-#else
-ZSW_LV_IMG_DECLARE(battery_app_icon);
-LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
-#endif
+
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
 static void battery_app_stop(void *user_data);
@@ -58,29 +57,22 @@ static int decompress_voltage_from_byte(uint8_t voltage_byte);
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 
-#ifdef CONFIG_ZSW_LLEXT_APPS
 static void zbus_battery_callback(const struct zbus_channel *chan);
 
-static struct zbus_observer_data battery_ext_obs_data = {
+static struct zbus_observer_data battery_obs_data = {
     .enabled = true,
 };
 
-static struct zbus_observer battery_ext_listener = {
+static struct zbus_observer battery_ble_listener = {
 #if defined(CONFIG_ZBUS_OBSERVER_NAME)
     .name = "bat_lis",
 #endif
     .type = ZBUS_OBSERVER_LISTENER_TYPE,
-    .data = &battery_ext_obs_data,
+    .data = &battery_obs_data,
     .callback = zbus_battery_callback,
 };
 
 static int64_t last_battery_sample_ticks;
-#else
-static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
-ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
-ZBUS_CHAN_ADD_OBS(battery_sample_data_chan, battery_app_battery_event, 1);
-static uint64_t last_battery_sample_time = 0;
-#endif
 
 typedef struct {
     uint8_t mv_with_decimals;
@@ -92,11 +84,7 @@ static zsw_history_t battery_context;
 
 static application_t app = {
     .name = "Battery",
-#ifdef CONFIG_ZSW_LLEXT_APPS
-    /* icon set at runtime in app_entry() — PIC linker drops static relocation */
-#else
     .icon = ZSW_LV_IMG_USE(battery_app_icon),
-#endif
     .start_func = battery_app_start,
     .stop_func = battery_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,
@@ -141,22 +129,31 @@ static void battery_app_stop(void *user_data)
     battery_ui_remove();
 }
 
-#ifdef CONFIG_ZSW_LLEXT_APPS
 LLEXT_IFLASH
 static void zbus_battery_callback(const struct zbus_channel *chan)
 {
+    /* Use direct struct member access instead of zbus_chan_const_msg().
+     * zbus_chan_const_msg() is static-inline in the header but -fPIC can
+     * emit an out-of-line copy in XIP .text, which is unreachable from
+     * IFLASH when XIP is disabled. */
     const struct battery_sample_event *event =
         (const struct battery_sample_event *)chan->message;
 
+    /* Use z_impl_k_uptime_ticks() directly instead of k_uptime_get().
+     * k_uptime_get() is an inline wrapper that -fPIC can compile into
+     * an out-of-line GOT-indirect call to XIP .text. */
     extern int64_t z_impl_k_uptime_ticks(void);
     int64_t now_ticks = z_impl_k_uptime_ticks();
+
     if ((now_ticks - last_battery_sample_ticks) >= SAMPLE_INTERVAL_TICKS) {
         zsw_battery_sample_t sample;
         sample.mv_with_decimals = compresse_voltage_in_byte(event->mV);
         sample.percent = event->percent;
 
         zsw_history_add(&battery_context, &sample);
-        zsw_history_save(&battery_context);
+        if (zsw_history_save(&battery_context)) {
+            LOG_ERR("Error during saving of battery samples!");
+        }
 
         last_battery_sample_ticks = now_ticks;
     }
@@ -173,51 +170,16 @@ static void zbus_battery_callback(const struct zbus_channel *chan)
 #endif
     }
 }
-#else
-static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
-{
-    const struct battery_sample_event *event = zbus_chan_const_msg(chan);
-
-    if ((k_uptime_get() - last_battery_sample_time) >= SAMPLE_INTERVAL_MS) {
-        zsw_battery_sample_t sample;
-        sample.mv_with_decimals = compresse_voltage_in_byte(event->mV);
-        sample.percent = event->percent;
-
-        zsw_history_add(&battery_context, &sample);
-        if (zsw_history_save(&battery_context)) {
-            LOG_ERR("Error during saving of battery samples!");
-        }
-
-        last_battery_sample_time = k_uptime_get();
-        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-            battery_ui_add_measurement(event->percent, event->mV);
-        }
-    }
-    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
-        battery_ui_update(event->ttf, event->tte,
-                          zsw_pmic_charger_status_str(event->status),
-                          zsw_pmic_charger_error_str(event->error),
-                          event->is_charging);
-#else
-        battery_ui_update(event->ttf, event->tte,
-                          "N/A",
-                          "N/A",
-                          event->is_charging);
-#endif
-    }
-}
-#endif
 
 static void on_battery_hist_clear_cb(void)
 {
     zsw_history_del(&battery_context);
-    settings_delete(SETTING_BATTERY_HIST);
+    if (settings_delete(SETTING_BATTERY_HIST) != 0) {
+        LOG_ERR("Error during settings_delete!");
+    }
 }
 
-#ifdef CONFIG_ZSW_LLEXT_APPS
 LLEXT_IFLASH
-#endif
 static uint8_t compresse_voltage_in_byte(int mV)
 {
     uint8_t voltage_byte = 0;
@@ -245,17 +207,23 @@ static int decompress_voltage_from_byte(uint8_t voltage_byte)
 
 static int battery_app_add(void)
 {
+    int ret = zbus_chan_add_obs(&battery_sample_data_chan,
+                                &battery_ble_listener, K_MSEC(100));
+    if (ret != 0) {
+        LOG_ERR("Failed to add zbus observer: %d", ret);
+    }
+
     zsw_app_manager_add_application(&app);
 
     if (settings_subsys_init()) {
-        printk("battery: settings_subsys_init failed\n");
+        LOG_ERR("settings_subsys_init failed");
         return -EFAULT;
     }
 
     zsw_history_init(&battery_context, MAX_SAMPLES, sizeof(zsw_battery_sample_t), samples, SETTING_BATTERY_HIST);
 
     if (zsw_history_load(&battery_context)) {
-        printk("battery: history load failed\n");
+        LOG_ERR("history load failed");
         return -EFAULT;
     }
 
@@ -265,17 +233,7 @@ static int battery_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
-    printk("battery: app_entry called\n");
-    /* Set icon at runtime — static relocation is lost by the PIC linker */
-    app.icon = "S:battery_app_icon.bin";
     battery_app_add();
-
-    int ret = zbus_chan_add_obs(&battery_sample_data_chan,
-                                &battery_ext_listener, K_MSEC(100));
-    if (ret != 0) {
-        printk("battery: failed to add zbus observer: %d\n", ret);
-    }
-
     return &app;
 }
 EXPORT_SYMBOL(app_entry);
