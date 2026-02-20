@@ -164,6 +164,87 @@ static int flash_write_aligned(const struct flash_area *fa, uint32_t offset,
     return ret;
 }
 
+#ifdef CONFIG_ARM
+/**
+ * Core trampoline creation logic. Writes a 16-byte R9-restoring trampoline
+ * to internal flash, packing multiple trampolines into shared 4 KB sectors.
+ *
+ * Used by both:
+ * - zsw_llext_iflash_install() at load time (patches static DATA entries)
+ * - zsw_llext_create_trampoline() at runtime (wraps dynamic callbacks)
+ *
+ * @param func      Target function address (with Thumb bit if applicable)
+ * @param got_base  GOT base address for this LLEXT
+ * @return Trampoline address (Thumb-bit set), or NULL on failure
+ */
+static void *create_trampoline_with_got(void *func, void *got_base)
+{
+    const struct flash_area *fa;
+    int ret = flash_area_open(IFLASH_PARTITION_ID, &fa);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to open flash for trampoline: %d", ret);
+        return NULL;
+    }
+
+    /* Allocate and erase a new sector if the current one is full or unset */
+    if (runtime_tramp_sector == UINT32_MAX ||
+        runtime_tramp_used + TRAMPOLINE_SIZE > IFLASH_SECTOR_SIZE) {
+
+        if (iflash_next_offset + IFLASH_SECTOR_SIZE > iflash_partition_size) {
+            LOG_ERR("No iflash space for trampoline sector");
+            flash_area_close(fa);
+            return NULL;
+        }
+
+        ret = flash_area_erase(fa, iflash_next_offset, IFLASH_SECTOR_SIZE);
+        if (ret < 0) {
+            LOG_ERR("Failed to erase trampoline sector: %d", ret);
+            flash_area_close(fa);
+            return NULL;
+        }
+
+        runtime_tramp_sector = iflash_next_offset;
+        runtime_tramp_used = 0;
+        iflash_next_offset += IFLASH_SECTOR_SIZE;
+
+        LOG_INF("Allocated trampoline sector at 0x%x",
+                IFLASH_PARTITION_OFFSET + runtime_tramp_sector);
+    }
+
+    /* Build 16-byte trampoline: set R9 to GOT base, then jump to func */
+    uint8_t tramp[TRAMPOLINE_SIZE];
+    uint32_t gb = (uint32_t)(uintptr_t)got_base;
+    uint32_t ta = (uint32_t)(uintptr_t)func;
+
+    memcpy(tramp, trampoline_code, sizeof(trampoline_code));
+    memcpy(tramp + 8, &gb, 4);
+    memcpy(tramp + 12, &ta, 4);
+
+    /* Write trampoline into the pre-erased sector */
+    uint32_t write_offset = runtime_tramp_sector + runtime_tramp_used;
+
+    ret = flash_write_aligned(fa, write_offset, tramp, TRAMPOLINE_SIZE);
+    flash_area_close(fa);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to write trampoline: %d", ret);
+        return NULL;
+    }
+
+    uintptr_t tramp_cpu = IFLASH_CPU_ADDR(IFLASH_PARTITION_OFFSET + write_offset);
+
+    runtime_tramp_used += TRAMPOLINE_SIZE;
+
+    sys_cache_instr_invd_all();
+
+    LOG_DBG("Trampoline: func %p -> tramp 0x%08lx (GOT %p)",
+            func, (unsigned long)(tramp_cpu | 1), got_base);
+
+    return (void *)(tramp_cpu | 1); /* Thumb bit set */
+}
+#endif /* CONFIG_ARM */
+
 int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *got_base)
 {
     const struct flash_area *fa;
@@ -271,86 +352,29 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *g
                 (unsigned long)xip_addr, (unsigned long)(xip_addr + sect_size));
 
 #ifdef CONFIG_ARM
-        /* Count how many DATA entries need trampolines */
-        int num_tramps = 0;
-
+        /* Create R9-restoring trampolines for each DATA entry referencing
+         * the iflash section. Uses the shared sector-packing allocator. */
         for (size_t d = 0; d < data_entries; d++) {
             uintptr_t addr = data[d] & ~1UL;
 
             if (addr >= xip_addr && addr < xip_addr + sect_size) {
-                num_tramps++;
-            }
-        }
+                uintptr_t old_val = data[d];
+                uintptr_t thumb_bit = old_val & 1UL;
+                uintptr_t iflash_func = iflash_addr + (addr - xip_addr) + thumb_bit;
 
-        if (num_tramps > 0) {
-            /* Allocate iflash space for trampolines (after the code) */
-            uint32_t tramp_total = ROUND_UP(num_tramps * TRAMPOLINE_SIZE, 4);
-            uint32_t tramp_aligned = SECTOR_ALIGN(tramp_total);
-
-            if (iflash_next_offset + tramp_aligned > iflash_partition_size) {
-                LOG_ERR("Internal flash: not enough space for %d trampolines",
-                        num_tramps);
-                return -ENOMEM;
-            }
-
-            /* Open partition, erase trampoline sectors, write trampolines */
-            ret = flash_area_open(IFLASH_PARTITION_ID, &fa);
-            if (ret < 0) {
-                LOG_ERR("Failed to open flash for trampolines: %d", ret);
-                return ret;
-            }
-
-            ret = flash_area_erase(fa, iflash_next_offset, tramp_aligned);
-            if (ret < 0) {
-                LOG_ERR("Trampoline erase failed: %d", ret);
-                flash_area_close(fa);
-                return ret;
-            }
-
-            /* Generate R9-restoring trampolines and patch DATA entries */
-            int tramp_idx = 0;
-
-            for (size_t d = 0; d < data_entries; d++) {
-                uintptr_t addr = data[d] & ~1UL;
-
-                if (addr >= xip_addr && addr < xip_addr + sect_size) {
-                    uintptr_t old_val = data[d];
-                    uintptr_t thumb_bit = old_val & 1UL;
-                    uintptr_t iflash_func = iflash_addr + (addr - xip_addr) + thumb_bit;
-
-                    /* Build trampoline: code + GOT base + target */
-                    uint32_t tramp_off = iflash_next_offset +
-                                         tramp_idx * TRAMPOLINE_SIZE;
-                    uintptr_t tramp_cpu = IFLASH_CPU_ADDR(
-                        IFLASH_PARTITION_OFFSET + tramp_off);
-                    uint8_t tramp[TRAMPOLINE_SIZE];
-                    uint32_t gb = (uint32_t)(uintptr_t)got_base;
-                    uint32_t ta = (uint32_t)iflash_func;
-
-                    memcpy(tramp, trampoline_code, sizeof(trampoline_code));
-                    memcpy(tramp + 8, &gb, 4);
-                    memcpy(tramp + 12, &ta, 4);
-
-                    ret = flash_write_aligned(fa, tramp_off,
-                                              tramp, TRAMPOLINE_SIZE);
-                    if (ret < 0) {
-                        LOG_ERR("Trampoline write failed: %d", ret);
-                        flash_area_close(fa);
-                        return ret;
-                    }
-
-                    data[d] = tramp_cpu | 1; /* Thumb bit */
-                    patched++;
-                    tramp_idx++;
-                    LOG_DBG("DATA[%zu]: 0x%08lx -> tramp 0x%08lx -> func 0x%08lx",
-                            d, (unsigned long)old_val,
-                            (unsigned long)(tramp_cpu | 1),
-                            (unsigned long)iflash_func);
+                void *tramp = create_trampoline_with_got(
+                    (void *)iflash_func, got_base);
+                if (tramp == NULL) {
+                    LOG_ERR("Failed to create trampoline for DATA[%zu]", d);
+                    return -ENOMEM;
                 }
-            }
 
-            flash_area_close(fa);
-            iflash_next_offset += tramp_aligned;
+                data[d] = (uintptr_t)tramp;
+                patched++;
+                LOG_DBG("DATA[%zu]: 0x%08lx -> tramp %p -> func 0x%08lx",
+                        d, (unsigned long)old_val, tramp,
+                        (unsigned long)iflash_func);
+            }
         }
 #else
         /* Non-ARM: direct remapping (no R9 needed) */
@@ -419,69 +443,7 @@ void *zsw_llext_create_trampoline(void *func)
 
     __asm__ volatile("mov %0, r9" : "=r"(got_base));
 
-    const struct flash_area *fa;
-    int ret = flash_area_open(IFLASH_PARTITION_ID, &fa);
-
-    if (ret < 0) {
-        LOG_ERR("Failed to open flash for runtime trampoline: %d", ret);
-        return NULL;
-    }
-
-    /* Allocate and erase a new sector if the current one is full or unset */
-    if (runtime_tramp_sector == UINT32_MAX ||
-        runtime_tramp_used + TRAMPOLINE_SIZE > IFLASH_SECTOR_SIZE) {
-
-        if (iflash_next_offset + IFLASH_SECTOR_SIZE > iflash_partition_size) {
-            LOG_ERR("No iflash space for runtime trampoline sector");
-            flash_area_close(fa);
-            return NULL;
-        }
-
-        ret = flash_area_erase(fa, iflash_next_offset, IFLASH_SECTOR_SIZE);
-        if (ret < 0) {
-            LOG_ERR("Failed to erase runtime trampoline sector: %d", ret);
-            flash_area_close(fa);
-            return NULL;
-        }
-
-        runtime_tramp_sector = iflash_next_offset;
-        runtime_tramp_used = 0;
-        iflash_next_offset += IFLASH_SECTOR_SIZE;
-
-        LOG_INF("Allocated runtime trampoline sector at 0x%x",
-                IFLASH_PARTITION_OFFSET + runtime_tramp_sector);
-    }
-
-    /* Build 16-byte trampoline: set R9 to GOT base, then jump to func */
-    uint8_t tramp[TRAMPOLINE_SIZE];
-    uint32_t gb = (uint32_t)(uintptr_t)got_base;
-    uint32_t ta = (uint32_t)(uintptr_t)func;
-
-    memcpy(tramp, trampoline_code, sizeof(trampoline_code));
-    memcpy(tramp + 8, &gb, 4);
-    memcpy(tramp + 12, &ta, 4);
-
-    /* Write trampoline into the pre-erased sector */
-    uint32_t write_offset = runtime_tramp_sector + runtime_tramp_used;
-
-    ret = flash_write_aligned(fa, write_offset, tramp, TRAMPOLINE_SIZE);
-    flash_area_close(fa);
-
-    if (ret < 0) {
-        LOG_ERR("Failed to write runtime trampoline: %d", ret);
-        return NULL;
-    }
-
-    uintptr_t tramp_cpu = IFLASH_CPU_ADDR(IFLASH_PARTITION_OFFSET + write_offset);
-
-    runtime_tramp_used += TRAMPOLINE_SIZE;
-
-    sys_cache_instr_invd_all();
-
-    LOG_DBG("Runtime trampoline: func %p -> tramp 0x%08lx (GOT %p)",
-            func, (unsigned long)(tramp_cpu | 1), got_base);
-
-    return (void *)(tramp_cpu | 1); /* Thumb bit set */
+    return create_trampoline_with_got(func, got_base);
 }
 #else
 void *zsw_llext_create_trampoline(void *func)
