@@ -131,10 +131,6 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 
     int64_t now_ticks = z_impl_k_uptime_ticks();
 
-    LOG_WRN("Battery event: %d mV, %d%%, ttf=%d, tte=%d, status=%d, error=%d, is_charging=%d",
-            event->mV, event->percent, event->ttf, event->tte,
-            event->status, event->error, event->is_charging);
-
     if ((now_ticks - last_battery_sample_ticks) >= SAMPLE_INTERVAL_TICKS) {
         zsw_battery_sample_t sample;
         sample.mv_with_decimals = compresse_voltage_in_byte(event->mV);
@@ -223,6 +219,7 @@ application_t *app_entry(void)
     battery_app_battery_event.callback = zsw_llext_create_trampoline((void *)zbus_battery_sample_data_callback);
     zbus_chan_add_obs(&battery_sample_data_chan, &battery_app_battery_event, K_MSEC(100));
 
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     battery_app_add();
     return &app;
 }

@@ -23,6 +23,7 @@
 #include <ncs_version.h>
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "managers/zsw_llext_iflash.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 
@@ -76,6 +77,7 @@ static int about_app_add(void)
 #ifdef CONFIG_ZSW_LLEXT_APPS
 application_t *app_entry(void)
 {
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     about_app_add();
     return &app;
 }

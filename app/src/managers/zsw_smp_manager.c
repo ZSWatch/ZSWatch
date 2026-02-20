@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/zswatch/>.
- * Copyright (c) 2025 ZSWatch Project.
+ * Copyright (c) 2026 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 
 #ifndef CONFIG_ARCH_POSIX
 
-#define SMP_AUTO_DISABLE_TIMEOUT_SEC  180  /* 3 minutes */
+#define SMP_AUTO_DISABLE_TIMEOUT_SEC  180
 
 static bool smp_enabled;
 static bool auto_disable_active;
@@ -72,9 +72,6 @@ static void reset_auto_disable_timer(void)
     }
 }
 
-/**
- * @brief MCUmgr callback for IMG management events (DFU activity).
- */
 static enum mgmt_cb_return img_mgmt_callback(uint32_t event, enum mgmt_cb_return prev_status,
                                              int32_t *rc, uint16_t *group, bool *abort_more,
                                              void *data, size_t data_size)
@@ -86,15 +83,11 @@ static enum mgmt_cb_return img_mgmt_callback(uint32_t event, enum mgmt_cb_return
     ARG_UNUSED(data);
     ARG_UNUSED(data_size);
 
-    /* Reset timeout on any IMG activity */
     reset_auto_disable_timer();
 
     return MGMT_CB_OK;
 }
 
-/**
- * @brief MCUmgr callback for FS management events (file access activity).
- */
 static enum mgmt_cb_return fs_mgmt_callback(uint32_t event, enum mgmt_cb_return prev_status,
                                             int32_t *rc, uint16_t *group, bool *abort_more,
                                             void *data, size_t data_size)
@@ -106,7 +99,6 @@ static enum mgmt_cb_return fs_mgmt_callback(uint32_t event, enum mgmt_cb_return 
     ARG_UNUSED(data);
     ARG_UNUSED(data_size);
 
-    /* Reset timeout on any FS activity */
     reset_auto_disable_timer();
 
     return MGMT_CB_OK;
@@ -126,7 +118,6 @@ int zsw_smp_manager_enable(bool auto_disable)
 {
     if (smp_enabled) {
         LOG_DBG("SMP already enabled");
-        /* If re-enabling with auto_disable, just restart timer */
         if (auto_disable) {
             auto_disable_active = true;
             k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
@@ -134,7 +125,6 @@ int zsw_smp_manager_enable(bool auto_disable)
         return 0;
     }
 
-    /* Enable XIP first - MCUmgr code resides in external flash XIP region */
     zsw_xip_enable();
 
     int rc = smp_bt_register();
@@ -144,7 +134,7 @@ int zsw_smp_manager_enable(bool auto_disable)
         return rc;
     }
 
-    /* Optimize BLE parameters for faster transfer */
+    // Optimize BLE parameters for faster transfer
     ble_comm_set_fast_adv_interval();
     ble_comm_set_short_connection_interval();
 
@@ -168,7 +158,6 @@ int zsw_smp_manager_disable(void)
         return 0;
     }
 
-    /* Cancel any pending auto-disable */
     k_work_cancel_delayable(&smp_auto_disable_work);
 
     int rc = smp_bt_unregister();
@@ -177,11 +166,9 @@ int zsw_smp_manager_disable(void)
         return rc;
     }
 
-    /* Restore default BLE parameters */
     ble_comm_set_default_adv_interval();
     ble_comm_set_default_connection_interval();
 
-    /* Disable XIP after MCUmgr is disabled */
     zsw_xip_disable();
 
     smp_enabled = false;
@@ -203,11 +190,9 @@ void zsw_smp_manager_reset_timeout(void)
 
 static int zsw_smp_manager_init(void)
 {
-    /* Register MCUmgr callbacks for activity detection */
     mgmt_callback_register(&img_callback);
     mgmt_callback_register(&fs_callback);
 
-    /* Ensure SMP BT is disabled at startup */
     smp_enabled = false;
     auto_disable_active = false;
 
@@ -219,7 +204,6 @@ static int zsw_smp_manager_init(void)
     return 0;
 }
 
-/* Initialize after SMP BT transport (which runs at CONFIG_APPLICATION_INIT_PRIORITY) */
 SYS_INIT(zsw_smp_manager_init, APPLICATION, 91);
 
 #else /* CONFIG_ARCH_POSIX */

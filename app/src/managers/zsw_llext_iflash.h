@@ -23,6 +23,7 @@
 #ifdef CONFIG_ZSW_LLEXT_APPS
 
 #include <zephyr/llext/llext.h>
+#include "managers/zsw_app_manager.h"
 
 /**
  * @brief Mark a function for internal flash execution.
@@ -36,6 +37,30 @@
  * survive screen-off in LLEXT apps.
  */
 #define LLEXT_IFLASH __attribute__((section(".text.iflash"), noinline, used))
+
+/**
+ * @brief Wrap all application_t function pointers with R9-restoring trampolines.
+ *
+ * Call this in app_entry() after populating the application_t struct.
+ * Each non-NULL callback is replaced with a trampoline that restores R9
+ * before jumping to the original function, so the firmware can invoke
+ * LLEXT callbacks safely from any context.
+ *
+ * @param app_ptr  Pointer to the application_t to patch
+ */
+#define LLEXT_TRAMPOLINE_APP_FUNCS(app_ptr) do { \
+    application_t *_a = (app_ptr); \
+    if (_a->start_func) \
+        _a->start_func = (void *)zsw_llext_create_trampoline((void *)_a->start_func); \
+    if (_a->stop_func) \
+        _a->stop_func = (void *)zsw_llext_create_trampoline((void *)_a->stop_func); \
+    if (_a->back_func) \
+        _a->back_func = (void *)zsw_llext_create_trampoline((void *)_a->back_func); \
+    if (_a->ui_unavailable_func) \
+        _a->ui_unavailable_func = (void *)zsw_llext_create_trampoline((void *)_a->ui_unavailable_func); \
+    if (_a->ui_available_func) \
+        _a->ui_available_func = (void *)zsw_llext_create_trampoline((void *)_a->ui_available_func); \
+} while (0)
 
 /**
  * @brief Initialize the internal flash allocator.
@@ -109,6 +134,9 @@ void *zsw_llext_create_trampoline(void *func);
 
 /** @brief No-op when LLEXT is disabled. */
 #define LLEXT_IFLASH
+
+/** @brief No-op when LLEXT is disabled. */
+#define LLEXT_TRAMPOLINE_APP_FUNCS(app_ptr) do { (void)(app_ptr); } while (0)
 
 /** @brief Identity (no-op) when LLEXT is disabled — returns func unchanged. */
 #define zsw_llext_create_trampoline(func) (func)
