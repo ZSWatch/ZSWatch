@@ -47,6 +47,7 @@
 #include "managers/zsw_llext_iflash.h"
 #include "managers/zsw_xip_manager.h"
 #include "events/activity_event.h"
+#include "ui/popup/zsw_popup_window.h"
 #include <zephyr/zbus/zbus.h>
 #include <lvgl.h>
 
@@ -549,6 +550,32 @@ int zsw_llext_app_manager_prepare_app_dir(const char *app_id)
     return 0;
 }
 
+static void show_app_removed_popup_work_handler(struct k_work *work);
+static K_WORK_DEFINE(show_app_removed_popup_work, show_app_removed_popup_work_handler);
+static char removed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
+
+static void show_app_removed_popup_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    char popup_body[80];
+    snprintk(popup_body, sizeof(popup_body), "'%s' deleted.\nRestart to take effect.", removed_app_name);
+    zsw_popup_show("App Removed", popup_body, NULL, 5, false);
+}
+
+static void show_app_installed_popup_work_handler(struct k_work *work);
+static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
+static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
+
+static void show_app_installed_popup_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    char popup_body[64];
+    snprintk(popup_body, sizeof(popup_body), "'%s' installed", installed_app_name);
+    zsw_popup_show("App Ready", popup_body, NULL, 3, false);
+}
+
 int zsw_llext_app_manager_remove_app(const char *app_id)
 {
     char elf_path[ZSW_LLEXT_MAX_PATH_LEN];
@@ -568,6 +595,50 @@ int zsw_llext_app_manager_remove_app(const char *app_id)
         LOG_WRN("llext: rmdir %s: %d", dir_path, ret);
     }
 
+    /* Show popup notification from LVGL thread context */
+    strncpy(removed_app_name, app_id, sizeof(removed_app_name) - 1);
+    removed_app_name[sizeof(removed_app_name) - 1] = '\0';
+    k_work_submit(&show_app_removed_popup_work);
+
     LOG_INF("llext: removed app '%s'", app_id);
+    return 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Hot-load: Load and register an app at runtime
+ * -------------------------------------------------------------------------- */
+
+int zsw_llext_app_manager_load_app(const char *app_id)
+{
+    char dir_path[ZSW_LLEXT_MAX_PATH_LEN];
+    int ret;
+
+    /* Check if already loaded */
+    for (int i = 0; i < num_llext_apps; i++) {
+        if (strcmp(llext_apps[i].name, app_id) == 0) {
+            LOG_WRN("llext: app '%s' already loaded", app_id);
+            return -EALREADY;
+        }
+    }
+
+    snprintk(dir_path, sizeof(dir_path), "%s/%s", ZSW_LLEXT_APPS_BASE_PATH, app_id);
+
+    ret = discover_llext_app(dir_path, app_id);
+    if (ret < 0) {
+        LOG_ERR("llext: failed to load app '%s': %d", app_id, ret);
+        return ret;
+    }
+
+    /* Show popup and refresh picker from LVGL thread context */
+    zsw_llext_app_t *la = &llext_apps[num_llext_apps - 1];
+    if (la->real_app && la->real_app->name) {
+        strncpy(installed_app_name, la->real_app->name, sizeof(installed_app_name) - 1);
+    } else {
+        strncpy(installed_app_name, app_id, sizeof(installed_app_name) - 1);
+    }
+    installed_app_name[sizeof(installed_app_name) - 1] = '\0';
+    k_work_submit(&show_app_installed_popup_work);
+
+    LOG_INF("llext: hot-loaded app '%s'", app_id);
     return 0;
 }

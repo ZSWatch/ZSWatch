@@ -519,6 +519,26 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
     return picker_root;
 }
 
+void app_picker_ui_refresh(void)
+{
+    if (picker_root == NULL) {
+        /* Picker not open — nothing to refresh */
+        return;
+    }
+
+    LOG_DBG("Refreshing app picker");
+
+    build_picker_items();
+    total_pages = calculate_page_count();
+
+    /* Clamp current page if item count reduced */
+    if (current_page >= total_pages) {
+        current_page = total_pages > 0 ? total_pages - 1 : 0;
+    }
+
+    populate_page(current_page);
+}
+
 void app_picker_ui_delete(void)
 {
     /* Save state before deleting */

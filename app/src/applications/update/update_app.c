@@ -24,6 +24,7 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_xip_manager.h"
 #include "managers/zsw_usb_manager.h"
+#include "managers/zsw_smp_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 #include <zephyr/logging/log.h>
@@ -33,7 +34,6 @@
 #ifndef CONFIG_ARCH_POSIX
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
 #include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt.h>
-#include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 #endif
 
 LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
@@ -53,7 +53,6 @@ static application_t app = {
 
 #ifndef CONFIG_ARCH_POSIX
 static bool dfu_in_progress = false;
-static bool ble_fota_enabled = false;
 static bool usb_fota_enabled = false;
 static int64_t last_ui_update_time = 0;
 
@@ -182,37 +181,28 @@ static bool toggle_usb_fota(void)
 
 static bool toggle_ble_fota(void)
 {
-    if (!ble_fota_enabled) {
-        // Enable XIP before enabling MCUmgr as MCUmgr code is in XIP
-        zsw_xip_enable();
-        int rc = smp_bt_register();
+    bool is_enabled = zsw_smp_manager_is_enabled();
+
+    if (!is_enabled) {
+        int rc = zsw_smp_manager_enable(false); /* No auto-disable when manually enabled via UI */
         if (rc != 0) {
-            LOG_ERR("Failed to register BLE SMP: %d", rc);
+            LOG_ERR("Failed to enable SMP: %d", rc);
             update_ui_set_status("Status: BLE FOTA enable failed");
             update_ui_update_ble_button_state(false);
-            zsw_xip_disable();
             return false;
         }
-        ble_comm_set_fast_adv_interval();
-        ble_comm_set_short_connection_interval();
-        ble_fota_enabled = true;
         update_ui_set_status("Status: BLE FOTA enabled - Ready for updates");
         LOG_INF("BLE FOTA enabled");
         update_ui_update_ble_button_state(true);
         return true;
     } else {
-        int rc = smp_bt_unregister();
+        int rc = zsw_smp_manager_disable();
         if (rc != 0) {
-            LOG_ERR("Failed to unregister BLE SMP: %d", rc);
+            LOG_ERR("Failed to disable SMP: %d", rc);
             update_ui_set_status("Status: BLE FOTA disable failed");
             update_ui_update_ble_button_state(true);
             return false;
         }
-        ble_comm_set_default_adv_interval();
-        ble_comm_set_default_connection_interval();
-        ble_fota_enabled = false;
-        // Disable XIP after disabling MCUmgr
-        zsw_xip_disable();
         update_ui_set_status("Status: BLE FOTA disabled");
         LOG_INF("BLE FOTA disabled");
         update_ui_update_ble_button_state(false);
@@ -229,35 +219,35 @@ static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
     }
 
     if (strcmp(argv[1], "enable") == 0) {
-        if (ble_fota_enabled) {
+        if (zsw_smp_manager_is_enabled()) {
             shell_print(sh, "BLE FOTA is already enabled");
             return 0;
         }
         shell_print(sh, "Enabling BLE FOTA...");
-        bool result = toggle_ble_fota();
-        if (result && ble_fota_enabled) {
+        int rc = zsw_smp_manager_enable(false);
+        if (rc == 0) {
             shell_print(sh, "BLE FOTA enabled successfully");
             return 0;
         } else {
-            shell_error(sh, "Failed to enable BLE FOTA");
+            shell_error(sh, "Failed to enable BLE FOTA: %d", rc);
             return -EIO;
         }
     } else if (strcmp(argv[1], "disable") == 0) {
-        if (!ble_fota_enabled) {
+        if (!zsw_smp_manager_is_enabled()) {
             shell_print(sh, "BLE FOTA is already disabled");
             return 0;
         }
         shell_print(sh, "Disabling BLE FOTA...");
-        bool result = toggle_ble_fota();
-        if (result && !ble_fota_enabled) {
+        int rc = zsw_smp_manager_disable();
+        if (rc == 0) {
             shell_print(sh, "BLE FOTA disabled successfully");
             return 0;
         } else {
-            shell_error(sh, "Failed to disable BLE FOTA");
+            shell_error(sh, "Failed to disable BLE FOTA: %d", rc);
             return -EIO;
         }
     } else if (strcmp(argv[1], "status") == 0) {
-        shell_print(sh, "BLE FOTA is currently %s", ble_fota_enabled ? "enabled" : "disabled");
+        shell_print(sh, "BLE FOTA is currently %s", zsw_smp_manager_is_enabled() ? "enabled" : "disabled");
         return 0;
     } else {
         shell_error(sh, "Unknown command: %s", argv[1]);
@@ -305,13 +295,7 @@ static int update_app_add(void)
     mgmt_callback_register(&upload_callback);
     mgmt_callback_register(&stopped_callback);
 
-    ble_fota_enabled = false;
     usb_fota_enabled = false;
-
-    int rc = smp_bt_unregister();
-    if (rc != 0) {
-        LOG_WRN("BLE SMP already unregistered or failed to unregister. Check init priority. Error: %d", rc);
-    }
 #endif
     return 0;
 }
