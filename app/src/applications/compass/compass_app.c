@@ -22,7 +22,7 @@
 #include "ui/popup/zsw_popup_window.h"
 #include "zsw_magnetometer.h"
 #include "managers/zsw_app_manager.h"
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 #include "sensor_fusion/zsw_sensor_fusion.h"
 #include "ui/utils/zsw_ui_utils.h"
 

@@ -42,9 +42,9 @@
 #include <string.h>
 
 #include "managers/zsw_app_manager.h"
-#include "managers/zsw_llext_app_manager.h"
-#include "managers/zsw_llext_xip.h"
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_app_manager.h"
+#include "llext/zsw_llext_xip.h"
+#include "llext/zsw_llext_iflash.h"
 #include "managers/zsw_xip_manager.h"
 #include "ui/popup/zsw_popup_window.h"
 #include <lvgl.h>
@@ -105,8 +105,8 @@ static void show_app_installed_popup_work_handler(struct k_work *work);
  * Static Data
  * -------------------------------------------------------------------------- */
 
-static zsw_llext_app_t llext_apps[ZSW_LLEXT_MAX_APPS];
-static int num_llext_apps;
+static zsw_llext_app_t llext[ZSW_LLEXT_MAX_APPS];
+static int num_llext;
 
 /* Heap buffer for LLEXT dynamic allocations */
 // TODO: Might change this for a common heap
@@ -149,13 +149,13 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
     int ret;
     zsw_llext_app_t *la;
 
-    if (num_llext_apps >= ZSW_LLEXT_MAX_APPS) {
+    if (num_llext >= ZSW_LLEXT_MAX_APPS) {
         LOG_ERR("Maximum LLEXT apps reached (%d)", ZSW_LLEXT_MAX_APPS);
         return -ENOMEM;
     }
 
-    idx = num_llext_apps;
-    la = &llext_apps[idx];
+    idx = num_llext;
+    la = &llext[idx];
     memset(la, 0, sizeof(*la));
     strncpy(la->dir_path, dir_path, sizeof(la->dir_path) - 1);
     strncpy(la->name, dir_name, sizeof(la->name) - 1);
@@ -232,7 +232,7 @@ static int discover_llext_app(const char *dir_path, const char *dir_name)
     }
 
     la->loaded = true;
-    num_llext_apps++;
+    num_llext++;
 
     LOG_INF("Loaded LLEXT app '%s' (name='%s', icon=%p, slot %d)",
             la->name, la->real_app->name, la->real_app->icon, idx);
@@ -307,7 +307,7 @@ int zsw_llext_app_manager_init(void)
 
     fs_closedir(&dir);
 
-    LOG_INF("LLEXT discovery complete: %d app(s) found", num_llext_apps);
+    LOG_INF("LLEXT discovery complete: %d app(s) found", num_llext);
 
     return 0;
 }
@@ -380,8 +380,8 @@ int zsw_llext_app_manager_load_app(const char *app_id)
     int ret;
 
     /* Check if already loaded */
-    for (int i = 0; i < num_llext_apps; i++) {
-        if (strcmp(llext_apps[i].name, app_id) == 0) {
+    for (int i = 0; i < num_llext; i++) {
+        if (strcmp(llext[i].name, app_id) == 0) {
             LOG_WRN("llext: app '%s' already loaded", app_id);
             return -EALREADY;
         }
@@ -396,7 +396,7 @@ int zsw_llext_app_manager_load_app(const char *app_id)
     }
 
     /* Show popup and refresh picker from LVGL thread context */
-    zsw_llext_app_t *la = &llext_apps[num_llext_apps - 1];
+    zsw_llext_app_t *la = &llext[num_llext - 1];
     if (la->real_app && la->real_app->name) {
         strncpy(installed_app_name, la->real_app->name, sizeof(installed_app_name) - 1);
     } else {

@@ -23,7 +23,7 @@
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
 #ifdef CONFIG_ZSW_LLEXT_APPS
-#include "managers/zsw_llext_app_manager.h"
+#include "llext/zsw_llext_app_manager.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);

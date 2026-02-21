@@ -20,7 +20,7 @@
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
 
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
 #include <zephyr/llext/symbol.h>
@@ -127,7 +127,6 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
 {
     const struct battery_sample_event *event =
         (const struct battery_sample_event *)chan->message;
-
 
     int64_t now_ticks = z_impl_k_uptime_ticks();
 

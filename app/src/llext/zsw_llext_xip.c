@@ -40,7 +40,7 @@
 #include <zephyr/llext/loader.h>
 #include <string.h>
 
-#include "managers/zsw_llext_xip.h"
+#include "llext/zsw_llext_xip.h"
 
 LOG_MODULE_REGISTER(llext_xip, CONFIG_ZSW_LLEXT_XIP_LOG_LEVEL);
 
@@ -357,7 +357,6 @@ int zsw_llext_xip_pre_copy_hook(struct llext_loader *ldr, struct llext *ext,
 
     return 0;
 }
-
 
 void zsw_llext_xip_reset(void)
 {

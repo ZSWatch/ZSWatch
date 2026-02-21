@@ -331,7 +331,7 @@ EXPORT_SYMBOL(lv_spinner_create);
 EXPORT_SYMBOL(lv_spinner_set_anim_params);
 
 /* ---- LLEXT runtime trampoline API ---- */
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 EXPORT_SYMBOL(zsw_llext_create_trampoline);
 
 /* ---- Kernel work queue (calculator, weather) ---- */

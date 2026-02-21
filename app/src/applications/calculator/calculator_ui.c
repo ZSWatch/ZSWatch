@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
 #include "zsw_llext_log.h"

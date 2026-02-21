@@ -4,7 +4,7 @@
 */
 #include "calculator_ui.h"
 
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 
 /*
  * Copyright (c) 2024 Glenn Andrews

@@ -73,7 +73,7 @@
 #include "managers/zsw_microphone_manager.h"
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-#include "managers/zsw_llext_app_manager.h"
+#include "llext/zsw_llext_app_manager.h"
 #endif
 
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);

@@ -36,7 +36,7 @@
 #include <zephyr/llext/llext.h>
 #include <string.h>
 
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 
 LOG_MODULE_REGISTER(llext_iflash, CONFIG_ZSW_LLEXT_XIP_LOG_LEVEL);
 
@@ -363,7 +363,7 @@ int zsw_llext_iflash_install(struct llext *ext, uintptr_t text_base_vma, void *g
                 uintptr_t iflash_func = iflash_addr + (addr - xip_addr) + thumb_bit;
 
                 void *tramp = create_trampoline_with_got(
-                    (void *)iflash_func, got_base);
+                                  (void *)iflash_func, got_base);
                 if (tramp == NULL) {
                     LOG_ERR("Failed to create trampoline for DATA[%zu]", d);
                     return -ENOMEM;

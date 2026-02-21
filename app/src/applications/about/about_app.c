@@ -23,7 +23,7 @@
 #include <ncs_version.h>
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 

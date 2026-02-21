@@ -20,7 +20,7 @@
 #include <zephyr/zbus/zbus.h>
 #include "cJSON.h"
 
-#include "managers/zsw_llext_iflash.h"
+#include "llext/zsw_llext_iflash.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "events/ble_event.h"
@@ -139,7 +139,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
          * k_uptime_get() call into XIP .text from IFLASH. */
         extern int64_t z_impl_k_uptime_ticks(void);
         last_update_weather_time = (uint64_t)(z_impl_k_uptime_ticks()
-            * 1000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC);
+                                              * 1000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC);
 
         k_work_submit(&weather_app_publish);
     } else {
@@ -206,7 +206,7 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
          * k_uptime_get() call into XIP .text from IFLASH. */
         extern int64_t z_impl_k_uptime_ticks(void);
         last_update_gps_time = (uint64_t)(z_impl_k_uptime_ticks()
-            * 1000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC);
+                                          * 1000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC);
         LOG_DBG("Got GPS data, fetch weather");
         LOG_DBG("Latitude: %f", event->data.data.gps.lat);
         LOG_DBG("Longitude: %f", event->data.data.gps.lon);
@@ -264,7 +264,7 @@ static int weather_app_add(void)
                               (void *)weather_data_timeout));
 
     http_rsp_cb_wrapped = (ble_http_callback)zsw_llext_create_trampoline(
-                               (void *)http_rsp_cb);
+                              (void *)http_rsp_cb);
 
     int ret = zbus_chan_add_obs(&ble_comm_data_chan,
                                 &weather_ble_listener, K_MSEC(100));

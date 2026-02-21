@@ -31,7 +31,7 @@ add_subdirectory(src/drivers)
 add_subdirectory(src/ble)
 add_subdirectory(src/images)
 add_subdirectory(src/ui)
-add_subdirectory(src/llext_apps)
+add_subdirectory(src/llext)
 add_subdirectory(lvgl_editor)
 
 include_directories(src/)
