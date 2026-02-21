@@ -486,6 +486,9 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
         return NULL;
     }
 
+    lv_obj_set_style_bg_color(picker_root, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(picker_root, LV_OPA_COVER, LV_PART_MAIN);
+
     cache_object_references();
 
     lv_obj_add_event_cb(root, on_swipe_event, LV_EVENT_GESTURE, NULL);
