@@ -4,7 +4,9 @@ ZSWatch supports dynamically loaded applications using Zephyr's
 [LLEXT](https://docs.zephyrproject.org/latest/services/llext/index.html)
 subsystem. LLEXT apps are compiled as position-independent shared libraries
 (`ET_DYN` ELF), stored on the LittleFS filesystem, and loaded at boot (or
-hot-loaded at runtime) when discovered.
+hot-loaded at runtime) when discovered. Apps can be uploaded individually
+over BLE/USB using MCUmgr filesystem commands (no reboot required), or bundled
+into the LittleFS image and flashed via `west upload_fs`.
 
 ## How It Works
 
@@ -35,7 +37,7 @@ Key properties:
 
 ### Challenges
 
-Getting LLEXT to work on a memory-constrained embedded target like the nRF5340
+Getting LLEXT to work with large apps on a memory-constrained embedded target like the nRF5340
 required solving several problems not covered by upstream Zephyr's LLEXT
 subsystem. This section documents the main challenges and the solutions in
 place.
@@ -45,7 +47,7 @@ place.
 Zephyr's stock LLEXT loader allocates **all** ELF sections (`.text`, `.rodata`,
 `.data`, `.bss`, `.got`) on a heap in RAM. On the nRF5340 with 512 KB RAM
 shared with the BLE stack and LVGL, there simply isn't room for even one app's
-code.
+code and resources.
 
 **Solution - streaming to XIP flash:** A `pre_copy_hook` callback was added
 to `struct llext_load_param` (see: Zephyr patch below) which is invoked after
@@ -495,6 +497,46 @@ This causes unnecessary flash wear and slower boot times. A simple
 optimization would be to read back and compare each sector before
 erasing/writing - flash reads are cheap, and if the content matches the
 erase+write can be skipped entirely.
+
+**Future plan - firmware / LLEXT app ABI compatibility:**
+There is currently no mechanism to verify that an LLEXT app is compatible with
+the running firmware. When the firmware is updated, exported symbols may move
+to different addresses, change their function signatures, or be removed
+entirely. An LLEXT app compiled against an older firmware will still load (the
+symbol table is resolved at load time), but if a function's signature changed
+or its semantics differ, the result is silent data corruption or a crash.
+
+Open questions and potential approaches:
+- **Export table versioning**: Assign a version number (or hash) to the
+  firmware's export table. Embed the expected version in each `.llext` ELF
+  (e.g. as a custom ELF note or a well-known symbol). At load time, compare
+  versions and refuse to load incompatible apps with a clear error message.
+- **Semantic versioning of the LLEXT API surface**: Define a stable API
+  contract (e.g. `LLEXT_API_VERSION 1`) that covers the exported symbols,
+  their signatures, and struct layouts. Bump the version when breaking changes
+  are made. This lets app authors know which firmware versions their app
+  supports.
+
+**Future plan - flash partition exhaustion handling:**
+The XIP partition and internal flash partition have finite size. Currently
+there is no handling for the case where loading one more app would exceed the
+available space. The loader should check remaining capacity before streaming
+and return a clear error (rather than silently overwriting or faulting).
+Reporting available/used space via a diagnostic API or log message would help
+users understand why an app failed to load.
+
+**Future plan - Extension Development Kit (EDK) for out-of-tree app builds:**
+Currently LLEXT apps are built in-tree as part of the firmware build using
+`add_zsw_llext_app()`. This requires the full firmware source tree and NCS SDK.
+Zephyr provides an
+[Extension Development Kit (EDK)](https://docs.zephyrproject.org/latest/services/llext/build.html#llext-extension-development-kit-edk)
+mechanism that generates a standalone SDK package from the firmware build
+containing exported headers, symbol tables, and toolchain configuration. With
+EDK, third-party developers could build LLEXT apps using only the EDK package
+— without access to the firmware source or the full NCS installation. This
+would enable a true "app store" workflow: publish an EDK per firmware release,
+and anyone can compile and upload apps independently. Adopting EDK would also
+formalize the exported API surface and naturally integrate with ABI versioning.
 
 ## Zbus in LLEXT Apps
 
