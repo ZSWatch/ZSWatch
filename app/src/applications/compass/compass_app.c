@@ -31,8 +31,8 @@
 #endif
 
 // Functions needed for all applications
-static void compass_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void compass_app_stop(void *user_data);
+static void compass_app_start(lv_obj_t *root, lv_group_t *group);
+static void compass_app_stop(void);
 
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
@@ -50,17 +50,15 @@ static lv_timer_t *refresh_timer;
 static bool is_calibrating;
 static uint32_t cal_start_ms;
 
-static void compass_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void compass_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     compass_ui_show(root, on_start_calibration);
     refresh_timer = lv_timer_create(timer_callback, CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,  NULL);
     zsw_sensor_fusion_init();
 }
 
-static void compass_app_stop(void *user_data)
+static void compass_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     if (refresh_timer) {
         lv_timer_del(refresh_timer);
     }
@@ -104,11 +102,11 @@ static int compass_app_add(void)
 }
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-application_t *app_entry(void)
+int app_entry(void)
 {
     LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     compass_app_add();
-    return &app;
+    return 0;
 }
 EXPORT_SYMBOL(app_entry);
 #else

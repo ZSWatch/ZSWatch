@@ -38,8 +38,8 @@
 
 LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
 
-static void update_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void update_app_stop(void *user_data);
+static void update_app_start(lv_obj_t *root, lv_group_t *group);
+static void update_app_stop(void);
 
 ZSW_LV_IMG_DECLARE(templates);
 
@@ -277,15 +277,13 @@ static bool toggle_usb_fota(void)
 }
 #endif
 
-static void update_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
 }
 
-static void update_app_stop(void *user_data)
+static void update_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     update_ui_remove();
 }
 

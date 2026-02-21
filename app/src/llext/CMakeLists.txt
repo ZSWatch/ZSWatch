@@ -1,4 +1,4 @@
-# Copyright (c) 2025 ZSWatch Project
+# Copyright (c) 2026 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
 
 # LLEXT app sources live alongside their built-in counterparts in

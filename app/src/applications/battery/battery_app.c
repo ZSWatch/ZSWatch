@@ -52,8 +52,8 @@ LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
 * an out-of-line GOT-indirect call to XIP .text. */
 extern int64_t z_impl_k_uptime_ticks(void);
 
-static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void battery_app_stop(void *user_data);
+static void battery_app_start(lv_obj_t *root, lv_group_t *group);
+static void battery_app_stop(void);
 static void on_battery_hist_clear_cb(void);
 static uint8_t compresse_voltage_in_byte(int mV);
 static int decompress_voltage_from_byte(uint8_t voltage_byte);
@@ -83,9 +83,8 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
-static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     zsw_battery_sample_t sample;
     struct battery_sample_event initial_sample;
 
@@ -116,9 +115,8 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group, void *user_data
     }
 }
 
-static void battery_app_stop(void *user_data)
+static void battery_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     battery_ui_remove();
 }
 
@@ -210,7 +208,7 @@ static int battery_app_add(void)
 }
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-application_t *app_entry(void)
+int app_entry(void)
 {
     battery_app_battery_event.name = "battery_app_bat_lis";
     battery_app_battery_event.type = ZBUS_OBSERVER_LISTENER_TYPE;
@@ -220,7 +218,7 @@ application_t *app_entry(void)
 
     LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     battery_app_add();
-    return &app;
+    return 0;
 }
 EXPORT_SYMBOL(app_entry);
 #else

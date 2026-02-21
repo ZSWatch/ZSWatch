@@ -26,8 +26,8 @@
 
 LOG_MODULE_REGISTER(watchface_picker_app, CONFIG_ZSW_REMOTE_APP_LOG_LEVEL);
 
-static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void watchface_picker_app_stop(void *user_data);
+static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group);
+static void watchface_picker_app_stop(void);
 
 ZSW_LV_IMG_DECLARE(watchface_picker_icon);
 
@@ -45,9 +45,8 @@ static void on_watchface_selected(int index)
     zsw_app_manager_app_close_request(&app);
 }
 
-static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     watchface_picker_ui_show(root, on_watchface_selected);
     for (int i = 0; i < watchface_app_get_num_faces(); i++) {
         const char *name;
@@ -59,9 +58,8 @@ static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group, void *
     watchface_picker_ui_set_selected(watchface_app_get_current_face());
 }
 
-static void watchface_picker_app_stop(void *user_data)
+static void watchface_picker_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     watchface_picker_ui_remove();
 }
 

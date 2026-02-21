@@ -19,8 +19,8 @@
 
 #include <lvgl.h>
 
-typedef void(*application_start_fn)(lv_obj_t *root, lv_group_t *group, void *user_data);
-typedef void(*application_stop_fn)(void *user_data);
+typedef void(*application_start_fn)(lv_obj_t *root, lv_group_t *group);
+typedef void(*application_stop_fn)(void);
 /*
 * Return true if the back button was consumed by the application.
 */
@@ -68,7 +68,6 @@ typedef struct application_t {
     zsw_app_category_t              category;
     uint8_t                         private_list_index;
     zsw_app_state_t                 current_state;
-    void                            *user_data;
 } application_t;
 
 /** @brief

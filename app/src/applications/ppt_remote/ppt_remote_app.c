@@ -27,8 +27,8 @@
 LOG_MODULE_REGISTER(ppt_remote_app, CONFIG_ZSW_REMOTE_APP_LOG_LEVEL);
 
 // Functions needed for all applications
-static void ppt_remote_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void ppt_remote_app_stop(void *user_data);
+static void ppt_remote_app_start(lv_obj_t *root, lv_group_t *group);
+static void ppt_remote_app_stop(void);
 static void on_next(void);
 static void on_prev(void);
 
@@ -49,15 +49,13 @@ static lv_timer_t *counter_timer = NULL;
 static int64_t start_time;
 static bool is_first_time = true;
 
-static void ppt_remote_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void ppt_remote_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     ppt_remote_ui_show(root, on_next, on_prev);
 }
 
-static void ppt_remote_app_stop(void *user_data)
+static void ppt_remote_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     if (counter_timer != NULL) {
         lv_timer_del(counter_timer);
     }

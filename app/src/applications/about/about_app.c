@@ -31,8 +31,8 @@
 #include <zephyr/llext/symbol.h>
 #endif
 
-static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void about_app_stop(void *user_data);
+static void about_app_start(lv_obj_t *root, lv_group_t *group);
+static void about_app_stop(void);
 
 static application_t app = {
     .name = "About",
@@ -42,9 +42,8 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_SYSTEM,
 };
 
-static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void about_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     char version[50];
     char sdk_version[50];
     char build_time[50];
@@ -62,9 +61,8 @@ static void about_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
     about_ui_show(root, CONFIG_BOARD_TARGET, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
 }
 
-static void about_app_stop(void *user_data)
+static void about_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     about_ui_remove();
 }
 
@@ -75,11 +73,11 @@ static int about_app_add(void)
 }
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-application_t *app_entry(void)
+int app_entry(void)
 {
     LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     about_app_add();
-    return &app;
+    return 0;
 }
 EXPORT_SYMBOL(app_entry);
 #else

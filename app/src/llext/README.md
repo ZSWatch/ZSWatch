@@ -201,7 +201,7 @@ app/src/llext/
 ├── zsw_llext_exports.c         # EXPORT_SYMBOL table (firmware → LLEXT)
 ├── zsw_llext_log.h             # Drop-in LOG_ERR/WRN/INF/DBG macros for LLEXT
 ├── zsw_llext_log.c             # Firmware-side log router
-├── zsw_llext_app_manager.c     # Discovery, loading, R9 setup, lifecycle
+├── zsw_llext_app_manager.c     # Discovery, loading, lifecycle management
 ├── zsw_llext_app_manager.h     # Public API (init, hot-load, prepare, remove)
 ├── zsw_llext_xip.c             # XIP flash streaming installer (pre-copy hook)
 ├── zsw_llext_xip.h             # XIP API + zsw_llext_xip_context struct
@@ -252,8 +252,8 @@ Create your app in `app/src/applications/my_app/`:
 
 LOG_MODULE_REGISTER(my_app, LOG_LEVEL_INF);
 
-static void my_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void my_app_stop(void *user_data);
+static void my_app_start(lv_obj_t *root, lv_group_t *group);
+static void my_app_stop(void);
 
 LV_IMG_DECLARE(my_app_icon)
 
@@ -265,15 +265,13 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
 
-static void my_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void my_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     my_app_ui_show(root, group);
 }
 
-static void my_app_stop(void *user_data)
+static void my_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     my_app_ui_remove(root, group);
 }
 
@@ -284,11 +282,11 @@ static int my_app_add(void)
 }
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-application_t *app_entry(void)
+int app_entry(void)
 {
     LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     my_app_add();
-    return &app;
+    return 0;
 }
 EXPORT_SYMBOL(app_entry);
 #else
@@ -301,7 +299,7 @@ SYS_INIT(my_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
   pointers (`start_func`, `stop_func`, `back_func`, etc.) with R9-restoring
   trampolines so the firmware can safely call into LLEXT code from any context.
 - Call your init / registration function (e.g. `my_app_add()`).
-- Return `&app` - the manager uses this pointer for the app's lifetime.
+- Return `0` on success (non-zero to indicate failure).
 
 ### 2. Register in CMakeLists.txt
 
@@ -626,7 +624,7 @@ CONFIG_ARM_MPU=n
 ### Manager files
 | File | Purpose |
 |------|---------|
-| `src/llext/zsw_llext_app_manager.c` | Discovery, boot loading, hot-loading, R9 setup |
+| `src/llext/zsw_llext_app_manager.c` | Discovery, boot loading, hot-loading, lifecycle management |
 | `src/llext/zsw_llext_app_manager.h` | Public API (`init`, `load_app`, `prepare_app_dir`, `remove_app`) |
 | `src/llext/zsw_llext_xip.c` | XIP flash streaming installer (pre-copy hook) |
 | `src/llext/zsw_llext_xip.h` | XIP API and `zsw_llext_xip_context` struct |

@@ -35,8 +35,8 @@ LOG_MODULE_REGISTER(info_app, LOG_LEVEL_DBG);
 #define INFO_REFRESH_INTERVAL_MS  1000
 
 // Functions needed for all applications
-static void info_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void info_app_stop(void *user_data);
+static void info_app_start(lv_obj_t *root, lv_group_t *group);
+static void info_app_stop(void);
 
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
@@ -77,9 +77,8 @@ static application_t app = {
 static lv_timer_t *refresh_timer;
 static ble_connection_info_t ble_info;
 
-static void info_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void info_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     bt_addr_le_t local_addr;
     char addr[BT_ADDR_LE_STR_LEN];
     size_t addr_count = 1;
@@ -116,9 +115,8 @@ static void info_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
     refresh_timer = lv_timer_create(timer_callback, INFO_REFRESH_INTERVAL_MS,  NULL);
 }
 
-static void info_app_stop(void *user_data)
+static void info_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     lv_timer_del(refresh_timer);
     info_ui_remove();
 }

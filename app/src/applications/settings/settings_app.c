@@ -37,8 +37,8 @@
 
 LOG_MODULE_REGISTER(settings_app, CONFIG_ZSW_SETTINGS_APP_LOG_LEVEL);
 
-static void settings_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void settings_app_stop(void *user_data);
+static void settings_app_start(lv_obj_t *root, lv_group_t *group);
+static void settings_app_stop(void);
 static bool settings_app_back(void);
 
 static void on_close_settings(void);
@@ -317,16 +317,14 @@ static void ble_pairing_work_handler(struct k_work *work)
     ble_comm_set_pairable(false);
 }
 
-static void settings_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     settings_load_subtree(ZSW_SETTINGS_PATH); // Update any values that may have changed outside of the settings app.
     lv_settings_create(root, settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
 }
 
-static void settings_app_stop(void *user_data)
+static void settings_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     settings_ui_remove();
 }
 

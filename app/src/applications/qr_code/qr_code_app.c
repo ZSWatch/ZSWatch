@@ -29,8 +29,8 @@
 #endif
 
 // Functions needed for all applications
-static void qr_code_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void qr_code_app_stop(void *user_data);
+static void qr_code_app_start(lv_obj_t *root, lv_group_t *group);
+static void qr_code_app_stop(void);
 
 static application_t app = {
     .name = "QR",
@@ -42,17 +42,15 @@ static application_t app = {
 
 static uint8_t original_brightness;
 
-static void qr_code_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void qr_code_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     original_brightness = zsw_display_control_get_brightness();
     zsw_display_control_set_brightness(100);
     qr_code_ui_show(root);
 }
 
-static void qr_code_app_stop(void *user_data)
+static void qr_code_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     zsw_display_control_set_brightness(original_brightness);
     qr_code_ui_remove();
 }
@@ -64,11 +62,11 @@ static int qr_code_app_add(void)
 }
 
 #ifdef CONFIG_ZSW_LLEXT_APPS
-application_t *app_entry(void)
+int app_entry(void)
 {
     LLEXT_TRAMPOLINE_APP_FUNCS(&app);
     qr_code_app_add();
-    return &app;
+    return 0;
 }
 EXPORT_SYMBOL(app_entry);
 #else

@@ -28,8 +28,8 @@
 LOG_MODULE_REGISTER(stopwatch_app, LOG_LEVEL_INF);
 
 // Functions needed for all applications
-static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void stopwatch_app_stop(void *user_data);
+static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group);
+static void stopwatch_app_stop(void);
 
 // Stopwatch event callbacks
 static void on_start_cb(void);
@@ -68,9 +68,8 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_ROOT,
 };
 
-static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     stopwatch_ui_show(root, on_start_cb, on_pause_cb, on_reset_cb, on_lap_cb);
     stopwatch_ui_update_state(stopwatch_data.state);
     stopwatch_ui_update_time(stopwatch_data.elapsed_ms);
@@ -78,9 +77,8 @@ static void stopwatch_app_start(lv_obj_t *root, lv_group_t *group, void *user_da
     zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &stopwatch_app_100ms_event_listener);
 }
 
-static void stopwatch_app_stop(void *user_data)
+static void stopwatch_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &stopwatch_app_100ms_event_listener);
     stopwatch_ui_remove();
 }

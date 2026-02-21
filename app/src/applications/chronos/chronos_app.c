@@ -26,8 +26,8 @@
 LOG_MODULE_REGISTER(chronos_app, LOG_LEVEL_INF);
 
 // Functions needed for all applications
-static void chronos_app_start(lv_obj_t *root, lv_group_t *group, void *user_data);
-static void chronos_app_stop(void *user_data);
+static void chronos_app_start(lv_obj_t *root, lv_group_t *group);
+static void chronos_app_stop(void);
 
 ZSW_LV_IMG_DECLARE(chronos_logo_icon);
 
@@ -39,15 +39,13 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_RANDOM,
 };
 
-static void chronos_app_start(lv_obj_t *root, lv_group_t *group, void *user_data)
+static void chronos_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(user_data);
     chronos_ui_init(root);
 }
 
-static void chronos_app_stop(void *user_data)
+static void chronos_app_stop(void)
 {
-    ARG_UNUSED(user_data);
     chronos_ui_deinit();
 }
 
