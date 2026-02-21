@@ -36,8 +36,7 @@ int zsw_smp_manager_enable(bool auto_disable);
  * @brief Disable SMP BT transport.
  *
  * Unregisters the SMP BT service, restores default BLE advertising and
- * connection intervals, disables XIP reference, and cancels any pending auto-disable
- * timer.
+ * connection intervals, releases XIP reference.
  *
  * @return 0 on success, negative error code on failure.
  */

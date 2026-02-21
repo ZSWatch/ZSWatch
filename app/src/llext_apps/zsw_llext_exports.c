@@ -46,6 +46,8 @@
 #include "fuel_gauge/zsw_pmic.h"
 #endif
 
+// TODO: Maybe move exports to the actual files, at least for zsw exports.
+
 /* ---- Zephyr kernel ---- */
 EXPORT_SYMBOL(k_msleep);
 EXPORT_SYMBOL(k_malloc);
@@ -276,6 +278,7 @@ EXPORT_SYMBOL(zsw_magnetometer_stop_calibration);
 /* ---- Popup window (compass app) ---- */
 #include "ui/popup/zsw_popup_window.h"
 EXPORT_SYMBOL(zsw_popup_show);
+EXPORT_SYMBOL(zsw_popup_show_with_icon);
 EXPORT_SYMBOL(zsw_popup_remove);
 
 /* ---- LVGL timer ---- */

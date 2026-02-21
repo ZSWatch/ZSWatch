@@ -228,7 +228,6 @@ bool zsw_smp_manager_is_enabled(void)
 
 void zsw_smp_manager_reset_timeout(void)
 {
-    /* No-op on POSIX */
 }
 
 #endif /* CONFIG_ARCH_POSIX */

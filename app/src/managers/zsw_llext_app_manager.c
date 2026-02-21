@@ -115,6 +115,7 @@ static bool heap_initialized;
 
 static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
 static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
+static const void *installed_app_icon;
 
 /* --------------------------------------------------------------------------
  * Heap Management
@@ -343,7 +344,7 @@ static void show_app_installed_popup_work_handler(struct k_work *work)
 
     char popup_body[64];
     snprintk(popup_body, sizeof(popup_body), "'%s' installed", installed_app_name);
-    zsw_popup_show("App Ready", popup_body, NULL, 3, false);
+    zsw_popup_show_with_icon("App Installed", popup_body, installed_app_icon, NULL, 4);
 }
 
 int zsw_llext_app_manager_remove_app(const char *app_id)
@@ -402,6 +403,7 @@ int zsw_llext_app_manager_load_app(const char *app_id)
         strncpy(installed_app_name, app_id, sizeof(installed_app_name) - 1);
     }
     installed_app_name[sizeof(installed_app_name) - 1] = '\0';
+    installed_app_icon = (la->real_app && la->real_app->icon) ? la->real_app->icon : NULL;
     k_work_submit(&show_app_installed_popup_work);
 
     LOG_INF("llext: hot-loaded app '%s'", app_id);
