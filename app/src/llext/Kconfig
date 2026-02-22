@@ -1,0 +1,18 @@
+# Copyright (c) 2026 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+if ZSW_LLEXT_APPS
+
+    menu "LLEXT App Manager"
+        module = ZSW_LLEXT_APP_MANAGER
+        module-str = ZSW_LLEXT_APP_MANAGER
+        source "subsys/logging/Kconfig.template.log_config"
+    endmenu
+
+    menu "LLEXT XIP"
+        module = ZSW_LLEXT_XIP
+        module-str = ZSW_LLEXT_XIP
+        source "subsys/logging/Kconfig.template.log_config"
+    endmenu
+
+endif # ZSW_LLEXT_APPS

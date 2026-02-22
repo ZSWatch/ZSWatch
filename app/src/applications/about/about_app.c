@@ -23,13 +23,16 @@
 #include <ncs_version.h>
 #include "about_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "llext/zsw_llext_iflash.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/llext/symbol.h>
+#endif
+
 static void about_app_start(lv_obj_t *root, lv_group_t *group);
 static void about_app_stop(void);
-
-ZSW_LV_IMG_DECLARE(templates);
 
 static application_t app = {
     .name = "About",
@@ -66,8 +69,17 @@ static void about_app_stop(void)
 static int about_app_add(void)
 {
     zsw_app_manager_add_application(&app);
-
     return 0;
 }
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+int app_entry(void)
+{
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
+    about_app_add();
+    return 0;
+}
+EXPORT_SYMBOL(app_entry);
+#else
 SYS_INIT(about_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

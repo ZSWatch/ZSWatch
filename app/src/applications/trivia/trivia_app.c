@@ -17,11 +17,18 @@
 
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
-#include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/llext/symbol.h>
+#include "zsw_llext_log.h"
+#else
+#include <zephyr/logging/log.h>
+#endif
 
 #include "trivia_ui.h"
 #include "managers/zsw_app_manager.h"
+#include "llext/zsw_llext_iflash.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <ble/ble_http.h>
 #include "cJSON.h"
@@ -29,15 +36,15 @@
 /*Get 1x easy question with true/false type*/
 #define HTTP_REQUEST_URL "https://opentdb.com/api.php?amount=1&difficulty=easy&type=boolean"
 
-LOG_MODULE_REGISTER(trivia_app, CONFIG_ZSW_TRIVIA_APP_LOG_LEVEL);
+ZSW_LV_IMG_DECLARE(quiz);
+
+LOG_MODULE_REGISTER(trivia_app, LOG_LEVEL_INF);
 
 // Functions needed for all applications
 static void trivia_app_start(lv_obj_t *root, lv_group_t *group);
 static void trivia_app_stop(void);
 static void on_button_click(trivia_button_t trivia_button);
 static void request_new_question(void);
-
-ZSW_LV_IMG_DECLARE(quiz);
 
 typedef struct trivia_app_question {
     char question[MAX_HTTP_FIELD_LENGTH + 1];
@@ -54,25 +61,6 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_GAMES
 };
 
-static void trivia_app_start(lv_obj_t *root, lv_group_t *group)
-{
-    LOG_DBG("Trivia app start");
-    trivia_ui_show(root, on_button_click);
-    request_new_question();
-}
-
-static void trivia_app_stop(void)
-{
-    trivia_ui_remove();
-}
-
-static int trivia_app_add(void)
-{
-    zsw_app_manager_add_application(&app);
-
-    return 0;
-}
-
 static void http_rsp_cb(ble_http_status_code_t status, char *response)
 {
     if (status == BLE_HTTP_STATUS_OK && app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
@@ -87,6 +75,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
                 cJSON *correct_answer = cJSON_GetObjectItem(result, "correct_answer");
                 if (question == NULL || correct_answer == NULL) {
                     LOG_ERR("Failed to parse JSON data");
+                    cJSON_Delete(parsed_response);
                     return;
                 }
                 memset(trivia_app_question.question, 0, sizeof(trivia_app_question.question));
@@ -96,14 +85,13 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             } else {
                 LOG_ERR("Unexpected number of results: %d, expected 1", cJSON_GetArraySize(results));
             }
+            cJSON_Delete(parsed_response);
         }
-        cJSON_Delete(parsed_response);
     }
 }
 
-static void request_new_question()
+static void request_new_question(void)
 {
-    /// @todo create a more generic error code that would cover when GadgetBridge doesn't allow HTTP over BLE, potentially a Systemwide pop-up
     if (zsw_ble_http_get(HTTP_REQUEST_URL, http_rsp_cb) == -EINVAL) {
         trivia_ui_not_supported();
     }
@@ -140,4 +128,33 @@ static void on_button_click(trivia_button_t trivia_button)
     }
 }
 
+static void trivia_app_start(lv_obj_t *root, lv_group_t *group)
+{
+    LOG_DBG("Trivia app start");
+    trivia_ui_show(root, on_button_click);
+    request_new_question();
+}
+
+static void trivia_app_stop(void)
+{
+    trivia_ui_remove();
+}
+
+static int trivia_app_add(void)
+{
+    zsw_app_manager_add_application(&app);
+    LOG_DBG("Add Trivia APP");
+    return 0;
+}
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+int app_entry(void)
+{
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
+    trivia_app_add();
+    return 0;
+}
+EXPORT_SYMBOL(app_entry);
+#else
 SYS_INIT(trivia_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

@@ -4,20 +4,7 @@
 */
 #include "calculator_ui.h"
 
-static void update_display(const char *text)
-{
-    calculator_ui_update_display(text);
-}
-
-void calculator_smf_init(void)
-{
-    /* Thread is automatically started by K_THREAD_DEFINE */
-}
-
-void calculator_smf_deinit(void)
-{
-    /* Thread cleanup if needed */
-}
+#include "llext/zsw_llext_iflash.h"
 
 /*
  * Copyright (c) 2024 Glenn Andrews
@@ -29,14 +16,47 @@ void calculator_smf_deinit(void)
 #include <zephyr/smf.h>
 #include <stdbool.h>
 #include "smf_calculator_thread.h"
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include "zsw_llext_log.h"
+#else
 #include <zephyr/logging/log.h>
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 LOG_MODULE_REGISTER(smf_thread, LOG_LEVEL_DBG);
 
-K_MSGQ_DEFINE(event_msgq, sizeof(struct calculator_event), 8, 1);
+/* Forward declaration — defined at end of file */
+static void smf_calculator_thread(void *arg1, void *arg2, void *arg3);
+
+/* Runtime-allocated kernel objects */
+static char __aligned(4) msgq_buf[8 * sizeof(struct calculator_event)];
+static struct k_msgq event_msgq;
+static struct k_thread smf_thread_data;
+static k_thread_stack_t smf_stack_buf[SMF_THREAD_STACK_SIZE] __aligned(8);
+
+static void update_display(const char *text)
+{
+    calculator_ui_update_display(text);
+}
+
+void calculator_smf_init(void)
+{
+    k_msgq_init(&event_msgq, msgq_buf, sizeof(struct calculator_event), 8);
+    void *tramp_entry = zsw_llext_create_trampoline((void *)smf_calculator_thread);
+    k_thread_create(&smf_thread_data, smf_stack_buf, sizeof(smf_stack_buf),
+                    (k_thread_entry_t)tramp_entry, NULL, NULL, NULL,
+                    SMF_THREAD_PRIORITY, 0, K_NO_WAIT);
+    LOG_INF("SMF thread created with trampoline");
+}
+
+void calculator_smf_deinit(void)
+{
+    /* Thread cleanup if needed */
+}
 
 /* In theory can still overflow. A double can be hundreds of characters long */
 #define RESULT_STRING_LENGTH 64
@@ -742,6 +762,3 @@ static void smf_calculator_thread(void *arg1, void *arg2, void *arg3)
                 s_obj.operand_2.string, s_obj.result.string);
     }
 }
-
-K_THREAD_DEFINE(smf_calculator, SMF_THREAD_STACK_SIZE, smf_calculator_thread, NULL, NULL, NULL,
-                SMF_THREAD_PRIORITY, 0, 0);

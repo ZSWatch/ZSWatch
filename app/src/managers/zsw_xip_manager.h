@@ -17,8 +17,14 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 int _zsw_xip_enable(const char *requester);
 int _zsw_xip_disable(const char *requester);
+
+/** Check whether QSPI XIP is currently enabled.
+ *  Safe to call from any context (lock-free read of a boolean). */
+bool zsw_xip_is_enabled(void);
 
 #ifdef CONFIG_ZSW_XIP
 #define zsw_xip_enable() _zsw_xip_enable(__FUNCTION__)

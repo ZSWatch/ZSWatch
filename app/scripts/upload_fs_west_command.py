@@ -36,7 +36,7 @@ class UploadFsWestCommand(WestCommand):
             "--type",
             type=str,
             default="raw",
-            help="raw or fs. fs to load littlefs image, raw to load custom binary",
+            help="raw or lfs. lfs to load littlefs image, raw to load custom binary",
         )
 
         parser.add_argument(
@@ -106,8 +106,10 @@ class UploadFsWestCommand(WestCommand):
                 except ValueError:
                     print("Invalid probe number. Please enter a valid number.")
 
-            else:
+            elif len(probes) == 1:
                 serial_number = probes[0]
+            else:
+                print("No J-Link probes found. Is a debugger session holding the probe?")
 
         return serial_number
 

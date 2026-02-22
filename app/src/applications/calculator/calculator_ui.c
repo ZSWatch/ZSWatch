@@ -3,7 +3,14 @@
 #include "smf_calculator_thread.h"
 
 #include <string.h>
+
+#include "llext/zsw_llext_iflash.h"
+
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include "zsw_llext_log.h"
+#else
 #include <zephyr/logging/log.h>
+#endif
 
 LOG_MODULE_REGISTER(calculator_ui, LOG_LEVEL_INF);
 
@@ -15,7 +22,7 @@ LOG_MODULE_REGISTER(calculator_ui, LOG_LEVEL_INF);
 
 // Work item for display updates
 static void display_update_work_handler(struct k_work *work);
-static K_WORK_DEFINE(display_update_work, display_update_work_handler);
+static struct k_work display_update_work;
 
 // Buffer for display text used in work handler
 static char display_text_buffer[CALCULATOR_STRING_LENGTH];
@@ -232,3 +239,10 @@ void calculator_ui_update_display(const char *text)
     // LVGL has to be called from system workqueue
     k_work_submit(&display_update_work);
 }
+
+void calculator_ui_init(void)
+{
+    k_work_init(&display_update_work,
+                (k_work_handler_t)zsw_llext_create_trampoline((void *)display_update_work_handler));
+}
+
