@@ -1,0 +1,30 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Multi-stage Dockerfile:
+#   Stage 1: Build the Docusaurus website into static files
+#   Stage 2: Serve with nginx + reverse proxy /api to the backend
+
+# ── Stage 1: Build website ─────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /site
+COPY website/package.json website/package-lock.json* ./
+RUN npm ci --prefer-offline
+
+COPY website/ ./
+RUN npm run build
+
+# ── Stage 2: nginx ─────────────────────────────────────────────────
+FROM nginx:1.27-alpine
+
+# Remove default config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy our nginx config
+COPY app-builder/deploy/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy the built static site
+COPY --from=builder /site/build /usr/share/nginx/html
+
+EXPOSE 80

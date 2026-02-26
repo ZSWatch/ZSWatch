@@ -138,3 +138,8 @@ button:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Spinner animation for BLE connecting state */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

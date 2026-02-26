@@ -19,6 +19,8 @@
  *
  * LLEXTs remain loaded for the lifetime of the system — there is no unload
  * on app-close. This matches the lifecycle of built-in SYS_INIT apps.
+ * A reboot is required to pick up updated app binaries or to fully remove
+ * deleted apps.
  */
 
 #include <zephyr/kernel.h>
@@ -33,6 +35,7 @@
 #include "llext/zsw_llext_xip.h"
 #include "llext/zsw_llext_iflash.h"
 #include "managers/zsw_xip_manager.h"
+#include "managers/zsw_app_manager.h"
 #include "ui/popup/zsw_popup_window.h"
 
 LOG_MODULE_REGISTER(llext_app_mgr, CONFIG_ZSW_LLEXT_APP_MANAGER_LOG_LEVEL);
@@ -102,7 +105,7 @@ static uint8_t llext_heap_buf[ZSW_LLEXT_HEAP_SIZE] __aligned(8);
 static bool heap_initialized;
 
 static K_WORK_DEFINE(show_app_installed_popup_work, show_app_installed_popup_work_handler);
-static char installed_app_name[ZSW_LLEXT_MAX_NAME_LEN];
+static application_t *installed_app;
 
 /* --------------------------------------------------------------------------
  * Heap Management
@@ -320,8 +323,8 @@ static void show_app_installed_popup_work_handler(struct k_work *work)
     ARG_UNUSED(work);
 
     char popup_body[64];
-    snprintk(popup_body, sizeof(popup_body), "'%s' installed", installed_app_name);
-    zsw_popup_show("App Ready", popup_body, NULL, 3, false);
+    snprintk(popup_body, sizeof(popup_body), "'%s' installed", installed_app->name);
+    zsw_popup_show_with_icon("App Installed", popup_body, installed_app->icon, NULL, 5);
 }
 
 int zsw_llext_app_manager_remove_app(const char *app_id)
@@ -359,7 +362,7 @@ int zsw_llext_app_manager_load_app(const char *app_id)
     /* Check if already loaded */
     for (int i = 0; i < num_llext_apps; i++) {
         if (strcmp(llext_apps[i].name, app_id) == 0) {
-            LOG_WRN("llext: app '%s' already loaded", app_id);
+            LOG_WRN("llext: app '%s' already loaded, reboot to reload", app_id);
             return -EALREADY;
         }
     }
@@ -373,8 +376,7 @@ int zsw_llext_app_manager_load_app(const char *app_id)
     }
 
     /* Show popup and refresh picker from LVGL thread context */
-    strncpy(installed_app_name, app_id, sizeof(installed_app_name) - 1);
-    installed_app_name[sizeof(installed_app_name) - 1] = '\0';
+    installed_app = zsw_app_manager_get_app(zsw_app_manager_get_num_apps() - 1);
     k_work_submit(&show_app_installed_popup_work);
 
     LOG_INF("llext: hot-loaded app '%s'", app_id);

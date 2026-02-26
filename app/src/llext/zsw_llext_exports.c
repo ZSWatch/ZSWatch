@@ -88,6 +88,7 @@ EXPORT_SYMBOL(lv_font_montserrat_10);
 EXPORT_SYMBOL(lv_font_montserrat_12);
 EXPORT_SYMBOL(lv_font_montserrat_16);
 EXPORT_SYMBOL(lv_font_montserrat_18);
+EXPORT_SYMBOL(lv_font_montserrat_20);
 
 EXPORT_SYMBOL(lv_obj_set_style_pad_left);
 EXPORT_SYMBOL(lv_obj_set_style_pad_right);
@@ -102,6 +103,7 @@ EXPORT_SYMBOL(lv_obj_set_style_line_width);
 EXPORT_SYMBOL(lv_obj_set_style_size);
 EXPORT_SYMBOL(lv_obj_set_style_width);
 EXPORT_SYMBOL(lv_obj_set_style_height);
+EXPORT_SYMBOL(lv_obj_set_style_bg_image_src);
 
 /* ---- LVGL color (non-inline helpers) ---- */
 EXPORT_SYMBOL(lv_color_hex);

@@ -32,6 +32,7 @@ const config = {
   // Custom fields for environment variables
   customFields: {
     githubToken: process.env.REACT_APP_GITHUB_TOKEN || '',
+    apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
   },
 
   // Even if you don't use internationalization, you can use this field to set
@@ -123,6 +124,11 @@ const config = {
           {
             to: '/update',
             label: 'FW Update',
+            position: 'left'
+          },
+          {
+            to: '/app-editor',
+            label: 'App Editor',
             position: 'left'
           },
           {

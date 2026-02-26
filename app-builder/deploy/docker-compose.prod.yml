@@ -1,0 +1,46 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Production docker-compose for the ZSWatch App Builder platform.
+#
+# Deploys:
+#   - nginx: serves static Docusaurus website + reverse-proxies /api to backend
+#   - app-builder: FastAPI compile server with ARM toolchain
+#
+# Usage:
+#   1. Place EDK tarball(s) in ./edks/ (extracted):
+#      mkdir -p edks && tar -xf zswatch-edk-*.tar.xz -C edks/
+#
+#   2. Build & start:
+#      docker compose -f docker-compose.prod.yml up -d --build
+#
+#   3. Access at http://YOUR_VPS_IP (or configure DOMAIN env var)
+
+services:
+  # ── Static website + reverse proxy ──────────────────────────────────────────
+  nginx:
+    build:
+      context: ..
+      dockerfile: app-builder/deploy/Dockerfile.nginx
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - app-builder
+    restart: unless-stopped
+    environment:
+      - API_UPSTREAM=app-builder:8000
+
+  # ── Compile API server ─────────────────────────────────────────────────────
+  app-builder:
+    build:
+      context: ../app-builder
+      dockerfile: Dockerfile
+    volumes:
+      - ./edks:/opt/edks:ro
+    environment:
+      - EDK_BASE_DIR=/opt/edks
+      - COMPILE_TIMEOUT=${COMPILE_TIMEOUT:-60}
+    restart: unless-stopped
+    # Not exposed publicly — nginx proxies to it
+    expose:
+      - "8000"

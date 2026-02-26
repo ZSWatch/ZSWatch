@@ -1,0 +1,35 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Local development setup for ZSWatch App Builder
+#
+# Usage:
+#   cd app-builder
+#   docker compose up --build
+#
+# The API server runs at http://localhost:8000
+# The frontend (Docusaurus) should be started separately:
+#   cd ../website && npm start
+#
+# To add an EDK, extract it into ./edks/<version>/:
+#   mkdir -p edks && tar -xf zswatch-edk-0.29.0.tar.xz -C edks/
+
+services:
+  app-builder:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount EDKs directory
+      - ./edks:/opt/edks
+      # Mount server source for hot reload during development
+      - ./server:/app/server
+    environment:
+      - EDK_BASE_DIR=/opt/edks
+      - COMPILE_TIMEOUT=60
+    command: >
+      uvicorn server.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/server

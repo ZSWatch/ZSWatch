@@ -1,0 +1,53 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# ZSWatch LLEXT App Builder — production Dockerfile (API-only).
+#
+# The website is hosted separately (GitHub Pages). This container runs
+# the FastAPI compile server with the ARM cross-compilation toolchain.
+#
+# Used by Railway (via railway.toml) and Dokku. Build context is repo root.
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ZEPHYR_SDK_VERSION=0.17.0
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    wget \
+    xz-utils \
+    cmake \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Zephyr SDK (ARM toolchain only — minimal install)
+RUN wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz" \
+    -O /tmp/zephyr-sdk.tar.xz \
+    && tar -xf /tmp/zephyr-sdk.tar.xz -C /opt/ \
+    && cd /opt/zephyr-sdk-${ZEPHYR_SDK_VERSION} \
+    && ./setup.sh -t arm-zephyr-eabi \
+    && rm /tmp/zephyr-sdk.tar.xz
+
+ENV PATH="/opt/zephyr-sdk-${ZEPHYR_SDK_VERSION}/arm-zephyr-eabi/bin:${PATH}"
+
+# Python dependencies
+WORKDIR /app
+COPY app-builder/requirements.txt .
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+# Copy server code
+COPY app-builder/server/ ./server/
+
+# EDK storage (persistent volume)
+RUN mkdir -p /opt/edks
+ENV EDK_BASE_DIR=/opt/edks
+
+# Railway / Dokku set PORT dynamically; default to 5000
+ENV PORT=5000
+EXPOSE 5000
+
+CMD uvicorn server.main:app --host 0.0.0.0 --port ${PORT}

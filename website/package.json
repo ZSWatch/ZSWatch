@@ -25,6 +25,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-image-gallery": "^1.4.0",
+    "@monaco-editor/react": "^4.6.0",
     "react-player": "^2.16.0",
     "svg-pan-zoom": "^3.6.2"
   },
