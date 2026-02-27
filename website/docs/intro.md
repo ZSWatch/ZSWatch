@@ -25,3 +25,4 @@ ZSWatch is a fully open-source smartwatch, covering both hardware and software. 
 | **Understand the architecture** | [Architecture Overview](./development/architecture.md) |
 | **Connect to your phone** | [Phone Setup](./getting-started/phone_setup.md) |
 | **Run without hardware (Linux)** | [Native Simulator](./development/linux_development.md) |
+| **Stuck? Common mistakes** | [Tips and Troubleshooting](./getting-started/tips-and-troubleshooting.md) |

@@ -43,7 +43,12 @@ If you are not using the Bangle.js version of GadgetBridge, you need to configur
 [GadgetBridge Weather Wiki](https://gadgetbridge.org/basics/features/weather/)
 
 #### Troubleshooting
-TBD
+
+- **ZSWatch not appearing in scan:** Make sure **Pairable** is enabled on the watch (**Settings → Bluetooth**). Also ensure **Discover unsupported devices** is enabled and **Scanning intensity** is set to maximum in GadgetBridge settings.
+- **Notifications not working:** Verify you selected **Bangle.js** as the device type when adding the watch. Also check that GadgetBridge has notification access permission on your phone (**Android Settings → Apps → GadgetBridge → Notifications**).
+- **Weather not syncing:** If you are using the non-Bangle.js version of GadgetBridge, weather requires manual configuration. See the [GadgetBridge Weather Wiki](https://gadgetbridge.org/basics/features/weather/). The Bangle.js version handles weather automatically.
+- **Connection drops frequently:** Disable battery optimization for GadgetBridge in Android settings so the OS doesn't kill it in the background.
+- **Music control not working:** Ensure GadgetBridge has the notification listener permission, which is also required for media control on Android.
 
 ---
 
@@ -92,4 +97,8 @@ We are working on making ZSWatch appear directly in the iOS Bluetooth settings s
 :::
 
 #### Troubleshooting
-TBD
+
+- **ZSWatch not appearing in nRF Connect scan:** Make sure **Pairable** is enabled on the watch (**Settings → Bluetooth**). Try moving the phone closer to the watch and ensure Bluetooth is enabled on the iPhone.
+- **Pairing fails:** If a previous pairing exists, remove ZSWatch from **iPhone Settings → Bluetooth → My Devices** and try again. Also restart Bluetooth on the iPhone.
+- **Notifications not forwarding:** After pairing, iOS should automatically authorize ANCS. If notifications don't appear, unpair and re-pair. Also make sure the apps you want notifications from have notifications enabled in **iPhone Settings → Notifications**.
+- **Media control not working:** AMS (Apple Media Service) should work automatically after pairing. If it doesn't, try playing music first, then test the controls on the watch.
