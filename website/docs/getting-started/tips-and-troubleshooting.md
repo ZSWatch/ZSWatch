@@ -113,11 +113,7 @@ pip install --no-build-isolation -r app/scripts/requirements.txt
 
 **Cause:** The `usermod` and `setcap` commands used during [native simulator setup](../development/linux_development.md) require a logout/login (or restart) to take effect.
 
-**Fix:** Log out and back in (or restart your machine) after running:
-```bash
-sudo usermod -aG bluetooth $USER
-sudo setcap cap_net_admin=eip $(which hciconfig)
-```
+**Fix:** Log out and back in (or restart your machine) after running the permission commands from the [native simulator setup](../development/linux_development.md#1-install-dependencies). Group membership and capabilities only take effect after a new login session.
 
 ---
 
@@ -160,7 +156,7 @@ static void my_app_stop(void)
 
 **Symptom:** GadgetBridge connects but notifications, weather, or music control don't work.
 
-**Cause:** When adding ZSWatch in GadgetBridge, you must select **Bangle.js** as the device type. The default device type won't use the correct protocol.
+**Cause:** GadgetBridge supports many different smartwatch protocols. ZSWatch uses the Bangle.js JSON messaging protocol, so the device type must be set correctly for GadgetBridge to use the right protocol handler.
 
 **Fix:** When adding ZSWatch in GadgetBridge, long-press the discovered device and select **Bangle.js** from the dropdown. See [Phone Setup](./phone_setup.md#add-the-watch) for full steps.
 
