@@ -4,8 +4,8 @@ sidebar_position: 6
 
 # Companion App
 
-:::warning Experimental / Work in Progress
-The companion app is under active development and may be unstable. **For most users, we recommend using [GadgetBridge](./phone_setup.md#option-1-gadgetbridge-recommended) on Android** or native ANCS/AMS on iOS. Use this app only if you need specific features like firmware updates or want to help with testing.
+:::info
+The **iOS** companion app is available on the [App Store](https://apps.apple.com/us/app/zswatch/id6759058602) and is the recommended way to use ZSWatch with an iPhone. The **Android** version is experimental, to get access, reach out on [Discord](https://discord.gg/8XfNBmDfbY) or email [mail@zswatch.dev](mailto:mail@zswatch.dev). For Android, [GadgetBridge](./phone_setup.md#option-1-gadgetbridge-recommended) remains a solid alternative.
 :::
 
 ZSWatch has an open-source companion app built with Flutter that works on both **Android** and **iOS**.
@@ -49,23 +49,27 @@ On iOS, notification forwarding and media control are handled natively by the wa
 
 ## Download
 
-:::tip Recommended for Most Users
-For a stable experience, use [GadgetBridge](./phone_setup.md#option-1-gadgetbridge-recommended) on Android or native ANCS/AMS on iOS instead.
-:::
+### iOS (Recommended)
 
-### Android
-
-Download the latest APK from the [GitHub Releases page](https://github.com/ZSWatch/ZSWatch-App/releases).
+Download the official ZSWatch companion app from the [App Store](https://apps.apple.com/us/app/zswatch/id6759058602).
 
 After installing:
-1. Open the app and grant the requested permissions (Bluetooth, Location, Notifications).
+1. Open the app and grant the requested permissions (Bluetooth, Location).
 2. On ZSWatch, go to **Settings → Bluetooth** and enable **Pairable**.
 3. Tap **Scan** in the app to find your watch.
 4. Tap the watch to connect and pair.
 
-### iOS
+### Android (Experimental)
 
-No prebuilt app is available for iOS. You'll need to build from source — see below.
+:::warning Access Required
+The Android companion app is experimental and currently requires an invite. To request access, reach out on [Discord](https://discord.gg/8XfNBmDfbY) or email [mail@zswatch.dev](mailto:mail@zswatch.dev). For a stable experience, [GadgetBridge](./phone_setup.md#option-1-gadgetbridge-recommended) is recommended.
+:::
+
+After receiving access:
+1. Open the app and grant the requested permissions (Bluetooth, Location, Notifications).
+2. On ZSWatch, go to **Settings → Bluetooth** and enable **Pairable**.
+3. Tap **Scan** in the app to find your watch.
+4. Tap the watch to connect and pair.
 
 ## Building from Source
 

@@ -8,7 +8,7 @@ ZSWatch runs on the [Zephyr RTOS](https://www.zephyrproject.org/) using the [nRF
 
 ## Key Software Features
 
-- **Bluetooth LE** communication with [GadgetBridge](https://gadgetbridge.org/) (Android) and Apple ANCS/AMS (iOS)
+- **Bluetooth LE** communication with the [ZSWatch Companion App](../getting-started/companion_app.md) (iOS / Android) or [GadgetBridge](https://gadgetbridge.org/) (Android)
 - **Multiple watchfaces** with real-time data (time, weather, steps, battery, notifications)
 - **App framework** with self-registering applications and an app picker with folder support
 - **Sensor fusion** for compass heading and activity detection

@@ -66,6 +66,7 @@ const config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
+          blogSidebarCount: 'ALL',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',

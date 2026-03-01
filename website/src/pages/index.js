@@ -111,6 +111,17 @@ function HomepageHeader() {
               </Link>
             </div>
 
+            <div className="mb-2" style={{color: '#64748b', fontSize: '0.8rem'}}>
+              Companion app:{' '}
+              <a href="https://apps.apple.com/us/app/zswatch/id6759058602" target="_blank" rel="noopener noreferrer" style={{color: '#9EC8F6', textDecoration: 'none'}}>
+                iOS
+              </a>
+              {' · '}
+              <Link to="/docs/getting-started/companion_app#android-experimental" style={{color: '#9EC8F6', textDecoration: 'none'}}>
+                Android (reach out for invite)
+              </Link>
+            </div>
+
             <div className="flex gap-3 mb-3">
               <Link
                 to="/docs/intro"

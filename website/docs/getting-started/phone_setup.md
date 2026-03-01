@@ -49,27 +49,25 @@ TBD
 
 ### Option 2: ZSWatch Companion App (Experimental)
 
-:::warning Experimental
-The ZSWatch Companion App is under active development and may be unstable. GadgetBridge (Option 1) is recommended for most users. Use the companion app only for testing.
+:::warning Access Required
+The Android companion app is experimental and currently requires an invite. To request access, reach out on [Discord](https://discord.gg/8XfNBmDfbY) or email [mail@zswatch.dev](mailto:mail@zswatch.dev).
 :::
 
-The [ZSWatch Companion App](./companion_app.md) is an open-source Flutter app built specifically for ZSWatch. It provides notifications, music control, firmware updates, health tracking, and developer tools, all in one app.
+The [ZSWatch Companion App](./companion_app.md) is an open-source Flutter app built specifically for ZSWatch. It provides notifications, music control, firmware updates, health tracking, and developer tools.
 
-Download the latest APK from [GitHub Releases](https://github.com/ZSWatch/ZSWatch-App/releases) or see the [Companion App](./companion_app.md) page for full details and setup instructions.
+See the [Companion App](./companion_app.md) page for full details and setup instructions.
 
 ---
 
 ## iOS
 
-### ZSWatch Companion App (Experimental)
+### ZSWatch Companion App (Recommended)
 
-:::warning Experimental
-The iOS companion app is under active development. On iOS, the watch can directly use ANCS/AMS for notifications and media control without any app, which is the recommended approach for most users.
-:::
+The official [ZSWatch Companion App](https://apps.apple.com/us/app/zswatch/id6759058602) is available on the App Store and is the recommended way to use ZSWatch with an iPhone. It provides firmware updates, developer tools, and more.
 
-The [ZSWatch Companion App](./companion_app.md) also runs on iOS, providing firmware updates, health tracking, developer tools, and more. On iOS, notification forwarding and media control are handled automatically by the watch using Apple ANCS/AMS, no app needed for those features.
+On iOS, notification forwarding and media control are handled automatically by the watch using Apple ANCS/AMS.
 
-Currently there is no prebuilt iOS app available. You'll need to build from source, see the [Companion App](./companion_app.md) page.
+Download it from the [App Store](https://apps.apple.com/us/app/zswatch/id6759058602), then see the [Companion App](./companion_app.md) page for setup details.
 
 ---
 
