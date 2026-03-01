@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Software Overview
 
-ZSWatch runs on the [Zephyr RTOS](https://www.zephyrproject.org/) using the [nRF Connect SDK (NCS) v3.1.0](https://docs.nordicsemi.com/bundle/ncs-3.1.0/page/nrf/index.html). The UI is built with [LVGL v9](https://lvgl.io/).
+ZSWatch runs on the [Zephyr RTOS](https://www.zephyrproject.org/) using the [nRF Connect SDK (NCS)](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/index.html). The exact NCS version is pinned in `app/west.yml`. The UI is built with [LVGL v9](https://lvgl.io/).
 
 ## Key Software Features
 

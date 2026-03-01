@@ -75,8 +75,4 @@ nrfjprog -f nrf53 \
 
 ### Option B2: Build from source and flash
 
-If you are building the firmware yourself, use the nRF Connect VS Code extension or `west`.
-
-See:
-- [Toolchain Setup](../development/toolchain.md)
-- [Compiling the Software](../development/compiling.md)
+If you are building the firmware yourself, see [Compiling the Software](../development/compiling.md) for build and flash instructions using the nRF Connect VS Code extension or `west`.

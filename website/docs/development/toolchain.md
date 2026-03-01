@@ -20,7 +20,11 @@ sidebar_position: 1
 - Install the **nRF Connect VSCode Extension Pack**
 
 - In the extension:  
-  <kbd>Install/Manage toolchain</kbd> → <kbd>Install SDK</kbd> → <kbd>Download 3.1.0</kbd>
+  <kbd>Manage toolchain</kbd> → <kbd>Install Toolchain</kbd> → <kbd>Download v3.3.0</kbd>
+
+:::caution Toolchain version
+The Toolchain version **should** match the version in `app/west.yml`. Check the `revision` field under `sdk-nrf`, at the time of writing it is **v3.3.0-preview1**, so install the closest available SDK version (v3.3.0). If the versions don't match, `west update` or the build may fail.
+:::
 
 ---
 
@@ -58,6 +62,10 @@ import TabItem from '@theme/TabItem';
   pip install -r zephyr/scripts/requirements.txt
   pip install -r app/scripts/requirements.txt
   ```
+
+  :::tip
+  These `pip install` commands must be run in the **nRF Connect Terminal** (not a regular terminal), because the nRF Connect extension manages a Python virtual environment with the correct paths.
+  :::
 
   </TabItem>
   <TabItem value="windows" label="Windows">

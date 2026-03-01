@@ -6,43 +6,61 @@ sidebar_position: 3
 
 ZSWatch can be compiled as a native Linux executable that opens a simulated 240×240 display window. This is useful for developing and testing application logic, UI layouts, and event handling **without any hardware**.
 
-:::info
-This page covers the native Linux simulator only. For building and flashing real hardware, see [Compiling the Software](./compiling.md).
+:::info Linux only
+The native simulator only works on **Linux**. macOS and Windows users should use the hardware build targets or develop inside a Linux VM / WSL2.
 :::
 
 ## 1. Install Dependencies
 
-These packages are needed for the SDL2-based display simulator and Zephyr's Bluetooth HCI passthrough:
+These packages are needed for the SDL2-based display simulator:
 
 ```bash
-sudo apt-get install build-essential
-sudo apt-get install libsdl2-dev 
+sudo apt-get install build-essential libsdl2-dev
+```
+
+For other distributions:
+- **Fedora**: `sudo dnf install SDL2-devel gcc make`
+- **Arch**: `sudo pacman -S sdl2 base-devel`
+
+For more information, see the [Zephyr native_sim documentation](https://docs.zephyrproject.org/latest/boards/native/native_sim/doc/index.html).
+
+### Optional: BLE Support
+
+If you want Bluetooth to work in the simulator, you also need:
+
+```bash
 sudo usermod -aG bluetooth $USER
 sudo setcap cap_net_admin=eip $(which hciconfig)
 ```
 
-For more information [check the Zephyr page about native_sim](https://docs.zephyrproject.org/latest/boards/native/native_sim/doc/index.html)
-
 :::warning
-You need to log out and in again (or restart) for the above to take effect.  
-Bluetooth won't work if this is not done.
+You need to log out and in again (or restart) for the group change to take effect.
 :::
 
-## 2. Build the Project
+---
 
-Compiling is done the same way as for real hardware.  
-No extra `.conf` or overlay files are needed.
+## 2. Build
 
+### From Command Line
 
-**Extra CMake Args:**  
-Add the following under **Extra CMake Args**:
+Open an **nRF Connect Terminal** (`Ctrl+Shift+P` → `nRF Connect: Create Shell Terminal`) and run:
+
+```bash
+west build --build-dir app/build app \
+  --board native_sim/native/64 \
+  -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
 ```
--DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf
-```
 
+### From VS Code (nRF Connect Extension)
+
+1. In the **nRF Connect** sidebar, click **Add build configuration**.
+2. **Target:** `native_sim/native/64`
+3. **Build Directory:** `build` (this name makes the default debug launch config work)
+4. **Extra CMake arguments:** `-DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf`
+5. Click **Generate and Build**.
 
 :::info
-If you name the build directory <code>build</code>, debugging will work out-of-the-box with the default VS Code <code>.vscode/launch.json</code> path:
+If you name the build directory `build`, debugging will work out-of-the-box with the default `.vscode/launch.json` path:
 ```
 "program": "${workspaceFolder}/app/build/app/zephyr/zephyr.exe"
 ```
@@ -52,23 +70,33 @@ If you name the build directory <code>build</code>, debugging will work out-of-t
 
 ## 3. Run ZSWatch
 
-- Go to **Debug** in VS Code.
-- Choose **Debug Native (with sudo)** and start it.
+### Option A: Run Directly (No Debugger, No BLE)
 
-:::caution
-You will be prompted for sudo, as Zephyr Bluetooth requires sudo access.  
-(There is currently no workaround for this requirement.)
+```bash
+./app/build/app/zephyr/zephyr.exe
+```
+
+The simulated display window will open and Zephyr logs print to the terminal. BLE will not be available, but the UI, apps, and all non-BLE functionality works fine.
+
+### Option B: Run with Debugger (VS Code)
+
+1. Go to **Run and Debug** (`Ctrl+Shift+D`) in VS Code.
+2. Select **Debug Native (sudo)** and press **F5**.
+
+:::note
+The default launch configuration passes `--bt-dev=hci0` and uses sudo to claim the host Bluetooth adapter. If you don't need BLE, you can run the executable directly as shown above without needed for sudo.
 :::
 
 ---
 
-Once running, a window should pop up.  
-Debug logs will show in the VS Code Terminal window named `"cppdbg: zephyr.exe"`.
+Once running, a simulated display window should appear.
 
-You can navigate using:
+**Navigation:**
 
-- **Mouse**: Click to interact
-- **Enter**: Select
-- **Backspace**: Back
-- **Arrow Up**: Navigate Next/Up
-- **Arrow Down**: Navigate Previous/Down
+| Input | Action |
+|-------|--------|
+| **Mouse click** | Touch interaction |
+| **Enter** | Select / confirm |
+| **Backspace** | Back button |
+| **Arrow Up** | Navigate next / up |
+| **Arrow Down** | Navigate previous / down |

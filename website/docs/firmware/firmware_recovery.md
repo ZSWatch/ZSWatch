@@ -13,7 +13,7 @@ For a full guide on initial setup and firmware updates, see the [WatchDK Quick S
 ## Recovery Without a Debugger
 
 1. **Connect USB**: Make sure the watch is connected to your computer via USB-C.
-2. **Enter the bootloader**: Hold down the **two right buttons** simultaneously for approximately **20 seconds**. The display will go blank. This means MCUboot is active and waiting for a firmware image over USB.
+2. **Enter the bootloader**: **Hold down the bottom-right button** and **press the reset button**. The display will go blank. This means MCUboot serial recovery mode is active and waiting for a firmware image over USB.
 3. **Flash via the web updater**: Go to [zswatch.dev/update](https://zswatch.dev/update) and perform a firmware update over **USB**.
 
 ## Recovery With a Debugger (SWD)

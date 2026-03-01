@@ -35,7 +35,13 @@ For **release builds** (no logging, optimized), use `release.conf` instead of `d
 
 ---
 
-## Option A: Build from VS Code (nRF Connect Extension)
+## Building
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="vscode" label="VS Code" default>
 
 1. **Open VS Code** with the nRF Connect extension.
 2. In the **nRF Connect** sidebar, under **Application**, select `app`.
@@ -46,9 +52,15 @@ For **release builds** (no logging, optimized), use `release.conf` instead of `d
    - **Extra Devicetree overlays:** Add if needed, e.g.: `log_on_uart.overlay`
    - **Build Directory:** Optionally name it, e.g. `build_devkit`.
 
+   **For the native simulator** (`native_sim/native/64`), you also need to add under **Extra CMake arguments**:
+   ```
+   -DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf
+   ```
+
 4. Click **Generate and Build**.
 
-## Option B: Build from Command Line
+  </TabItem>
+  <TabItem value="cli" label="Command Line">
 
 Open an **nRF Connect Terminal** in VS Code (`Ctrl+Shift+P` → `nRF Connect: Create Shell Terminal`) and run:
 
@@ -82,26 +94,87 @@ west build --build-dir app/build app \
 
 </details>
 
+  </TabItem>
+</Tabs>
 
 ---
 
 ## Flashing
 
-### From VS Code
+<Tabs>
+  <TabItem value="vscode" label="VS Code" default>
 
 Use the nRF Connect extension: **Actions → Flash**.
 
 When hovering the Flash button, an icon to the right will appear **"Erase and Flash to Board"**. Use it as it will be much faster.
 
-### From Command Line
+  </TabItem>
+  <TabItem value="cli" label="Command Line">
 
 ```bash
 west flash --build-dir app/build_dbg_dk
 ```
 
-:::note TODO
-Document how to flash a locally built firmware image without a debugger, using MCUboot and MCUmgr tools only (USB or BLE).
-:::
+  </TabItem>
+  <TabItem value="nodebugger" label="Without a Debugger">
+
+You can flash a locally built firmware over USB without any debugger hardware, using the MCUboot serial bootloader built into ZSWatch.
+
+#### Enter MCUboot Mode
+
+1. Connect the watch to your computer via **USB-C**.
+2. **Hold down the bottom-right button** and **press the reset button**. This enters MCUboot serial recovery mode.
+
+#### Firmware Images
+
+The `dfu_application.zip` (found in your build directory or a GitHub release) contains three firmware images:
+
+| File | Image | Description |
+|------|-------|-------------|
+| `app.internal.bin` | App Internal | Main application (app core) |
+| `ipc_radio.bin` | Net Core | BLE radio firmware (network core) |
+| `app.external.bin` | App External (XIP) | Code/data stored on external QSPI flash |
+
+<Tabs>
+  <TabItem value="webupdater" label="Web Updater" default>
+
+1. Go to [zswatch.dev/update](https://zswatch.dev/update).
+2. Choose **USB Serial** as connection method and click **Connect via Serial**.
+3. Select the USB serial port (appears as `ZSWatch BOOT` or similar).
+4. Under **Manual Upload**, select `dfu_application.zip` from your build directory (`app/<build_dir>/dfu_application.zip`) or from a GitHub release.
+5. Click **Upload Firmware**. The updater will upload all three images in sequence.
+
+  </TabItem>
+  <TabItem value="mcumgr" label="mcumgr CLI">
+
+Use the `mcumgr` command-line tool. There are [several MCUmgr client tools available](https://docs.zephyrproject.org/latest/services/device_mgmt/mcumgr.html#tools-libraries), any of them work with similar parameters. The example below uses the Go-based `mcumgr`:
+
+```bash
+# Install mcumgr (and Go if needed first)
+go install github.com/apache/mynewt-mcumgr-cli/mcumgr@latest
+
+# Extract the firmware zip
+unzip app/build_dir/dfu_application.zip -d /tmp/dfu
+
+# Verify connection (use the USB serial port, e.g. /dev/ttyACM0)
+mcumgr --conntype serial --connstring dev=/dev/ttyACM0 image list
+mcumgr --conntype serial --connstring dev=/dev/ttyACM0,mtu=4096 image upload -e -n 1 /tmp/dfu/app.internal.bin
+mcumgr --conntype serial --connstring dev=/dev/ttyACM0,mtu=4096 image upload -e -n 5 /tmp/dfu/app.external.bin
+
+# Upload of the net core image the device needs ~30 seconds to internally
+# copy it after upload, so wait before resetting
+mcumgr --conntype serial --connstring dev=/dev/ttyACM0,mtu=4096 image upload -e -n 3 /tmp/dfu/ipc_radio.bin
+sleep 30
+
+# Reset to boot into the new firmware
+mcumgr --conntype serial --connstring dev=/dev/ttyACM0 reset
+```
+
+  </TabItem>
+</Tabs>
+
+  </TabItem>
+</Tabs>
 
 ---
 

@@ -71,6 +71,8 @@ static void my_app_ui_available(void);
 
 ZSW_LV_IMG_DECLARE(my_app_icon);
 
+static lv_obj_t *root_page = NULL;
+
 static application_t app = {
     .name = "My App",
     .icon = ZSW_LV_IMG_USE(my_app_icon),
@@ -84,15 +86,22 @@ static application_t app = {
 
 static void my_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    // Create your LVGL UI under root
-    lv_obj_t *label = lv_label_create(root);
+    // Create a child container under root, this is your app's root element
+    root_page = lv_obj_create(root);
+    lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
+
+    // Create your LVGL UI under root_page
+    lv_obj_t *label = lv_label_create(root_page);
     lv_label_set_text(label, "Hello from My App!");
     lv_obj_center(label);
 }
 
 static void my_app_stop(void)
 {
-    // Clean up all LVGL objects, timers, and subscriptions
+    // Delete the app's root element, this removes all child widgets too
+    lv_obj_del(root_page);
+    root_page = NULL;
 }
 
 static bool my_app_back(void)
@@ -126,8 +135,8 @@ SYS_INIT(my_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 **Key points:**
 - `SYS_INIT` at the bottom registers your app at boot. No other file needs to know about it.
-- `start_func` receives a `root` LVGL object. Create all your widgets as children of `root`.
-- `stop_func` must clean up everything (the app manager deletes `root` for you, but you must delete your own timers and unsubscribe from events).
+- `start_func` receives a `root` LVGL object from the app manager. **Create a child container** (`root_page = lv_obj_create(root)`) and build all your widgets inside it.
+- `stop_func` **must delete `root_page`** (`lv_obj_del(root_page)`). This recursively deletes all child widgets. You must also delete your own timers and unsubscribe from events.
 - `back_func`, `ui_unavailable_func`, and `ui_available_func` are optional but recommended for good UX and correct behavior.
 
 ### 3. Add a Kconfig Entry (optional)
@@ -194,8 +203,8 @@ These macros abstract away whether the image is stored in internal or external f
 |-------|------|----------|-------------|
 | `name` | `char *` | Yes | Display name shown in the app picker. |
 | `icon` | `const void *` | Yes | App icon. Use `ZSW_LV_IMG_USE(icon_name)`. |
-| `start_func` | `void (*)(lv_obj_t *, lv_group_t *)` | Yes | Called when the app launches. Create all UI under `root`. |
-| `stop_func` | `void (*)(void)` | Yes | Called when the app exits. Must clean up all LVGL objects, timers, and subscriptions. |
+| `start_func` | `void (*)(lv_obj_t *, lv_group_t *)` | Yes | Called when the app launches. Create a child container under `root` and build UI inside it. |
+| `stop_func` | `void (*)(void)` | Yes | Called when the app exits. Must delete your root element (`lv_obj_del(root_page)`), timers, and event subscriptions. |
 | `back_func` | `bool (*)(void)` | No | Called on back button press. Return `true` to consume (stay in app), `false` to exit. |
 | `ui_unavailable_func` | `void (*)(void)` | No | Called when the screen turns off. Pause UI updates. |
 | `ui_available_func` | `void (*)(void)` | No | Called when the screen turns back on. Resume UI updates. |
@@ -360,7 +369,7 @@ if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
 
 ### 2. Clean Up Everything in `stop_func`
 
-Delete all timers, unsubscribe from periodic events, and remove UI elements:
+Delete your app's root element, all timers, and unsubscribe from periodic events:
 
 ```c
 static void my_app_stop(void)
@@ -370,7 +379,9 @@ static void my_app_stop(void)
         lv_timer_del(refresh_timer);
         refresh_timer = NULL;
     }
-    my_app_ui_remove();
+    // Deleting root_page removes all child widgets automatically
+    lv_obj_del(root_page);
+    root_page = NULL;
 }
 ```
 
