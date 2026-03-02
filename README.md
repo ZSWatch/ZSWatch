@@ -18,6 +18,8 @@
 
 > **WatchDK** - The ZSWatch development kit ($99) has the same nRF5340 chip and sensors as the final watch, in a larger form factor for development and debugging. Battery optional, runs off USB-C.
 >
+> [Order from Elecrow](https://www.elecrow.com/zswatch-development-kit.html)
+>
 > [Quick Start](https://zswatch.dev/docs/getting-started/watchdk-quickstart)
 
 ## About
@@ -87,7 +89,7 @@ Key BOM highlights:
 
 ### Software
 
-- Bluetooth LE communications with [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) (Android) and Apple ANCS/AMS (iOS)
+- Bluetooth LE communications via the [ZSWatch Companion App](https://zswatch.dev/docs/getting-started/companion_app) (iOS/Android) or [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) (Android)
 - Multiple watchfaces (dynamically switchable), showing time, date, battery, weather, steps, notifications, environmental data, and more
 - Pop-up notifications
 - Application picker with extensible app framework
@@ -98,9 +100,9 @@ The watch also supports ESP32 watchfaces from [Felix Biego](https://github.com/f
 
 ### Smartphone Communication
 
-**Android:** Uses [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge) for notifications, music control, weather, and more.
+**iOS (recommended):** Use the official [ZSWatch Companion App](https://apps.apple.com/us/app/zswatch/id6759058602) on the App Store. ZSWatch also supports native [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) and [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html).
 
-**iOS:** Communicates directly via [Apple Notification Center Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleNotificationCenterServiceSpecification/Specification/Specification.html) and [Apple Media Service](https://developer.apple.com/library/archive/documentation/CoreBluetooth/Reference/AppleMediaService_Reference/Specification/Specification.html). No extra apps needed.
+**Android (experimental companion app):** The ZSWatch Companion App currently requires invite access. Request access via [Discord](https://discord.gg/8XfNBmDfbY) or email [mail@zswatch.dev](mailto:mail@zswatch.dev). For a stable experience, use [GadgetBridge](https://codeberg.org/Freeyourgadget/Gadgetbridge).
 
 See [phone setup on zswatch.dev](https://zswatch.dev/docs/getting-started/phone_setup) for details.
 
@@ -111,6 +113,8 @@ See [phone setup on zswatch.dev](https://zswatch.dev/docs/getting-started/phone_
 ## Getting a WatchDK or Building Your Own
 
 **For development:** The [WatchDK](https://zswatch.dev/docs/getting-started/watchdk-quickstart) ($99) is the recommended starting point. It has the same nRF5340 SoC, sensors, and display as the final watch, with breakout headers, USB-C with SWD/UART, power measurement headers, and a debug header. Everything except battery is included. Battery is optional.
+
+Order WatchDK from Elecrow: [www.elecrow.com/zswatch-development-kit.html](https://www.elecrow.com/zswatch-development-kit.html)
 
 **For DIY builders:** Head over to the hardware repos for the for ordering information. The final miniature watch hardware is still being developed.
 
