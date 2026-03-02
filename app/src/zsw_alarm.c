@@ -210,7 +210,14 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, ui
 
     int diffSecs = (int)difftime(alarm_epoch, current_epoch);
     LOG_DBG("start: %lld, end: %lld, diff: %d", current_epoch, alarm_epoch, diffSecs);
-    __ASSERT(diffSecs >= 0, "Alarm is in the past: %d", diffSecs);
+
+    if (diffSecs < 0) {
+        // Alarm time has passed but hasn't been processed yet — return 0 remaining.
+        *hour = 0;
+        *min = 0;
+        *sec = 0;
+        return 0;
+    }
 
     *hour = diffSecs / 3600;
     *min = (diffSecs % 3600) / 60;
@@ -310,7 +317,11 @@ static void start_earliest_alarm(void)
         LOG_DBG("RTC alarm should be updated");
         rtc_alarm_set_callback(rtc, 0, NULL, NULL);
         rtc_alarm_set_time(rtc, 0, 0, NULL);
-        rtc_alarm_set_time(rtc, 0, RTC_ALARM_MASK_COMPARE_ALL, &alarms[earliest_alarm_index].expiry_time);
+        int set_ret = rtc_alarm_set_time(rtc, 0, RTC_ALARM_MASK_COMPARE_ALL, &alarms[earliest_alarm_index].expiry_time);
+        if (set_ret != 0) {
+            LOG_ERR("Failed to set alarm time: %d", set_ret);
+            return;
+        }
         int ret = rtc_alarm_set_callback(rtc, 0, rtc_alarm_triggered_callback, (void *)earliest_alarm_index);
         __ASSERT(ret == 0, "Failed to set alarm callback");
     }
@@ -332,6 +343,12 @@ static void handle_rtc_alarm_triggered_work(struct k_work *work)
     int alarm_index = item->alarm_index;
 
     __ASSERT(alarms[alarm_index].used, "Alarm is not used");
+
+    // Save callback and user_data before clearing the slot, since
+    // start_earliest_alarm() or the callback itself could reuse the slot.
+    alarm_cb cb = alarms[alarm_index].cb;
+    void *user_data = alarms[alarm_index].user_data;
+
     alarms[alarm_index].used = false;
     alarms[alarm_index].enabled = false;
 
@@ -339,7 +356,7 @@ static void handle_rtc_alarm_triggered_work(struct k_work *work)
     rtc_alarm_set_callback(rtc, 0, NULL, NULL);
     rtc_alarm_set_time(rtc, 0, 0, NULL);
     start_earliest_alarm();
-    alarms[alarm_index].cb(alarms[alarm_index].user_data);
+    cb(user_data);
     LOG_DBG("Alarm triggered: %d", alarm_index);
 }
 
@@ -360,7 +377,7 @@ static int find_free_alarm_slot(void)
     return -ENOMEM;
 }
 
-int compare(const void *rtc_time_a, const void *rtc_time_b)
+static int compare(const void *rtc_time_a, const void *rtc_time_b)
 {
     zsw_alarm_t *a = (zsw_alarm_t *)rtc_time_a;
     zsw_alarm_t *b = (zsw_alarm_t *)rtc_time_b;

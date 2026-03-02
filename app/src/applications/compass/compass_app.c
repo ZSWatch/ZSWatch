@@ -17,16 +17,18 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
-#include <zephyr/logging/log.h>
 
 #include "compass_ui.h"
 #include "ui/popup/zsw_popup_window.h"
 #include "zsw_magnetometer.h"
 #include "managers/zsw_app_manager.h"
+#include "llext/zsw_llext_iflash.h"
 #include "sensor_fusion/zsw_sensor_fusion.h"
 #include "ui/utils/zsw_ui_utils.h"
 
-LOG_MODULE_REGISTER(compass_app, LOG_LEVEL_DBG);
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include <zephyr/llext/symbol.h>
+#endif
 
 // Functions needed for all applications
 static void compass_app_start(lv_obj_t *root, lv_group_t *group);
@@ -35,8 +37,6 @@ static void compass_app_stop(void);
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
 static void on_start_calibration(void);
-
-ZSW_LV_IMG_DECLARE(move);
 
 static application_t app = {
     .name = "Compass",
@@ -101,4 +101,14 @@ static int compass_app_add(void)
     return 0;
 }
 
+#ifdef CONFIG_ZSW_LLEXT_APPS
+int app_entry(void)
+{
+    LLEXT_TRAMPOLINE_APP_FUNCS(&app);
+    compass_app_add();
+    return 0;
+}
+EXPORT_SYMBOL(app_entry);
+#else
 SYS_INIT(compass_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif

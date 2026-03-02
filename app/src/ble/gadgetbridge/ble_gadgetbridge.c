@@ -11,14 +11,20 @@
 #include <math.h>
 #include <cJSON.h>
 
+#include <zephyr/sys/reboot.h>
+
 #include "ui/zsw_ui.h"
 #include "ble/ble_comm.h"
 #include "ble/ble_log_backend.h"
 #include "ble/ble_transport.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
+#include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+#ifdef CONFIG_ZSW_LLEXT_APPS
+#include "llext/zsw_llext_app_manager.h"
+#endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -661,6 +667,101 @@ static int parse_log_command(char *data, int len)
     return 0;
 }
 
+// ---------------------------------------------------------------------------
+// SMP (MCUmgr) enable/disable via companion app
+// ---------------------------------------------------------------------------
+// {"t":"smp","status":true}   -> enable SMP + XIP, start auto-disable timer
+// {"t":"smp","status":false}  -> disable SMP + XIP, cancel timer
+
+static int parse_smp_command(char *data, int len)
+{
+    (void)len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse smp command");
+        return -EINVAL;
+    }
+
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+    if (!cJSON_IsBool(status)) {
+        LOG_WRN("smp command missing 'status'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    bool enable = cJSON_IsTrue(status);
+    cJSON_Delete(root);
+
+    int rc;
+    if (enable) {
+        rc = zsw_smp_manager_enable(true);
+    } else {
+        rc = zsw_smp_manager_disable();
+    }
+
+    return rc;
+}
+
+// ---------------------------------------------------------------------------
+// Reset / reboot
+// ---------------------------------------------------------------------------
+// {"t":"reset"}
+static int parse_reset_command(char *data, int len)
+{
+    (void)data;
+    (void)len;
+    LOG_INF("Reboot requested via companion app");
+    /* Short delay to let the BLE response/ACK go out */
+    k_sleep(K_MSEC(500));
+    sys_reboot(SYS_REBOOT_COLD);
+    /* unreachable */
+    return 0;
+}
+
+// {"t":"llext","op":"mkdir","id":"about_ext"}
+// {"t":"llext","op":"rm","id":"about_ext"}
+// {"t":"llext","op":"load","id":"about_ext"}
+#ifdef CONFIG_ZSW_LLEXT_APPS
+static int parse_llext_command(char *data, int len)
+{
+    (void)len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("llext: failed to parse JSON");
+        return -EINVAL;
+    }
+
+    cJSON *op_json = cJSON_GetObjectItem(root, "op");
+    cJSON *id_json = cJSON_GetObjectItem(root, "id");
+
+    if (!cJSON_IsString(op_json) || !cJSON_IsString(id_json)) {
+        LOG_WRN("llext: missing 'op' or 'id'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    const char *op = op_json->valuestring;
+    const char *app_id = id_json->valuestring;
+    int ret;
+
+    if (strcmp(op, "mkdir") == 0) {
+        ret = zsw_llext_app_manager_prepare_app_dir(app_id);
+    } else if (strcmp(op, "rm") == 0) {
+        ret = zsw_llext_app_manager_remove_app(app_id);
+    } else if (strcmp(op, "load") == 0) {
+        ret = zsw_llext_app_manager_load_app(app_id);
+    } else {
+        LOG_WRN("llext: unknown op '%s'", op);
+        ret = -EINVAL;
+    }
+
+    cJSON_Delete(root);
+    return ret;
+}
+#endif
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -716,6 +817,22 @@ static int parse_data(char *data, int len)
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
         ble_gadgetbridge_send_version_info();
         return 0;
+    }
+
+    if (strlen("llext") == type_len && strncmp(type, "llext", type_len) == 0) {
+#ifdef CONFIG_ZSW_LLEXT_APPS
+        return parse_llext_command(data, len);
+#else
+        return -ENOTSUP;
+#endif
+    }
+
+    if (strlen("smp") == type_len && strncmp(type, "smp", type_len) == 0) {
+        return parse_smp_command(data, len);
+    }
+
+    if (strlen("reset") == type_len && strncmp(type, "reset", type_len) == 0) {
+        return parse_reset_command(data, len);
     }
 
     return 0;

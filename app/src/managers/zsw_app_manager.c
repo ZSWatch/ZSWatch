@@ -30,7 +30,7 @@
 
 LOG_MODULE_REGISTER(app_manager, LOG_LEVEL_INF);
 
-#define MAX_APPS        25
+#define MAX_APPS        35
 #define INVALID_APP_ID  0xFF
 
 static void draw_app_and_folder_view(void);
@@ -291,6 +291,9 @@ void zsw_app_manager_add_application(application_t *app)
         app->private_list_index = num_visible_apps;
         num_visible_apps++;
     }
+
+    /* Refresh app picker if it's currently open (e.g. LLEXT hot-load) */
+    app_picker_ui_refresh();
 }
 
 void zsw_app_manager_exit_app(void)

@@ -16,6 +16,14 @@ menu "Managers"
         source "subsys/logging/Kconfig.template.log_config"
     endmenu
 
+    menu "SMP Manager"
+        depends on MCUMGR
+
+        module = ZSW_SMP_MANAGER
+        module-str = ZSW_SMP_MANAGER
+        source "subsys/logging/Kconfig.template.log_config"
+    endmenu
+
     menu "Mic Manager"
         config ZSW_MIC
             bool
@@ -51,4 +59,5 @@ menu "Managers"
         module-str = ZSW_MIC_MANAGER
         source "subsys/logging/Kconfig.template.log_config"
     endmenu
+
 endmenu

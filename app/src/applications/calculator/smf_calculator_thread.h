@@ -37,4 +37,7 @@ extern struct smf_event_queue smf_thread_event_queue;
 
 int post_calculator_event(struct calculator_event *event, k_timeout_t timeout);
 
+void calculator_smf_init(void);
+void calculator_smf_deinit(void);
+
 #endif /* SMF_CALCULATOR_THREAD_H_ */

@@ -69,11 +69,26 @@ menu "ZSWatch"
 
     rsource "src/applications/Kconfig"
     rsource "src/managers/Kconfig"
+    rsource "src/llext/Kconfig"
     rsource "drivers/Kconfig"
     rsource "src/ui/Kconfig"
     rsource "src/sensors/Kconfig"
     rsource "src/sensor_fusion/Kconfig"
     rsource "src/ble/Kconfig"
+
+    config ZSW_LLEXT_APPS
+        bool "Enable LLEXT dynamic app loading"
+        default n
+        select LLEXT
+
+    config ZSW_LLEXT_LOG_LEVEL
+        int "Log level for LLEXT apps (0=OFF, 1=ERR, 2=WRN, 3=INF, 4=DBG)"
+        depends on ZSW_LLEXT_APPS
+        default 4
+        range 0 4
+        help
+          Controls the log level for all dynamically loaded LLEXT applications.
+          Messages above this level are filtered out at runtime.
 
     menu "Default configuration"
         menu "ZSWatch Init Priorities"

@@ -246,8 +246,13 @@ static void populate_slot(int slot_index, picker_item_t *item)
     if (item->type == PICKER_ITEM_APP) {
         application_t *app = item->app;
 
-        if (app_icons[slot_index] && app->icon) {
-            lv_image_set_src(app_icons[slot_index], app->icon);
+        if (app_icons[slot_index]) {
+            if (app->icon) {
+                lv_image_set_src(app_icons[slot_index], app->icon);
+                lv_obj_remove_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
+            }
             lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_TRANSP, LV_PART_MAIN);
         }
 
@@ -260,8 +265,13 @@ static void populate_slot(int slot_index, picker_item_t *item)
                                       lv_color_hex(0x495060), LV_PART_MAIN);
         }
     } else {
-        if (app_icons[slot_index] && item->folder.icon) {
-            lv_image_set_src(app_icons[slot_index], item->folder.icon);
+        if (app_icons[slot_index]) {
+            if (item->folder.icon) {
+                lv_image_set_src(app_icons[slot_index], item->folder.icon);
+                lv_obj_remove_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(app_icons[slot_index], LV_OBJ_FLAG_HIDDEN);
+            }
             lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_70, LV_PART_MAIN);
             lv_obj_set_style_image_recolor(app_icons[slot_index], item->folder.color, LV_PART_MAIN);
         }
@@ -476,6 +486,9 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
         return NULL;
     }
 
+    lv_obj_set_style_bg_color(picker_root, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(picker_root, LV_OPA_COVER, LV_PART_MAIN);
+
     cache_object_references();
 
     lv_obj_add_event_cb(root, on_swipe_event, LV_EVENT_GESTURE, NULL);
@@ -504,6 +517,24 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
             num_picker_items, total_pages, restore_page, last_folder);
 
     return picker_root;
+}
+
+void app_picker_ui_refresh(void)
+{
+    if (picker_root == NULL) {
+        return;
+    }
+
+    LOG_DBG("Refreshing app picker");
+
+    build_picker_items();
+    total_pages = calculate_page_count();
+
+    if (current_page >= total_pages) {
+        current_page = total_pages > 0 ? total_pages - 1 : 0;
+    }
+
+    populate_page(current_page);
 }
 
 void app_picker_ui_delete(void)

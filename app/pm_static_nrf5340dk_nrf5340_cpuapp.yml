@@ -121,6 +121,11 @@ settings_not_storage:
   end_address: 0x100000
   region: flash_primary
   size: 0x10000
+llext_core_partition:
+  address: 0xe4000
+  end_address: 0xf0000
+  region: flash_primary
+  size: 0xc000
 sram_primary:
   address: 0x20004000
   end_address: 0x20070000

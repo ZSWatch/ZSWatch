@@ -15,11 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <battery/battery_ui.h>
 #include "battery_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
 #include <assert.h>
+#include <zephyr/sys/printk.h>
 
 // Common
 static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);
