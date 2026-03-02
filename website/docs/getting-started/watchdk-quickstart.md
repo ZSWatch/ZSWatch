@@ -8,6 +8,10 @@ sidebar_position: 1
 
 This guide walks you through setting up your **ZSWatch Development Kit (WatchDK)** for the first time - from powering on to having a fully working smartwatch UI with icons and images.
 
+:::tip Order WatchDK
+The WatchDK ($99) is available from Elecrow: [www.elecrow.com/zswatch-development-kit.html](https://www.elecrow.com/zswatch-development-kit.html)
+:::
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 

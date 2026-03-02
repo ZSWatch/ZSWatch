@@ -25,7 +25,7 @@ ZSWatch is built around the **Nordic nRF5340** SoC (dual-core ARM Cortex-M33, 12
 
 | Variant | Description |
 |---------|-------------|
-| **WatchDK** | Development kit. Larger PCB with breakout headers, debug header, USB-C. Designed for development. |
+| **WatchDK** | Development kit. Larger PCB with breakout headers, debug header, USB-C. Designed for development. [Order from Elecrow](https://www.elecrow.com/zswatch-development-kit.html) |
 | **ZSWatch (watch form factor)** | Compact 38mm round PCB for wearable use. (new revision in development based on WatchDK) |
 
 For PCB design files and schematics, see:
