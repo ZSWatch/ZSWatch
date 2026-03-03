@@ -54,11 +54,9 @@ static lv_obj_t *root_obj;
 static lv_group_t *group_obj;
 static on_app_manager_cb_fn close_cb_func;
 static lv_obj_t *app_picker_root;
-static uint8_t last_index; // Last focused position in root view
 static bool app_launch_only;
 static lv_timer_t *async_app_start_timer;
 static lv_timer_t *async_app_close_timer;
-static zsw_app_category_t current_folder = ZSW_APP_CATEGORY_INVALID;
 static bool screen_is_on = true;
 
 // TODO: Add icons for app folders
@@ -253,12 +251,14 @@ int zsw_app_manager_show(on_app_manager_cb_fn close_cb, lv_obj_t *root, lv_group
         app_found = false;
         for (int i = 0; i < num_apps; i++) {
             if (strcmp(apps[i]->name, app_name) == 0) {
+                app_found = true;
                 app_launch_only = true;
                 current_app = i;
                 if (async_app_start_timer == NULL) {
                     async_app_start_timer = lv_timer_create(async_app_start, 1,  NULL);
                     lv_timer_set_repeat_count(async_app_start_timer, 1);
                 }
+                break;
             }
         }
     }
@@ -333,8 +333,6 @@ static int application_manager_init(void)
     num_apps = 0;
     current_app = INVALID_APP_ID;
     async_app_start_timer = NULL;
-    current_folder = ZSW_APP_CATEGORY_INVALID;
-    last_index = 0;
     screen_is_on = true;
 
     // Subscribe to activity events to track screen state

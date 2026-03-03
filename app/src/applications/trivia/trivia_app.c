@@ -87,6 +87,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
                 cJSON *correct_answer = cJSON_GetObjectItem(result, "correct_answer");
                 if (question == NULL || correct_answer == NULL) {
                     LOG_ERR("Failed to parse JSON data");
+                    cJSON_Delete(parsed_response);
                     return;
                 }
                 memset(trivia_app_question.question, 0, sizeof(trivia_app_question.question));

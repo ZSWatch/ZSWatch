@@ -83,6 +83,10 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     if (status == BLE_HTTP_STATUS_OK) {
         zsw_clock_get_time(&time_now);
         cJSON *parsed_response = cJSON_Parse(response);
+        if (parsed_response == NULL) {
+            LOG_ERR("Failed to parse weather JSON response");
+            return;
+        }
         cJSON *current = cJSON_GetObjectItem(parsed_response, "current");
         cJSON *current_temperature_2m = cJSON_GetObjectItem(current, "temperature_2m");
         current_weather.temperature = current_temperature_2m->valuedouble;

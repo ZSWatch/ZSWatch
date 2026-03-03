@@ -190,7 +190,7 @@ static int vibration_motor_init(void)
     }
     rc = gpio_pin_configure_dt(&enable_gpio, GPIO_OUTPUT_LOW);
     if (rc != 0) {
-        printk("Failed init vibration motor enable pin\n");
+        LOG_ERR("Failed init vibration motor enable pin");
     }
 
     vibration_motor_set_on(false);

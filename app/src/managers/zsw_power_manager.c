@@ -98,7 +98,7 @@ static uint32_t last_wakeup_time;
 static uint32_t last_pwr_off_time;
 static uint32_t last_activity_time_ms;
 static zsw_power_manager_state_t state;
-static bool iniitialized = false;
+static bool initialized = false;
 
 static struct {
     tilt_state_t state;
@@ -123,7 +123,7 @@ int zsw_power_manager_init(void)
         idle_timeout_seconds = UINT32_MAX;
     }
 
-    iniitialized = true;
+    initialized = true;
     enter_active();
 
     return 0;
@@ -131,7 +131,7 @@ int zsw_power_manager_init(void)
 
 bool zsw_power_manager_reset_idle_timout(void)
 {
-    __ASSERT(iniitialized, "Power manager not initialized");
+    __ASSERT(initialized, "Power manager not initialized");
     update_last_activity_timestamp();
 
     if (!is_active) {
@@ -147,7 +147,7 @@ bool zsw_power_manager_reset_idle_timout(void)
 
 uint32_t zsw_power_manager_get_ms_to_inactive(void)
 {
-    __ASSERT(iniitialized, "Power manager not initialized");
+    __ASSERT(initialized, "Power manager not initialized");
     if (!is_active) {
         return 0;
     }
@@ -163,13 +163,13 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void)
 
 zsw_power_manager_state_t zsw_power_manager_get_state(void)
 {
-    __ASSERT(iniitialized, "Power manager not initialized");
+    __ASSERT(initialized, "Power manager not initialized");
     return state;
 }
 
 void zsw_power_manager_on_user_activity(void)
 {
-    __ASSERT(iniitialized, "Power manager not initialized");
+    __ASSERT(initialized, "Power manager not initialized");
 
     update_last_activity_timestamp();
 
@@ -426,7 +426,7 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
             LOG_INF("Watch enterted stationary state");
             if (!is_active) {
                 is_stationary = true;
-                last_pwr_off_time = k_uptime_get();
+                last_pwr_off_time = k_uptime_get_32();
                 zsw_display_control_pwr_ctrl(false);
                 zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true);
                 zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);

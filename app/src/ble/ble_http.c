@@ -66,7 +66,11 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
                     i++;
                 }
             }
-            fixed_rsp[j - 1] = '\0'; // Remove the last " as it belongs not to the data
+            if (j > 0) {
+                fixed_rsp[j - 1] = '\0'; // Remove the last " as it belongs not to the data
+            } else {
+                fixed_rsp[0] = '\0';
+            }
             ble_http_cb(BLE_HTTP_STATUS_OK, fixed_rsp);
             k_free(fixed_rsp);
         }

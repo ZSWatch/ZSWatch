@@ -349,7 +349,7 @@ static void connected(struct bt_conn *conn, uint8_t err)
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
     is_connected = false;
-    if (!running | is_suspended) {
+    if (!running || is_suspended) {
         return;
     }
     watchfaces[watchface_settings.watchface_index]->set_ble_connected(false);

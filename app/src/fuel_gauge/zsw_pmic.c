@@ -173,19 +173,19 @@ static int charge_status_inform(int32_t chg_status)
     union nrf_fuel_gauge_ext_state_info_data state_info;
 
     if (chg_status & NPM1300_CHG_STATUS_COMPLETE_MASK) {
-        printk("Charge complete\n");
+        LOG_INF("Charge complete");
         state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
     } else if (chg_status & NPM1300_CHG_STATUS_TRICKLE_MASK) {
-        printk("Trickle charging\n");
+        LOG_INF("Trickle charging");
         state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_TRICKLE;
     } else if (chg_status & NPM1300_CHG_STATUS_CC_MASK) {
-        printk("Constant current charging\n");
+        LOG_INF("Constant current charging");
         state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CC;
     } else if (chg_status & NPM1300_CHG_STATUS_CV_MASK) {
-        printk("Constant voltage charging\n");
+        LOG_INF("Constant voltage charging");
         state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CV;
     } else {
-        printk("Charger idle\n");
+        LOG_INF("Charger idle");
         state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_IDLE;
     }
 
@@ -319,7 +319,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
               : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED,
               NULL);
     if (ret < 0) {
-        printk("Error: Could not inform of state\n");
+        LOG_ERR("Could not inform of state");
         return ret;
     }
 
@@ -328,7 +328,7 @@ int zsw_pmic_get_full_state(struct battery_sample_event *sample)
 
         ret = charge_status_inform(chg_status);
         if (ret < 0) {
-            printk("Error: Could not inform of charge status\n");
+            LOG_ERR("Could not inform of charge status");
             return ret;
         }
     }

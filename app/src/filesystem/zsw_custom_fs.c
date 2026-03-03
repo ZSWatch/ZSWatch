@@ -184,7 +184,7 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
     }
 
     open_file = find_free_opened_file();
-    if (!file) {
+    if (!open_file) {
         return NULL;
     }
 

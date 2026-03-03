@@ -167,10 +167,11 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
 {
     uint32_t idx;
 
-    // Prevent double notifications with the same ID. Return the double notification when found.
+    // Prevent double notifications with the same ID.
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
         if (notifications[i].id == not->id) {
-            return &notifications[i];
+            LOG_DBG("Duplicate notification ID %u, ignoring", not->id);
+            return NULL;
         }
     }
 
