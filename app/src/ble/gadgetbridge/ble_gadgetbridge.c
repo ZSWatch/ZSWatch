@@ -661,6 +661,36 @@ static int parse_log_command(char *data, int len)
     return 0;
 }
 
+static int parse_find_device(char *data, int len)
+{
+    (void) len;
+    struct ble_data_event cb;
+    memset(&cb, 0, sizeof(cb));
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse find device command");
+        return -EINVAL;
+    }
+
+    cJSON *active = cJSON_GetObjectItem(root, "n");
+    if (!cJSON_IsBool(active)) {
+        LOG_WRN("Find device command missing 'n' field");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    cb.data.type = BLE_COMM_DATA_TYPE_FIND_DEVICE;
+    cb.data.data.find_device.active = cJSON_IsTrue(active);
+
+    LOG_INF("Find device: %s", cb.data.data.find_device.active ? "start" : "stop");
+
+    send_ble_data_event(&cb);
+    cJSON_Delete(root);
+
+    return 0;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -711,6 +741,10 @@ static int parse_data(char *data, int len)
 
     if (strlen("log") == type_len && strncmp(type, "log", type_len) == 0) {
         return parse_log_command(data, len);
+    }
+
+    if (strlen("find") == type_len && strncmp(type, "find", type_len) == 0) {
+        return parse_find_device(data, len);
     }
 
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {

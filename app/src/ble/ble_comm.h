@@ -33,6 +33,7 @@ typedef enum ble_comm_data_type {
     BLE_COMM_DATA_TYPE_REMOTE_CONTROL,
     BLE_COMM_DATA_TYPE_HTTP,
     BLE_COMM_DATA_TYPE_GPS,
+    BLE_COMM_DATA_TYPE_FIND_DEVICE,
     BLE_COMM_DATA_TYPE_EMPTY
 } ble_comm_data_type_t;
 
@@ -106,6 +107,10 @@ typedef struct ble_comm_gps {
     char gpsSource[20];
 } ble_comm_gps_t;
 
+typedef struct ble_comm_find_device {
+    bool active;
+} ble_comm_find_device_t;
+
 typedef enum {
     BLE_COMM_NOTIFY_ACTION_DISMISS,
     BLE_COMM_NOTIFY_ACTION_DISMISS_ALL,
@@ -126,6 +131,7 @@ typedef struct ble_comm_cb_data {
         ble_comm_remote_control_t remote_control;
         ble_comm_http_response_t http_response;
         ble_comm_gps_t gps;
+        ble_comm_find_device_t find_device;
     } data;
 } ble_comm_cb_data_t;
 
