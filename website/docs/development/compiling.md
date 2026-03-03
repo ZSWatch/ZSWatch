@@ -35,6 +35,58 @@ For **release builds** (no logging, optimized), use `release.conf` instead of `d
 
 ---
 
+## Build-Time Patching
+
+ZSWatch automatically applies patches to external dependencies during the build process via `app/sysbuild.cmake`. This allows compatibility fixes for upstream libraries without forking them.
+
+### Patch Directories
+
+Patches are organized under `app/patches/`:
+
+| Directory | Target | Purpose |
+|-----------|--------|---------|
+| `app/patches/zephyr/` | Zephyr RTOS | Fixes or enhancements to Zephyr before it's applied by NCS |
+| `app/patches/ext_drivers/` | External drivers | Compatibility patches for third-party drivers |
+| `app/patches/<app_lib>/` | App-specific libraries | Patches for external libraries used by applications (e.g., `2048_lib`) |
+
+### How It Works
+
+During the sysbuild phase, `app/sysbuild.cmake` applies all `.patch` files from these directories using `git apply`:
+
+```cmake
+apply_patches("patches/zephyr" $ENV{ZEPHYR_BASE})
+apply_patches("patches/ext_drivers" ${APP_DIR}/src/ext_drivers)
+apply_patches("patches/2048_lib" ${APP_DIR}/src/applications/2048/2048_lib)
+```
+
+Patches are applied in the order they are discovered. Use standard unified diff format (`.patch` files).
+
+### Creating a Patch
+
+If you need to add a compatibility patch for an external library:
+
+1. Make your changes to the library code in its directory (e.g., a git submodule).
+2. Generate a patch file:
+   ```bash
+   cd app/src/applications/my_app/my_lib
+   git diff > ../../../../patches/my_lib/compatibility_fix.patch
+   ```
+3. Add the patch application to `app/sysbuild.cmake`:
+   ```cmake
+   apply_patches("patches/my_lib" ${APP_DIR}/src/applications/my_app/my_lib)
+   ```
+4. Clean rebuild to verify the patch applies correctly:
+   ```bash
+   rm -rf app/build_dir
+   west build --build-dir app/build_dir app --board <board>
+   ```
+
+:::tip
+Patches allow you to fix compatibility issues with external libraries (like LVGL version mismatches) without maintaining a full fork. The upstream library can stay as a git submodule while your patches are applied at build time.
+:::
+
+---
+
 ## Building
 
 import Tabs from '@theme/Tabs';
