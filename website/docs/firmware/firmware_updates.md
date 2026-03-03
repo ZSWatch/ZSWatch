@@ -28,6 +28,7 @@ GitHub requires you to be logged in to download **GitHub Actions** artifacts. If
 | `zswatch_nrf5340_CPUNET.hex` | Network core image (hex, for SWD flashing) |
 | `lvgl_resources_raw.bin` | Image resources (icons, graphics) for USB/BLE upload |
 | `lvgl_resources_raw.hex` | RAW filesystem image for `nrfjprog` flashing |
+| `qspi_mx25u51245.ini` | QSPI flash configuration for `nrfjprog` (required for `--qspiini`) |
 
 After updating firmware, you typically also need to upload the matching **image resources** so icons and graphics display correctly. See [Image Resources](../development/image_resources.md) for details.
 
@@ -59,11 +60,11 @@ Use this method if you have a debugger connected (for example J-Link, or Nordic 
 nrfjprog -f nrf53 \
   --program watchdk@1_nrf5340_cpuapp_debug.hex \
   --chiperase --qspisectorerase --verify --reset \
-  --qspiini /path/to/qspi_mx25u51245.ini \
+  --qspiini qspi_mx25u51245.ini \
   --coprocessor CP_APPLICATION
 ```
 
-The `--qspiini` flag expects the `qspi_mx25u51245.ini` file from this repo. If you are flashing pre-built hex files, provide a local path to your copy of that file.
+The `--qspiini` flag expects the `qspi_mx25u51245.ini` file included in the downloaded zip.
 
 4. If you also need to re-flash the network core, flash CPUNET:
 
@@ -86,7 +87,7 @@ If you want to program the filesystem images using only `nrfjprog`, use the gene
 nrfjprog -f nrf53 \
   --program lvgl_resources_raw.hex \
   --qspisectorerase --verify --reset \
-  --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini \
+  --qspiini qspi_mx25u51245.ini \
   --coprocessor CP_APPLICATION
 ```
 
