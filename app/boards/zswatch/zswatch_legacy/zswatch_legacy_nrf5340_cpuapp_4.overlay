@@ -125,5 +125,10 @@
 			label = "storage_partition";
 			reg = <0xD20000 0x100000 >;
 		};
+
+		user_storage: partition@E20000 {
+			label = "user_storage";
+			reg = <0xE20000 0x1E0000>;
+		};
 	};
 };

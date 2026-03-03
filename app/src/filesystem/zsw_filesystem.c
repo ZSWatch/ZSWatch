@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/zswatch/>.
- * Copyright (c) 2025 ZSWatch Project.
+ * Copyright (c) 2026 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,11 +16,15 @@
  */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/fs/littlefs.h>
+#include <zephyr/storage/flash_map.h>
 #include <zephyr/logging/log.h>
+
+#include <filesystem/zsw_filesystem.h>
 
 LOG_MODULE_REGISTER(zsw_filesystem, LOG_LEVEL_DBG);
 
@@ -28,6 +32,19 @@ LOG_MODULE_REGISTER(zsw_filesystem, LOG_LEVEL_DBG);
 FS_FSTAB_DECLARE_ENTRY(PARTITION_NODE);
 
 struct fs_mount_t *mountpoint = &FS_FSTAB_ENTRY(PARTITION_NODE);
+
+/* Second LittleFS partition for user data (settings, recordings, etc.)
+ * Mounted manually to work around nRF Partition Manager limitation
+ * which hardcodes all FSTAB entries to the same flash area.
+ */
+FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(user_lfs_data);
+
+static struct fs_mount_t user_mnt = {
+    .type = FS_LITTLEFS,
+    .fs_data = &user_lfs_data,
+    .storage_dev = (void *)FIXED_PARTITION_ID(user_storage),
+    .mnt_point = ZSW_USER_LFS_MOUNT_POINT,
+};
 
 static int lsdir(const char *path)
 {
@@ -71,30 +88,54 @@ static int lsdir(const char *path)
     return res;
 }
 
-int zsw_filesystem_ls(void)
+static int log_fs_stats(const char *mount_point, bool full_scan)
 {
     struct fs_statvfs sbuf;
     int rc;
 
-    rc = fs_statvfs(mountpoint->mnt_point, &sbuf);
+    rc = fs_statvfs(mount_point, &sbuf);
     if (rc < 0) {
-        LOG_PRINTK("FAIL: statvfs: %d\n", rc);
-        return -1;
+        LOG_ERR("FAIL: statvfs %s: %d", mount_point, rc);
+        return rc;
     }
 
     LOG_WRN("%s: bsize = %lu ; frsize = %lu ;"
             " blocks = %lu ; bfree = %lu",
-            mountpoint->mnt_point,
+            mount_point,
             sbuf.f_bsize, sbuf.f_frsize,
             sbuf.f_blocks, sbuf.f_bfree);
 
-    rc = lsdir(mountpoint->mnt_point);
+    if (!full_scan) {
+        return 0;
+    }
+
+    rc = lsdir(mount_point);
     if (rc < 0) {
-        LOG_PRINTK("FAIL: lsdir %s: %d\n", mountpoint->mnt_point, rc);
-        return -1;
+        LOG_ERR("FAIL: lsdir %s: %d", mount_point, rc);
+        return rc;
     }
 
     return 0;
 }
 
+int zsw_filesystem_ls(void)
+{
+    return log_fs_stats(mountpoint->mnt_point, false);
+}
+
+static int zsw_user_lfs_init(void)
+{
+    int rc;
+
+    rc = fs_mount(&user_mnt);
+    if (rc < 0) {
+        LOG_ERR("Failed to mount %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+        return rc;
+    }
+
+    LOG_INF("User LFS mounted at %s", ZSW_USER_LFS_MOUNT_POINT);
+    return log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+}
+
 SYS_INIT(zsw_filesystem_ls, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+SYS_INIT(zsw_user_lfs_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

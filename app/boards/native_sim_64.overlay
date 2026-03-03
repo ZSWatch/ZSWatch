@@ -92,6 +92,11 @@
             label = "lvgl_raw_partition";
             reg = <0x001f0000 0x0000d000>;
         };
+
+        user_storage: partition@1fd000 {
+            label = "user_storage";
+            reg = <0x001fd000 0x00200000>;
+        };
     };
 };
 
