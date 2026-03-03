@@ -48,6 +48,22 @@ import TabItem from '@theme/TabItem';
   west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
   ```
 
+  If you want to upload using only `nrfjprog` (no `west upload_fs`), use the generated hex images:
+
+  ```sh
+  nrfjprog -f nrf53 \
+    --program lvgl_resources_raw.hex \
+    --qspisectorerase --verify --reset \
+    --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini \
+    --coprocessor CP_APPLICATION
+  ```
+
+  To generate these files locally:
+
+  ```sh
+  west upload_fs --type raw --generate_only
+  ```
+
   </TabItem>
 </Tabs>
 

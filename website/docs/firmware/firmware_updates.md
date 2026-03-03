@@ -27,6 +27,7 @@ GitHub requires you to be logged in to download **GitHub Actions** artifacts. If
 | `watchdk@1_nrf5340_cpuapp_debug.hex` | Firmware image (hex, for SWD flashing) |
 | `zswatch_nrf5340_CPUNET.hex` | Network core image (hex, for SWD flashing) |
 | `lvgl_resources_raw.bin` | Image resources (icons, graphics) for USB/BLE upload |
+| `lvgl_resources_raw.hex` | RAW filesystem image for `nrfjprog` flashing |
 
 After updating firmware, you typically also need to upload the matching **image resources** so icons and graphics display correctly. See [Image Resources](../development/image_resources.md) for details.
 
@@ -76,3 +77,21 @@ nrfjprog -f nrf53 \
 ### Option B2: Build from source and flash
 
 If you are building the firmware yourself, see [Compiling the Software](../development/compiling.md) for build and flash instructions using the nRF Connect VS Code extension or `west`.
+
+## Program external filesystems with nrfjprog
+
+If you want to program the filesystem images using only `nrfjprog`, use the generated `.hex` files:
+
+```bash
+nrfjprog -f nrf53 \
+  --program lvgl_resources_raw.hex \
+  --qspisectorerase --verify --reset \
+  --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini \
+  --coprocessor CP_APPLICATION
+```
+
+If you only have source assets and need to generate those `.hex` files locally first:
+
+```bash
+west upload_fs --type raw --generate_only
+```

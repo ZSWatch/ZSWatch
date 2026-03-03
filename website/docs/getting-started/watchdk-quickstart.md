@@ -83,6 +83,14 @@ If you have a debugger connected, you can upload images from VS Code by pressing
 ```bash
 west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
 ```
+Or directly using `nrfjprog`
+```
+nrfjprog -f nrf53 \
+  --program lvgl_resources_raw.hex \
+  --qspisectorerase --verify --reset \
+  --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini \
+  --coprocessor CP_APPLICATION
+```
 :::
 
 ## Step 4 - Done!
