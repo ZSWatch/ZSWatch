@@ -39,3 +39,4 @@ endfunction()
 
 apply_patches("patches/zephyr" $ENV{ZEPHYR_BASE})
 apply_patches("patches/ext_drivers" ${APP_DIR}/src/ext_drivers)
+apply_patches("patches/2048_lib" ${APP_DIR}/src/applications/2048/2048_lib)

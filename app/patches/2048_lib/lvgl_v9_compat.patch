@@ -1,0 +1,85 @@
+diff --git a/src/lv_100ask_2048/lv_100ask_2048.c b/src/lv_100ask_2048/lv_100ask_2048.c
+index 60edbb0..01c51cc 100644
+--- a/src/lv_100ask_2048/lv_100ask_2048.c
++++ b/src/lv_100ask_2048/lv_100ask_2048.c
+@@ -7,6 +7,9 @@
+  *      INCLUDES
+  *********************/
+ #include "lv_100ask_2048.h"
++#include "core/lv_obj_class_private.h"
++#include "themes/lv_theme_private.h"
++#include "draw/lv_draw_private.h"
+ 
+ #if LV_USE_100ASK_2048 != 0
+ #include <stdio.h>
+@@ -168,7 +171,7 @@ uint16_t lv_100ask_2048_get_best_tile(lv_obj_t * obj)
+ 
+ static void game_play_event(lv_event_t * e)
+ {
+-    lv_res_t res;
++    lv_result_t res;
+ 
+     bool success = false;
+     lv_event_code_t code = lv_event_get_code(e);
+@@ -204,7 +207,7 @@ static void game_play_event(lv_event_t * e)
+         {
+             LV_LOG_USER("100ASK 2048 GAME OVER!");
+             res = lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
+-            if(res != LV_RES_OK) return;
++            if(res != LV_RESULT_OK) return;
+         }
+     }
+     else if(code == LV_EVENT_KEY)
+@@ -233,7 +236,7 @@ static void game_play_event(lv_event_t * e)
+         {
+             LV_LOG_USER("100ASK 2048 GAME OVER!");
+             res = lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
+-            if(res != LV_RES_OK) return;
++            if(res != LV_RESULT_OK) return;
+         }
+     }
+ 
+@@ -244,7 +247,7 @@ static void game_play_event(lv_event_t * e)
+         lv_btnmatrix_set_map(game_2048->btnm, game_2048->btnm_map);
+ 
+         res = lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
+-        if(res != LV_RES_OK) return;
++        if(res != LV_RESULT_OK) return;
+     }
+ }
+ 
+@@ -326,11 +329,11 @@ static void lv_100ask_2048_event(const lv_obj_class_t * class_p, lv_event_t * e)
+ {
+     LV_UNUSED(class_p);
+ 
+-    lv_res_t res;
++    lv_result_t res;
+ 
+     /*Call the ancestor's event handler*/
+     res = lv_obj_event_base(MY_CLASS, e);
+-    if(res != LV_RES_OK) return;
++    if(res != LV_RESULT_OK) return;
+ 
+     lv_event_code_t code = lv_event_get_code(e);
+ }
+diff --git a/src/lv_100ask_2048/lv_100ask_2048.h b/src/lv_100ask_2048/lv_100ask_2048.h
+index a6669b0..fe3e9dd 100644
+--- a/src/lv_100ask_2048/lv_100ask_2048.h
++++ b/src/lv_100ask_2048/lv_100ask_2048.h
+@@ -14,6 +14,7 @@ extern "C" {
+  *      INCLUDES
+  *********************/
+ #include "../../lv_lib_100ask.h"
++#include "core/lv_obj_private.h"
+ 
+ #if LV_USE_100ASK_2048 != 0
+ 
+@@ -22,7 +23,7 @@ extern "C" {
+  *********************/
+ #ifdef LV_100ASK_2048_MATRIX_SIZE
+     #define MATRIX_SIZE     LV_100ASK_2048_MATRIX_SIZE
+-#elif
++#else
+     #define MATRIX_SIZE     4
+ #endif
+ 

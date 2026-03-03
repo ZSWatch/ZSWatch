@@ -152,7 +152,7 @@
 #  ifdef CONFIG_LV_USE_100ASK_MEMORY_GAME
 #    define LV_USE_100ASK_MEMORY_GAME CONFIG_LV_USE_100ASK_MEMORY_GAME
 #  else
-#    define LV_USE_100ASK_MEMORY_GAME          1
+#    define LV_USE_100ASK_MEMORY_GAME          0
 #  endif
 #endif
 

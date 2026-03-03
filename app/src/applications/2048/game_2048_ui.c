@@ -17,6 +17,7 @@
 
 #include <2048/game_2048_ui.h>
 #include <lvgl.h>
+#include <zephyr/sys/__assert.h>
 #include <lv_100ask_2048.h>
 
 static void game_2048_event_cb(lv_event_t *e);
@@ -25,7 +26,7 @@ static lv_obj_t *root_page = NULL;
 
 void game_2048_ui_show(lv_obj_t *root)
 {
-    assert(root_page == NULL);
+    __ASSERT(root_page == NULL, "2048 UI already shown");
     lv_obj_t *obj_2048;
 
     // Create the root container
@@ -39,7 +40,8 @@ void game_2048_ui_show(lv_obj_t *root)
     // Does not look very good on the round display.
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
 
-    lv_obj_set_style_bg_color(root_page, lv_color_hex(0xb3a397), LV_PART_MAIN); // Match 2048 game background color
+    // Match LVGL dark theme card color (0x282b30) used by the btnmatrix background/gaps
+    lv_obj_set_style_bg_color(root_page, lv_color_hex(0x282b30), LV_PART_MAIN);
 
     obj_2048 = lv_100ask_2048_create(root_page);
     lv_obj_set_size(obj_2048, 200, 200);
