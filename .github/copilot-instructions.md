@@ -431,16 +431,17 @@ When developing code that is **not platform-specific** (application logic, UI, e
 source .nrf_env.sh && west build --build-dir app/build app --board native_sim/native/64 -DSB_CONF_FILE="sysbuild_no_mcuboot_no_xip.conf"
 ```
 
-**Run (without debugger):**
+**Run:**
 ```bash
 # Run as background process — logs go to stdout
-# Use --bt-dev=hci0 if BLE is needed (requires sudo and host BT disabled)
 app/build/app/zephyr/zephyr.exe
-```
-The executable opens a display window simulating the 240×240 round screen. Logs print to the terminal in real time.
 
-**Run with debugger (recommended):**
-Use the VS Code launch configuration `"Debug Native (sudo)"` defined in `.vscode/launch.json`. It launches `app/build/app/zephyr/zephyr.exe` under GDB with `--bt-dev=hci0`. The `preLaunchTask` disables the host Bluetooth adapter (`hci0`) so Zephyr can claim it.
+# With BLE — use capwrap instead of sudo (see below)
+hciconfig hci0 down
+app/tools/capwrap/capwrap app/build/app/zephyr/zephyr.exe --bt-dev=hci0
+```
+
+The executable opens a display window simulating the 240×240 round screen. Logs print to the terminal in real time.
 
 **Inspecting logs from the agent:**
 The agent can run `zephyr.exe` as a background process via `run_in_terminal` and read its stdout to inspect Zephyr logs. If UI interaction is needed to trigger specific code paths, ask the user to perform an action in the simulator window and then check the terminal output for resulting log messages.
