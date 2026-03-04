@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <title>/Testing</title>
+ <meta charset="UTF-8">
+ <link rel="stylesheet" href="styles.css">
+ <link rel="icon" href="favicon.ico">
+ <script src="markdown-it.min.js"></script>
+</head>
+<body>
+
+        <div id="theSideNav" class="navbar">
+            <!-- Search bar container -->
+            <div id="search-container">
+                <input type="text" id="search-bar" placeholder="Search outputs..." autocomplete="off">
+                <ul id="autocomplete-list"></ul>
+            </div>
+        <ul class='navbar-category'>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Reports</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-reports' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Reports.html#erc' class='navbar-output'>erc</a></li>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Reports.html#drc' class='navbar-output'>drc</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Netlist</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-netlist' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Netlist.html#netlist' class='navbar-output'>netlist</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Manufacturing</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-manufacturing' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Fabrication</span>
+     <ul id='folder-zswatch-watch-devkit-navigate_manufacturing-fabrication' class='folder-contents' style='display:none;'>
+  <ul class='navbar-category'>
+    <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Gerbers</span>
+      <ul id='folder-zswatch-watch-devkit-navigate_manufacturing_fabrication-gerbers' class='folder-contents' style='display:none;'>
+   <ul class='navbar-category'>
+     <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication_Gerbers.html#gbr_gerbers' class='navbar-output'>gbr_gerbers</a></li>
+     <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication_Gerbers.html#drl_excellon' class='navbar-output'>drl_excellon</a></li>
+     <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication_Gerbers.html#pdf_drill_map' class='navbar-output'>pdf_drill_map</a></li>
+   </ul>
+      </ul>
+  </li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication.html#zip_odb' class='navbar-output'>zip_odb</a></li>
+    <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Drill Tables</span>
+      <ul id='folder-zswatch-watch-devkit-navigate_manufacturing_fabrication-drill-tables' class='folder-contents' style='display:none;'>
+   <ul class='navbar-category'>
+     <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication_Drill Tables.html#csv_drill_table' class='navbar-output'>csv_drill_table</a></li>
+   </ul>
+      </ul>
+  </li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication.html#csv_impedance_table' class='navbar-output'>csv_impedance_table</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication.html#txt_fabrication_notes' class='navbar-output'>txt_fabrication_notes</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication.html#pdf_fabrication' class='navbar-output'>pdf_fabrication</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Fabrication.html#zip_compress_fab' class='navbar-output'>zip_compress_fab</a></li>
+  </ul>
+     </ul>
+  </li>
+   <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Assembly</span>
+     <ul id='folder-zswatch-watch-devkit-navigate_manufacturing-assembly' class='folder-contents' style='display:none;'>
+  <ul class='navbar-category'>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#csv_position' class='navbar-output'>csv_position</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#csv_bom' class='navbar-output'>csv_bom</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#html_bom' class='navbar-output'>html_bom</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#xlsx_bom' class='navbar-output'>xlsx_bom</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#html_bom_interactive' class='navbar-output'>html_bom_interactive</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#csv_comp_count' class='navbar-output'>csv_comp_count</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#txt_assembly_notes' class='navbar-output'>txt_assembly_notes</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#pdf_assembly' class='navbar-output'>pdf_assembly</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Manufacturing_Assembly.html#production_doc' class='navbar-output'>production_doc</a></li>
+  </ul>
+     </ul>
+  </li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Testing</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-testing' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Testpoints</span>
+     <ul id='folder-zswatch-watch-devkit-navigate_testing-testpoints' class='folder-contents' style='display:none;'>
+  <ul class='navbar-category'>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Testing_Testpoints.html#csv_testpoints' class='navbar-output'>csv_testpoints</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Testing_Testpoints.html#csv_testpoints_top' class='navbar-output'>csv_testpoints_top</a></li>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Testing_Testpoints.html#csv_testpoints_bottom' class='navbar-output'>csv_testpoints_bottom</a></li>
+  </ul>
+     </ul>
+  </li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Images</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-images' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Images.html#png_3d_viewer_top' class='navbar-output'>png_3d_viewer_top</a></li>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Images.html#png_3d_viewer_bottom' class='navbar-output'>png_3d_viewer_bottom</a></li>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Images.html#png_3d_viewer_angled_top' class='navbar-output'>png_3d_viewer_angled_top</a></li>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Images.html#png_3d_viewer_angled_bottom' class='navbar-output'>png_3d_viewer_angled_bottom</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> 3D</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-3d' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_3D.html#step' class='navbar-output'>step</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> PCB</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-pcb' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> docs</span>
+     <ul id='folder-zswatch-watch-devkit-navigate_pcb-docs' class='folder-contents' style='display:none;'>
+  <ul class='navbar-category'>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_PCB_docs.html#copy_logo' class='navbar-output'>copy_logo</a></li>
+  </ul>
+     </ul>
+  </li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> Schematic</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-schematic' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> docs</span>
+     <ul id='folder-zswatch-watch-devkit-navigate_schematic-docs' class='folder-contents' style='display:none;'>
+  <ul class='navbar-category'>
+    <li><a href='ZSWatch-Watch-DevKit-navigate_Schematic_docs.html#copy_logo' class='navbar-output'>copy_logo</a></li>
+  </ul>
+     </ul>
+  </li>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_Schematic.html#pdf_schematic' class='navbar-output'>pdf_schematic</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> KiCanvas</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-kicanvas' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_KiCanvas.html#html_kicanvas' class='navbar-output'>html_kicanvas</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li class='folder'><span onclick='toggleFolder(this)'><span class='chevron'></span> KiRI</span>
+    <ul id='folder-zswatch-watch-devkit-navigate-kiri' class='folder-contents' style='display:none;'>
+ <ul class='navbar-category'>
+   <li><a href='ZSWatch-Watch-DevKit-navigate_KiRI.html#html_kiri' class='navbar-output'>html_kiri</a></li>
+ </ul>
+    </ul>
+  </li>
+  <li><a href='ZSWatch-Watch-DevKit-navigate.html#md_readme' class='navbar-output'>md_readme</a></li>
+</ul>
+</div>
+
+        <div id="topmenu" class="topmenu">
+        <div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 10px;">
+<span id="open-navbar" style="font-size:30px;cursor:pointer;" onclick="openNav()">&#9776;</span>
+<span id="close-navbar" style="font-size:30px;cursor:pointer;display:none;" onclick="closeNav()">⨉</span>
+<button id="back-button" onclick="history.back()" style="font-size:30px;">↩</button>
+<button id="forward-button" onclick="history.forward()" style="font-size:30px;">↪</button>
+<button id="up-button" onclick="location.href='ZSWatch-Watch-DevKit-navigate.html'" style="font-size:44px; position: relative; top: -3px;">⌅</button>
+<button id="home-button" onclick="location.href='ZSWatch-Watch-DevKit-navigate.html'" style="font-size:25px; position: relative; top: -2px;">🏠︎</button>
+
+            <span style="
+                font-size:18px;
+                color: var(--text-color-accent);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                flex: 1;
+            ">
+                <a href="ZSWatch-Watch-DevKit-navigate_Testing.html" style="text-decoration:none;color:inherit;">Testing</a>
+            </span>
+</div>
+<div style="text-align: center; flex: 1; min-width: 200px;">
+<a href="https://github.com/ZSWatch/Watch-DevKit-HW" style="text-decoration: none; color: inherit;">
+<span style="font-size:30px;">Watch-DevKit-HW</span>
+</a>
+
+            <div style="
+                font-size:14px;
+                color: var(--text-color-accent);
+                margin-top: 5px;">
+                ZSWatch
+            </div>
+        </div>
+<div style="display: flex; align-items: center; flex: 1; justify-content: flex-end; min-width: 0; gap: 10px; padding-right: 10px;">
+
+            <div style="
+                text-align: left;
+                font-size:14px;
+                margin-right: 10px;
+                color: var(--text-color-accent);">
+                <div style="margin-bottom: 5px;">Rev. 1.2.2</div>
+                <div>Variant: RELEASED</div>
+            </div>
+<a href="https://github.com/ZSWatch/Watch-DevKit-HW" style="margin-right: 10px;">
+<img src="images/logo.png" alt="Logo" style="max-height: 40px; max-width: 93.7156802928615px;">
+</a>
+
+            <label class="theme-switch" style="
+                position: relative;
+                margin-right: 10px; /* Move toggle slightly left */
+                max-width: 100%; /* Prevent overflow */
+            ">
+                <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+                <span></span>
+            </label>
+        </div>
+</div>
+<div id="main">
+<div class="items-container">
+<div>
+        <div class="category-box" onclick="location.href='ZSWatch-Watch-DevKit-navigate_Testing_Testpoints.html'">
+            <p class="category-title">Testpoints</p>
+        </div>
+        </div></div>
+
+<script>
+
+// Side Navigation functions ===================================================
+
+function openNav() {
+    const navbar = document.getElementById("theSideNav");
+    const main = document.getElementById("main");
+
+    navbar.style.width = "360px";
+    navbar.style.paddingLeft = "20px";
+    main.style.marginLeft = "360px";
+    document.getElementById("open-navbar").style.display = "none";
+    document.getElementById("close-navbar").style.display = "inline-block";
+}
+
+function closeNav() {
+    const navbar = document.getElementById("theSideNav");
+    const main = document.getElementById("main");
+
+    navbar.style.width = "0"; // Close the navbar
+    navbar.style.paddingLeft = "0"; // Reset padding
+    main.style.marginLeft = "0"; // Reset page content position
+    document.getElementById("open-navbar").style.display = "inline-block";
+    document.getElementById("close-navbar").style.display = "none";
+}
+
+function toggleFolder(folderHeader) {
+    const folder = folderHeader.parentElement;
+    const folderContents = folderHeader.nextElementSibling;
+
+    if (folder.classList.contains("open")) {
+        folder.classList.remove("open");
+        folderContents.style.display = "none";
+    } else {
+        folder.classList.add("open");
+        folderContents.style.display = "block";
+    }
+
+    // Save the updated state
+    saveSideNavState();
+}
+
+function saveSideNavState() {
+    const navbar = document.getElementById("theSideNav");
+    const isOpen = navbar.style.width !== "0px"; // Check if navbar is open
+
+    // Save the state of each folder
+    const folderStates = Array.from(document.querySelectorAll(".folder")).map(folder => ({
+        id: folder.querySelector("span").textContent.trim(), // Use folder name as identifier
+        isOpen: folder.classList.contains("open") // Check if folder is open
+    }));
+
+    // Save the navbar and folder states to localStorage
+    localStorage.setItem("navbarState", JSON.stringify({ isOpen, folderStates }));
+}
+
+function restorenavbarState() {
+    const savedState = localStorage.getItem("navbarState");
+    if (savedState) {
+        const { isOpen, folderStates } = JSON.parse(savedState);
+        const navbar = document.getElementById("theSideNav");
+        const main = document.getElementById("main");
+
+        // Temporarily disable animations on page load so elements don't move
+        navbar.style.transition = "none";
+        main.style.transition = "none";
+        const chevrons = document.querySelectorAll(".chevron");
+        chevrons.forEach(chevron => {
+            chevron.style.transition = "none";
+        });
+
+        // Restore side navigation state
+        if (isOpen) {
+            openNav()
+        } else {
+            closeNav()
+        }
+
+        // Restore folder open/closed states
+        folderStates.forEach(({ id, isOpen }) => {
+            const folder = Array.from(document.querySelectorAll(".folder"))
+                .find(folder => folder.querySelector("span").textContent.trim() === id);
+
+            if (folder) {
+                const folderContents = folder.querySelector(".folder-contents");
+                if (isOpen) {
+                    folder.classList.add("open");
+                    folderContents.style.display = "block";
+                } else {
+                    folder.classList.remove("open");
+                    folderContents.style.display = "none";
+                }
+            }
+        });
+
+        // Re-enable animation
+        setTimeout(() => {
+            navbar.style.transition = "";
+            main.style.transition = "";
+            chevrons.forEach(chevron => {
+                chevron.style.transition = "";
+            });
+        }, 100);
+    }
+}
+
+function saveSidenavScrollPosition() {
+    const navbar = document.getElementById("theSideNav");
+    const scrollPosition = navbar.scrollTop;
+    localStorage.setItem("navbarScrollPosition", scrollPosition);
+}
+
+function restoreSidenavScrollPosition() {
+    const navbar = document.getElementById("theSideNav");
+    const savedPosition = localStorage.getItem("navbarScrollPosition");
+    if (savedPosition !== null) {
+        navbar.scrollTop = parseInt(savedPosition, 10);
+    }
+}
+
+function adjustSidenavOffset() {
+    const topMenu = document.getElementById("topmenu");
+    const navbar = document.getElementById("theSideNav");
+
+    if (topMenu) {
+        const topMenuHeight = topMenu.offsetHeight;
+        document.documentElement.style.setProperty('--top-menu-height', `${topMenuHeight}px`);
+    }
+}
+
+adjustSidenavOffset();
+window.addEventListener("resize", adjustSidenavOffset);
+
+/* This is the scrolling offset when we click on an output in the side navigation bar
+   It should take into account the top menu height */
+function adjustOutputOffset() {
+    const topMenu = document.getElementById("topmenu"); // Replace with your top menu's ID
+    if (topMenu) {
+        const topMenuHeight = topMenu.offsetHeight; // Dynamically get the top menu height
+        document.documentElement.style.setProperty('--top-menu-height', `${topMenuHeight}px`);
+    }
+}
+
+window.addEventListener("DOMContentLoaded", adjustOutputOffset);
+window.addEventListener("resize", adjustOutputOffset);
+
+// Prevent flickering on page navigation
+window.addEventListener("beforeunload", () => {
+    saveSideNavState();
+    saveSidenavScrollPosition();
+});
+
+window.addEventListener("load", restoreSidenavScrollPosition);
+document.addEventListener("DOMContentLoaded", restorenavbarState);
+
+function initializeSearchBar(searchContainerId, outputSelector) {
+    const searchContainer = document.getElementById(searchContainerId);
+    if (!searchContainer) return; // Exit if container is not found
+
+    const searchBar = searchContainer.querySelector('#search-bar');
+    const autocompleteList = searchContainer.querySelector('#autocomplete-list');
+    const outputLinks = document.querySelectorAll(outputSelector);
+
+    // Collect output names and their hrefs
+    const outputs = Array.from(outputLinks).map(link => ({
+        name: link.textContent.trim(),
+        href: link.getAttribute("href"),
+    }));
+
+    let highlightedIndex = -1; // Index of the currently highlighted item
+
+    function adjustAutocompleteWidth() {
+        const searchBarWidth = searchBar.offsetWidth;
+        autocompleteList.style.width = `${searchBarWidth}px`;
+    }
+
+    function updateAutocomplete(query) {
+        autocompleteList.innerHTML = ""; // Clear suggestions
+        highlightedIndex = -1; // Reset highlighting
+
+        const matches = outputs.filter(output =>
+            output.name.toLowerCase().includes(query.toLowerCase())
+        );
+
+        matches.forEach(match => {
+            const listItem = document.createElement("li");
+            listItem.textContent = match.name;
+            listItem.addEventListener("click", () => {
+                window.location.href = match.href;
+            });
+            autocompleteList.appendChild(listItem);
+        });
+
+        autocompleteList.style.display = matches.length ? "block" : "none";
+    }
+
+    function highlightItem(index) {
+        const items = autocompleteList.querySelectorAll("li");
+        items.forEach((item, i) => {
+            if (i === index) {
+                item.classList.add("highlighted");
+                item.scrollIntoView({ block: "nearest" });
+            } else {
+                item.classList.remove("highlighted");
+            }
+        });
+    }
+
+    // Add event listeners for search bar input and keydown
+    searchBar.addEventListener("input", () => {
+        const query = searchBar.value.trim();
+        if (query) updateAutocomplete(query);
+        else {
+            autocompleteList.innerHTML = "";
+            autocompleteList.style.display = "none";
+        }
+    });
+
+    searchBar.addEventListener("keydown", (event) => {
+        const items = autocompleteList.querySelectorAll("li");
+        if (!items.length) return;
+
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            highlightedIndex = (highlightedIndex + 1) % items.length;
+            highlightItem(highlightedIndex);
+        } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+            highlightItem(highlightedIndex);
+        } else if (event.key === "Enter" && highlightedIndex >= 0) {
+            event.preventDefault();
+            items[highlightedIndex].click();
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener("click", (event) => {
+        if (!searchBar.contains(event.target) && !autocompleteList.contains(event.target)) {
+            autocompleteList.style.display = "none";
+        }
+    });
+
+    // Adjust width on window resize
+    adjustAutocompleteWidth();
+    window.addEventListener("resize", adjustAutocompleteWidth);
+}
+
+// Initialize search functionality
+document.addEventListener("DOMContentLoaded", () => {
+    initializeSearchBar("search-container", ".navbar-output");
+});
+
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const md = window.markdownit({
+        html: true,
+        linkify: true,
+        typographer: true
+    });
+
+    // Find all markdown containers and render them
+    document.querySelectorAll('.markdown-content').forEach(container => {
+        const rawMarkdown = container.innerHTML;
+        container.style.display = 'block';
+        container.innerHTML = md.render(rawMarkdown);
+    });
+});
+</script>
+
+<script>
+// Theme toggle ================================================================
+
+function toggleTheme() {
+    const body = document.body;
+
+    // Check if the current theme is dark
+    const isDark = body.classList.contains('dark-mode');
+
+    // Toggle between dark and light themes
+    if (isDark) {
+        body.classList.remove('dark-mode');
+        body.classList.add('light-mode');
+    } else {
+        body.classList.remove('light-mode');
+        body.classList.add('dark-mode');
+    }
+
+    // Save the selected theme to localStorage
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+
+// Do not animate theme toggle on page load
+document.addEventListener("DOMContentLoaded", () => {
+    const themeToggle = document.getElementById('themeToggle');
+    const toggleSpan = themeToggle.nextElementSibling; // The <span> element
+
+    // Prevent animation on page load
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.body.classList.add(savedTheme === 'dark' ? 'dark-mode' : 'light-mode');
+    themeToggle.checked = savedTheme === 'dark';
+
+    // Add the "animate" class on user interaction
+    themeToggle.addEventListener('change', () => {
+        toggleSpan.classList.add('animate');
+        setTimeout(() => {
+            toggleSpan.classList.remove('animate'); // Remove the animation class after completion
+        }, 400); // Match the CSS transition duration (0.4s)
+    });
+});
+
+// Avoid flickering of theme toggle on page load
+document.addEventListener("DOMContentLoaded", () => {
+    const body = document.body;
+
+    // Temporarily disable transitions during page load
+    body.classList.add('no-transition');
+
+    // Remove the no-transition class after the page is fully loaded
+    setTimeout(() => {
+        body.classList.remove('no-transition');
+    }, 50); // Allow rendering to complete before enabling transitions
+});
+
+function adjustMainBodyOffset() {
+    const topMenu = document.getElementById("topmenu");
+    const mainBody = document.getElementById("main");
+
+    if (topMenu && mainBody) {
+        const topMenuHeight = topMenu.offsetHeight;
+        mainBody.style.marginTop = `${topMenuHeight}px`;
+    }
+}
+
+// Apply the adjustment on page load and window resize
+window.addEventListener("DOMContentLoaded", adjustMainBodyOffset);
+window.addEventListener("resize", adjustMainBodyOffset);
+</script>
+</body>
+</html>

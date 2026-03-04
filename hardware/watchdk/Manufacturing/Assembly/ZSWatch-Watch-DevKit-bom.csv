@@ -1,0 +1,51 @@
+Row,Quantity Per PCB,References,Value,Datasheet,Footprint,Description,manf,manf#
+1,13,C402 C501 C502 C503 C504 C507 C508 C509 C510 C511 C602 C603 C604,100n,https://datasheets.kyocera-avx.com/KGM_X7R.pdf,C_0402_1005Metric,"Unpolarized capacitor, small symbol",KYOCERA AVX,0402ZC104KAT4A
+2,1,C505,220n,https://datasheets.kyocera-avx.com/KGM_X7R.pdf,C_0402_1005Metric,"Unpolarized capacitor, small symbol",KYOCERA AVX,04023C224KAT2A
+3,3,C401 C405 C601,1u,https://datasheets.kyocera-avx.com/cx5r.pdf,C_0402_1005Metric,"Unpolarized capacitor, small symbol",KYOCERA AVX,04023D105KAT2A
+4,1,C403,2u2,https://datasheets.kyocera-avx.com/cx5r.pdf,C_0402_1005Metric,"Unpolarized capacitor, small symbol",KYOCERA AVX,0402ZD225MAT2A
+5,4,C404 C406 C408 C506,10u,https://search.murata.co.jp/Ceramy/image/img/A01X/G101/ENG/GRJ155R60J106ME11-02A.pdf,C_0402_1005Metric,"Unpolarized capacitor, small symbol",Murata Electronics,GRJ155R60J106ME11D
+6,3,C407 C409 C410,10u,https://datasheets.kyocera-avx.com/cx5r-KGM.pdf,C_0603_1608Metric,"Unpolarized capacitor, small symbol",KYOCERA AVX,KGM15CR50J106MT
+7,1,D403,+1V8,https://www.mouser.de/datasheet/3/389/1/SSF-LXH100GD-RP.pdf,LED_0402_1005Metric,Light emitting diode,Lumex,SML-LX0402SUGC-TR
+8,1,D401,+3V0,https://www.mouser.de/datasheet/3/389/1/SSF-LXH100GD-RP.pdf,LED_0402_1005Metric,Light emitting diode,Lumex,SML-LX0402SUGC-TR
+9,1,D402,VSYS,https://www.mouser.de/datasheet/3/389/1/SSF-LXH100GD-RP.pdf,LED_0402_1005Metric,Light emitting diode,Lumex,SML-LX0402SUGC-TR
+10,1,IC501,APDS-9306-065,https://docs.broadcom.com/docs/AV02-4755EN,Broadcom_DFN-6_2x2mm_P0.65mm,"Ambient Light Sensor, I2C interface, 1.7-3.6V, DFN-6",Broadcom / Avago,APDS-9306-065
+11,1,IC502,BMI270,https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf,Bosch_LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y,,Bosch,BMI270
+12,1,IC504,BMP581,https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf,Bosch_LGA-10_2x2mm_P0.5mm_ClockwisePinNumbering,,Bosch,BMP581
+13,1,IC505,DRV2603RUNT,https://www.ti.com/lit/ds/symlink/drv2603.pdf?HQS=dis-mous-null-mousermode-dsf-pf-null-wwe&ts=1692200896697&ref_url=https%253A%252F%252Feu.mouser.com%252F,WQFN-10_2x2mm_P0.5mm,,Texas Instruments,DRV2603RUNT
+14,1,IC601,FAN5622SX,https://www.onsemi.com/download/data-sheet/pdf/fan5626-d.pdf,TSOT-23-6,,onsemi / Fairchild,FAN5622SX
+15,1,IC503,LIS2MDLTR,http://www.st.com/content/ccc/resource/technical/document/datasheet/group3/29/13/d1/e0/9a/4d/4f/30/DM00395193/files/DM00395193.pdf/jcr:content/translations/en.DM00395193.pdf,LGA-12_2x2mm_P0.5mm,,STMicroelectronics,LIS2MDLTR
+16,1,IC603,MX25U51245GZ4I00,https://www.mouser.de/datasheet/2/819/MX25U51245G_2c_1_8V_2c_512Mb_2c_v1_4-3371129.pdf,WSON-8-1EP_8x6mm_P1.27mm_EP3.4x4.3mm,,Macronix,MX25U51245GZ4I00
+17,1,IC604,NTS0104GU12,https://www.nxp.com/docs/en/data-sheet/NTS0104.pdf,XQFN-12-1.7x2mm_P0.4mm,,NXP Semiconductors,"NTS0104GU12,115"
+18,1,IC506,PCA9306JK,https://www.nxp.com/docs/en/data-sheet/PCA9306.pdf,XSON-8_0.65x0.17mm_P0.35mm,Dual bidirectional I2C Bus and SMBus voltage level translator,NXP Semiconductors,PCA9306JKZ
+19,1,IC507,RV-8263-C8,https://www.microcrystal.com/fileadmin/Media/Products/RTC/Datasheet/RV-8263-C8.pdf,RV-8263-C8,,Micro Crystal,RV-8263-C8 32.768kHz-20PPM-TA-QA
+20,1,IC602,USBLC6-2P6,https://www.st.com/resource/en/datasheet/usblc6-2.pdf,SOT-666,"Very low capacitance ESD protection diode, 2 data-line, SOT-666",STMicroelectronics,USBLC6-2P6
+21,1,IC401,nPM1300-QEXX,https://infocenter.nordicsemi.com/index.jsp?topic=%2Fstruct_pmic%2Fstruct%2Fnpm1300.html,QFN-32-1EP_5x5mm_P0.5mm_EP3.6x3.6mm_ThermalVias,,Nordic Semiconductor,nPM1300-QEAA-R7
+22,11,J501 J502 J503 J504 J505 J506 J507 J601 J602 J603 J604,Jumper,https://www.we-online.com/katalog/datasheet/60900213421.pdf,,Generic jumper cap,Würth Elektronik,60900213421
+23,2,L401 L402,2u2,https://www.mouser.de/datasheet/3/184/1/ASMPH-0806.pdf,L_0806_2016,Inductor,ABRACON,ASMPH-0806-2R2M-T
+24,1,M601,NORA-B106,https://www.u-blox.com/docs/UBX-20027119,NORA-B106,,u-blox,NORA-B106-00B
+25,1,MK501,SPK0641HT4H-1,https://www.knowles.com/docs/default-source/default-document-library/sph0645lm4h-1-datasheet.pdf,SPK0641HT4H-1,Digital MEMS Microphone,Knowles,SPK0641HT4H-1
+26,3,Q401 Q402 Q403,PMZ550UNEYL,https://assets.nexperia.com/documents/data-sheet/PMZ550UNE.pdf,DFN-1006-3,"0.59A Id, 30V Vds, N-Channel MOSFET, DFN-1006-3",Nexperia,PMZ550UNEYL
+27,1,Q404,PMZB320UPEYL,https://assets.nexperia.com/documents/data-sheet/PMZB320UPE.pdf,DFN-1006-3,"1A Id, 30V Vds",ROHM Semiconductor,PMZB320UPEYL
+28,8,R409 R410 R411 R412 R602 R603 R615 R616,0R,https://www.mouser.de/datasheet/3/40/1/cr.pdf,R_0805_2012Metric,"Resistor, small symbol",Bourns,CR0805-J/-000ELF
+29,3,R404 R405 R406,560R,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-07560RL
+30,2,R501 R502,1k8,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-071K8L
+31,2,R504 R505,3k3,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-073K3L
+32,1,R601,12k,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-0712KL
+33,1,R407,47k,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-0747KL
+34,4,R401 R402 R403 R408,100k,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-07100KL
+35,1,R613,100k,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0805_2012Metric,"Resistor, small symbol",YAGEO,RC0805FR-07100KL
+36,1,R503,200k,https://www.mouser.com/catalog/specsheets/YAGEO_PYu_RC_Group_51_RoHS_L_12.pdf,R_0402_1005Metric,"Resistor, small symbol",YAGEO,RC0402FR-07200KL
+37,1,S601,RESET,https://www.we-online.com/components/products/datasheet/430182050816.pdf,WS-TASV-6x6,"Push button switch, generic, two pins",Wurth Elektronik,430182050816
+38,1,S501,SW1,https://www.we-online.com/components/products/datasheet/430182050816.pdf,WS-TASV-6x6,"Push button switch, generic, two pins",Wurth Elektronik,430182050816
+39,1,S502,SW2,https://www.we-online.com/components/products/datasheet/430182050816.pdf,WS-TASV-6x6,"Push button switch, generic, two pins",Wurth Elektronik,430182050816
+40,1,S503,SW3,https://www.we-online.com/components/products/datasheet/430182050816.pdf,WS-TASV-6x6,"Push button switch, generic, two pins",Wurth Elektronik,430182050816
+41,1,S504,SW4,https://www.we-online.com/components/products/datasheet/430182050816.pdf,WS-TASV-6x6,"Push button switch, generic, two pins",Wurth Elektronik,430182050816
+42,12,X401 X501 X503 X505 X506 X507 X508 X602 X606 X607 X609 X610,Battery,https://cdn.amphenol-cs.com/media/wysiwyg/files/documentation/datasheet/boardwiretoboard/bwb_bergstik.pdf,PinHeader_1x02_P2.54mm_Vertical,"Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)",Amphenol FCI,77311-818-02LF
+43,2,X402 X509,Battery,https://www.molex.com/en-us/products/part-detail-pdf/781710002?display=pdf,78171-0002,"Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)",Molex,78171-0002
+44,2,X510 X604,Current,~,PinHeader_1x03_P2.54mm_Vertical,"Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)",Amphenol FCI,77311-818-03LF
+45,1,X601,DEBUG,https://gct.co/files/drawings/BD125.pdf,SHF-105-01-L-D-SM-TR,"Cortex Debug Connector, standard ARM Cortex-M SWD and JTAG interface",GCT,BD125-10-A-0305-0580-L-B
+46,1,X603,Device,https://www.usb.org/sites/default/files/documents/usb_type-c.zip,USB_C_Receptacle_Amphenol_12401610E4-2A,USB Full-Featured Type-C Receptacle connector,Amphenol Commercial Products,12401610E4#2A
+47,1,X608,Display,https://www.buydisplay.com/download/manual/ER-TFT1.28-2_Datasheet.pdf,ER-CON0.4-24P,,EastRising,OK-24F024-04
+48,1,X605,GPIO,~https://cdn.amphenol-cs.com/media/wysiwyg/files/documentation/datasheet/boardwiretoboard/bwb_bergstik.pdf,PinHeader_1x06_P2.54mm_Vertical,"Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)",Amphenol FCI,77311-802-06LF
+49,1,X502,I2S,~,PinHeader_1x06_P2.54mm_Vertical,"Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)",Amphenol FCI,77311-818-06LF
+50,3,X403 X404 X504,Power,https://cdn.amphenol-cs.com/media/wysiwyg/files/documentation/datasheet/boardwiretoboard/bwb_bergstik.pdf,PinHeader_1x04_P2.54mm_Vertical,"Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)",Amphenol FCI,77311-818-04LF
