@@ -397,12 +397,17 @@ int zsw_ui_controller_init(void)
     }
 
     zsw_settings_onboarding_done_t onboarding_done = false;
+#ifdef CONFIG_ZSW_TEST_SKIP_ONBOARDING
+    onboarding_done = true;
+    LOG_INF("Test mode: skipping onboarding");
+#else
     int err = settings_load_subtree_direct(ZSW_SETTINGS_ONBOARDING_DONE,
                                            settings_load_handler_onboarding,
                                            &onboarding_done);
     if (err != 0) {
         LOG_WRN("Failed to load onboarding setting, assuming first boot");
     }
+#endif
 
     if (!onboarding_done) {
         watch_state = INIT_STATE;
@@ -410,9 +415,54 @@ int zsw_ui_controller_init(void)
     } else {
         watch_state = WATCHFACE_STATE;
         watchface_app_start(root_screen, input_group, on_watchface_app_event_callback);
+
+#ifdef CONFIG_ZSW_TEST_AUTO_LAUNCH_APP
+        if (strlen(CONFIG_ZSW_TEST_AUTO_LAUNCH_APP) > 0) {
+            LOG_INF("Test mode: auto-launching app '%s'", CONFIG_ZSW_TEST_AUTO_LAUNCH_APP);
+            lv_async_call(open_application_manager_page, (void *)CONFIG_ZSW_TEST_AUTO_LAUNCH_APP);
+        }
+#endif
     }
 
     LOG_INF("UI Controller initialized");
 
     return 0;
+}
+
+
+void zsw_ui_controller_launch_app(const char *app_name)
+{
+    static char launch_app_name_buf[64];
+    strncpy(launch_app_name_buf, app_name, sizeof(launch_app_name_buf) - 1);
+    launch_app_name_buf[sizeof(launch_app_name_buf) - 1] = '\0';
+    lv_async_call(open_application_manager_page, launch_app_name_buf);
+}
+
+zsw_ui_state_t zsw_ui_controller_get_state(void)
+{
+    switch (watch_state) {
+        case INIT_STATE:
+            return ZSW_UI_STATE_INIT;
+        case WATCHFACE_STATE:
+            return ZSW_UI_STATE_WATCHFACE;
+        case APPLICATION_MANAGER_STATE:
+            return ZSW_UI_STATE_APP_MANAGER;
+        default:
+            return ZSW_UI_STATE_INIT;
+    }
+}
+
+const char *zsw_ui_controller_get_running_app_name(void)
+{
+    if (watch_state != APPLICATION_MANAGER_STATE) {
+        return NULL;
+    }
+    int num_apps = zsw_app_manager_get_num_apps();
+    for (int i = 0; i < num_apps; i++) {
+        application_t *app = zsw_app_manager_get_app(i);
+        if (app && app->current_state != ZSW_APP_STATE_STOPPED) {
+            return app->name;
+        }
+    }
+    return NULL;
 }

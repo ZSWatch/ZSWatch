@@ -133,6 +133,37 @@ menu "ZSWatch"
         default 672
     endmenu
 
+    menu "Testing"
+        config ZSW_TEST_MODE
+            bool "Enable test mode for automated testing"
+            select SHELL
+            select SHELL_HELP
+            select CONSOLE
+            default n
+            help
+              Enables the shell and test-specific boot behaviors:
+              skip onboarding wizard, auto-launch a specific app at boot.
+              Shell commands (app, input, event) are always included in
+              zsw_shell.c when CONFIG_SHELL is enabled.
+
+        config ZSW_TEST_SKIP_ONBOARDING
+            bool "Skip onboarding wizard on first boot"
+            default y if ZSW_TEST_MODE
+            help
+              Bypasses the first-boot onboarding UI. Useful for automated
+              testing where the onboarding flow is not relevant.
+
+        config ZSW_TEST_AUTO_LAUNCH_APP
+            string "App to auto-launch at boot (empty = none)"
+            default ""
+            depends on ZSW_TEST_MODE
+            help
+              If set to an app name (e.g., "Calculator"), the firmware will
+              automatically launch that app after boot instead of staying on
+              the watchface. Useful for testing a specific app without needing
+              to navigate the UI.
+    endmenu
+
     menu "Logging"
         module = ZSW_APP
         module-str = ZSW_APP

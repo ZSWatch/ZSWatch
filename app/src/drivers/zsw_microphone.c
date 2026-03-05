@@ -187,8 +187,11 @@ int zsw_microphone_driver_stop(void)
     }
 
     LOG_DBG("Waiting for audio thread to complete...");
-    ret = k_thread_join(&mic_state.audio_thread, K_FOREVER);
-    if (ret != 0) {
+    ret = k_thread_join(&mic_state.audio_thread, K_MSEC(500));
+    if (ret == -EAGAIN) {
+        LOG_ERR("Audio thread did not exit within timeout, aborting");
+        k_thread_abort(&mic_state.audio_thread);
+    } else if (ret != 0) {
         LOG_ERR("Failed to join audio thread: %d", ret);
     } else {
         LOG_DBG("Audio thread completed successfully");
