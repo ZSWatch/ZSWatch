@@ -58,4 +58,25 @@ void zsw_ui_controller_set_notification_mode(void);
  */
 void zsw_ui_controller_clear_notification_mode(void);
 
+typedef enum {
+    ZSW_UI_STATE_INIT = 0,
+    ZSW_UI_STATE_WATCHFACE,
+    ZSW_UI_STATE_APP_MANAGER,
+} zsw_ui_state_t;
+
+/** @brief Launch an app by name from any thread context.
+ *
+ *
+ *  @param app_name Name of the app to launch.
+ */
+void zsw_ui_controller_launch_app(const char *app_name);
+
+/** @brief Get current UI controller state. */
+zsw_ui_state_t zsw_ui_controller_get_state(void);
+
+/** @brief Get the name of the currently running app.
+ *  @return App name, or NULL if no app is running.
+ */
+const char *zsw_ui_controller_get_running_app_name(void);
+
 #endif /* ZSW_UI_CONTROLLER_H */
