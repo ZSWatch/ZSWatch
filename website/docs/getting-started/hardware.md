@@ -16,7 +16,7 @@ ZSWatch is built around the **Nordic nRF5340** SoC (dual-core ARM Cortex-M33, 12
 | **Pressure** | Bosch BMP581 | Barometric pressure (~20 cm altitude accuracy) |
 | **Magnetometer** | ST LIS2MDL | Compass heading |
 | **Light sensor** | Broadcom APDS-9306 | Ambient light for auto-brightness |
-| **External flash** | Macronix MX25U51245G | 64 MB QSPI flash (images, XIP code) |
+| **External flash** | Macronix MX25U51245G | 64 MB QSPI flash (images, XIP code, user storage) |
 | **RTC** | Micro Crystal RV-8263 | Timekeeping and alarms |
 | **Microphone** | Knowles SPK0641HT4H | I2S digital microphone |
 | **PMIC** | Nordic nPM1300 | Battery charging, power management |
