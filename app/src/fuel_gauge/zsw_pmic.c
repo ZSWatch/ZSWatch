@@ -33,9 +33,14 @@
 #include "nrf_fuel_gauge.h"
 #include "zsw_pmic.h"
 
-LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(zsw_pmic, LOG_LEVEL_DBG);
 
 #define ZSW_NOT_WORN_STATIONARY_CURRENT 0.0005 // 50uA. TODO remeasure this value and make Kconfig
+
+#define VBUS_BASE               0x02U
+#define VBUS_OFFSET_ILIMUPDATE  0x00U
+#define VBUS_OFFSET_ILIM        0x01U
+#define VBUS_IDX_500MA          5U
 
 /* nPM1300 CHARGER.BCHGCHARGESTATUS register bitmasks */
 #define NPM1300_CHG_STATUS_COMPLETE_MASK BIT(1)
@@ -377,6 +382,34 @@ int zsw_pmic_reset(void)
     return mfd_npm13xx_reset(pmic);
 }
 
+static int zsw_pmic_early_vbus_init(void)
+{
+    int ret;
+
+    if (!device_is_ready(pmic)) {
+        LOG_WRN("PMIC MFD not ready skipping early VBUS limit init");
+        return 0;
+    }
+
+    ret = mfd_npm13xx_reg_write(pmic, VBUS_BASE, VBUS_OFFSET_ILIM, VBUS_IDX_500MA);
+    if (ret < 0) {
+        LOG_WRN("Early VBUS ILIM write failed: %d", ret);
+        return 0;
+    }
+
+    ret = mfd_npm13xx_reg_write(pmic, VBUS_BASE, VBUS_OFFSET_ILIMUPDATE, 1U);
+    if (ret < 0) {
+        LOG_WRN("Early VBUS ILIMUPDATE failed: %d", ret);
+        return 0;
+    }
+
+    LOG_WRN("Early VBUS input current limit raised to 500 mA");
+    return 0;
+}
+
+/* Run right after MFD (51) and regulator (52-53) inits */
+SYS_INIT(zsw_pmic_early_vbus_init, POST_KERNEL, 55);
+
 static int zsw_pmic_init(void)
 {
     static struct gpio_callback event_cb;
@@ -393,6 +426,18 @@ static int zsw_pmic_init(void)
 
     LOG_DBG("PMIC device ok\n");
 
+    struct sensor_value vbus_ilim = {
+        .val1 = 0,
+        .val2 = 500000,
+    };
+    int ret = sensor_attr_set(charger, SENSOR_CHAN_CURRENT,
+                              SENSOR_ATTR_CONFIGURATION, &vbus_ilim);
+    if (ret < 0) {
+        LOG_WRN("Failed to set VBUS current limit: %d", ret);
+    } else {
+        LOG_INF("VBUS input current limit set to 500 mA");
+    }
+
     gpio_init_callback(&event_cb, event_callback,
                        BIT(NPM13XX_EVENT_CHG_COMPLETED) | BIT(NPM13XX_EVENT_VBUS_DETECTED) | BIT(NPM13XX_EVENT_VBUS_REMOVED) | BIT(
                            NPM13XX_EVENT_CHG_ERROR));
@@ -401,7 +446,7 @@ static int zsw_pmic_init(void)
 
     /* Initialise vbus detection status. */
     struct sensor_value val;
-    int ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
+    ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
 
     if (ret < 0) {
         return false;

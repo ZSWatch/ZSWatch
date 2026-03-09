@@ -1,0 +1,125 @@
+diff --git a/drivers/mfd/mfd_npm13xx.c b/drivers/mfd/mfd_npm13xx.c
+index 06088323f4d..526727dcf9c 100644
+--- a/drivers/mfd/mfd_npm13xx.c
++++ b/drivers/mfd/mfd_npm13xx.c
+@@ -11,6 +11,9 @@
+ #include <zephyr/drivers/gpio.h>
+ #include <zephyr/drivers/gpio/gpio_utils.h>
+ #include <zephyr/drivers/mfd/npm13xx.h>
++#include <zephyr/logging/log.h>
++
++LOG_MODULE_REGISTER(mfd_npm13xx, CONFIG_MFD_LOG_LEVEL);
+ 
+ #define NPM13XX_TIME_BASE 0x07U
+ #define NPM13XX_MAIN_BASE 0x00U
+@@ -92,9 +95,11 @@ static void work_callback(struct k_work *work)
+ 	uint8_t buf[MAIN_SIZE];
+ 	int ret;
+ 
+-	/* Read all MAIN registers into temporary buffer */
++	LOG_DBG("IRQ work handler entered");
++
+ 	ret = mfd_npm13xx_reg_read_burst(data->dev, NPM13XX_MAIN_BASE, 0U, buf, sizeof(buf));
+ 	if (ret < 0) {
++		LOG_ERR("Failed to read MAIN registers: %d", ret);
+ 		k_work_submit(&data->work);
+ 		return;
+ 	}
+@@ -126,25 +131,32 @@ static int mfd_npm13xx_init(const struct device *dev)
+ 	struct mfd_npm13xx_data *mfd_data = dev->data;
+ 	int ret;
+ 
++	LOG_INF("nPM13xx MFD init starting (I2C addr 0x%02x)", config->i2c.addr);
++
+ 	if (!i2c_is_ready_dt(&config->i2c)) {
++		LOG_ERR("I2C bus not ready");
+ 		return -ENODEV;
+ 	}
+ 
++	LOG_DBG("I2C bus ready");
++
+ 	k_mutex_init(&mfd_data->mutex);
+ 
+ 	mfd_data->dev = dev;
+ 
+ 	if (config->host_int_gpios.port != NULL) {
+ 		/* Set specified PMIC pin to be interrupt output */
++		LOG_DBG("Configuring PMIC GPIO%d as IRQ output", config->pmic_int_pin);
+ 		ret = mfd_npm13xx_reg_write(dev, NPM13XX_GPIO_BASE,
+ 					    GPIO_OFFSET_MODE + config->pmic_int_pin,
+ 					    GPIO_MODE_GPOIRQ);
+ 		if (ret < 0) {
++			LOG_ERR("Failed to set PMIC GPIO%d as IRQ: %d", config->pmic_int_pin, ret);
+ 			return ret;
+ 		}
+ 
+-		/* Configure host interrupt GPIO */
+ 		if (!gpio_is_ready_dt(&config->host_int_gpios)) {
++			LOG_ERR("Host interrupt GPIO not ready");
+ 			return -ENODEV;
+ 		}
+ 
+@@ -170,18 +182,30 @@ static int mfd_npm13xx_init(const struct device *dev)
+ 		}
+ 	}
+ 
++	LOG_DBG("Writing ship config (active_time=%d, lp_reset=%d)",
++		config->active_time, config->lp_reset);
++
+ 	ret = mfd_npm13xx_reg_write(dev, NPM13XX_SHIP_BASE, SHIP_OFFSET_CONFIG,
+ 				    config->active_time);
+ 	if (ret < 0) {
++		LOG_ERR("Ship config write failed: %d", ret);
+ 		return ret;
+ 	}
+ 
+ 	ret = mfd_npm13xx_reg_write(dev, NPM13XX_SHIP_BASE, SHIP_OFFSET_LPCONFIG, config->lp_reset);
+ 	if (ret < 0) {
++		LOG_ERR("Ship LP config write failed: %d", ret);
++		return ret;
++	}
++
++	ret = mfd_npm13xx_reg_write(dev, NPM13XX_SHIP_BASE, SHIP_OFFSET_CFGSTROBE, 1U);
++	if (ret < 0) {
++		LOG_ERR("Ship config strobe failed: %d", ret);
+ 		return ret;
+ 	}
+ 
+-	return mfd_npm13xx_reg_write(dev, NPM13XX_SHIP_BASE, SHIP_OFFSET_CFGSTROBE, 1U);
++	LOG_INF("nPM13xx MFD init complete");
++	return 0;
+ }
+ 
+ int mfd_npm13xx_reg_read_burst(const struct device *dev, uint8_t base, uint8_t offset, void *data,
+@@ -195,15 +219,29 @@ int mfd_npm13xx_reg_read_burst(const struct device *dev, uint8_t base, uint8_t o
+ 
+ int mfd_npm13xx_reg_read(const struct device *dev, uint8_t base, uint8_t offset, uint8_t *data)
+ {
+-	return mfd_npm13xx_reg_read_burst(dev, base, offset, data, 1U);
++	int ret = mfd_npm13xx_reg_read_burst(dev, base, offset, data, 1U);
++
++	if (ret < 0) {
++		LOG_ERR("reg_read failed base=0x%02x off=0x%02x: %d", base, offset, ret);
++	} else {
++		LOG_DBG("reg_read base=0x%02x off=0x%02x => 0x%02x", base, offset, *data);
++	}
++	return ret;
+ }
+ 
+ int mfd_npm13xx_reg_write(const struct device *dev, uint8_t base, uint8_t offset, uint8_t data)
+ {
+ 	const struct mfd_npm13xx_config *config = dev->config;
+ 	uint8_t buff[] = {base, offset, data};
++	int ret;
+ 
+-	return i2c_write_dt(&config->i2c, buff, sizeof(buff));
++	LOG_DBG("reg_write base=0x%02x off=0x%02x val=0x%02x", base, offset, data);
++	ret = i2c_write_dt(&config->i2c, buff, sizeof(buff));
++	if (ret < 0) {
++		LOG_ERR("reg_write failed base=0x%02x off=0x%02x val=0x%02x: %d",
++			base, offset, data, ret);
++	}
++	return ret;
+ }
+ 
+ int mfd_npm13xx_reg_write_burst(const struct device *dev, uint8_t base, uint8_t offset, void *data,
