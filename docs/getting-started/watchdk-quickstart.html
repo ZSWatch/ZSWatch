@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-405TQEL8SG"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-405TQEL8SG",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.f2c35b9d.css">
-<script src="/assets/js/runtime~main.c801b311.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.9cfd736a.js" defer="defer"></script>
 <script src="/assets/js/main.4abd7eb5.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -70,12 +70,12 @@
 <p>Your WatchDK should now be running the latest firmware with all icons and images visible. Navigate around the UI using the four buttons and the touchscreen.</p>
 <p>If you want to view logs or debug the firmware, see the <strong><a href="/docs/development/debugging">Debugging guide</a></strong>, including how to connect the nRF54L15 DK for UART logs or use RTT.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="optional-battery--rtc-jumper">Optional: Battery &amp; RTC Jumper<a href="#optional-battery--rtc-jumper" class="hash-link" aria-label="Direct link to Optional: Battery &amp; RTC Jumper" title="Direct link to Optional: Battery &amp; RTC Jumper">​</a></h2>
-<p>The WatchDK works without a battery for most functions. However, the <strong>real-time clock (RTC)</strong> currently needs to be powered from <strong>VBAT</strong>, so a battery must be connected if you want RTC support.</p>
+<p>The WatchDK works without a battery - USB-C provides all the power needed. However, the <strong>real-time clock (RTC)</strong> needs a power source to retain the time.</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="without-a-battery-default">Without a Battery (Default)<a href="#without-a-battery-default" class="hash-link" aria-label="Direct link to Without a Battery (Default)" title="Direct link to Without a Battery (Default)">​</a></h3>
-<p>Most functions still work without the RTC. If you are compiling firmware without a battery connected, add <code>app/boards/no_rtc.conf</code> to disable RTC support for now.</p>
-<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Jumper configuration" src="/assets/images/dk_jumper_setup-4989550b282e5a0671cec1a95f15a75e.png" width="1419" height="1004" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em;margin-bottom:1em"><p>Jumper configuration. Set the RTC power jumper to VBAT, which matches the yellow-marked position shown earlier.</p></div></div>
+<p>Set the RTC jumper so that the RTC is powered from <strong>VSYS</strong> (USB power) instead of VBAT. This way the RTC works while USB is connected, but time will be lost when unplugged.</p>
+<div style="padding:0 20px"><p><img decoding="async" loading="lazy" alt="Jumper configuration" src="/assets/images/dk_jumper_setup-4989550b282e5a0671cec1a95f15a75e.png" width="1419" height="1004" class="img_ev3q"></p><div style="text-align:center;font-size:0.9em;margin-bottom:1em"><p>Jumper configuration - ensure the RTC power jumper is set to VSYS when no battery is connected.</p></div></div>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="with-a-battery">With a Battery<a href="#with-a-battery" class="hash-link" aria-label="Direct link to With a Battery" title="Direct link to With a Battery">​</a></h3>
-<p>Connect a battery and set the RTC (Battery) jumper to <strong>VBAT</strong> so the RTC stays powered.</p>
+<p>If you add a battery, move the RTC (Battery) jumper to <strong>VBAT</strong> so the RTC stays powered even when USB is disconnected.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="next-steps">Next Steps<a href="#next-steps" class="hash-link" aria-label="Direct link to Next Steps" title="Direct link to Next Steps">​</a></h2>
 <ul>
 <li><strong><a href="/docs/development/toolchain">Setting up the Development Toolchain</a></strong> - install VS Code, nRF Connect SDK, and build tools</li>
