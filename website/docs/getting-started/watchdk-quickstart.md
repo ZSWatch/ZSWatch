@@ -12,12 +12,10 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 :::warning Known Issues from Early Shipments
-- **Back button not working**: Some DKs have had this issue. Powering the RTC from USB is not reliable. Move the RTC power jumper so it matches the yellow position shown in the image below. This powers the RTC from VBAT, which means a battery must be connected for the RTC to work. We will soon send an email with a recommended battery to buy. Most features work without the RTC. If you are compiling firmware for now, add `app/boards/no_rtc.conf` to disable RTC support. We are investigation the real root cause...
-
-  ![RTC jumper location](/img/elecrow_rtc_dk.png)
+- **Back button not working**: On some early DKs the RTC does not work reliably when powered from USB, which can cause the back button to stop responding. Latest firmware detects this at runtime and falls back automatically. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the required hardware config.
 
 - **Production test firmware still running (bootloader not flashed):** If your watch does not boot into the normal ZSWatch UI and appears to be running test firmware, the bootloader may not have been programmed during production. If this is the case you need to follow the debugger instructions below.
-- **Missing jumper:** One report of a jumper missing from the board. Before starting, verify that the jumper is present at the flash chip (tip of arrow), if not move one according to the image below:
+- **Missing jumper:** Before starting, check that a jumper is present on the flash chip header (marked by the arrow tip in the image below). If it is missing, place a spare jumper there. If you do not have a spare, you can take the one from the vibration motor header. The vibration motor will stop working, but it is the least essential function.
 
   ![WatchDK jumper location](/img/watchdk_elecrow_jumper.png)
 
@@ -32,7 +30,7 @@ import TabItem from '@theme/TabItem';
 | **WatchDK** (with display & vibration motor connected) | Yes | Ships assembled and tested with display & motor pre-connected |
 | **Debugger** (recommended: Nordic **nRF54L15 DK**, ~**$35**) | Optional | Needed if you want to develop the FW and flash via SWD instead of USB/BLE. A SEGGER J-Link works too, but is more expensive |
 | **10-pin 1.27mm SWD cable** | Optional | Needed to connect the debugger to the WatchDK. Example cables: [Adafruit](https://www.adafruit.com/product/1675), [Amazon](https://www.amazon.com/Treedix-Ribbon-Connector-1-27mm-Connecting/dp/B09JK5HD3X) |
-| **Battery** (LiPo) | Optional | The DK runs fine from USB power alone. See [battery section](#optional-battery--rtc-jumper) at the end |
+| **Battery** (LiPo) | Optional | The DK runs fine from USB power alone. See [Battery & RTC Jumper](#battery--rtc-jumper) section at the end |
 
 ## Optional: Debugger Setup (nRF54L15 DK)
 
@@ -42,10 +40,14 @@ If you plan to develop firmware or flash via SWD, connect a Nordic **nRF54L15 DK
 
 1. Connect the USB-C cable to the WatchDK.
 2. The watch should boot into the ZSWatch UI.
-3. Try press top right button to open the application picker.
+3. Try pressing the top right button to open the application picker.
 
 :::info No icons yet?
 The watch ships with firmware but **without image resources**. The UI will work, but icons and graphics will be missing until you upload them in [Step 3](#step-3---upload-image-resources).
+:::
+
+:::warning Back button not responding?
+Some DKs have an RTC power issue that can cause the back button to stop working when no battery is connected. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the fix.
 :::
 
 ## Step 2 - Update Firmware
@@ -116,27 +118,37 @@ Your WatchDK should now be running the latest firmware with all icons and images
 
 If you want to view logs or debug the firmware, see the **[Debugging guide](../development/debugging.md)**, including how to connect the nRF54L15 DK for UART logs or use RTT.
 
-## Optional: Battery & RTC Jumper
+## Battery & RTC Jumper
 
-The WatchDK works without a battery - USB-C provides all the power needed. However, the **real-time clock (RTC)** needs a power source to retain the time.
+The board has a jumper that selects whether the real-time clock (RTC) is powered from USB (VSYS) or from a battery (VBAT). The two positions are shown below:
 
-### Without a Battery (Default)
+![Jumper configuration](/img/images-dk-battery-rtc.png)
 
-Set the RTC jumper so that the RTC is powered from **VSYS** (USB power) instead of VBAT. This way the RTC works while USB is connected, but time will be lost when unplugged.
+On some DKs the RTC does not work reliably in the USB/VSYS position. We believe the pull-up resistors on the RTC level shifter are sized for battery voltage rather than 5V USB, which causes inconsistent behavior across boards. If the back button does not respond, this is likely the cause.
 
-<div style={{padding: '0 20px'}}>
+:::tip Runtime fallback included
+Current firmware automatically detects whether the RTC is available at runtime and falls back gracefully. A single firmware binary works on all boards regardless of RTC status, **but the jumper has to be placed correctly**.
+:::
 
-![Jumper configuration](../hw-testing/dk_jumper_setup.png)
+### Without a Battery
 
-<div style={{textAlign: 'center', fontSize: '0.9em', marginBottom: '1em'}}>
-  Jumper configuration - ensure the RTC power jumper is set to VSYS when no battery is connected.
-</div>
+If you do not have a battery and the RTC is not working (back button unresponsive), remove the RTC jumper entirely or move it to the VBAT side. The firmware will automatically disable RTC-dependent features and continue using the software clock.
 
-</div>
+What you lose without RTC:
+- **Timer and Alarm app** is disabled entirely.
+- **Time will not advance while powered off** and drift after a power cycle until synced from a phone.
+- All other features work normally.
 
 ### With a Battery
 
-If you add a battery, move the RTC (Battery) jumper to **VBAT** so the RTC stays powered even when USB is disconnected.
+Connect a battery and move the RTC power jumper to the **VBAT** position. This gives the RTC a stable power source and all features work as expected.
+
+### Suggested Batteries
+
+Search for `JST RC 3.7V 1S` batteries and pick a suitable reseller. Battery size and capacity do not matter. Just make sure the connector matches the WatchDK 2-pin battery header:
+
+![Battery connector example](/img/images-dk-battery.png)
+
 
 ## Next Steps
 

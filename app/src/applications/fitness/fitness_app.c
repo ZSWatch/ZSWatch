@@ -78,36 +78,37 @@ static zsw_step_sample_t samples[MAX_SAMPLES];
 K_WORK_DELAYABLE_DEFINE(sample_step_work, step_sample_work);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
-#ifndef CONFIG_RTC
-static void step_work_callback(struct k_work *work);
-K_WORK_DELAYABLE_DEFINE(step_work, step_work_callback);
-#endif
 
-#ifdef CONFIG_RTC
-static void step_work_callback(void *user_data)
-#else
-static void step_work_callback(struct k_work *work)
-#endif
+static void step_work_polling_callback(struct k_work *work);
+K_WORK_DELAYABLE_DEFINE(step_work, step_work_polling_callback);
+
+static void reset_steps_if_needed(void)
 {
-    bool should_reset_step = true;
     struct accel_event evt = {
         .data.type = ZSW_IMU_EVT_TYPE_STEP,
         .data.data.step.count = 0
     };
-#ifndef CONFIG_RTC
+    LOG_DBG("Reset step counter");
+    zsw_imu_reset_step_count();
+    zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
+}
+
+#ifdef CONFIG_RTC
+static void step_work_alarm_callback(void *user_data)
+{
+    reset_steps_if_needed();
+}
+#endif
+
+static void step_work_polling_callback(struct k_work *work)
+{
     zsw_timeval_t time;
     zsw_clock_get_time(&time);
 
-    if ((time.tm.tm_hour != 23) || (time.tm.tm_min != 59)) {
-        should_reset_step = false;
+    if ((time.tm.tm_hour == 23) && (time.tm.tm_min == 59)) {
+        reset_steps_if_needed();
     }
     k_work_reschedule(&step_work, K_SECONDS(STEP_RESET_COUNTER_INTERVAL_S));
-#endif
-    if (should_reset_step) {
-        LOG_DBG("Reset step counter");
-        zsw_imu_reset_step_count();
-        zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(250));
-    }
 }
 
 static void timeval_to_minimal_timeval(zsw_timeval_t *time, minimal_zsw_timeval_t *minimal_time)
@@ -227,12 +228,20 @@ static int fitness_app_add(void)
     zsw_app_manager_add_application(&app);
 
 #ifdef CONFIG_RTC
-    struct rtc_time expiry_time = {
-        .tm_hour = 23,
-        .tm_min = 59,
-        .tm_sec = 59
-    };
-    zsw_alarm_add(expiry_time, step_work_callback, NULL);
+    if (zsw_clock_rtc_available()) {
+        struct rtc_time expiry_time = {
+            .tm_hour = 23,
+            .tm_min = 59,
+            .tm_sec = 59
+        };
+        int ret = zsw_alarm_add(expiry_time, step_work_alarm_callback, NULL);
+        if (ret < 0) {
+            LOG_WRN("Failed to add step reset alarm (err %d), using polling fallback", ret);
+            k_work_reschedule(&step_work, K_SECONDS(STEP_RESET_COUNTER_INTERVAL_S));
+        }
+    } else {
+        k_work_reschedule(&step_work, K_SECONDS(STEP_RESET_COUNTER_INTERVAL_S));
+    }
 #else
     k_work_reschedule(&step_work, K_SECONDS(STEP_RESET_COUNTER_INTERVAL_S));
 #endif

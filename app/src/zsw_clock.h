@@ -70,3 +70,17 @@ void zsw_clock_set_timezone(char *tz);
  * @param tm Pointer to the struct tm structure where the converted time will be stored.
  */
 void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm);
+
+/**
+ * @brief Check whether the RTC hardware is working at runtime.
+ *
+ * @return true if the RTC is responding, false otherwise.
+ */
+#if CONFIG_RTC
+bool zsw_clock_rtc_available(void);
+#else
+static inline bool zsw_clock_rtc_available(void)
+{
+    return false;
+}
+#endif

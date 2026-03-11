@@ -271,6 +271,11 @@ static int timers_settings_load_cb(const char *p_key, size_t len,
 
 static int timer_app_add(void)
 {
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, timer app disabled");
+        return 0;
+    }
+
     zsw_app_manager_add_application(&app);
 
     if (settings_subsys_init()) {

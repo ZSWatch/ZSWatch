@@ -54,6 +54,12 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_dat
     int ret;
     struct rtc_time current_time;
     struct tm tm_alarm_time;
+
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, alarm not supported");
+        return -ENOTSUP;
+    }
+
     int alarm_index = find_free_alarm_slot();
 
     if (alarm_index < 0) {
@@ -109,6 +115,11 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
     int ret;
     struct rtc_time alarm_time;
     struct tm tm_alarm_time;
+
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, timer not supported");
+        return -ENOTSUP;
+    }
 
     ret = rtc_get_time(rtc, &alarm_time);
     __ASSERT(ret == 0, "Failed to get current time");
@@ -185,6 +196,11 @@ int zsw_alarm_get_enabled(uint32_t alarm_id, bool *enabled)
 
 int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, uint32_t *sec)
 {
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, timer not supported");
+        return -ENOTSUP;
+    }
+
     if (alarm_id >= ZSW_MAX_ALARMS) {
         return -EINVAL;
     }
@@ -428,6 +444,11 @@ static int zsw_alarm_init(void)
 {
     memset(alarms, 0, sizeof(alarms));
     k_work_init(&rtc_alarm_work_item.work, handle_rtc_alarm_triggered_work);
+
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, alarm subsystem disabled");
+        return 0;
+    }
 
     rtc_alarm_set_callback(rtc, 0, NULL, NULL);
     rtc_alarm_set_time(rtc, 0, 0, NULL);

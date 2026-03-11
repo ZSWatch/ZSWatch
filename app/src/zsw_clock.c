@@ -28,27 +28,25 @@
 
 #include "zsw_clock.h"
 #include "events/zsw_periodic_event.h"
+#include "zsw_retained_ram_storage.h"
 
 #if CONFIG_RTC
 #include <zephyr/drivers/rtc.h>
-#else
-#include "zsw_retained_ram_storage.h"
 #endif
 
 #if CONFIG_RTC
 static const struct device *const rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
 // Needed to get rid of strptime warning
 char *strptime(const char *buf, const char *format, struct tm *tm);
-#else
+static bool rtc_is_available;
+#endif
+
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(zsw_clock_lis, zbus_periodic_slow_callback);
-#endif
 
-LOG_MODULE_REGISTER(zsw_clock, LOG_LEVEL_WRN);
-
-#ifndef CONFIG_RTC
+LOG_MODULE_REGISTER(zsw_clock, LOG_LEVEL_INF);
 
 static time_t zsw_clock_get_time_unix(void)
 {
@@ -64,36 +62,52 @@ static void zbus_periodic_slow_callback(const struct zbus_channel *chan)
     retained.current_time_seconds = zsw_clock_get_time_unix();
     zsw_retained_ram_update();
 }
+
+#if CONFIG_RTC
+bool zsw_clock_rtc_available(void)
+{
+    return rtc_is_available;
+}
 #endif
 
 void zsw_clock_set_time(zsw_timeval_t *ztm)
 {
 #if CONFIG_RTC
-    rtc_set_time(rtc, &ztm->tm);
-#else
+    if (rtc_is_available) {
+        rtc_set_time(rtc, &ztm->tm);
+        return;
+    }
+#endif
     struct timespec tspec;
 
     tspec.tv_nsec = 0;
     tspec.tv_sec = mktime(&ztm->tm);
 
     clock_settime(CLOCK_REALTIME, &tspec);
-#endif
 }
 
 void zsw_clock_get_time(zsw_timeval_t *ztm)
 {
 #if CONFIG_RTC
-    struct rtc_time tm;
+    if (rtc_is_available) {
+        struct rtc_time tm;
 
-    memset(&tm, 0, sizeof(struct rtc_time));
-    if (rtc_get_time(rtc, &tm)) {
-        // Set the time struct to zero to prevent invalid values
-        // in case the time reading fails.
-        memset(ztm, 0, sizeof(zsw_timeval_t));
+        memset(&tm, 0, sizeof(struct rtc_time));
+        if (rtc_get_time(rtc, &tm) == 0) {
+            memcpy(ztm, &tm, sizeof(struct rtc_time));
+        } else {
+            LOG_WRN("RTC read failed, falling back to software clock");
+            goto sw_fallback;
+        }
+    } else {
+sw_fallback:
+        struct tm *tm;
+        struct timeval tv;
 
-        return;
+        gettimeofday(&tv, NULL);
+        tm = localtime(&tv.tv_sec);
+        memcpy(&ztm->tm, tm, sizeof(struct tm));
     }
-    memcpy(ztm, &tm, sizeof(struct rtc_time));
 #else
     struct tm *tm;
     struct timeval tv;
@@ -132,14 +146,16 @@ static int zsw_clock_init(void)
 {
 #if CONFIG_RTC
     if (!device_is_ready(rtc)) {
-        LOG_ERR("Device not ready!");
-        return -EBUSY;
+        LOG_WRN("RTC device not ready, falling back to software clock");
+        rtc_is_available = false;
+        goto fallback;
     }
     struct rtc_time tm;
 
     memset(&tm, 0, sizeof(struct rtc_time));
-    if (rtc_get_time(rtc, &tm) == -ENODATA) {
-        // Parse __DATE__ and __TIME__ to set RTC to build time
+    int ret = rtc_get_time(rtc, &tm);
+    if (ret == -ENODATA) {
+        // RTC has no time set, try to program it with build time
         struct tm build_tm = {0};
         char build_time_str[32];
         snprintf(build_time_str, sizeof(build_time_str), "%s %s", __DATE__, __TIME__);
@@ -155,29 +171,58 @@ static int zsw_clock_init(void)
         tm.tm_yday = build_tm.tm_yday;
         tm.tm_isdst = build_tm.tm_isdst;
 
-        rtc_set_time(rtc, &tm);
 #ifdef CONFIG_ARCH_POSIX
         struct tm *tp;
         time_t t;
         t = time(NULL);
         tp = localtime(&t);
         t = mktime(tp);
-        rtc_set_time(rtc, (struct rtc_time *)tp);
+        ret = rtc_set_time(rtc, (struct rtc_time *)tp);
 #else
-        rtc_set_time(rtc, &tm);
+        ret = rtc_set_time(rtc, &tm);
 #endif
+        if (ret != 0) {
+            LOG_WRN("RTC set time failed (err %d), falling back to software clock", ret);
+            rtc_is_available = false;
+            goto fallback;
+        }
+
+        // Verify the RTC accepted the time by reading it back.
+        // If the RTC is not properly powered (e.g. no battery),
+        // the oscillator cannot start and rtc_get_time will return -ENODATA again
+        // Give the oscillator a moment to start before checking.
+        k_msleep(100);
+        memset(&tm, 0, sizeof(struct rtc_time));
+        ret = rtc_get_time(rtc, &tm);
+        if (ret != 0) {
+            LOG_WRN("RTC not responding after set (err %d), falling back to software clock", ret);
+            rtc_is_available = false;
+            goto fallback;
+        }
+    } else if (ret != 0) {
+        LOG_WRN("RTC read failed (err %d), falling back to software clock", ret);
+        rtc_is_available = false;
+        goto fallback;
     }
-#else
-    struct timespec tspec;
 
-    tspec.tv_sec = retained.current_time_seconds;
-    tspec.tv_nsec = 0;
+    rtc_is_available = true;
+    LOG_INF("RTC is available and working");
+    return 0;
 
-    clock_settime(CLOCK_REALTIME, &tspec);
-    zsw_clock_set_timezone(retained.timezone);
-
-    zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
+fallback:
 #endif
+    {
+        struct timespec tspec;
+
+        tspec.tv_sec = retained.current_time_seconds;
+        tspec.tv_nsec = 0;
+
+        clock_settime(CLOCK_REALTIME, &tspec);
+        zsw_clock_set_timezone(retained.timezone);
+
+        zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &zsw_clock_lis);
+        LOG_WRN("Using internal software clock (no RTC). Time is restored from retained RAM but will not advance while powered off.");
+    }
 
     return 0;
 }
