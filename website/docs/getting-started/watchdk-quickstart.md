@@ -28,9 +28,9 @@ import TabItem from '@theme/TabItem';
 |------|-----------|-------|
 | **USB-C cable** | Yes | For power and optional USB firmware updates |
 | **WatchDK** (with display & vibration motor connected) | Yes | Ships assembled and tested with display & motor pre-connected |
-| **Debugger** (recommended: Nordic **nRF54L15 DK**, ~**$35**) | Optional | Needed if you want to develop the FW and flash via SWD instead of USB/BLE. A SEGGER J-Link works too, but is more expensive |
+| **Debugger** (recommended: Nordic **nRF54L15 DK**, ~**$35**) | Strongly recommended | Needed if you want to develop the FW and flash via SWD instead of USB/BLE. A SEGGER J-Link works too, but is more expensive |
 | **10-pin 1.27mm SWD cable** | Optional | Needed to connect the debugger to the WatchDK. Example cables: [Adafruit](https://www.adafruit.com/product/1675), [Amazon](https://www.amazon.com/Treedix-Ribbon-Connector-1-27mm-Connecting/dp/B09JK5HD3X) |
-| **Battery** (LiPo) | Optional | The DK runs fine from USB power alone. See [Battery & RTC Jumper](#battery--rtc-jumper) section at the end |
+| **Battery** (LiPo) | Optional | The DK runs fine from USB power alone. See more at [Battery & RTC Jumper](#battery--rtc-jumper) section at the end |
 
 ## Optional: Debugger Setup (nRF54L15 DK)
 
