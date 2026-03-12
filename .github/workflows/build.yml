@@ -165,7 +165,7 @@ jobs:
         if: ${{ matrix.board == 'native_sim/native/64' }}
         working-directory: ZSWatch
         run: |
-          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf
+          west build app --build-dir ${{ env.BUILD_DIR }} -p -b ${{ matrix.board }} -- -DSB_CONF_FILE=sysbuild_no_mcuboot_no_xip.conf -DEXTRA_CONF_FILE="boards/test_mode.conf"
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.exe fw_images/zswatch_native_sim_64.exe
 
       - name: Build production_test native_sim

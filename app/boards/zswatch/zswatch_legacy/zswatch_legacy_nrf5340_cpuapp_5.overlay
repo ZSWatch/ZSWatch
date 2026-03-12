@@ -93,6 +93,15 @@
         long-delay-ms = <10000>;
     };
 
+    longpress_quick_record: longpress_quick_record {
+        input = <&buttons>;
+        compatible = "zephyr,input-longpress";
+        input-codes = <INPUT_KEY_KP1>;
+        short-codes = <INPUT_KEY_4>;
+        long-codes = <INPUT_KEY_F1>;
+        long-delay-ms = <1000>;
+    };
+
 	buttons: buttons {
         compatible = "gpio-keys";
 
@@ -117,7 +126,7 @@
         button4: button_4 {
             label = "top-left";
             gpios = <&gpio0 26 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_4>;
+            zephyr,code = <INPUT_KEY_KP1>;
         };
     };
 

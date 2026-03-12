@@ -1,10 +1,12 @@
 #include <zephyr/sys/base64.h>
+#include <zephyr/sys/reboot.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
 #include <string.h>
+#include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -17,8 +19,14 @@
 #include "ble/ble_transport.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
+#include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+#include "managers/zsw_recording_manager.h"
+#include "events/zsw_voice_memo_event.h"
+#endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
 
@@ -38,6 +46,35 @@ static void parse_time_zone(char *offset);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
+
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+static void on_ble_recording_event(const struct zbus_channel *chan);
+ZBUS_CHAN_DECLARE(voice_memo_recording_chan);
+ZBUS_LISTENER_DEFINE(ble_voice_memo_recording_lis, on_ble_recording_event);
+
+static struct zsw_voice_memo_recording_event ble_recording_evt_copy;
+
+static void ble_recording_notify_work_fn(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    ble_gadgetbridge_send_voice_memo_new(
+        ble_recording_evt_copy.filename,
+        ble_recording_evt_copy.duration_ms,
+        ble_recording_evt_copy.size_bytes,
+        ble_recording_evt_copy.timestamp);
+}
+
+static K_WORK_DEFINE(ble_recording_notify_work, ble_recording_notify_work_fn);
+
+static void on_ble_recording_event(const struct zbus_channel *chan)
+{
+    const struct zsw_voice_memo_recording_event *evt = zbus_chan_const_msg(chan);
+    if (evt->state == ZSW_VOICE_MEMO_RECORDING_STOPPED) {
+        memcpy(&ble_recording_evt_copy, evt, sizeof(ble_recording_evt_copy));
+        k_work_submit(&ble_recording_notify_work);
+    }
+}
+#endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
 
 static void send_ble_data_event(struct ble_data_event *evt)
 {
@@ -662,6 +699,180 @@ static int parse_log_command(char *data, int len)
     return 0;
 }
 
+static int parse_smp_command(char *data, int len)
+{
+    (void)len;
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse smp command");
+        return -EINVAL;
+    }
+
+    cJSON *status = cJSON_GetObjectItem(root, "status");
+    if (!cJSON_IsBool(status)) {
+        LOG_WRN("smp command missing 'status'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    bool enable = cJSON_IsTrue(status);
+    cJSON_Delete(root);
+
+#ifdef CONFIG_MCUMGR
+    int rc;
+    if (enable) {
+        rc = zsw_smp_manager_enable(true);
+    } else {
+        rc = zsw_smp_manager_disable();
+    }
+
+    return rc;
+#else
+    ARG_UNUSED(enable);
+    LOG_WRN("SMP not available");
+    return -ENOTSUP;
+#endif
+}
+
+// {"t":"reset"}
+static int parse_reset_command(char *data, int len)
+{
+    ARG_UNUSED(data);
+    ARG_UNUSED(len);
+    LOG_INF("Reboot requested via companion app");
+    /* Short delay to let the BLE response/ACK go out */
+    k_sleep(K_MSEC(500));
+    sys_reboot(SYS_REBOOT_COLD);
+    /* unreachable */
+    return 0;
+}
+
+static int parse_voice_memo_command(char *data, int len)
+{
+#ifndef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+    ARG_UNUSED(data);
+    ARG_UNUSED(len);
+    LOG_WRN("voice_memo: app not enabled");
+    return -ENOTSUP;
+#else
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_WRN("voice_memo: JSON parse failed");
+        return -EINVAL;
+    }
+
+    cJSON *action_obj = cJSON_GetObjectItem(root, "action");
+    if (!cJSON_IsString(action_obj)) {
+        LOG_WRN("voice_memo: missing action");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+    const char *action = action_obj->valuestring;
+
+    if (strcmp(action, "list") == 0) {
+        cJSON_Delete(root);
+
+        /* Build JSON response with recording list */
+        zsw_recording_entry_t entries[50];
+        int count = zsw_recording_manager_list(entries, ARRAY_SIZE(entries));
+        if (count < 0) {
+            LOG_ERR("voice_memo: list failed: %d", count);
+            count = 0;
+        }
+
+        cJSON *resp = cJSON_CreateObject();
+        if (resp == NULL) {
+            return -ENOMEM;
+        }
+
+        cJSON_AddStringToObject(resp, "t", "voice_memo");
+        cJSON_AddStringToObject(resp, "action", "list_result");
+
+        cJSON *arr = cJSON_AddArrayToObject(resp, "recordings");
+        for (int i = 0; i < count; i++) {
+            cJSON *entry = cJSON_CreateObject();
+            cJSON_AddStringToObject(entry, "filename", entries[i].filename);
+            cJSON_AddNumberToObject(entry, "duration_ms", entries[i].duration_ms);
+            cJSON_AddNumberToObject(entry, "size_bytes", entries[i].size_bytes);
+            cJSON_AddNumberToObject(entry, "timestamp", entries[i].timestamp);
+            cJSON_AddItemToArray(arr, entry);
+        }
+
+        char *json_str = cJSON_PrintUnformatted(resp);
+        cJSON_Delete(resp);
+
+        if (json_str == NULL) {
+            LOG_ERR("voice_memo: JSON print failed");
+            return -ENOMEM;
+        }
+
+        int msg_len = strlen(json_str);
+        LOG_INF("voice_memo: sending list_result (%d recordings, %d bytes)", count, msg_len);
+        ble_comm_send(json_str, msg_len);
+        cJSON_free(json_str);
+        return 0;
+    }
+
+    if (strcmp(action, "delete") == 0) {
+        cJSON *fn_obj = cJSON_GetObjectItem(root, "filename");
+        if (!cJSON_IsString(fn_obj) || fn_obj->valuestring[0] == '\0') {
+            LOG_WRN("voice_memo delete: missing filename");
+            cJSON_Delete(root);
+            return -EINVAL;
+        }
+
+        int ret = zsw_recording_manager_delete(fn_obj->valuestring);
+        if (ret < 0) {
+            LOG_ERR("voice_memo: delete failed: %d", ret);
+        } else {
+            LOG_INF("voice_memo: deleted '%s'", fn_obj->valuestring);
+        }
+        cJSON_Delete(root);
+        return ret;
+    }
+
+    if (strcmp(action, "result") == 0) {
+        cJSON *title_obj = cJSON_GetObjectItem(root, "text");
+        if (!cJSON_IsString(title_obj) || title_obj->valuestring[0] == '\0') {
+            LOG_WRN("voice_memo result: missing text");
+            cJSON_Delete(root);
+            return -EINVAL;
+        }
+
+        cJSON *fn_obj = cJSON_GetObjectItem(root, "filename");
+        cJSON *atype_obj = cJSON_GetObjectItem(root, "action_type");
+        cJSON *dt_obj = cJSON_GetObjectItem(root, "datetime");
+
+        LOG_DBG("voice_memo: result received, file='%s', type='%s', dt='%s'",
+                cJSON_IsString(fn_obj) ? fn_obj->valuestring : "?",
+                cJSON_IsString(atype_obj) ? atype_obj->valuestring : "?",
+                cJSON_IsString(dt_obj) ? dt_obj->valuestring : "?");
+
+        ZBUS_CHAN_DECLARE(voice_memo_result_chan);
+        struct zsw_voice_memo_result_event result_evt = {0};
+        strncpy(result_evt.title, title_obj->valuestring, sizeof(result_evt.title) - 1);
+        if (cJSON_IsString(fn_obj)) {
+            strncpy(result_evt.filename, fn_obj->valuestring, sizeof(result_evt.filename) - 1);
+        }
+        if (cJSON_IsString(atype_obj)) {
+            strncpy(result_evt.action_type, atype_obj->valuestring, sizeof(result_evt.action_type) - 1);
+        }
+        if (cJSON_IsString(dt_obj)) {
+            strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
+        }
+        zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
+
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    LOG_WRN("voice_memo: unknown action '%s'", action);
+    cJSON_Delete(root);
+    return -ENOTSUP;
+#endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -717,6 +928,18 @@ static int parse_data(char *data, int len)
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
         ble_gadgetbridge_send_version_info();
         return 0;
+    }
+
+    if (strlen("voice_memo") == type_len && strncmp(type, "voice_memo", type_len) == 0) {
+        return parse_voice_memo_command(data, len);
+    }
+
+    if (strlen("smp") == type_len && strncmp(type, "smp", type_len) == 0) {
+        return parse_smp_command(data, len);
+    }
+
+    if (strlen("reset") == type_len && strncmp(type, "reset", type_len) == 0) {
+        return parse_reset_command(data, len);
     }
 
     return 0;
@@ -953,4 +1176,60 @@ void ble_gadgetbridge_send_activity_data(uint16_t heart_rate, uint32_t steps,
     if (len > 0 && len < sizeof(activity_msg)) {
         ble_comm_send(activity_msg, len);
     }
+}
+
+void ble_gadgetbridge_send_voice_memo_new(const char *filename, uint32_t duration_ms,
+                                          uint32_t size_bytes, uint32_t timestamp)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERR("voice_memo new: cJSON alloc failed");
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "t", "voice_memo");
+    cJSON_AddStringToObject(root, "action", "new");
+    cJSON_AddStringToObject(root, "filename", filename);
+    cJSON_AddNumberToObject(root, "duration_ms", duration_ms);
+    cJSON_AddNumberToObject(root, "size_bytes", size_bytes);
+    cJSON_AddNumberToObject(root, "timestamp", timestamp);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (json_str == NULL) {
+        LOG_ERR("voice_memo new: JSON print failed");
+        return;
+    }
+
+    int msg_len = strlen(json_str);
+    ble_comm_send(json_str, msg_len);
+    cJSON_free(json_str);
+    LOG_INF("voice_memo: sent new recording notification: %s", filename);
+}
+
+void ble_gadgetbridge_send_voice_memo_undo(const char *filename)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERR("voice_memo undo: cJSON alloc failed");
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "t", "voice_memo");
+    cJSON_AddStringToObject(root, "action", "undo_last");
+    cJSON_AddStringToObject(root, "filename", filename);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (json_str == NULL) {
+        LOG_ERR("voice_memo undo: JSON print failed");
+        return;
+    }
+
+    int msg_len = strlen(json_str);
+    ble_comm_send(json_str, msg_len);
+    cJSON_free(json_str);
+    LOG_INF("voice_memo: sent undo command for: %s", filename);
 }

@@ -157,10 +157,11 @@ jobs:
 
           pytest \
             --board=native_sim \
-            -m 'linux_only' --board=native_sim \
+            -m 'linux_only' \
             --junitxml=report_linux.xml -v \
             --html=report_linux.html \
-            --self-contained-html
+            --self-contained-html \
+            -s
 
 
       - name: Upload test reports

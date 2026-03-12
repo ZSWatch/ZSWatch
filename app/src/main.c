@@ -72,6 +72,11 @@
 #include "fuel_gauge/zsw_pmic.h"
 #include "managers/zsw_microphone_manager.h"
 
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+#include "managers/zsw_recording_manager.h"
+#include "ui/overlay/zsw_voice_memo_popup.h"
+#endif
+
 LOG_MODULE_REGISTER(main, CONFIG_ZSW_APP_LOG_LEVEL);
 
 static void run_init_work(struct k_work *item);
@@ -111,6 +116,11 @@ static void run_init_work(struct k_work *item)
 
 #ifdef CONFIG_AUDIO_DMIC
     zsw_microphone_manager_init();
+#endif
+
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+    zsw_recording_manager_init();
+    zsw_voice_memo_popup_init();
 #endif
 
     print_retention_ram();

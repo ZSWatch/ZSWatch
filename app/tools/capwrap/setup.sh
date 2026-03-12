@@ -1,7 +1,3 @@
-#!/bin/bash
-# Copyright (c) 2025 ZSWatch Project
-# SPDX-License-Identifier: Apache-2.0
-#
 # Build capwrap and set required file capabilities.
 # Run once after cloning (or whenever capwrap.c changes).
 #

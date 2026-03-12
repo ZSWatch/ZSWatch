@@ -23,6 +23,9 @@ typedef enum zsw_vibration_pattern {
     ZSW_VIBRATION_PATTERN_CLICK,
     ZSW_VIBRATION_PATTERN_NOTIFICATION,
     ZSW_VIBRATION_PATTERN_ALARM,
+    ZSW_VIBRATION_PATTERN_QUICK_REC_START,   /* Short-Long: recording started */
+    ZSW_VIBRATION_PATTERN_QUICK_REC_STOP,    /* Short-Short: recording stopped */
+    ZSW_VIBRATION_PATTERN_QUICK_REC_ERROR,   /* Long-Long: recording error */
 } zsw_vibration_pattern_t;
 
 /*

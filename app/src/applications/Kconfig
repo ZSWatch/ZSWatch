@@ -47,4 +47,5 @@ menu "Applications"
     rsource "ppt_remote/Kconfig"
     rsource "compass/Kconfig"
     rsource "sensors_summary/Kconfig"
+    rsource "voice_memo/Kconfig"
 endmenu

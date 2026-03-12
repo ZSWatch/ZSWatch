@@ -340,6 +340,9 @@ SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
 
 static int cmd_app_list(const struct shell *sh, size_t argc, char **argv)
 {
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
     int num_apps = zsw_app_manager_get_num_apps();
 
     shell_print(sh, "Registered apps (%d):", num_apps);
@@ -348,10 +351,18 @@ static int cmd_app_list(const struct shell *sh, size_t argc, char **argv)
         if (app) {
             const char *state_str;
             switch (app->current_state) {
-                case ZSW_APP_STATE_STOPPED:    state_str = "stopped"; break;
-                case ZSW_APP_STATE_UI_VISIBLE: state_str = "visible"; break;
-                case ZSW_APP_STATE_UI_HIDDEN:  state_str = "hidden";  break;
-                default:                       state_str = "unknown"; break;
+                case ZSW_APP_STATE_STOPPED:
+                    state_str = "stopped";
+                    break;
+                case ZSW_APP_STATE_UI_VISIBLE:
+                    state_str = "visible";
+                    break;
+                case ZSW_APP_STATE_UI_HIDDEN:
+                    state_str = "hidden";
+                    break;
+                default:
+                    state_str = "unknown";
+                    break;
             }
             shell_print(sh, "  [%d] %s (%s)%s", i, app->name, state_str,
                         app->hidden ? " [hidden]" : "");
@@ -389,6 +400,9 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
 
 static int cmd_app_close(const struct shell *sh, size_t argc, char **argv)
 {
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
     if (zsw_ui_controller_get_state() != ZSW_UI_STATE_APP_MANAGER) {
         shell_error(sh, "No app running");
         return -EINVAL;
@@ -401,12 +415,23 @@ static int cmd_app_close(const struct shell *sh, size_t argc, char **argv)
 
 static int cmd_app_state(const struct shell *sh, size_t argc, char **argv)
 {
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
     const char *state_str;
     switch (zsw_ui_controller_get_state()) {
-        case ZSW_UI_STATE_INIT:        state_str = "init"; break;
-        case ZSW_UI_STATE_WATCHFACE:   state_str = "watchface"; break;
-        case ZSW_UI_STATE_APP_MANAGER: state_str = "app_manager"; break;
-        default:                       state_str = "unknown"; break;
+        case ZSW_UI_STATE_INIT:
+            state_str = "init";
+            break;
+        case ZSW_UI_STATE_WATCHFACE:
+            state_str = "watchface";
+            break;
+        case ZSW_UI_STATE_APP_MANAGER:
+            state_str = "app_manager";
+            break;
+        default:
+            state_str = "unknown";
+            break;
     }
 
     const char *running_app = zsw_ui_controller_get_running_app_name();
@@ -418,12 +443,12 @@ static int cmd_app_state(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_app,
-    SHELL_CMD_ARG(list,   NULL, "List all registered apps", cmd_app_list, 1, 0),
-    SHELL_CMD_ARG(launch, NULL, "Launch app by name: app launch <name>", cmd_app_launch, 2, 10),
-    SHELL_CMD_ARG(close,  NULL, "Close the currently running app", cmd_app_close, 1, 0),
-    SHELL_CMD_ARG(state,  NULL, "Show current UI state and running app", cmd_app_state, 1, 0),
-    SHELL_SUBCMD_SET_END
-);
+                               SHELL_CMD_ARG(list,   NULL, "List all registered apps", cmd_app_list, 1, 0),
+                               SHELL_CMD_ARG(launch, NULL, "Launch app by name: app launch <name>", cmd_app_launch, 2, 10),
+                               SHELL_CMD_ARG(close,  NULL, "Close the currently running app", cmd_app_close, 1, 0),
+                               SHELL_CMD_ARG(state,  NULL, "Show current UI state and running app", cmd_app_state, 1, 0),
+                               SHELL_SUBCMD_SET_END
+                              );
 
 SHELL_CMD_REGISTER(app, &sub_app, "App management commands", NULL);
 
@@ -438,28 +463,36 @@ static int cmd_input_button(const struct shell *sh, size_t argc, char **argv)
 
     uint16_t key_code;
     switch (atoi(argv[1])) {
-        case 1: key_code = INPUT_KEY_1; break;
-        case 2: key_code = INPUT_KEY_2; break;
-        case 3: key_code = INPUT_KEY_3; break;
-        case 4: key_code = INPUT_KEY_4; break;
+        case 1:
+            key_code = INPUT_KEY_1;
+            break;
+        case 2:
+            key_code = INPUT_KEY_2;
+            break;
+        case 3:
+            key_code = INPUT_KEY_3;
+            break;
+        case 4:
+            key_code = INPUT_KEY_4;
+            break;
         default:
             shell_error(sh, "Invalid button (expected 1-4)");
             return -EINVAL;
     }
 
-    input_report_key(NULL, key_code, 0, false, K_FOREVER);
-    k_msleep(50);
     input_report_key(NULL, key_code, 1, false, K_FOREVER);
+    k_msleep(50);
+    input_report_key(NULL, key_code, 0, false, K_FOREVER);
 
     shell_print(sh, "Button %s pressed", argv[1]);
     return 0;
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_input,
-    SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
-                  cmd_input_button, 2, 0),
-    SHELL_SUBCMD_SET_END
-);
+                               SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
+                                             cmd_input_button, 2, 0),
+                               SHELL_SUBCMD_SET_END
+                              );
 
 SHELL_CMD_REGISTER(input, &sub_input, "Input simulation commands", NULL);
 
@@ -472,7 +505,13 @@ static int cmd_event_battery(const struct shell *sh, size_t argc, char **argv)
         return -EINVAL;
     }
 
-    int percent = atoi(argv[1]);
+    char *endptr;
+    long val = strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[1] || val < 0 || val > 100) {
+        shell_error(sh, "Invalid percent (0-100)");
+        return -EINVAL;
+    }
+    int percent = (int)val;
     bool charging = (argc > 2 && strcmp(argv[2], "1") == 0);
 
     struct battery_sample_event evt = {
@@ -520,11 +559,54 @@ static int cmd_event_pressure(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
-    SHELL_CMD_ARG(battery,  NULL, "Inject battery event: event battery <percent> [charging:0|1]",
-                  cmd_event_battery, 2, 1),
-    SHELL_CMD_ARG(pressure, NULL, "Inject pressure event: event pressure <hPa> [temp_C]",
-                  cmd_event_pressure, 2, 1),
-    SHELL_SUBCMD_SET_END
-);
+                               SHELL_CMD_ARG(battery,  NULL, "Inject battery event: event battery <percent> [charging:0|1]",
+                                             cmd_event_battery, 2, 1),
+                               SHELL_CMD_ARG(pressure, NULL, "Inject pressure event: event pressure <hPa> [temp_C]",
+                                             cmd_event_pressure, 2, 1),
+                               SHELL_SUBCMD_SET_END
+                              );
 
 SHELL_CMD_REGISTER(event, &sub_event, "Event injection commands", NULL);
+
+/* --- microphone gain commands --- */
+#if defined(CONFIG_ZSW_MIC)
+#include "drivers/zsw_microphone.h"
+
+static int cmd_mic_gain_get(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    uint8_t gain = zsw_microphone_get_gain();
+    int db = ((int)gain - 0x28) * 20 / 0x28;
+    shell_print(sh, "Mic gain: 0x%02x (%d dB approx)", (unsigned)gain, db);
+    return 0;
+}
+
+static int cmd_mic_gain_set(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: mic gain_set <0-80>");
+        return -EINVAL;
+    }
+
+    long val = strtol(argv[1], NULL, 10);
+    if (val < 0 || val > 80) {
+        shell_error(sh, "Gain must be 0-80 (0=mute, 40=0dB, 80=+20dB)");
+        return -EINVAL;
+    }
+
+    zsw_microphone_set_gain((uint8_t)val);
+    shell_print(sh, "Mic gain set to 0x%02x (%ld decimal)", (unsigned)val, val);
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_mic,
+                               SHELL_CMD_ARG(gain_get, NULL, "Show current PDM mic gain", cmd_mic_gain_get, 1, 0),
+                               SHELL_CMD_ARG(gain_set, NULL, "Set PDM mic gain: mic gain_set <0-80>", cmd_mic_gain_set, 2, 0),
+                               SHELL_SUBCMD_SET_END
+                              );
+
+SHELL_CMD_REGISTER(mic, &sub_mic, "Microphone commands", NULL);
+
+#endif /* CONFIG_ZSW_MIC */

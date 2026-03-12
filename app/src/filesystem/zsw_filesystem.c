@@ -37,7 +37,11 @@ struct fs_mount_t *mountpoint = &FS_FSTAB_ENTRY(PARTITION_NODE);
  * Mounted manually to work around nRF Partition Manager limitation
  * which hardcodes all FSTAB entries to the same flash area.
  */
-FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(user_lfs_data);
+FS_LITTLEFS_DECLARE_CUSTOM_CONFIG(user_lfs_data, 4,
+                                  ZSW_USER_LFS_CACHE_SIZE,  /* read_size  */
+                                  ZSW_USER_LFS_CACHE_SIZE,  /* prog_size  */
+                                  ZSW_USER_LFS_CACHE_SIZE,  /* cache_size */
+                                  64);                       /* lookahead_size */
 
 static struct fs_mount_t user_mnt = {
     .type = FS_LITTLEFS,

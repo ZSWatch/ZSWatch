@@ -20,3 +20,6 @@ __pycache__
 
 *lvgl_resource*
 flash.bin
+
+# Local pytest device config
+devices_local.yaml

@@ -35,6 +35,7 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/prctl.h>
 #include <sys/capability.h>
 #include <errno.h>
@@ -89,7 +90,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    execvp(argv[1], &argv[1]);
-    perror("execvp");
+    if (strchr(argv[1], '/') == NULL) {
+        fprintf(stderr, "capwrap: argv[1] must contain an explicit path (use ./prog or /path/to/prog)\n");
+        return 2;
+    }
+
+    execv(argv[1], &argv[1]);
+    perror("execv");
     return 1;
 }

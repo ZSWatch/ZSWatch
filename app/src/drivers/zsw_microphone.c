@@ -22,6 +22,10 @@
 #include <zephyr/logging/log.h>
 #include <string.h>
 
+#if !defined(CONFIG_BOARD_NATIVE_SIM)
+#include <hal/nrf_pdm.h>
+#endif
+
 LOG_MODULE_REGISTER(zsw_mic, LOG_LEVEL_INF);
 
 // 1ms of audio buffer per block for more efficient processing
@@ -111,6 +115,10 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
     dmic_config.channel.req_chan_map_lo = dmic_build_channel_map(0, 0, PDM_CHAN_LEFT);
 
     mic_state.initialized = true;
+
+    /* Apply default gain from Kconfig */
+    zsw_microphone_set_gain(CONFIG_ZSW_MIC_DEFAULT_GAIN);
+
     LOG_INF("Microphone initialized successfully");
 
     return 0;
@@ -191,8 +199,12 @@ int zsw_microphone_driver_stop(void)
     if (ret == -EAGAIN) {
         LOG_ERR("Audio thread did not exit within timeout, aborting");
         k_thread_abort(&mic_state.audio_thread);
+        power_off_microphone();
+        return -ETIMEDOUT;
     } else if (ret != 0) {
         LOG_ERR("Failed to join audio thread: %d", ret);
+        power_off_microphone();
+        return ret;
     } else {
         LOG_DBG("Audio thread completed successfully");
     }
@@ -309,4 +321,32 @@ static int power_off_microphone(void)
         LOG_ERR("Failed to disable microphone regulator: %d", ret);
     }
     return ret;
+}
+
+#if defined(CONFIG_BOARD_NATIVE_SIM)
+static uint8_t emul_gain = CONFIG_ZSW_MIC_DEFAULT_GAIN;
+#endif
+
+void zsw_microphone_set_gain(uint8_t gain)
+{
+    if (gain > 0x50) {
+        gain = 0x50;
+    }
+#if !defined(CONFIG_BOARD_NATIVE_SIM)
+    nrf_pdm_gain_set(NRF_PDM0, (nrf_pdm_gain_t)gain, (nrf_pdm_gain_t)gain);
+#else
+    emul_gain = gain;
+#endif
+    LOG_DBG("PDM gain set to 0x%02x", gain);
+}
+
+uint8_t zsw_microphone_get_gain(void)
+{
+#if !defined(CONFIG_BOARD_NATIVE_SIM)
+    nrf_pdm_gain_t gain_l, gain_r;
+    nrf_pdm_gain_get(NRF_PDM0, &gain_l, &gain_r);
+    return (uint8_t)gain_l;
+#else
+    return emul_gain;
+#endif
 }

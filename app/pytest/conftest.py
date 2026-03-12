@@ -1,3 +1,4 @@
+import os
 import pytest
 import utils
 import logging
@@ -19,7 +20,11 @@ def ppk2_instance(device_config, prepare_device):
 
 
 def get_all_devices():
-    with open("devices.yaml") as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    local_path = os.path.join(base_dir, "devices_local.yaml")
+    default_path = os.path.join(base_dir, "devices.yaml")
+    path = local_path if os.path.exists(local_path) else default_path
+    with open(path) as f:
         config = yaml.safe_load(f)
     return config["devices"]
 
@@ -145,6 +150,30 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="Skip flashing firmware before testing",
+    )
+    parser.addoption(
+        "--app",
+        action="store",
+        default=None,
+        help="Application name to launch (e.g. 'Calculator')",
+    )
+    parser.addoption(
+        "--exe-path",
+        action="store",
+        default=None,
+        help="Path to native_sim zephyr.exe (default: app/build/app/zephyr/zephyr.exe)",
+    )
+    parser.addoption(
+        "--screenshot-dir",
+        action="store",
+        default=None,
+        help="Directory for screenshot output (default: /tmp)",
+    )
+    parser.addoption(
+        "--shell-cmd",
+        action="store",
+        default=None,
+        help="Shell command to run on hardware (e.g. 'app list')",
     )
 
 

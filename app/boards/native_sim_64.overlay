@@ -82,7 +82,13 @@
     };
 };
 
+&flashcontroller0 {
+    reg = <0x0 0x400000>;
+};
+
 &flash0 {
+    reg = <0x0 0x400000>;
+
     partitions {
         littlefs_storage: partition@100000 {
             label = "littlefs_storage";

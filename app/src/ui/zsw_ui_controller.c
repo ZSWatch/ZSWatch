@@ -42,16 +42,26 @@
 #include "ui/onboarding/zsw_onboarding_ui.h"
 #include "lvgl_editor_gen.h"
 
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+#include "managers/zsw_recording_manager.h"
+#include "ui/overlay/zsw_recording_overlay.h"
+#include "ui/overlay/zsw_voice_memo_popup.h"
+#endif
+
 typedef enum ui_state {
     INIT_STATE,
     WATCHFACE_STATE,
     APPLICATION_MANAGER_STATE,
 } ui_state_t;
 
+static void run_input_work(struct k_work *item);
+
 static struct input_worker_item_t {
     struct k_work work;
     struct input_event event;
-} input_worker_item;
+} input_worker_item = {
+    .work = Z_WORK_INITIALIZER(run_input_work),
+};
 
 static struct input_event last_input_event;
 
@@ -64,7 +74,6 @@ static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 static ui_state_t watch_state = INIT_STATE;
 
-static void run_input_work(struct k_work *item);
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
@@ -72,8 +81,6 @@ static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
 static void on_application_manager_close(void);
 static void on_onboarding_done(void);
-
-K_WORK_DEFINE(input_work, run_input_work);
 
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
 
@@ -101,6 +108,16 @@ static void run_input_work(struct k_work *item)
                 break;
             }
             case INPUT_KEY_3: {
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+                if (zsw_recording_overlay_is_shown()) {
+                    zsw_recording_manager_stop();
+                    zsw_recording_overlay_hide();
+                    break;
+                }
+                if (zsw_voice_memo_popup_is_shown()) {
+                    break;
+                }
+#endif
                 if (zsw_notification_popup_is_shown()) {
                     zsw_notification_popup_remove();
                 } else if (watch_state == APPLICATION_MANAGER_STATE) {
@@ -112,7 +129,12 @@ static void run_input_work(struct k_work *item)
                 break;
             }
             case INPUT_KEY_1: {
-                if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()) {
+                if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+                    && !zsw_recording_overlay_is_shown()
+                    && !zsw_voice_memo_popup_is_shown()
+#endif
+                   ) {
                     zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
                     lv_async_call(open_application_manager_page, NULL);
                 }
@@ -181,20 +203,28 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 
     // The following events are ignored (will block a wakeup of the display):
     //  - Generic touch events (INPUT_BTN_TOUCH, INPUT_ABS_X, INPUT_ABS_Y)
-    //  - Back button, mapped on INPUT_KEY_KP0
+    //  - Raw button codes before longpress processing (INPUT_KEY_KP0, INPUT_KEY_KP1)
+    //  - Quick-record long-press code (INPUT_KEY_F1) — handled by zsw_quick_record
     if ((evt->code == INPUT_ABS_X) || (evt->code == INPUT_ABS_Y) || (evt->code == INPUT_BTN_TOUCH) ||
-        (evt->code == INPUT_KEY_KP0) || ((evt->code != INPUT_EV_DEVICE) && (evt->value == 1))) {
+        (evt->code == INPUT_KEY_KP0) || (evt->code == INPUT_KEY_KP1) ||
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+        (evt->code == INPUT_KEY_F1) ||
+#endif
+        ((evt->code != INPUT_EV_DEVICE) && (evt->value == 1))) {
         return;
     }
 
     input_worker_item.event = *evt;
-    input_worker_item.work = input_work;
     k_work_submit(&input_worker_item.work);
 }
 
 static void handle_screen_gesture(lv_dir_t event_code)
 {
-    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
+    bool overlay_active = zsw_notification_popup_is_shown();
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+    overlay_active = overlay_active || zsw_recording_overlay_is_shown() || zsw_voice_memo_popup_is_shown();
+#endif
+    if (watch_state == WATCHFACE_STATE && !overlay_active) {
         switch (event_code) {
             case LV_DIR_LEFT: {
                 open_application_manager_page("Notification");
@@ -215,8 +245,10 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 __ASSERT(false, "Not a valid gesture code: %d", event_code);
         }
         lv_indev_wait_release(lv_indev_get_act());
-    } else if (zsw_notification_popup_is_shown()) {
-        zsw_notification_popup_remove();
+    } else if (overlay_active) {
+        if (zsw_notification_popup_is_shown()) {
+            zsw_notification_popup_remove();
+        }
     }
 }
 
@@ -299,7 +331,12 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
         return;
     }
 
-    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()) {
+    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+        && !zsw_recording_overlay_is_shown()
+        && !zsw_voice_memo_popup_is_shown()
+#endif
+       ) {
         switch (evt.type) {
             case WATCHFACE_APP_EVENT_OPEN_APP:
                 handle_watchface_open_app_event(evt.data.app);
@@ -428,7 +465,6 @@ int zsw_ui_controller_init(void)
 
     return 0;
 }
-
 
 void zsw_ui_controller_launch_app(const char *app_name)
 {

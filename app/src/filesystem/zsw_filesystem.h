@@ -19,6 +19,8 @@
 
 #define ZSW_USER_LFS_MOUNT_POINT "/user"
 
+#define ZSW_USER_LFS_CACHE_SIZE  512
+
 int zsw_filesytem_get_num_rawfs_files(void);
 
 int zsw_filesytem_get_total_size(void);

@@ -1,0 +1,16 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Voice Memo"
+
+config APPLICATIONS_USE_VOICE_MEMO
+    bool
+    prompt "Activate the application 'Voice Memo'"
+    default y
+    depends on ZSW_MIC && ZSW_OPUS_CODEC
+
+endmenu
+
+module = ZSW_VOICE_MEMO
+module-str = ZSW_VOICE_MEMO
+source "subsys/logging/Kconfig.template.log_config"
