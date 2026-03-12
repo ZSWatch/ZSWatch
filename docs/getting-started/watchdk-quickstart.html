@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-405TQEL8SG"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-405TQEL8SG",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.f2c35b9d.css">
-<script src="/assets/js/runtime~main.914f382e.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.7a65afa0.js" defer="defer"></script>
 <script src="/assets/js/main.01f5a4ff.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -85,8 +85,9 @@
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="with-a-battery">With a Battery<a href="#with-a-battery" class="hash-link" aria-label="Direct link to With a Battery" title="Direct link to With a Battery">​</a></h3>
 <p>Connect a battery and move the RTC power jumper to the <strong>VBAT</strong> position. This gives the RTC a stable power source and all features work as expected.</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="suggested-batteries">Suggested Batteries<a href="#suggested-batteries" class="hash-link" aria-label="Direct link to Suggested Batteries" title="Direct link to Suggested Batteries">​</a></h3>
-<p>Search for <code>JST RC 3.7V 1S</code> batteries and pick a suitable reseller. Battery size and capacity do not matter. Just make sure the connector matches the WatchDK 2-pin battery header:</p>
+<p>Search for <code>JST RC 3.7V 1S</code> batteries and pick a suitable reseller. Just make sure the connector matches the WatchDK 2-pin battery header:</p>
 <p><img decoding="async" loading="lazy" alt="Battery connector example" src="/assets/images/images-dk-battery-301552d3a35445407e1aaff54c5be90e.png" width="220" height="229" class="img_ev3q"></p>
+<div class="theme-admonition theme-admonition-note admonition_xJq3 alert alert--secondary"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path></svg></span>Battery percentage and time estimates</div><div class="admonitionContent_BuS1"><p>The nPM1300 PMIC calculates battery state-of-charge (%), time-to-empty, and time-to-full based on a <strong>profiled battery model</strong>. The firmware ships with a profile for a specific battery, so using a different LiPo (especially one with a larger capacity, e.g. &gt;300 mAh) will make these estimates inaccurate. The voltage reading stays correct regardless of which battery you use. For more details on battery profiling, see the <a href="https://docs.nordicsemi.com/bundle/nrf-connect-npm/page/profiling_battery.html" target="_blank" rel="noopener noreferrer">nRF Connect Power Manager documentation</a>.</p></div></div>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="next-steps">Next Steps<a href="#next-steps" class="hash-link" aria-label="Direct link to Next Steps" title="Direct link to Next Steps">​</a></h2>
 <ul>
 <li><strong><a href="/docs/development/toolchain">Setting up the Development Toolchain</a></strong> - install VS Code, nRF Connect SDK, and build tools</li>
