@@ -407,4 +407,24 @@ The display is 240×240 pixels and **circular**. Content placed in the corners w
 
 RAM is limited (512 KB shared with the BLE stack). Be mindful of stack sizes, heap allocations, and the number of LVGL objects you create.
 
+### 6. Check RTC Availability for Time-Dependent Features
+
+If your app depends on **alarms**, **timers**, or precise long-term timekeeping, check whether the RTC is available at startup:
+
+````c
+#include "zsw_clock.h"
+
+static int my_app_add(void)
+{
+    if (!zsw_clock_rtc_available()) {
+        LOG_WRN("RTC not available, disabling app");
+        return 0;  // Don't register the app
+    }
+    zsw_app_manager_add_application(&app);
+    return 0;
+}
+````
+
+The RTC may be unavailable if the hardware is not powered (no battery connected) or if the RTC chip is not responding. The system automatically falls back to a software clock, but features like alarms and persistent timers will not work. See the [Time and RTC](./architecture.md#time-and-rtc) section in the architecture docs for details.
+
 

@@ -145,6 +145,41 @@ Periodic Timer → Sensor Driver → zbus channel → App Listener → k_work �
 
 Sensor modules (IMU, magnetometer, pressure, environment, light) are abstracted behind simple APIs in `app/src/sensors/`. The IMU is an exception: it is primarily **interrupt-driven** (gestures, step events) rather than polled.
 
+## Time and RTC
+
+The system clock is managed by `zsw_clock` (`app/src/zsw_clock.c`), which provides a **runtime-adaptive** time source:
+
+- **With RTC**: If the hardware RTC (real-time clock) is available and working, all time reads/writes go directly to the RTC. Time persists across power cycles as long as the RTC remains powered (typically from a battery).
+- **Without RTC**: If the RTC hardware is missing or not responding, the system automatically falls back to a software clock (`CLOCK_REALTIME`). Time advances while powered on, but resets to build time on each boot.
+
+### Runtime RTC Detection
+
+At startup, `zsw_clock_init()` probes the RTC device. If the RTC is not responding or fails to accept time updates, the fallback is automatic and transparent. Apps can query RTC availability at runtime:
+
+````c
+#include "zsw_clock.h"
+
+if (zsw_clock_rtc_available()) {
+    // Safe to use RTC-dependent features (alarms, timers)
+} else {
+    // RTC unavailable; disable or adapt features
+    LOG_WRN("RTC not available, disabling timer functionality");
+}
+````
+
+### RTC-Dependent Features
+
+Some subsystems require a working RTC:
+
+| Component | Behavior without RTC |
+|-----------|---------------------|
+| **Timer app** | Disabled entirely (hidden from app picker) |
+| **Alarm subsystem** (`zsw_alarm`) | All alarm APIs return `-ENOTSUP` |
+| **Fitness app** | Daily step reset uses polling instead of RTC alarm |
+| **Watchface** | Time display works via software clock (drifts after reboot) |
+
+Apps that depend on alarms or precise long-term timekeeping should check `zsw_clock_rtc_available()` at startup and adapt accordingly.
+
 ## BLE Communication
 
 ZSWatch supports two phone platforms through different BLE profiles:
