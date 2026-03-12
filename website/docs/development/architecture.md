@@ -130,6 +130,26 @@ zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &my_listener);
 
 Typical usage: a watchface subscribes to `periodic_event_1s_chan` to update the clock, and to `periodic_event_10s_chan` for refreshing weather or battery status.
 
+## File Storage
+
+ZSWatch uses two separate **LittleFS** filesystems on the external flash:
+
+| Mount point | Purpose | Persistence | Typical use |
+|-------------|---------|-------------|-------------|
+| `/lfs` | **LVGL resources** | Replaced on image upload | App icons, weather icons, fonts (read-only at runtime) |
+| `/user` | **User data** | Survives firmware/image updates | Settings, recordings, app data, logs |
+
+The `/lfs` partition is generated externally and uploaded via the `west upload_fs` command or web updater. Any data written to it by apps will be lost on the next upload.
+
+The `/user` partition is **persistent** — apps can write data here that survives firmware updates. It is automatically mounted at startup and is intended for:
+- Application settings and configuration
+- User recordings (e.g., microphone data)
+- Activity logs or cached data
+
+:::tip Storage in apps
+When developing apps that need to save state, always use `/user` for persistent storage. Files written to `/lfs` will be erased on the next image upload.
+:::
+
 ## Sensor Data Flow
 
 The sensor data pipeline is straightforward:
