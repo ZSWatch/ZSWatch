@@ -24,6 +24,17 @@ menu "Managers"
             select AUDIO_DMIC
             default n
 
+        config ZSW_MIC_DEFAULT_GAIN
+            int "Default PDM microphone gain (0-80)"
+            default 40
+            range 0 80
+            depends on ZSW_MIC
+            help
+                PDM gain register value applied at mic init.
+                0 = mute (-20 dB), 40 = 0 dB (default), 80 = +20 dB.
+                Can be changed at runtime via zsw_microphone_set_gain()
+                or the 'mic gain_set' shell command.
+
         config ZSW_MIC_SEND_READING_OVER_RTT
             depends on USE_SEGGER_RTT
             depends on ZSW_MIC

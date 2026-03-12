@@ -65,6 +65,30 @@ int zsw_microphone_driver_start(void);
  */
 int zsw_microphone_driver_stop(void);
 
+/**
+ * @brief Set PDM microphone gain
+ *
+ * Sets the gain for both left and right PDM channels.
+ * Can be called while recording — the nRF PDM GAIN register is
+ * writable at any time without stopping capture.
+ *
+ * On native_sim this is a no-op (no real PDM hardware).
+ *
+ * @param gain  PDM gain register value:
+ *              0x00 = mute (−20 dB), 0x28 = 0 dB (default), 0x50 = +20 dB.
+ *              Valid range: 0–80 decimal (0x00–0x50).
+ */
+void zsw_microphone_set_gain(uint8_t gain);
+
+/**
+ * @brief Get current PDM microphone gain
+ *
+ * On native_sim returns CONFIG_ZSW_MIC_DEFAULT_GAIN.
+ *
+ * @return Current gain register value (0–80).
+ */
+uint8_t zsw_microphone_get_gain(void);
+
 #ifdef __cplusplus
 }
 #endif

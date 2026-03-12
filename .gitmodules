@@ -28,3 +28,6 @@
 [submodule "hardware/Watch-HW"]
 	path = hardware/Watch-HW
 	url = https://github.com/ZSWatch/Watch-HW.git
+[submodule "app/src/ext_drivers/opus"]
+	path = app/src/ext_drivers/opus
+	url = https://github.com/xiph/opus.git

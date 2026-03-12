@@ -528,3 +528,214 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
 );
 
 SHELL_CMD_REGISTER(event, &sub_event, "Event injection commands", NULL);
+
+/* --- opus codec test commands --- */
+#ifdef CONFIG_ZSW_OPUS_CODEC
+#include "codec/zsw_audio_codec.h"
+#include <math.h>
+
+static int cmd_opus_test(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    int ret = zsw_audio_codec_init();
+    if (ret != 0 && ret != -EALREADY) {
+        shell_error(sh, "Opus init failed: %d", ret);
+        return ret;
+    }
+
+    size_t frame_size = zsw_audio_codec_frame_samples();
+    int16_t pcm[160];
+    uint8_t out[160];
+
+    /* Generate 440 Hz sine test tone */
+    for (size_t i = 0; i < frame_size; i++) {
+        pcm[i] = (int16_t)(20000.0 * sin(2.0 * 3.14159265 * 440.0 * (double)i / 16000.0));
+    }
+
+    int len = zsw_audio_codec_encode(pcm, frame_size, out, sizeof(out));
+    if (len < 0) {
+        shell_error(sh, "Opus encode failed: %d", len);
+        return len;
+    }
+
+    shell_print(sh, "[TEST] opus: encoded %zu samples -> %d bytes (expected 20-80)", frame_size, len);
+    return 0;
+}
+
+static int cmd_opus_reset(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    zsw_audio_codec_reset();
+    shell_print(sh, "Opus encoder reset");
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_opus,
+    SHELL_CMD_ARG(test,  NULL, "Encode a test sine wave frame and show output size", cmd_opus_test, 1, 0),
+    SHELL_CMD_ARG(reset, NULL, "Reset the Opus encoder state", cmd_opus_reset, 1, 0),
+    SHELL_SUBCMD_SET_END
+);
+
+SHELL_CMD_REGISTER(opus, &sub_opus, "Opus audio codec commands", NULL);
+
+#endif /* CONFIG_ZSW_OPUS_CODEC */
+
+/* --- microphone gain commands --- */
+#if defined(CONFIG_ZSW_MIC)
+#include "drivers/zsw_microphone.h"
+
+static int cmd_mic_gain_get(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    uint8_t gain = zsw_microphone_get_gain();
+    int db = ((int)gain - 0x28) * 20 / 0x28;
+    shell_print(sh, "Mic gain: 0x%02x (%d dB approx)", (unsigned)gain, db);
+    return 0;
+}
+
+static int cmd_mic_gain_set(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: mic gain_set <0-80>");
+        return -EINVAL;
+    }
+
+    long val = strtol(argv[1], NULL, 10);
+    if (val < 0 || val > 80) {
+        shell_error(sh, "Gain must be 0-80 (0=mute, 40=0dB, 80=+20dB)");
+        return -EINVAL;
+    }
+
+    zsw_microphone_set_gain((uint8_t)val);
+    shell_print(sh, "Mic gain set to 0x%02x (%ld decimal)", (unsigned)val, val);
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_mic,
+    SHELL_CMD_ARG(gain_get, NULL, "Show current PDM mic gain", cmd_mic_gain_get, 1, 0),
+    SHELL_CMD_ARG(gain_set, NULL, "Set PDM mic gain: mic gain_set <0-80>", cmd_mic_gain_set, 2, 0),
+    SHELL_SUBCMD_SET_END
+);
+
+SHELL_CMD_REGISTER(mic, &sub_mic, "Microphone commands", NULL);
+
+#endif /* CONFIG_ZSW_MIC */
+
+/* ---------- Voice Memo shell commands ---------- */
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+#include "applications/voice_memo/voice_memo_store.h"
+#include "managers/zsw_microphone_manager.h"
+#include "zsw_audio_codec.h"
+#include <zephyr/sys/ring_buffer.h>
+
+/* External references to voice_memo_app recording functions */
+extern int voice_memo_shell_start(void);
+extern int voice_memo_shell_stop(void);
+
+static int cmd_voice_memo_start(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    int ret = voice_memo_shell_start();
+    if (ret == 0) {
+        shell_print(sh, "Recording started");
+    } else {
+        shell_print(sh, "Failed to start recording: %d", ret);
+    }
+    return ret;
+}
+
+static int cmd_voice_memo_stop(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    int ret = voice_memo_shell_stop();
+    if (ret == 0) {
+        shell_print(sh, "Recording stopped");
+    } else {
+        shell_print(sh, "Failed to stop recording: %d", ret);
+    }
+    return ret;
+}
+
+static int cmd_voice_memo_list(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    voice_memo_entry_t entries[CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES];
+    int count = voice_memo_store_list(entries, ARRAY_SIZE(entries));
+
+    if (count < 0) {
+        shell_print(sh, "Error listing recordings: %d", count);
+        return count;
+    }
+
+    shell_print(sh, "Recordings: %d", count);
+    for (int i = 0; i < count; i++) {
+        uint32_t secs = (entries[i].duration_ms + 999) / 1000;
+        shell_print(sh, "  %s  %u:%02u  %u bytes",
+                    entries[i].filename,
+                    secs / 60, secs % 60,
+                    entries[i].size_bytes);
+    }
+
+    uint32_t free_bytes = 0;
+    voice_memo_store_get_free_space(&free_bytes);
+    shell_print(sh, "Free space: %u KB", free_bytes / 1024);
+    return 0;
+}
+
+static int cmd_voice_memo_delete(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_print(sh, "Usage: voice_memo delete <filename>");
+        return -EINVAL;
+    }
+    int ret = voice_memo_store_delete(argv[1]);
+    shell_print(sh, ret == 0 ? "Deleted" : "Delete failed: %d", ret);
+    return ret;
+}
+
+static int cmd_voice_memo_status(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    bool recording = voice_memo_store_is_recording();
+    shell_print(sh, "Recording: %s", recording ? "yes" : "no");
+
+    if (recording) {
+        const char *fn = voice_memo_store_get_current_filename();
+        shell_print(sh, "File: %s", fn ? fn : "unknown");
+    }
+
+    int count = voice_memo_store_get_count();
+    shell_print(sh, "Total recordings: %d", count);
+
+    uint32_t free_bytes = 0;
+    voice_memo_store_get_free_space(&free_bytes);
+    shell_print(sh, "Free space: %u KB (%u min at 32kbps)",
+                free_bytes / 1024, free_bytes / 1024 / 4);
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_voice_memo,
+    SHELL_CMD(start, NULL, "Start recording", cmd_voice_memo_start),
+    SHELL_CMD(stop, NULL, "Stop recording", cmd_voice_memo_stop),
+    SHELL_CMD(list, NULL, "List recordings", cmd_voice_memo_list),
+    SHELL_CMD_ARG(delete, NULL, "Delete recording", cmd_voice_memo_delete, 2, 0),
+    SHELL_CMD(status, NULL, "Show recording status", cmd_voice_memo_status),
+    SHELL_SUBCMD_SET_END
+);
+SHELL_CMD_REGISTER(voice_memo, &sub_voice_memo, "Voice memo commands", NULL);
+
+#endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */

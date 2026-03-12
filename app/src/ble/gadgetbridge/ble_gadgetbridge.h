@@ -36,3 +36,17 @@ void ble_gadgetbridge_send_notification_action(uint32_t id, ble_comm_notify_acti
 void ble_gadgetbridge_send_activity_data(uint16_t heart_rate, uint32_t steps,
                                          zsw_imu_data_step_activity_t step_activity,
                                          zsw_power_manager_state_t power_state);
+
+/**
+ * @brief Send a voice memo "new recording" notification to the companion app.
+ *
+ * @param filename     Recording filename (without extension)
+ * @param duration_ms  Recording duration in milliseconds
+ * @param size_bytes   File size in bytes
+ * @param timestamp    Unix epoch timestamp
+ */
+void ble_gadgetbridge_send_voice_memo_new(const char *filename, uint32_t duration_ms,
+                                          uint32_t size_bytes, uint32_t timestamp);
+
+/** Send an undo command for the last processed voice memo to the companion app. */
+void ble_gadgetbridge_send_voice_memo_undo(const char *filename);

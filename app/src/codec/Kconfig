@@ -1,0 +1,42 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Audio Codec"
+
+    config ZSW_OPUS_CODEC
+        bool "Enable Opus audio codec"
+        default y if ZSW_MIC
+        help
+          Integrates the Opus audio codec library (fixed-point mode).
+          Enables compressed audio recording and future BLE streaming.
+
+    config ZSW_OPUS_BITRATE
+        int "Opus encoder bitrate (bps)"
+        default 32000
+        depends on ZSW_OPUS_CODEC
+        help
+          Target bitrate for the Opus encoder in bits per second.
+          32000 (32 kbps) gives ~8x compression vs raw 16-bit 16kHz PCM.
+
+    config ZSW_OPUS_COMPLEXITY
+        int "Opus encoder complexity (0-10)"
+        default 3
+        depends on ZSW_OPUS_CODEC
+        range 0 10
+        help
+          Opus encoder complexity. Higher values produce better quality
+          at the cost of more CPU usage. 3 is a good balance for nRF5340.
+
+    config ZSW_OPUS_FRAME_SIZE_SAMPLES
+        int "Opus frame size in samples"
+        default 160
+        depends on ZSW_OPUS_CODEC
+        help
+          Number of PCM samples per Opus frame. 160 = 10ms at 16kHz.
+          Smaller frames = lower latency but slightly less compression.
+
+    module = ZSW_AUDIO_CODEC
+    module-str = ZSW_AUDIO_CODEC
+    source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

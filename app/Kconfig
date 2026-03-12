@@ -73,6 +73,7 @@ menu "ZSWatch"
     rsource "src/ui/Kconfig"
     rsource "src/sensors/Kconfig"
     rsource "src/sensor_fusion/Kconfig"
+    rsource "src/codec/Kconfig"
     rsource "src/ble/Kconfig"
 
     menu "Default configuration"

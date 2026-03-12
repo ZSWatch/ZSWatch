@@ -1,0 +1,45 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Voice Memo"
+
+config APPLICATIONS_USE_VOICE_MEMO
+    bool
+    prompt "Activate the application 'Voice Memo'"
+    default y
+    depends on ZSW_MIC && ZSW_OPUS_CODEC
+
+    menu "Configuration"
+        depends on APPLICATIONS_USE_VOICE_MEMO
+
+        config APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_DURATION_S
+            int
+            prompt "Maximum recording duration (seconds)"
+            default 300
+
+        config APPLICATIONS_CONFIGURATION_VOICE_MEMO_MIN_FREE_SPACE_KB
+            int
+            prompt "Minimum free space to start recording (KB)"
+            default 500
+
+        config APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES
+            int
+            prompt "Maximum number of stored recordings"
+            default 50
+
+        config APPLICATIONS_CONFIGURATION_VOICE_MEMO_QUICK_RECORD_BUTTON
+            int
+            prompt "Button number for quick-record (0=disabled)"
+            default 4
+            range 0 4
+            help
+              Button number (1-4) that triggers voice recording on long-press.
+              0 disables the quick-record shortcut. Default: 4 (top-left).
+
+    endmenu
+
+endmenu
+
+module = ZSW_VOICE_MEMO
+module-str = ZSW_VOICE_MEMO
+source "subsys/logging/Kconfig.template.log_config"

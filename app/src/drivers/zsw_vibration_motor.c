@@ -75,6 +75,30 @@ static vib_motor_state_t alarm_pattern[] = {
     {.enabled = false, .percent = 0, .delay = 0},
 };
 
+/* Quick-Record: Short (50ms) – pause (100ms) – Long (200ms) */
+static vib_motor_state_t quick_rec_start_pattern[] = {
+    {.enabled = true, .percent = 90, .delay = 50},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 90, .delay = 200},
+    {.enabled = false, .percent = 0, .delay = 0},
+};
+
+/* Quick-Record Stop: Short (50ms) – pause (50ms) – Short (50ms) */
+static vib_motor_state_t quick_rec_stop_pattern[] = {
+    {.enabled = true, .percent = 90, .delay = 50},
+    {.enabled = false, .percent = 0, .delay = 50},
+    {.enabled = true, .percent = 90, .delay = 50},
+    {.enabled = false, .percent = 0, .delay = 0},
+};
+
+/* Quick-Record Error: Long (300ms) – pause (100ms) – Long (300ms) */
+static vib_motor_state_t quick_rec_error_pattern[] = {
+    {.enabled = true, .percent = 100, .delay = 300},
+    {.enabled = false, .percent = 0, .delay = 100},
+    {.enabled = true, .percent = 100, .delay = 300},
+    {.enabled = false, .percent = 0, .delay = 0},
+};
+
 static vib_motor_state_t *active_pattern;
 static uint8_t active_pattern_index;
 static uint8_t active_pattern_len;
@@ -111,6 +135,18 @@ int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
         case ZSW_VIBRATION_PATTERN_ALARM:
             active_pattern = alarm_pattern;
             active_pattern_len = ARRAY_SIZE(alarm_pattern);
+            break;
+        case ZSW_VIBRATION_PATTERN_QUICK_REC_START:
+            active_pattern = quick_rec_start_pattern;
+            active_pattern_len = ARRAY_SIZE(quick_rec_start_pattern);
+            break;
+        case ZSW_VIBRATION_PATTERN_QUICK_REC_STOP:
+            active_pattern = quick_rec_stop_pattern;
+            active_pattern_len = ARRAY_SIZE(quick_rec_stop_pattern);
+            break;
+        case ZSW_VIBRATION_PATTERN_QUICK_REC_ERROR:
+            active_pattern = quick_rec_error_pattern;
+            active_pattern_len = ARRAY_SIZE(quick_rec_error_pattern);
             break;
         default:
             __ASSERT(false, "Invalid vibration pattern");
