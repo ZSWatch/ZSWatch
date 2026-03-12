@@ -154,7 +154,7 @@ The system clock is managed by `zsw_clock` (`app/src/zsw_clock.c`), which provid
 
 ### Runtime RTC Detection
 
-At startup, `zsw_clock_init()` probes the RTC device. If the RTC is not responding or fails to accept time updates, the fallback is automatic and transparent. Apps can query RTC availability at runtime:
+At startup, `zsw_clock_init()` probes the RTC device. If the RTC is not responding or fails to accept time updates, the fallback is automatic and transparent. Common reasons the RTC may be unavailable include **no battery connected** (the RTC loses power and fails to respond) or a hardware fault. Apps can query RTC availability at runtime:
 
 ````c
 #include "zsw_clock.h"
