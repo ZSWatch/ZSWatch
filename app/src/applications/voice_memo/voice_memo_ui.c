@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/zswatch/>.
- * Copyright (c) 2025 ZSWatch Project.
+ * Copyright (c) 2026 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,16 +62,8 @@ static char delete_filename[VOICE_MEMO_MAX_FILENAME];
 /* Back-during-recording confirmation */
 static lv_obj_t *back_confirm_msgbox;
 
-/* Result toast overlay */
-static lv_obj_t *result_toast;
-static lv_timer_t *toast_timer;
-static char toast_filename[VOICE_MEMO_MAX_FILENAME];
-
 /* Track which screen is active */
 static bool recording_screen_active;
-
-/* Forward declarations */
-static void dismiss_toast(void);
 
 /* Stored entry filenames for delete callback */
 static char entry_filenames[MAX_LIST_ENTRIES][VOICE_MEMO_MAX_FILENAME];
@@ -384,9 +376,6 @@ void voice_memo_ui_remove(void)
     /* Stop pulsing animation */
     lv_anim_delete(rec_indicator, rec_pulse_cb);
 
-    /* Clean up toast if visible */
-    dismiss_toast();
-
     if (back_confirm_msgbox) {
         lv_msgbox_close(back_confirm_msgbox);
         back_confirm_msgbox = NULL;
@@ -470,7 +459,7 @@ void voice_memo_ui_update_level(uint8_t level)
     lv_bar_set_value(level_bar, level, LV_ANIM_ON);
 }
 
-void voice_memo_ui_update_list(const voice_memo_entry_t *entries, int count,
+void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
                                uint32_t free_space_kb)
 {
     if (!list_container) {
@@ -565,93 +554,4 @@ void voice_memo_ui_show_back_confirm(void)
     lv_obj_center(back_confirm_msgbox);
 }
 
-/* ---------- Result toast (round-trip confirmation with Undo) ---------- */
 
-static void dismiss_toast(void)
-{
-    if (toast_timer) {
-        lv_timer_delete(toast_timer);
-        toast_timer = NULL;
-    }
-    if (result_toast) {
-        lv_obj_del(result_toast);
-        result_toast = NULL;
-    }
-}
-
-static void toast_timeout_cb(lv_timer_t *timer)
-{
-    LV_UNUSED(timer);
-    /* Timer expired without interaction — AI result accepted */
-    dismiss_toast();
-}
-
-static void toast_undo_cb(lv_event_t *e)
-{
-    LV_UNUSED(e);
-    if (callbacks && callbacks->on_undo) {
-        callbacks->on_undo(toast_filename);
-    }
-    dismiss_toast();
-}
-
-void voice_memo_ui_show_result_toast(const char *title, const char *filename)
-{
-    /* Dismiss any existing toast first */
-    dismiss_toast();
-
-    /* Store filename for undo callback */
-    strncpy(toast_filename, filename, sizeof(toast_filename) - 1);
-    toast_filename[sizeof(toast_filename) - 1] = '\0';
-
-    /* Create full-screen overlay */
-    result_toast = lv_obj_create(lv_layer_top());
-    lv_obj_set_size(result_toast, DISP_WIDTH, DISP_HEIGHT);
-    lv_obj_set_style_bg_color(result_toast, lv_color_make(0x1a, 0x1a, 0x2e), 0);
-    lv_obj_set_style_bg_opa(result_toast, LV_OPA_90, 0);
-    lv_obj_set_style_border_width(result_toast, 0, 0);
-    lv_obj_set_style_radius(result_toast, 0, 0);
-    lv_obj_center(result_toast);
-
-    /* Checkmark icon */
-    lv_obj_t *icon = lv_label_create(result_toast);
-    lv_label_set_text(icon, LV_SYMBOL_OK);
-    lv_obj_set_style_text_font(icon, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(icon, lv_color_make(0x4c, 0xaf, 0x50), 0);
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 40);
-
-    /* "Saved" header */
-    lv_obj_t *header = lv_label_create(result_toast);
-    lv_label_set_text(header, "Saved");
-    lv_obj_set_style_text_font(header, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(header, lv_color_white(), 0);
-    lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 75);
-
-    /* Parsed title */
-    lv_obj_t *title_lbl = lv_label_create(result_toast);
-    lv_label_set_text(title_lbl, title);
-    lv_obj_set_style_text_font(title_lbl, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(title_lbl, zsw_color_gray(), 0);
-    lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(title_lbl, DISP_WIDTH - 40);
-    lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_align(title_lbl, LV_ALIGN_CENTER, 0, -10);
-
-    /* Undo button */
-    lv_obj_t *undo_btn = lv_btn_create(result_toast);
-    lv_obj_set_size(undo_btn, 120, 44);
-    lv_obj_set_style_bg_color(undo_btn, zsw_color_red(), 0);
-    lv_obj_set_style_radius(undo_btn, 22, 0);
-    lv_obj_align(undo_btn, LV_ALIGN_BOTTOM_MID, 0, -30);
-    lv_obj_add_event_cb(undo_btn, toast_undo_cb, LV_EVENT_CLICKED, NULL);
-
-    lv_obj_t *undo_label = lv_label_create(undo_btn);
-    lv_label_set_text(undo_label, "Undo");
-    lv_obj_set_style_text_font(undo_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(undo_label, lv_color_white(), 0);
-    lv_obj_center(undo_label);
-
-    /* Auto-dismiss after 3 seconds */
-    toast_timer = lv_timer_create(toast_timeout_cb, 3000, NULL);
-    lv_timer_set_repeat_count(toast_timer, 1);
-}

@@ -629,21 +629,14 @@ SHELL_CMD_REGISTER(mic, &sub_mic, "Microphone commands", NULL);
 
 /* ---------- Voice Memo shell commands ---------- */
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-#include "applications/voice_memo/voice_memo_store.h"
-#include "managers/zsw_microphone_manager.h"
-#include "zsw_audio_codec.h"
-#include <zephyr/sys/ring_buffer.h>
-
-/* External references to voice_memo_app recording functions */
-extern int voice_memo_shell_start(void);
-extern int voice_memo_shell_stop(void);
+#include "managers/zsw_recording_manager.h"
 
 static int cmd_voice_memo_start(const struct shell *sh, size_t argc, char **argv)
 {
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    int ret = voice_memo_shell_start();
+    int ret = zsw_recording_manager_start();
     if (ret == 0) {
         shell_print(sh, "Recording started");
     } else {
@@ -657,7 +650,7 @@ static int cmd_voice_memo_stop(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    int ret = voice_memo_shell_stop();
+    int ret = zsw_recording_manager_stop();
     if (ret == 0) {
         shell_print(sh, "Recording stopped");
     } else {
@@ -671,8 +664,8 @@ static int cmd_voice_memo_list(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    voice_memo_entry_t entries[CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES];
-    int count = voice_memo_store_list(entries, ARRAY_SIZE(entries));
+    zsw_recording_entry_t entries[CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES];
+    int count = zsw_recording_manager_list(entries, ARRAY_SIZE(entries));
 
     if (count < 0) {
         shell_print(sh, "Error listing recordings: %d", count);
@@ -689,7 +682,7 @@ static int cmd_voice_memo_list(const struct shell *sh, size_t argc, char **argv)
     }
 
     uint32_t free_bytes = 0;
-    voice_memo_store_get_free_space(&free_bytes);
+    zsw_recording_manager_get_free_space(&free_bytes);
     shell_print(sh, "Free space: %u KB", free_bytes / 1024);
     return 0;
 }
@@ -700,7 +693,7 @@ static int cmd_voice_memo_delete(const struct shell *sh, size_t argc, char **arg
         shell_print(sh, "Usage: voice_memo delete <filename>");
         return -EINVAL;
     }
-    int ret = voice_memo_store_delete(argv[1]);
+    int ret = zsw_recording_manager_delete(argv[1]);
     shell_print(sh, ret == 0 ? "Deleted" : "Delete failed: %d", ret);
     return ret;
 }
@@ -710,19 +703,14 @@ static int cmd_voice_memo_status(const struct shell *sh, size_t argc, char **arg
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    bool recording = voice_memo_store_is_recording();
+    bool recording = zsw_recording_manager_is_recording();
     shell_print(sh, "Recording: %s", recording ? "yes" : "no");
 
-    if (recording) {
-        const char *fn = voice_memo_store_get_current_filename();
-        shell_print(sh, "File: %s", fn ? fn : "unknown");
-    }
-
-    int count = voice_memo_store_get_count();
+    int count = zsw_recording_manager_get_count();
     shell_print(sh, "Total recordings: %d", count);
 
     uint32_t free_bytes = 0;
-    voice_memo_store_get_free_space(&free_bytes);
+    zsw_recording_manager_get_free_space(&free_bytes);
     shell_print(sh, "Free space: %u KB (%u min at 32kbps)",
                 free_bytes / 1024, free_bytes / 1024 / 4);
     return 0;

@@ -22,10 +22,10 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "voice_memo_store.h"
+#include "zsw_recording_manager_store.h"
 #include "zsw_clock.h"
 
-LOG_MODULE_REGISTER(voice_memo_store, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_recording_manager_store, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
 #define FLASH_WRITE_BUF_SIZE   512
 #define MAX_PATH_LEN           64
@@ -108,7 +108,7 @@ static uint32_t get_unix_timestamp(void)
     return (uint32_t)mktime(&tm);
 }
 
-uint32_t voice_memo_store_get_unix_timestamp(void)
+uint32_t zsw_recording_manager_store_get_unix_timestamp(void)
 {
     return get_unix_timestamp();
 }
@@ -151,7 +151,6 @@ static void generate_filename(char *buf, size_t buflen)
                  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                  tm.tm_hour, tm.tm_min, tm.tm_sec);
     } else {
-        /* RTC fallback: use persistent monotonic counter that survives file deletions */
         int next_num = read_persistent_counter() + 1;
         write_persistent_counter(next_num);
         snprintf(buf, buflen, "REC_%03d", next_num);
@@ -161,7 +160,7 @@ static void generate_filename(char *buf, size_t buflen)
 static int repair_dirty_file(const char *filepath)
 {
     struct fs_file_t fp;
-    voice_memo_header_t hdr;
+    zsw_recording_manager_store_header_t hdr;
     int ret;
 
     fs_file_t_init(&fp);
@@ -186,12 +185,10 @@ static int repair_dirty_file(const char *filepath)
     }
 
     if (hdr.total_frames != 0xFFFFFFFF) {
-        /* Already clean */
         fs_close(&fp);
         return 0;
     }
 
-    /* Walk frames to count and compute duration */
     uint32_t counted_frames = 0;
     while (true) {
         uint16_t frame_len;
@@ -200,14 +197,12 @@ static int repair_dirty_file(const char *filepath)
             break;
         }
         if (frame_len == 0 || frame_len > 500) {
-            /* Invalid frame length */
             break;
         }
         off_t pos = fs_tell(&fp);
         if (fs_seek(&fp, frame_len, FS_SEEK_CUR) < 0) {
             break;
         }
-        /* Verify we actually have that many bytes */
         if (fs_tell(&fp) != pos + frame_len) {
             break;
         }
@@ -221,7 +216,6 @@ static int repair_dirty_file(const char *filepath)
         return 0;
     }
 
-    /* Repair header */
     hdr.total_frames = counted_frames;
     hdr.duration_ms = (uint32_t)((uint64_t)counted_frames * hdr.frame_size * 1000 / hdr.sample_rate);
 
@@ -234,7 +228,7 @@ static int repair_dirty_file(const char *filepath)
     return 0;
 }
 
-int voice_memo_store_init(void)
+int zsw_recording_manager_store_init(void)
 {
     int ret;
     struct fs_dir_t dirp;
@@ -242,14 +236,12 @@ int voice_memo_store_init(void)
 
     fs_dir_t_init(&dirp);
 
-    /* Create directory if needed */
     ret = fs_mkdir(VOICE_MEMO_DIR);
     if (ret < 0 && ret != -EEXIST) {
         LOG_ERR("Failed to create recordings dir: %d", ret);
         return ret;
     }
 
-    /* Scan for dirty files */
     ret = fs_opendir(&dirp, VOICE_MEMO_DIR);
     if (ret < 0) {
         LOG_ERR("Failed to open recordings dir: %d", ret);
@@ -270,19 +262,18 @@ int voice_memo_store_init(void)
     return 0;
 }
 
-int voice_memo_store_start_recording(void)
+int zsw_recording_manager_store_start_recording(void)
 {
     int ret;
-    voice_memo_header_t hdr;
+    zsw_recording_manager_store_header_t hdr;
 
     if (recording_active) {
         LOG_WRN("Already recording");
         return -EALREADY;
     }
 
-    /* Check free space */
     uint32_t free_bytes;
-    ret = voice_memo_store_get_free_space(&free_bytes);
+    ret = zsw_recording_manager_store_get_free_space(&free_bytes);
     if (ret < 0) {
         return ret;
     }
@@ -303,7 +294,6 @@ int voice_memo_store_start_recording(void)
     }
     file_open = true;
 
-    /* Write header with sentinel values */
     memset(&hdr, 0, sizeof(hdr));
     memcpy(hdr.magic, VOICE_MEMO_MAGIC, 4);
     hdr.version = VOICE_MEMO_HEADER_VERSION;
@@ -311,7 +301,7 @@ int voice_memo_store_start_recording(void)
     hdr.frame_size = CONFIG_ZSW_OPUS_FRAME_SIZE_SAMPLES;
     hdr.bitrate = CONFIG_ZSW_OPUS_BITRATE;
     hdr.timestamp = get_unix_timestamp();
-    hdr.total_frames = 0xFFFFFFFF;  /* Sentinel: dirty until clean stop */
+    hdr.total_frames = 0xFFFFFFFF;
     hdr.duration_ms = 0xFFFFFFFF;
 
     ssize_t written = fs_write(&current_file, &hdr, sizeof(hdr));
@@ -331,13 +321,12 @@ int voice_memo_store_start_recording(void)
     return 0;
 }
 
-int voice_memo_store_write_frame(const uint8_t *opus_data, size_t len)
+int zsw_recording_manager_store_write_frame(const uint8_t *opus_data, size_t len)
 {
     if (!recording_active || !file_open) {
         return -EINVAL;
     }
 
-    /* Write frame: [2B length LE][N bytes data] */
     uint16_t frame_len = (uint16_t)len;
     int ret;
 
@@ -355,30 +344,27 @@ int voice_memo_store_write_frame(const uint8_t *opus_data, size_t len)
     return 0;
 }
 
-int voice_memo_store_flush(void)
+int zsw_recording_manager_store_flush(void)
 {
     return flush_write_buf();
 }
 
-int voice_memo_store_stop_recording(uint32_t *out_duration_ms, uint32_t *out_size_bytes)
+int zsw_recording_manager_store_stop_recording(uint32_t *out_duration_ms, uint32_t *out_size_bytes)
 {
     if (!recording_active) {
         LOG_WRN("stop_recording: not active");
         return -EINVAL;
     }
 
-    /* Flush remaining data */
     int ret = flush_write_buf();
     if (ret < 0) {
         LOG_ERR("Flush on stop failed: %d", ret);
     }
 
-    /* Compute duration */
     uint32_t duration_ms = (uint32_t)((uint64_t)frame_count *
                                        CONFIG_ZSW_OPUS_FRAME_SIZE_SAMPLES * 1000 / 16000);
 
-    /* Update header with final values */
-    voice_memo_header_t hdr;
+    zsw_recording_manager_store_header_t hdr;
     fs_seek(&current_file, 0, FS_SEEK_SET);
     fs_read(&current_file, &hdr, sizeof(hdr));
 
@@ -388,7 +374,6 @@ int voice_memo_store_stop_recording(uint32_t *out_duration_ms, uint32_t *out_siz
     fs_seek(&current_file, 0, FS_SEEK_SET);
     fs_write(&current_file, &hdr, sizeof(hdr));
 
-    /* Sync and close */
     fs_sync(&current_file);
     fs_close(&current_file);
 
@@ -413,17 +398,15 @@ int voice_memo_store_stop_recording(uint32_t *out_duration_ms, uint32_t *out_siz
     return 0;
 }
 
-int voice_memo_store_abort_recording(void)
+int zsw_recording_manager_store_abort_recording(void)
 {
     if (!recording_active) {
         LOG_WRN("abort_recording: not active");
         return -EINVAL;
     }
 
-    /* Discard write buffer */
     write_buf_pos = 0;
 
-    /* Close and delete the partial file */
     if (file_open) {
         fs_close(&current_file);
         file_open = false;
@@ -440,7 +423,7 @@ int voice_memo_store_abort_recording(void)
     return 0;
 }
 
-int voice_memo_store_list(voice_memo_entry_t *entries, size_t max_entries)
+int zsw_recording_manager_store_list(zsw_recording_entry_t *entries, size_t max_entries)
 {
     struct fs_dir_t dirp;
     struct fs_dirent entry;
@@ -456,7 +439,6 @@ int voice_memo_store_list(voice_memo_entry_t *entries, size_t max_entries)
         if (entry.type != FS_DIR_ENTRY_FILE) {
             continue;
         }
-        /* Only list .zsw_opus files */
         const char *ext = strstr(entry.name, ".zsw_opus");
         if (!ext) {
             continue;
@@ -465,17 +447,15 @@ int voice_memo_store_list(voice_memo_entry_t *entries, size_t max_entries)
             break;
         }
 
-        /* Read header for metadata */
         char path[MAX_PATH_LEN];
         snprintf(path, sizeof(path), "%s/%s", VOICE_MEMO_DIR, entry.name);
 
         struct fs_file_t fp;
-        voice_memo_header_t hdr;
+        zsw_recording_manager_store_header_t hdr;
         fs_file_t_init(&fp);
         if (fs_open(&fp, path, FS_O_READ) == 0) {
             if (fs_read(&fp, &hdr, sizeof(hdr)) == sizeof(hdr) &&
                 memcmp(hdr.magic, VOICE_MEMO_MAGIC, 4) == 0) {
-                /* Extract filename without extension */
                 size_t name_len = ext - entry.name;
                 if (name_len >= VOICE_MEMO_MAX_FILENAME) {
                     name_len = VOICE_MEMO_MAX_FILENAME - 1;
@@ -495,7 +475,7 @@ int voice_memo_store_list(voice_memo_entry_t *entries, size_t max_entries)
     return count;
 }
 
-int voice_memo_store_delete(const char *filename)
+int zsw_recording_manager_store_delete(const char *filename)
 {
     char path[MAX_PATH_LEN];
     snprintf(path, sizeof(path), "%s/%s.zsw_opus", VOICE_MEMO_DIR, filename);
@@ -509,12 +489,11 @@ int voice_memo_store_delete(const char *filename)
     return ret;
 }
 
-int voice_memo_store_get_free_space(uint32_t *free_bytes)
+int zsw_recording_manager_store_get_free_space(uint32_t *free_bytes)
 {
     struct fs_statvfs sbuf;
     int ret = fs_statvfs(VOICE_MEMO_DIR, &sbuf);
     if (ret < 0) {
-        /* If recordings dir doesn't exist yet, try parent */
         ret = fs_statvfs("/user", &sbuf);
         if (ret < 0) {
             return ret;
@@ -525,7 +504,7 @@ int voice_memo_store_get_free_space(uint32_t *free_bytes)
     return 0;
 }
 
-int voice_memo_store_get_count(void)
+int zsw_recording_manager_store_get_count(void)
 {
     struct fs_dir_t dirp;
     struct fs_dirent entry;
@@ -546,12 +525,12 @@ int voice_memo_store_get_count(void)
     return count;
 }
 
-const char *voice_memo_store_get_current_filename(void)
+const char *zsw_recording_manager_store_get_current_filename(void)
 {
     return recording_active ? current_filename : NULL;
 }
 
-bool voice_memo_store_is_recording(void)
+bool zsw_recording_manager_store_is_recording(void)
 {
     return recording_active;
 }

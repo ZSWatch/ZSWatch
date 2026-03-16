@@ -18,7 +18,7 @@
 /**
  * @brief Quick-Record shortcut: long-press a button to start/stop voice recording.
  *
- * Works from watchface or display-off state.
+ * Uses zsw_recording_manager and zsw_recording_overlay instead of launching the app.
  */
 
 #include <zephyr/kernel.h>
@@ -26,17 +26,12 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/init.h>
 
-#include "ui/zsw_ui_controller.h"
+#include "managers/zsw_recording_manager.h"
+#include "zsw_recording_overlay.h"
 
-LOG_MODULE_REGISTER(voice_memo_qr, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
+LOG_MODULE_REGISTER(zsw_quick_record, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
 #if CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_QUICK_RECORD_BUTTON > 0
-
-/* External voice memo app functions */
-extern int voice_memo_shell_start(void);
-extern int voice_memo_shell_stop(void);
-extern bool voice_memo_store_is_recording(void);
-extern void voice_memo_set_quick_record_exit(void);
 
 /* Map button number (1-4) to input key code */
 #if CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_QUICK_RECORD_BUTTON == 1
@@ -60,20 +55,19 @@ static void quick_record_work_fn(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    if (voice_memo_store_is_recording()) {
-        int ret = voice_memo_shell_stop();
+    if (zsw_recording_manager_is_recording()) {
+        int ret = zsw_recording_manager_stop();
         if (ret == 0) {
-            LOG_INF("voice_memo: quick-record stopped");
+            LOG_INF("Quick-record stopped");
+            zsw_recording_overlay_hide();
         } else {
             LOG_ERR("Quick-record stop failed: %d", ret);
         }
     } else {
-        int ret = voice_memo_shell_start();
+        int ret = zsw_recording_manager_start();
         if (ret == 0) {
-            LOG_INF("voice_memo: quick-record started");
-            /* Auto-close the app when this quick-record session ends. */
-            voice_memo_set_quick_record_exit();
-            zsw_ui_controller_launch_app("Voice Memo");
+            LOG_INF("Quick-record started");
+            zsw_recording_overlay_show();
         } else {
             LOG_ERR("Quick-record start failed: %d", ret);
         }
@@ -96,15 +90,18 @@ static void quick_record_input_cb(struct input_event *evt, void *user_data)
     }
 
     if (evt->value == 1) {
-        /* Button pressed */
         button_pressed = true;
         long_press_fired = false;
-        k_timer_start(&long_press_timer, K_MSEC(LONG_PRESS_MS), K_NO_WAIT);
+        if (zsw_recording_manager_is_recording()) {
+            /* Short press stops recording immediately */
+            long_press_fired = true;
+            k_work_submit(&quick_record_work);
+        } else {
+            k_timer_start(&long_press_timer, K_MSEC(LONG_PRESS_MS), K_NO_WAIT);
+        }
     } else if (evt->value == 0) {
-        /* Button released */
         button_pressed = false;
         if (!long_press_fired) {
-            /* Short press — cancel timer, let normal handler process it */
             k_timer_stop(&long_press_timer);
         }
     }
@@ -112,7 +109,7 @@ static void quick_record_input_cb(struct input_event *evt, void *user_data)
 
 INPUT_CALLBACK_DEFINE(NULL, quick_record_input_cb, NULL);
 
-static int voice_memo_quick_record_init(void)
+static int zsw_quick_record_sys_init(void)
 {
     k_timer_init(&long_press_timer, long_press_timer_cb, NULL);
     k_work_init(&quick_record_work, quick_record_work_fn);
@@ -121,6 +118,6 @@ static int voice_memo_quick_record_init(void)
     return 0;
 }
 
-SYS_INIT(voice_memo_quick_record_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+SYS_INIT(zsw_quick_record_sys_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 #endif /* CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_QUICK_RECORD_BUTTON > 0 */

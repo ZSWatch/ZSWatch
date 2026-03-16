@@ -48,10 +48,14 @@ typedef enum ui_state {
     APPLICATION_MANAGER_STATE,
 } ui_state_t;
 
+static void run_input_work(struct k_work *item);
+
 static struct input_worker_item_t {
     struct k_work work;
     struct input_event event;
-} input_worker_item;
+} input_worker_item = {
+    .work = Z_WORK_INITIALIZER(run_input_work),
+};
 
 static struct input_event last_input_event;
 
@@ -64,7 +68,6 @@ static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 static ui_state_t watch_state = INIT_STATE;
 
-static void run_input_work(struct k_work *item);
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
@@ -72,8 +75,6 @@ static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
 static void on_application_manager_close(void);
 static void on_onboarding_done(void);
-
-K_WORK_DEFINE(input_work, run_input_work);
 
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
 
@@ -188,7 +189,6 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
     }
 
     input_worker_item.event = *evt;
-    input_worker_item.work = input_work;
     k_work_submit(&input_worker_item.work);
 }
 

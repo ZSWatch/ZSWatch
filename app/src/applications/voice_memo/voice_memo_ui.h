@@ -18,20 +18,18 @@
 #pragma once
 
 #include <lvgl.h>
-#include "voice_memo_store.h"
+#include "managers/zsw_recording_manager_store.h"
 
 typedef void (*voice_memo_ui_start_cb_t)(void);
 typedef void (*voice_memo_ui_stop_cb_t)(void);
 typedef void (*voice_memo_ui_delete_cb_t)(const char *filename);
 typedef void (*voice_memo_ui_back_confirm_cb_t)(bool save);
-typedef void (*voice_memo_ui_undo_cb_t)(const char *filename);
 
 typedef struct {
     voice_memo_ui_start_cb_t       on_start_recording;
     voice_memo_ui_stop_cb_t        on_stop_recording;
     voice_memo_ui_delete_cb_t      on_delete;
     voice_memo_ui_back_confirm_cb_t on_back_during_recording;
-    voice_memo_ui_undo_cb_t        on_undo;
 } voice_memo_ui_callbacks_t;
 
 /** Show the voice memo main screen (recording list). */
@@ -53,16 +51,8 @@ void voice_memo_ui_update_time(uint32_t elapsed_ms);
 void voice_memo_ui_update_level(uint8_t level);
 
 /** Update the recording list with current entries. */
-void voice_memo_ui_update_list(const voice_memo_entry_t *entries, int count,
+void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
                                uint32_t free_space_kb);
 
 /** Show confirmation dialog when back is pressed during recording. */
 void voice_memo_ui_show_back_confirm(void);
-
-/**
- * Show a full-screen toast confirming AI processing result.
- * Auto-dismisses after 3 seconds. User can tap "Undo" to cancel.
- * @param title   Parsed title from AI
- * @param filename  Recording filename (passed to undo callback)
- */
-void voice_memo_ui_show_result_toast(const char *title, const char *filename);

@@ -6,6 +6,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
 #include <string.h>
+#include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -23,7 +24,8 @@
 #include "app_version.h"
 
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-#include "voice_memo/voice_memo_store.h"
+#include "managers/zsw_recording_manager.h"
+#include "events/zsw_voice_memo_event.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
@@ -44,6 +46,35 @@ static void parse_time_zone(char *offset);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis, music_control_event_callback);
+
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+static void on_ble_recording_event(const struct zbus_channel *chan);
+ZBUS_CHAN_DECLARE(voice_memo_recording_chan);
+ZBUS_LISTENER_DEFINE(ble_voice_memo_recording_lis, on_ble_recording_event);
+
+static struct zsw_voice_memo_recording_event ble_recording_evt_copy;
+
+static void ble_recording_notify_work_fn(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    ble_gadgetbridge_send_voice_memo_new(
+        ble_recording_evt_copy.filename,
+        ble_recording_evt_copy.duration_ms,
+        ble_recording_evt_copy.size_bytes,
+        ble_recording_evt_copy.timestamp);
+}
+
+static K_WORK_DEFINE(ble_recording_notify_work, ble_recording_notify_work_fn);
+
+static void on_ble_recording_event(const struct zbus_channel *chan)
+{
+    const struct zsw_voice_memo_recording_event *evt = zbus_chan_const_msg(chan);
+    if (evt->state == ZSW_VOICE_MEMO_RECORDING_STOPPED) {
+        memcpy(&ble_recording_evt_copy, evt, sizeof(ble_recording_evt_copy));
+        k_work_submit(&ble_recording_notify_work);
+    }
+}
+#endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
 
 static void send_ble_data_event(struct ble_data_event *evt)
 {
@@ -688,6 +719,7 @@ static int parse_smp_command(char *data, int len)
     bool enable = cJSON_IsTrue(status);
     cJSON_Delete(root);
 
+#ifdef CONFIG_MCUMGR
     int rc;
     if (enable) {
         rc = zsw_smp_manager_enable(true);
@@ -696,6 +728,10 @@ static int parse_smp_command(char *data, int len)
     }
 
     return rc;
+#else
+    LOG_WRN("SMP not available");
+    return -ENOTSUP;
+#endif
 }
 
 // {"t":"reset"}
@@ -729,8 +765,8 @@ static int parse_voice_memo_command(char *data, int len)
 
     if (action_len == strlen("list") && strncmp(action, "list", action_len) == 0) {
         /* Build JSON response with recording list */
-        voice_memo_entry_t entries[CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES];
-        int count = voice_memo_store_list(entries, ARRAY_SIZE(entries));
+        zsw_recording_entry_t entries[CONFIG_APPLICATIONS_CONFIGURATION_VOICE_MEMO_MAX_FILES];
+        int count = zsw_recording_manager_list(entries, ARRAY_SIZE(entries));
         if (count < 0) {
             LOG_ERR("voice_memo: list failed: %d", count);
             count = 0;
@@ -794,7 +830,7 @@ static int parse_voice_memo_command(char *data, int len)
         char saved = filename[filename_len];
         filename[filename_len] = '\0';
 
-        int ret = voice_memo_store_delete(filename);
+        int ret = zsw_recording_manager_delete(filename);
         filename[filename_len] = saved;
 
         if (ret < 0) {
@@ -810,6 +846,10 @@ static int parse_voice_memo_command(char *data, int len)
         char *title = extract_value_str("\"text\":", data, &title_len);
         int filename_len;
         char *filename = extract_value_str("\"filename\":", data, &filename_len);
+        int atype_len;
+        char *atype = extract_value_str("\"action_type\":", data, &atype_len);
+        int dt_len;
+        char *dt = extract_value_str("\"datetime\":", data, &dt_len);
 
         if (title == NULL || title_len == 0) {
             LOG_WRN("voice_memo result: missing text");
@@ -824,18 +864,46 @@ static int parse_voice_memo_command(char *data, int len)
             saved_fn = filename[filename_len];
             filename[filename_len] = '\0';
         }
+        char saved_atype = 0;
+        if (atype && atype_len > 0) {
+            saved_atype = atype[atype_len];
+            atype[atype_len] = '\0';
+        }
+        char saved_dt = 0;
+        if (dt && dt_len > 0) {
+            saved_dt = dt[dt_len];
+            dt[dt_len] = '\0';
+        }
 
-        LOG_INF("voice_memo: result received, title='%s', file='%s'",
-                title, filename ? filename : "?");
+        LOG_INF("voice_memo: result received, title='%s', file='%s', type='%s', dt='%s'",
+                title, filename ? filename : "?",
+                atype ? atype : "?", dt ? dt : "?");
 
-        /* Show toast on the watch — uses the voice_memo_ui overlay */
-        extern void voice_memo_show_result_toast(const char *title, const char *filename);
-        voice_memo_show_result_toast(title, filename ? filename : "");
+        /* Publish result event via zbus — the popup overlay will display it */
+        ZBUS_CHAN_DECLARE(voice_memo_result_chan);
+        struct zsw_voice_memo_result_event result_evt = {0};
+        strncpy(result_evt.title, title, sizeof(result_evt.title) - 1);
+        if (filename) {
+            strncpy(result_evt.filename, filename, sizeof(result_evt.filename) - 1);
+        }
+        if (atype) {
+            strncpy(result_evt.action_type, atype, sizeof(result_evt.action_type) - 1);
+        }
+        if (dt) {
+            strncpy(result_evt.datetime, dt, sizeof(result_evt.datetime) - 1);
+        }
+        zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
 
         /* Restore strings */
         title[title_len] = saved_title;
         if (filename && filename_len > 0) {
             filename[filename_len] = saved_fn;
+        }
+        if (atype && atype_len > 0) {
+            atype[atype_len] = saved_atype;
+        }
+        if (dt && dt_len > 0) {
+            dt[dt_len] = saved_dt;
         }
         return 0;
     }
