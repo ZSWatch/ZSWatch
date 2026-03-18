@@ -8,10 +8,14 @@ This page describes how to update ZSWatch firmware on WatchDK.
 
 ## Enable Updates on the Watch
 
-Before any update (USB, BLE, or SWD), enable updates on the watch:
+The **ZSWatch companion app** enables update mode automatically when you start
+a firmware update — no manual step is needed on the watch.
+
+For the **web updater** (zswatch.dev/update) or **nRF Device Manager**, you
+still need to enable updates manually:
 
 1. On the watch, go to **Apps → Update**.
-2. Set **USB** and/or **BLE** to **ON** if you plan to use the web updater.
+2. Set **USB** and/or **BLE** to **ON**.
 
 ## Firmware Download Contents
 
