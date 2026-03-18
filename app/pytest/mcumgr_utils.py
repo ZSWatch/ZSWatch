@@ -123,6 +123,35 @@ async def shell_command_ble(device_config, argv: list[str], timeout_s: float = 5
     return await with_ble_client(address, run)
 
 
+async def file_download_usb(device_config, remote_path: str, timeout_s: float = 30.0) -> bytes:
+    """Download a file from the device filesystem via MCUmgr FS over USB."""
+    from smpclient.requests.file_management import FileDownload
+
+    usb_port = require_usb_port(device_config)
+    await wait_for_usb_port(usb_port, True, timeout_s=timeout_s)
+
+    async def run(client: SMPClient):
+        data = b""
+        off = 0
+        total_len = None
+        while True:
+            resp = await client.request(
+                FileDownload(off=off, name=remote_path), timeout_s=timeout_s
+            )
+            chunk = resp.data if resp.data else b""
+            if hasattr(resp, "len") and resp.len is not None:
+                total_len = resp.len
+            if not chunk:
+                break
+            data += chunk
+            off += len(chunk)
+            if total_len is not None and off >= total_len:
+                break
+        return data
+
+    return await with_serial_client(usb_port, run)
+
+
 async def enable_ble_fota(device_config):
     response = await shell_command_usb(device_config, ["ble_fota", "enable"])
     assert "BLE FOTA" in response.o
