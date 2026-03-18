@@ -137,9 +137,29 @@ jobs:
 
           mv ${{ env.BUILD_DIR }}/merged.hex fw_images/${{ env.BUILD_DIR }}.hex
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
+          # Gzip ELF for coredump analysis (companion app can upload this to the server)
+          gzip -k fw_images/${{ env.BUILD_DIR }}.elf
+          mv fw_images/${{ env.BUILD_DIR }}.elf.gz fw_images/zephyr.elf.gz
           if [ -f "${{ env.BUILD_DIR }}/dfu_application.zip" ]; then
             mv ${{ env.BUILD_DIR }}/dfu_application.zip fw_images/dfu_application.zip
           fi
+          # Generate manifest.json with build metadata for ELF-to-commit mapping
+          COMMIT_SHA="${{ github.sha }}"
+          ELF_HASH=$(sha256sum fw_images/${{ env.BUILD_DIR }}.elf | cut -c1-12)
+          FW_VERSION=$(grep -oP 'APP_VERSION_STRING\s+"\K[^"]+' ${{ env.BUILD_DIR }}/app/zephyr/include/generated/app_version.h 2>/dev/null || echo "unknown")
+          cat > fw_images/manifest.json << MANIFEST_EOF
+          {
+            "commit_sha": "${COMMIT_SHA}",
+            "elf_hash": "${ELF_HASH}",
+            "fw_version": "${FW_VERSION}",
+            "board": "${{ matrix.board }}",
+            "build_type": "${{ matrix.build_type }}",
+            "files": {
+              "dfu": "dfu_application.zip",
+              "elf": "zephyr.elf.gz"
+            }
+          }
+          MANIFEST_EOF
 
           # Build FW for rotated watch screen
           append_var EXTRA_DTC_OVERLAY "boards/clockwise_rotation.overlay"
@@ -186,6 +206,29 @@ jobs:
         run: |
           rm -rf "${{ env.BUILD_DIR }}" "${{ env.BUILD_DIR }}_rotated" "production_test/${{ env.BUILD_DIR }}" "production_test/${{ env.BUILD_DIR }}_production"
           df -h
+
+      - name: Upload ELF to coredump server
+        if: matrix.board != 'native_sim/native/64' && github.event_name != 'pull_request'
+        continue-on-error: true
+        working-directory: ZSWatch
+        env:
+          COREDUMP_API_KEY: ${{ secrets.COREDUMP_API_KEY }}
+          COREDUMP_SERVER_URL: ${{ secrets.COREDUMP_SERVER_URL }}
+        run: |
+          if [ -z "$COREDUMP_API_KEY" ] || [ -z "$COREDUMP_SERVER_URL" ]; then
+            echo "Skipping ELF upload — secrets not configured"
+            exit 0
+          fi
+          BOARD_SHORT=$(echo "${{ matrix.board }}" | cut -d@ -f1)
+          ELF_FILE="fw_images/${{ env.BUILD_DIR }}.elf"
+          gzip -k "$ELF_FILE"
+          echo "Uploading ${ELF_FILE}.gz (board=${BOARD_SHORT}, build=${{ matrix.build_type }})"
+          curl -sf -X POST "${COREDUMP_SERVER_URL}/api/coredump/upload-elf" \
+            -H "Authorization: Bearer ${COREDUMP_API_KEY}" \
+            -F "commit_sha=${{ github.sha }}" \
+            -F "board=${BOARD_SHORT}" \
+            -F "build_type=${{ matrix.build_type }}" \
+            -F "elf_gz=@${ELF_FILE}.gz"
 
       - name : Upload Firmware
         uses: actions/upload-artifact@v4.3.3
