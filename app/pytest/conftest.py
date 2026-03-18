@@ -19,14 +19,22 @@ def ppk2_instance(device_config, prepare_device):
     return device_config["ppk2"]
 
 
-def get_all_devices():
+def _load_devices_yaml():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     local_path = os.path.join(base_dir, "devices_local.yaml")
     default_path = os.path.join(base_dir, "devices.yaml")
     path = local_path if os.path.exists(local_path) else default_path
     with open(path) as f:
-        config = yaml.safe_load(f)
-    return config["devices"]
+        return yaml.safe_load(f)
+
+
+def get_all_devices():
+    return _load_devices_yaml()["devices"]
+
+
+def get_global_config():
+    """Return the top-level 'config' section from devices YAML, or {} if absent."""
+    return _load_devices_yaml().get("config", {})
 
 
 def pytest_generate_tests(metafunc):
@@ -174,6 +182,12 @@ def pytest_addoption(parser):
         action="store",
         default=None,
         help="Shell command to run on hardware (e.g. 'app list')",
+    )
+    parser.addoption(
+        "--build-dir",
+        action="store",
+        default=None,
+        help="Firmware build directory containing zephyr.elf",
     )
 
 
