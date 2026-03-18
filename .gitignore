@@ -4,6 +4,7 @@ build*
 *__pycache__*
 nrf/
 .nrf_env.sh
+.venv/
 
 # Zephyr workspace
 /.west
@@ -21,5 +22,8 @@ __pycache__
 *lvgl_resource*
 flash.bin
 
-# Local pytest device config
+# Local device config (machine-specific serial numbers)
 devices_local.yaml
+
+# Local environment secrets
+.env

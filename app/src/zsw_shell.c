@@ -273,11 +273,60 @@ static int cmd_coredump_summary(const struct shell *sh, size_t argc, char **argv
     return 0;
 }
 
+// Dummy call chain so GDB backtrace is multi level and easy to verify.
+static volatile int crash_dummy_val;
+
+static void __noinline crash_level_3(int val)
+{
+    crash_dummy_val = val * 3;
+    __ASSERT(0, "test crash");
+    k_panic();
+}
+
+static void __noinline crash_level_2(int val)
+{
+    crash_level_3(val + 7);
+}
+
+static void __noinline crash_level_1(int val)
+{
+    crash_level_2(val + 3);
+}
+
+#define CRASH_THREAD_STACK_SIZE 1024
+#define CRASH_THREAD_PRIORITY   5
+
+static K_THREAD_STACK_DEFINE(crash_stack, CRASH_THREAD_STACK_SIZE);
+static struct k_thread crash_thread_data;
+
+static void crash_thread_entry(void *p1, void *p2, void *p3)
+{
+    ARG_UNUSED(p2);
+    ARG_UNUSED(p3);
+    int seed = (int)(intptr_t)p1;
+
+    crash_level_1(seed);
+}
+
+static int cmd_coredump_crash(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    shell_print(sh, "Spawning crash thread...");
+    k_thread_create(&crash_thread_data, crash_stack,
+                    CRASH_THREAD_STACK_SIZE,
+                    crash_thread_entry, (void *)42, NULL, NULL,
+                    CRASH_THREAD_PRIORITY, 0, K_NO_WAIT);
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_coredump,
-                               SHELL_CMD_ARG(init, NULL, "Initialize coredump handling", cmd_coredump_init, 1, 0),
-                               SHELL_CMD_ARG(log, NULL, "Print stored coredump to log", cmd_coredump_to_log, 1, 0),
-                               SHELL_CMD_ARG(erase, NULL, "Erase stored coredump by index", cmd_coredump_erase, 2, 0),
-                               SHELL_CMD_ARG(summary, NULL, "Show summary of stored coredump", cmd_coredump_summary, 1, 0),
+                               SHELL_CMD_ARG(init, NULL, "Init coredump", cmd_coredump_init, 1, 0),
+                               SHELL_CMD_ARG(log, NULL, "Print coredump", cmd_coredump_to_log, 1, 0),
+                               SHELL_CMD_ARG(erase, NULL, "Erase coredump", cmd_coredump_erase, 2, 0),
+                               SHELL_CMD_ARG(summary, NULL, "Show summary", cmd_coredump_summary, 1, 0),
+                               SHELL_CMD_ARG(crash, NULL, "Trigger assert crash", cmd_coredump_crash, 1, 0),
                                SHELL_SUBCMD_SET_END
                               );
 
@@ -336,8 +385,6 @@ SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
 
 #endif /* CONFIG_RETENTION_BOOT_MODE */
 
-/* --- app management commands --- */
-
 static int cmd_app_list(const struct shell *sh, size_t argc, char **argv)
 {
     ARG_UNUSED(argc);
@@ -378,7 +425,7 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         return -EINVAL;
     }
 
-    /* Concatenate all remaining args to support app names with spaces */
+    // App names can have spaces, concatenate
     static char app_name_buf[64];
     app_name_buf[0] = '\0';
     for (int i = 1; i < argc; i++) {
@@ -388,7 +435,7 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         strncat(app_name_buf, argv[i], sizeof(app_name_buf) - strlen(app_name_buf) - 1);
     }
 
-    /* Wake the display so the launched app is visible */
+    //Wake the display so the launched app is visible
     zsw_power_manager_reset_idle_timout();
 
     if (zsw_ui_controller_get_state() != ZSW_UI_STATE_WATCHFACE) {
