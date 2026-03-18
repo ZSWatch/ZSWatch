@@ -388,6 +388,9 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         strncat(app_name_buf, argv[i], sizeof(app_name_buf) - strlen(app_name_buf) - 1);
     }
 
+    // Wake the display so the launched app is visible
+    zsw_power_manager_reset_idle_timout();
+
     if (zsw_ui_controller_get_state() != ZSW_UI_STATE_WATCHFACE) {
         shell_error(sh, "Cannot launch app: not on watchface");
         return -EBUSY;
@@ -488,11 +491,44 @@ static int cmd_input_button(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+static int cmd_input_swipe(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: input swipe <left|right|up|down>");
+        return -EINVAL;
+    }
+
+    /* Direction names refer to navigation direction,
+     * but LVGL gesture direction is the finger movement direction.
+     * Navigate left = finger swipes right = LV_DIR_RIGHT, etc. */
+    uint8_t dir;
+    if (strcmp(argv[1], "left") == 0) {
+        dir = LV_DIR_RIGHT;
+    } else if (strcmp(argv[1], "right") == 0) {
+        dir = LV_DIR_LEFT;
+    } else if (strcmp(argv[1], "up") == 0) {
+        dir = LV_DIR_BOTTOM;
+    } else if (strcmp(argv[1], "down") == 0) {
+        dir = LV_DIR_TOP;
+    } else {
+        shell_error(sh, "Invalid direction (expected left|right|up|down)");
+        return -EINVAL;
+    }
+
+    zsw_power_manager_reset_idle_timout();
+    zsw_ui_controller_simulate_gesture(dir);
+
+    shell_print(sh, "Swipe %s sent", argv[1]);
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_input,
-                               SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
-                                             cmd_input_button, 2, 0),
-                               SHELL_SUBCMD_SET_END
-                              );
+    SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
+                  cmd_input_button, 2, 0),
+    SHELL_CMD_ARG(swipe, NULL, "Simulate swipe gesture: input swipe <left|right|up|down>",
+                  cmd_input_swipe, 2, 0),
+    SHELL_SUBCMD_SET_END
+);
 
 SHELL_CMD_REGISTER(input, &sub_input, "Input simulation commands", NULL);
 
