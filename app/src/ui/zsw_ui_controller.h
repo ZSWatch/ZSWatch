@@ -79,4 +79,9 @@ zsw_ui_state_t zsw_ui_controller_get_state(void);
  */
 const char *zsw_ui_controller_get_running_app_name(void);
 
+/** @brief Simulate a touch screen gesture from any thread context.
+ *  @param dir Gesture direction (LV_DIR_LEFT=1, LV_DIR_RIGHT=2, LV_DIR_TOP=4, LV_DIR_BOTTOM=8).
+ */
+void zsw_ui_controller_simulate_gesture(uint8_t dir);
+
 #endif /* ZSW_UI_CONTROLLER_H */
