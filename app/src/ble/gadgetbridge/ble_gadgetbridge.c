@@ -1027,31 +1027,37 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
 {
     LOG_HEXDUMP_DBG(data, len, "RX");
 
-    if (strncmp("Control:", data, MIN(strlen("Control:"), len)) == 0) {
-        char *time_start = strstr(data, "Control:");
-        return parse_remote_control(time_start + strlen("Control:"), len - strlen("Control:"));
+    // NULL terminate the data to make string parsing easier and safer.
+    char *safe_buf = k_malloc(len + 1);
+    if (safe_buf == NULL) {
+        LOG_ERR("Failed to allocate %u bytes for NUS parse buffer", len + 1);
+        return;
     }
+    memcpy(safe_buf, data, len);
+    safe_buf[len] = '\0';
 
-    char *gb_start = strstr(data, "GB(");
+    char *gb_start = strstr(safe_buf, "GB(");
     if (gb_start && parse_state != WAIT_GB) {
         LOG_ERR("Parsing error, was waiting end, but got GB");
         parse_state = WAIT_GB;
     }
 
-    char *time_start = strstr(data, "setTime(");
+    char *time_start = strstr(safe_buf, "setTime(");
     if (time_start && parse_state == WAIT_GB) {
         time_start += strlen("setTime(");
         parse_time(time_start);
-        return;
+        goto done;
     }
 
     // ie. ;E.setTimeZone(1.0);
-    char *offset = strstr(data, ";E.setTimeZone(");
+    char *offset = strstr(safe_buf, ";E.setTimeZone(");
     if (offset && parse_state == WAIT_GB) {
         offset += strlen(";E.setTimeZone(");
         parse_time_zone(offset);
-        return;
+        goto done;
     }
+
+    size_t receive_buf_capacity = sizeof(receive_buf);
 
     switch (parse_state) {
         case WAIT_GB: {
@@ -1061,13 +1067,18 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
                 num_parsed_brackets = 0;
                 parsed_data_index = 0;
                 memset(receive_buf, 0, sizeof(receive_buf));
-                uint32_t index = gb_start - (char *)data;
+                uint32_t index = gb_start - safe_buf;
                 for (int i = index; i < len; i++) {
-                    receive_buf[parsed_data_index] = data[i];
+                    if (parsed_data_index >= receive_buf_capacity) {
+                        LOG_ERR("Data from Gadgetbridge does not fit in receive_buf (%zu)", receive_buf_capacity);
+                        parse_state = WAIT_GB;
+                        break;
+                    }
+                    receive_buf[parsed_data_index] = safe_buf[i];
                     parsed_data_index++;
-                    if (data[i] == '{') {
+                    if (safe_buf[i] == '{') {
                         num_parsed_brackets++;
-                    } else if (data[i] == '}') {
+                    } else if (safe_buf[i] == '}') {
                         num_parsed_brackets--;
                         if (num_parsed_brackets == 0) {
                             parse_state = PARSE_STATE_DONE;
@@ -1080,16 +1091,16 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         }
         case WAIT_END: {
             for (int i = 0; i < len; i++) {
-                receive_buf[parsed_data_index] = data[i];
-                parsed_data_index++;
-                if (parsed_data_index >= MAX_GB_PACKET_LENGTH) {
-                    LOG_ERR("Data from Gadgetbridge does not fit in MAX_GB_PACKET_LENGTH (%d)", MAX_GB_PACKET_LENGTH);
+                if (parsed_data_index >= receive_buf_capacity) {
+                    LOG_ERR("Data from Gadgetbridge does not fit in receive_buf (%zu)", receive_buf_capacity);
                     parse_state = WAIT_GB;
                     break;
                 }
-                if (data[i] == '{') {
+                receive_buf[parsed_data_index] = safe_buf[i];
+                parsed_data_index++;
+                if (safe_buf[i] == '{') {
                     num_parsed_brackets++;
-                } else if (data[i] == '}') {
+                } else if (safe_buf[i] == '}') {
                     num_parsed_brackets--;
                     if (num_parsed_brackets == 0) {
                         parse_state = PARSE_STATE_DONE;
@@ -1112,6 +1123,9 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         LOG_DBG("%s", receive_buf);
         parse_data(receive_buf, parsed_data_index);
     }
+
+done:
+    k_free(safe_buf);
 }
 
 void ble_gadgetbridge_send_version_info(void)
