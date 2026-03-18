@@ -24,6 +24,7 @@
 #include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+#include "zsw_coredump.h"
 
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
@@ -760,10 +761,8 @@ static int parse_reset_command(char *data, int len)
     ARG_UNUSED(data);
     ARG_UNUSED(len);
     LOG_INF("Reboot requested via companion app");
-    /* Short delay to let the BLE response/ACK go out */
     k_sleep(K_MSEC(500));
     sys_reboot(SYS_REBOOT_COLD);
-    /* unreachable */
     return 0;
 }
 
@@ -983,6 +982,13 @@ static int parse_data(char *data, int len)
 
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
         ble_gadgetbridge_send_version_info();
+        ble_gadgetbridge_send_fw_info();
+        ble_gadgetbridge_send_coredump_info();
+        return 0;
+    }
+
+    if (strlen("coredump_erase") == type_len && strncmp(type, "coredump_erase", type_len) == 0) {
+        zsw_coredump_erase(0);
         return 0;
     }
 
@@ -1116,13 +1122,45 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
 
 void ble_gadgetbridge_send_version_info(void)
 {
-    char version_msg[100];
+    char version_msg[140];
     int len = snprintf(version_msg, sizeof(version_msg),
-                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"} \n",
-                       APP_VERSION_STRING, CONFIG_BOARD_TARGET);
+                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\","
+                       "\"sha\":\"%s\",\"dbg\":%d} \n",
+                       APP_VERSION_STRING, CONFIG_BOARD_TARGET,
+                       STRINGIFY(APP_BUILD_VERSION),
+#ifdef CONFIG_DEBUG
+                       1
+#else
+                       0
+#endif
+                       );
     if (len > 0 && len < sizeof(version_msg)) {
-        LOG_DBG("Sending version info: %s", version_msg);
         ble_comm_send(version_msg, len);
+    }
+}
+
+void ble_gadgetbridge_send_fw_info(void)
+{
+    /* fw_info fields are now included in the ver message */
+}
+
+void ble_gadgetbridge_send_coredump_info(void)
+{
+    zsw_coredump_sumary_t summary = {0};
+    int num_dumps = 0;
+    char msg[150];
+    int len;
+
+    if (zsw_coredump_get_summary(&summary, 1, &num_dumps) != 0 || num_dumps == 0) {
+        return;
+    }
+
+    len = snprintf(msg, sizeof(msg),
+                   "{\"t\":\"coredump\",\"available\":true,"
+                   "\"file\":\"%s\",\"line\":%d,\"time\":\"%s\"} \n",
+                   summary.file, summary.line, summary.datetime);
+    if (len > 0 && len < sizeof(msg)) {
+        ble_comm_send(msg, len);
     }
 }
 

@@ -116,7 +116,6 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 
     mic_state.initialized = true;
 
-    /* Apply default gain from Kconfig */
     zsw_microphone_set_gain(CONFIG_ZSW_MIC_DEFAULT_GAIN);
 
     LOG_INF("Microphone initialized successfully");
