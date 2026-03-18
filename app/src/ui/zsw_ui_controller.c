@@ -244,7 +244,10 @@ static void handle_screen_gesture(lv_dir_t event_code)
             default:
                 __ASSERT(false, "Not a valid gesture code: %d", event_code);
         }
-        lv_indev_wait_release(lv_indev_get_act());
+        lv_indev_t *indev = lv_indev_get_act();
+        if (indev) {
+            lv_indev_wait_release(indev);
+        }
     } else if (overlay_active) {
         if (zsw_notification_popup_is_shown()) {
             zsw_notification_popup_remove();
@@ -501,4 +504,15 @@ const char *zsw_ui_controller_get_running_app_name(void)
         }
     }
     return NULL;
+}
+
+static void simulate_gesture_async(void *data)
+{
+    lv_dir_t dir = (lv_dir_t)(uintptr_t)data;
+    handle_screen_gesture(dir);
+}
+
+void zsw_ui_controller_simulate_gesture(uint8_t dir)
+{
+    lv_async_call(simulate_gesture_async, (void *)(uintptr_t)dir);
 }
