@@ -37,8 +37,8 @@ import pytest
 from native_sim_runner import NativeSimDevice
 
 BOOT_TIMEOUT = 15  # seconds
-# Boot marker: fired by zsw_ui_controller after the watchface is up.
-BOOT_MARKER = "UI Controller initialized"
+# Boot marker that appears in all builds
+BOOT_MARKER = "Enter active"
 
 
 # ── Override conftest autouse fixtures ────────────────────────

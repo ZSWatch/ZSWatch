@@ -24,8 +24,6 @@
 
 #ifndef CONFIG_ARCH_POSIX
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
-#include <zephyr/mgmt/mcumgr/grp/img_mgmt/img_mgmt_callbacks.h>
-#include <zephyr/mgmt/mcumgr/grp/fs_mgmt/fs_mgmt_callbacks.h>
 #include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 #endif
 
@@ -72,7 +70,7 @@ static void reset_auto_disable_timer(void)
     }
 }
 
-static enum mgmt_cb_return img_mgmt_callback(uint32_t event, enum mgmt_cb_return prev_status,
+static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return prev_status,
                                              int32_t *rc, uint16_t *group, bool *abort_more,
                                              void *data, size_t data_size)
 {
@@ -89,31 +87,9 @@ static enum mgmt_cb_return img_mgmt_callback(uint32_t event, enum mgmt_cb_return
     return MGMT_CB_OK;
 }
 
-static enum mgmt_cb_return fs_mgmt_callback(uint32_t event, enum mgmt_cb_return prev_status,
-                                            int32_t *rc, uint16_t *group, bool *abort_more,
-                                            void *data, size_t data_size)
-{
-    ARG_UNUSED(event);
-    ARG_UNUSED(prev_status);
-    ARG_UNUSED(rc);
-    ARG_UNUSED(group);
-    ARG_UNUSED(abort_more);
-    ARG_UNUSED(data);
-    ARG_UNUSED(data_size);
-
-    reset_auto_disable_timer();
-
-    return MGMT_CB_OK;
-}
-
-static struct mgmt_callback img_callback = {
-    .callback = img_mgmt_callback,
-    .event_id = MGMT_EVT_OP_IMG_MGMT_DFU_CHUNK,
-};
-
-static struct mgmt_callback fs_callback = {
-    .callback = fs_mgmt_callback,
-    .event_id = MGMT_EVT_OP_FS_MGMT_FILE_ACCESS,
+static struct mgmt_callback cmd_recv_callback_entry = {
+    .callback = cmd_recv_callback,
+    .event_id = MGMT_EVT_OP_CMD_RECV,
 };
 
 int zsw_smp_manager_enable(bool auto_disable)
@@ -198,8 +174,7 @@ void zsw_smp_manager_reset_timeout(void)
 
 static int zsw_smp_manager_init(void)
 {
-    mgmt_callback_register(&img_callback);
-    mgmt_callback_register(&fs_callback);
+    mgmt_callback_register(&cmd_recv_callback_entry);
 
     smp_enabled = false;
     auto_disable_active = false;
