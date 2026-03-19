@@ -174,14 +174,14 @@ static void enable_bluetooth(void)
 #endif
 
     err = bt_enable(NULL);
-
-#ifdef CONFIG_SETTINGS
-    settings_load();
-#endif
     if (err != 0) {
         LOG_ERR("Failed to enable Bluetooth, err: %d", err);
         return;
     }
+
+#ifdef CONFIG_SETTINGS
+    settings_load();
+#endif
 
     __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();

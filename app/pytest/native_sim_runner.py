@@ -96,10 +96,20 @@ class NativeSimDevice:
         except OSError:
             pass
 
+        # Remove any stale flash.bin so NVS settings from a previous run
+        # don't interfere.  The file is created in the process CWD by the
+        # Zephyr flash simulator driver.
+        flash_bin = os.path.join(os.path.dirname(exe), "flash.bin")
+        for candidate in [flash_bin, "flash.bin"]:
+            try:
+                os.remove(candidate)
+            except FileNotFoundError:
+                pass
+
         env = os.environ.copy()
         env["DISPLAY"] = self.display
 
-        cmd = [exe] + self.extra_args
+        cmd = [exe, "--flash_erase"] + self.extra_args
         if self.sudo:
             cmd = ["sudo"] + cmd
 

@@ -33,7 +33,6 @@
 
 LOG_MODULE_REGISTER(zsw_voice_memo_popup, LOG_LEVEL_INF);
 
-
 #define DISP_WIDTH   240
 #define DISP_HEIGHT  240
 #define AUTO_DISMISS_MS 20000
