@@ -1133,7 +1133,7 @@ void ble_gadgetbridge_send_version_info(void)
 #else
                        0
 #endif
-                       );
+                      );
     if (len > 0 && len < sizeof(version_msg)) {
         ble_comm_send(version_msg, len);
     }

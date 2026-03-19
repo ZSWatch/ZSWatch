@@ -502,84 +502,114 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_app,
 
 SHELL_CMD_REGISTER(app, &sub_app, "App management commands", NULL);
 
-/* --- input simulation commands --- */
+/* --- touch simulation commands --- */
 
-static int cmd_input_button(const struct shell *sh, size_t argc, char **argv)
+/* Convert display-space (x, y) to sensor-space using the inverse of the LVGL
+ * pointer input transforms defined in the board DT overlay. */
+#define LVGL_PTR DT_NODELABEL(lvgl_pointer_input)
+static void touch_display_to_sensor(long x, long y, int32_t *sx, int32_t *sy)
 {
-    if (argc < 2) {
-        shell_error(sh, "Usage: input button <1|2|3|4>");
+    *sx = (int32_t)x;
+    *sy = (int32_t)y;
+#if DT_PROP_OR(LVGL_PTR, invert_y, 0)
+    *sy = 239 - *sy;
+#endif
+#if DT_PROP_OR(LVGL_PTR, invert_x, 0)
+    *sx = 239 - *sx;
+#endif
+#if DT_PROP_OR(LVGL_PTR, swap_xy, 0)
+    { int32_t tmp = *sx; *sx = *sy; *sy = tmp; }
+#endif
+}
+#undef LVGL_PTR
+
+static int parse_touch_xy(const struct shell *sh, char **argv, long *x, long *y)
+{
+    char *endptr;
+    *x = strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[1] || *x < 0 || *x > 239) {
+        shell_error(sh, "Invalid x (0-239)");
         return -EINVAL;
     }
-
-    uint16_t key_code;
-    switch (atoi(argv[1])) {
-        case 1:
-            key_code = INPUT_KEY_1;
-            break;
-        case 2:
-            key_code = INPUT_KEY_2;
-            break;
-        case 3:
-            key_code = INPUT_KEY_3;
-            break;
-        case 4:
-            key_code = INPUT_KEY_4;
-            break;
-        default:
-            shell_error(sh, "Invalid button (expected 1-4)");
-            return -EINVAL;
+    *y = strtol(argv[2], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[2] || *y < 0 || *y > 239) {
+        shell_error(sh, "Invalid y (0-239)");
+        return -EINVAL;
     }
-
-    input_report_key(NULL, key_code, 1, false, K_FOREVER);
-    k_msleep(50);
-    input_report_key(NULL, key_code, 0, false, K_FOREVER);
-
-    shell_print(sh, "Button %s pressed", argv[1]);
     return 0;
 }
 
-static int cmd_input_swipe(const struct shell *sh, size_t argc, char **argv)
+#if DT_HAS_COMPAT_STATUS_OKAY(zephyr_input_sdl_touch)
+#define TOUCH_DEV DEVICE_DT_GET(DT_NODELABEL(input_sdl_touch))
+#else
+#define TOUCH_DEV DEVICE_DT_GET(DT_NODELABEL(cst816s))
+#endif
+
+static int cmd_touch(const struct shell *sh, size_t argc, char **argv)
 {
-    if (argc < 2) {
-        shell_error(sh, "Usage: input swipe <left|right|up|down>");
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
         return -EINVAL;
     }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
 
-    /* Direction names refer to navigation direction (where you want to go),
-     * but LVGL gesture direction is the finger movement direction (opposite).
-     * Navigate left = finger swipes right = LV_DIR_RIGHT, etc. */
-    uint8_t dir;
-    if (strcmp(argv[1], "left") == 0) {
-        dir = 0x02; /* LV_DIR_RIGHT — navigate left */
-    } else if (strcmp(argv[1], "right") == 0) {
-        dir = 0x01; /* LV_DIR_LEFT — navigate right */
-    } else if (strcmp(argv[1], "up") == 0) {
-        dir = 0x08; /* LV_DIR_BOTTOM — navigate up */
-    } else if (strcmp(argv[1], "down") == 0) {
-        dir = 0x04; /* LV_DIR_TOP — navigate down */
-    } else {
-        shell_error(sh, "Invalid direction (expected left|right|up|down)");
-        return -EINVAL;
-    }
-
+    const struct device *touch_dev = TOUCH_DEV;
     zsw_power_manager_reset_idle_timout();
-    zsw_ui_controller_simulate_gesture(dir);
-
-    shell_print(sh, "Swipe %s sent", argv[1]);
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, false, K_FOREVER);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+    k_msleep(50);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
     return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_input,
-    SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
-                  cmd_input_button, 2, 0),
-    SHELL_CMD_ARG(swipe, NULL, "Simulate swipe gesture: input swipe <left|right|up|down>",
-                  cmd_input_swipe, 2, 0),
-    SHELL_SUBCMD_SET_END
-);
+static int cmd_touch_down(const struct shell *sh, size_t argc, char **argv)
+{
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
+        return -EINVAL;
+    }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
 
-SHELL_CMD_REGISTER(input, &sub_input, "Input simulation commands", NULL);
+    const struct device *touch_dev = TOUCH_DEV;
+    zsw_power_manager_reset_idle_timout();
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, false, K_FOREVER);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+    return 0;
+}
 
-/* --- event injection commands --- */
+static int cmd_touch_move(const struct shell *sh, size_t argc, char **argv)
+{
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
+        return -EINVAL;
+    }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
+
+    const struct device *touch_dev = TOUCH_DEV;
+    zsw_power_manager_reset_idle_timout();
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, true, K_FOREVER);
+    return 0;
+}
+
+static int cmd_touch_up(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    const struct device *touch_dev = TOUCH_DEV;
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(touch,     NULL, "Tap at display coords: touch <x> <y>",      cmd_touch,      3, 0);
+SHELL_CMD_ARG_REGISTER(touchdown, NULL, "Press at display coords: touchdown <x> <y>", cmd_touch_down, 3, 0);
+SHELL_CMD_ARG_REGISTER(touchmove, NULL, "Move to display coords: touchmove <x> <y>",  cmd_touch_move, 3, 0);
+SHELL_CMD_ARG_REGISTER(touchup,   NULL, "Release touch: touchup",                     cmd_touch_up,   1, 0);
 
 static int cmd_event_battery(const struct shell *sh, size_t argc, char **argv)
 {
