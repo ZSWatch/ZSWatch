@@ -29,7 +29,6 @@ from typing import Optional
 
 import hmac
 
-import httpx
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
@@ -41,13 +40,6 @@ router = APIRouter()
 COREDUMP_TOOLS_DIR = Path(__file__).parent.parent / "coredump_tools"
 ELF_CACHE_DIR = Path(os.environ.get("ELF_CACHE_DIR", "/tmp/zswatch_elfs"))
 GDB_BINARY = os.environ.get("GDB_BINARY", "gdb-multiarch")
-
-# GitHub release ELF asset naming (fallback for tagged releases)
-GITHUB_REPO = os.environ.get("GITHUB_REPO", "ZSWatch/ZSWatch")
-ELF_ASSET_TEMPLATE = os.environ.get(
-    "ELF_ASSET_TEMPLATE",
-    "{board}_nrf5340_cpuapp_zephyr.elf.gz"
-)
 
 ANALYZE_TIMEOUT = int(os.environ.get("COREDUMP_ANALYZE_TIMEOUT", "30"))
 GDBSERVER_PORT = int(os.environ.get("COREDUMP_GDBSERVER_PORT", "1234"))
@@ -216,39 +208,10 @@ def _find_elf(elf_hash: Optional[str], commit_sha: str, fw_version: str, board: 
 
 async def _fetch_elf(elf_hash: Optional[str], commit_sha: str, fw_version: str, board: str) -> Optional[Path]:
     """
-    Look up ELF in cache, then try GitHub release by version.
+    Look up ELF in cache.
     Returns the local .elf path, or None if not available.
     """
-    cached = _find_elf(elf_hash, commit_sha, fw_version, board)
-    if cached:
-        return cached
-
-    # Fallback: try GitHub release by version tag
-    if not fw_version:
-        return None
-
-    asset_name = ELF_ASSET_TEMPLATE.format(board=board)
-    tag = f"v{fw_version}"
-    url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/{asset_name}"
-    logger.info("Downloading ELF from %s", url)
-
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=60) as client:
-            resp = await client.get(url)
-            if resp.status_code == 404:
-                logger.warning("ELF not found in GitHub releases for %s / %s", fw_version, board)
-                return None
-            resp.raise_for_status()
-            gz_data = resp.content
-
-        elf_data = gzip.decompress(gz_data)
-        elf_hash_computed = _register_elf(elf_data, commit_sha)
-        logger.info("ELF from GitHub release cached with hash %s", elf_hash_computed)
-        return _elf_path_by_hash(elf_hash_computed)
-
-    except Exception as exc:
-        logger.error("Failed to fetch ELF: %s", exc)
-        return None
+    return _find_elf(elf_hash, commit_sha, fw_version, board)
 
 
 def _evict_elf_cache():

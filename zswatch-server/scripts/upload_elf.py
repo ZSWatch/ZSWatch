@@ -27,7 +27,7 @@ from pathlib import Path
 
 import requests
 
-DEFAULT_SERVER = "http://192.168.1.77:8000"
+DEFAULT_SERVER = "https://zswatch-production.up.railway.app"
 
 
 def _load_dotenv():
@@ -89,7 +89,7 @@ def main():
             url,
             headers={"Authorization": f"Bearer {token}"},
             data={"commit_sha": commit_sha},
-            files={"elf": (args.elf_path.name, f)},
+            files={"elf_gz": (args.elf_path.name, f)},
             timeout=120,
         )
 
