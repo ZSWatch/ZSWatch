@@ -57,7 +57,7 @@ DEFAULT_BUILD_DIR = Path(__file__).parent.parent / "build_dbg_dk"
 # Expected functions in the crash backtrace (from zsw_shell.c crash call chain)
 EXPECTED_BT_FUNCTIONS = ["crash_level_3", "crash_level_2", "crash_level_1"]
 
-DEFAULT_SERVER_URL = "http://localhost:8000"
+DEFAULT_SERVER_URL = "https://zswatch-production.up.railway.app"
 
 
 def pytest_addoption_coredump(parser):
@@ -133,8 +133,26 @@ def _strip_binary_header(raw_bytes: bytes) -> str:
     return text
 
 
+def _get_api_key() -> str:
+    """Get COREDUMP_API_KEY from env or .env file."""
+    key = os.environ.get("COREDUMP_API_KEY", "")
+    if key:
+        return key
+    # Try loading from .env in repo root
+    env_file = Path(__file__).parent.parent.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("COREDUMP_API_KEY="):
+                return line.split("=", 1)[1]
+    return ""
+
+
 def _upload_elf(server_url: str, elf_path: Path, commit_sha: str = "") -> str:
     """Upload ELF to server, return the elf_hash."""
+    api_key = _get_api_key()
+    assert api_key, "COREDUMP_API_KEY not set — add to .env or environment"
+
     elf_bytes = elf_path.read_bytes()
     gz_data = gzip.compress(elf_bytes)
 
@@ -143,6 +161,7 @@ def _upload_elf(server_url: str, elf_path: Path, commit_sha: str = "") -> str:
 
     resp = requests.post(
         f"{server_url}/api/coredump/upload-elf",
+        headers={"Authorization": f"Bearer {api_key}"},
         data={"commit_sha": commit_sha},
         files={"elf_gz": ("zephyr.elf.gz", gz_data)},
         timeout=120,
