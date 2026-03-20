@@ -518,7 +518,11 @@ static void touch_display_to_sensor(long x, long y, int32_t *sx, int32_t *sy)
     *sx = 239 - *sx;
 #endif
 #if DT_PROP_OR(LVGL_PTR, swap_xy, 0)
-    { int32_t tmp = *sx; *sx = *sy; *sy = tmp; }
+    {
+        int32_t tmp = *sx;
+        *sx = *sy;
+        *sy = tmp;
+    }
 #endif
 }
 #undef LVGL_PTR
