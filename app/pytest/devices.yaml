@@ -1,5 +1,5 @@
 config:
-  coredump_server_url: "http://localhost:8000"
+  coredump_server_url: "https://zswatch-production.up.railway.app"
 
 devices:
   watchdk@1:
