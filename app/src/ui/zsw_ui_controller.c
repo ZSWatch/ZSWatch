@@ -74,7 +74,6 @@ static lv_indev_t *enc_indev;
 static uint8_t last_pressed;
 static ui_state_t watch_state = INIT_STATE;
 
-
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
@@ -436,7 +435,6 @@ int zsw_ui_controller_init(void)
         }
         touch_indev = lv_indev_get_next(touch_indev);
     }
-
 
     zsw_settings_onboarding_done_t onboarding_done = false;
 #ifdef CONFIG_ZSW_TEST_SKIP_ONBOARDING
