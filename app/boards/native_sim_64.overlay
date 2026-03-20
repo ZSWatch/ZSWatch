@@ -47,8 +47,16 @@
         key4: key4 {
             label = "top-left";
             gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-            zephyr,code = <INPUT_KEY_4>;
+            zephyr,code = <INPUT_KEY_KP1>;
         };
+    };
+
+    longpress_quick_record: longpress_quick_record {
+        compatible = "zephyr,input-longpress";
+        input-codes = <INPUT_KEY_KP1>;
+        short-codes = <INPUT_KEY_4>;
+        long-codes = <INPUT_KEY_F1>;
+        long-delay-ms = <1000>;
     };
 };
 
