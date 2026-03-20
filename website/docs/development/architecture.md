@@ -113,6 +113,7 @@ Key rules:
 | `periodic_event_10s_chan` | Tick | Timer → Subscribers | 10-second periodic event |
 | `zsw_notification_mgr_chan` | Notification | Notif Mgr → Apps | New notification received |
 | `zsw_notification_mgr_remove_chan` | Notification ID | Notif Mgr → Apps | Notification dismissed/removed |
+| `voice_memo_event_chan` | Voice memo event | Recording Mgr → Apps | Voice memo recorded/deleted/list updated |
 
 ## Periodic Events
 
@@ -161,6 +162,19 @@ Incoming BLE data is parsed and published to `ble_comm_data_chan` with a **type 
 - **Watchface** - handles weather and time types
 
 Outbound commands (e.g., music play/pause) flow in reverse: the app publishes to `music_control_data_chan`, and the BLE module picks it up and sends it to the phone.
+
+## Audio Recording and Codec
+
+The **Recording Manager** (`zsw_recording_manager`) handles voice memo recording and storage. Audio is captured via the microphone driver, encoded using the **Opus codec** (`app/src/codec/`), and stored in the filesystem as `.opus` files.
+
+The **SMP Manager** (`zsw_smp_manager`) provides MCUmgr file system access, allowing the companion app to download recorded voice memos from the watch using standard MCUmgr FS commands.
+
+Key features:
+- Opus audio codec for efficient compression
+- Configurable microphone gain and sample rate
+- File storage in `/lfs1/voice_memos/`
+- BLE notification to companion app when new memo is available
+- Companion app downloads via MCUmgr, transcribes, and classifies content
 
 ## Power Management
 
