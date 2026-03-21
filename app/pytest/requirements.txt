@@ -28,6 +28,8 @@ pytest
 pytest-html
 
 bleak
+requests
+requests
 pytest-asyncio
 smpclient
 
