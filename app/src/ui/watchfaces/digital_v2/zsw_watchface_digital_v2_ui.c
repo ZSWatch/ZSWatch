@@ -154,7 +154,7 @@ static lv_obj_t *make_row(lv_obj_t *parent, int y_offset)
 static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
                            zsw_settings_watchface_t *settings)
 {
-    use_relative_battery = settings->relative_battery;
+    use_relative_battery = true; /* layout requires percentage display */
     ui_evt_cb            = evt_cb;
 
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
@@ -344,15 +344,6 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_obj_set_style_text_color(ui_music_label, lv_color_hex(0x4CAF50), LV_PART_MAIN);
     lv_obj_set_style_text_font(ui_music_label, &lv_font_montserrat_10, LV_PART_MAIN);
 
-    /* ── Hardcoded test data for layout validation ── */
-    use_relative_battery = true;
-    watchface_set_step(6543, 0, 0);
-    watchface_set_battery_percent(82, 3800);
-    watchface_set_charging(false);
-    watchface_set_num_notifcations(3);
-    watchface_set_ble_connected(true);
-    watchface_set_weather_full(18, 800, 62);
-    watchface_set_music("Bohemian Rhapsody", "Queen");
 }
 
 /* ── remove ────────────────────────────────────────────────────────────── */
