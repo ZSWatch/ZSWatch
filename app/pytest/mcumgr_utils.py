@@ -123,6 +123,31 @@ async def shell_command_ble(device_config, argv: list[str], timeout_s: float = 5
     return await with_ble_client(address, run)
 
 
+async def file_upload_usb(
+    device_config, remote_path: str, data: bytes, timeout_s: float = 60.0, chunk_size: int = 64
+) -> None:
+    """Upload a file to the device filesystem via MCUmgr FS over USB."""
+    from smpclient.requests.file_management import FileUpload
+
+    usb_port = require_usb_port(device_config)
+    await wait_for_usb_port(usb_port, True, timeout_s=timeout_s)
+
+    async def run(client: SMPClient):
+        off = 0
+        total = len(data)
+        while off < total:
+            chunk = data[off : off + chunk_size]
+            kwargs = {"off": off, "data": chunk, "name": remote_path}
+            if off == 0:
+                kwargs["len"] = total
+            resp = await client.request(FileUpload(**kwargs), timeout_s=timeout_s)
+            if error(resp):
+                pytest.fail(f"File upload failed at offset {off}: {resp}")
+            off += len(chunk)
+
+    await with_serial_client(usb_port, run)
+
+
 async def file_download_usb(device_config, remote_path: str, timeout_s: float = 30.0) -> bytes:
     """Download a file from the device filesystem via MCUmgr FS over USB."""
     from smpclient.requests.file_management import FileDownload
