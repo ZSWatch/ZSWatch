@@ -18,20 +18,93 @@
 #include "utils/zsw_ui_utils.h"
 #include "ble/ble_ancs.h"
 #include "managers/zsw_notification_manager.h"
+#include "applications/watchface/watchface_app.h"
 #include <lvgl.h>
+#include <lvgl_zephyr.h>
+#include <zephyr/fs/fs.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(zsw_ui_utils, LOG_LEVEL_WRN);
+
+#define CUSTOM_BG_PATH     "/user/bg.bin"
+#define CUSTOM_BG_NEW_PATH "/user/bg_new.bin"
 
 #if CONFIG_WATCHFACE_BACKGROUND_SPACE
 ZSW_LV_IMG_DECLARE(space_blur_bg);
-const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(space_blur_bg);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(space_blur_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_FLOWER
 ZSW_LV_IMG_DECLARE(flower_watchface_bg);
-const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(flower_watchface_bg);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(flower_watchface_bg);
 #elif CONFIG_WATCHFACE_BACKGROUND_PLANET
 ZSW_LV_IMG_DECLARE(earth_blur_move);
-const lv_img_dsc_t *global_watchface_bg_img = (const lv_img_dsc_t *)ZSW_LV_IMG_USE(earth_blur_move);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(earth_blur_move);
 #else
-const lv_img_dsc_t *global_watchface_bg_img = NULL;
+static const void *default_watchface_bg_img = NULL;
 #endif
+
+const void *global_watchface_bg_img = NULL;
+
+void zsw_ui_utils_load_watchface_bg(void)
+{
+    struct fs_dirent dirent;
+    int rc = fs_stat(CUSTOM_BG_PATH, &dirent);
+
+    if (rc == 0 && dirent.type == FS_DIR_ENTRY_FILE && dirent.size > 12) {
+        LOG_INF("Custom watchface background found: %s (%u bytes)",
+                CUSTOM_BG_PATH, dirent.size);
+        global_watchface_bg_img = CUSTOM_BG_PATH;
+    } else {
+        global_watchface_bg_img = default_watchface_bg_img;
+    }
+}
+
+void zsw_ui_utils_swap_watchface_bg(void)
+{
+    /* Under LVGL lock: switch to default bg and flush cached image */
+    lvgl_lock();
+    global_watchface_bg_img = default_watchface_bg_img;
+    watchface_app_refresh_bg();
+    lv_image_cache_drop(CUSTOM_BG_PATH);
+    lvgl_unlock();
+
+    /* Safe to do file ops — LVGL no longer references the file */
+    fs_unlink(CUSTOM_BG_PATH);
+    fs_rename(CUSTOM_BG_NEW_PATH, CUSTOM_BG_PATH);
+
+    /* Under LVGL lock: load new bg and refresh watchface */
+    lvgl_lock();
+    zsw_ui_utils_load_watchface_bg();
+    watchface_app_refresh_bg();
+    lvgl_unlock();
+}
+
+static int cmd_bg_apply(const struct shell *sh, size_t argc, char **argv)
+{
+    zsw_ui_utils_swap_watchface_bg();
+    shell_print(sh, "Background applied");
+    return 0;
+}
+
+static int cmd_bg_reset(const struct shell *sh, size_t argc, char **argv)
+{
+    lvgl_lock();
+    global_watchface_bg_img = default_watchface_bg_img;
+    watchface_app_refresh_bg();
+    lv_image_cache_drop(CUSTOM_BG_PATH);
+    lvgl_unlock();
+
+    fs_unlink(CUSTOM_BG_PATH);
+    shell_print(sh, "Background reset to default");
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(bg_cmds,
+                               SHELL_CMD(apply, NULL, "Apply uploaded background (/user/bg_new.bin -> /user/bg.bin)", cmd_bg_apply),
+                               SHELL_CMD(reset, NULL, "Reset to default compiled-in background", cmd_bg_reset),
+                               SHELL_SUBCMD_SET_END
+                              );
+SHELL_CMD_REGISTER(bg, &bg_cmds, "Watchface background commands", NULL);
 
 LV_IMG_DECLARE(stormy);
 LV_IMG_DECLARE(snowy);

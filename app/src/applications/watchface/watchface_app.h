@@ -67,8 +67,12 @@ typedef struct watchface_ui_api_t {
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int pressure);
+    /* Optional extended callbacks — NULL on watchfaces that don't implement them */
+    void (*set_weather_full)(int8_t temperature, int weather_code, uint16_t humidity);
+    void (*set_music)(const char *track, const char *artist); /* NULL/NULL to hide */
     void (*set_charging)(bool is_charging);
     void (*ui_invalidate_cached)(void);
+    void (*set_watchface_bg)(const void *bg_img); /* Optional — NULL if watchface doesn't use global bg */
     const void *(*get_preview_img)(void);
     const char *name;
 } watchface_ui_api_t;
@@ -78,6 +82,7 @@ void watchface_app_stop(void);
 void watchface_change(int index);
 int watchface_app_get_current_face(void);
 void watchface_app_register_ui(watchface_ui_api_t *ui);
+void watchface_app_refresh_bg(void);
 
 int watchface_app_get_num_faces(void);
 int watchface_app_get_face_info(int index, const lv_img_dsc_t **preview,  const char **name);

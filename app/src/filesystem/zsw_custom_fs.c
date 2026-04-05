@@ -36,7 +36,7 @@
 #include <zephyr/fs/fs_sys.h>
 #include <zephyr/sys/__assert.h>
 
-LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_DBG);
 
 #define ZSW_FS_MOUNT_POINT "/S"
 
