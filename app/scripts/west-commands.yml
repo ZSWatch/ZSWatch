@@ -17,3 +17,8 @@ west-commands:
       - name: coredump
         class: CoredumpWestCommand
         help: Analyze a coredump
+  - file: scripts/upload_elf_west_command.py
+    commands:
+      - name: upload_elf
+        class: UploadElfWestCommand
+        help: Upload zephyr.elf to the coredump analysis server
