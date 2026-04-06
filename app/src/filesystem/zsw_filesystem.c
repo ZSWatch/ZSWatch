@@ -138,7 +138,44 @@ static int zsw_user_lfs_init(void)
     }
 
     LOG_INF("User LFS mounted at %s", ZSW_USER_LFS_MOUNT_POINT);
-    return log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    rc = log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    if (rc == -EFAULT) {
+        const struct flash_area *fa;
+
+        LOG_WRN("User LFS corrupt (statvfs=%d), erasing and reformatting...", rc);
+
+        rc = fs_unmount(&user_mnt);
+        if (rc < 0) {
+            LOG_ERR("Failed to unmount corrupt user LFS: %d", rc);
+            return rc;
+        }
+
+        rc = flash_area_open(FIXED_PARTITION_ID(user_storage), &fa);
+        if (rc < 0) {
+            LOG_ERR("Failed to open user_storage flash area: %d", rc);
+            return rc;
+        }
+
+        LOG_WRN("Erasing user_storage partition (%u bytes)...", fa->fa_size);
+        rc = flash_area_erase(fa, 0, fa->fa_size);
+        flash_area_close(fa);
+        if (rc < 0) {
+            LOG_ERR("Failed to erase user_storage: %d", rc);
+            return rc;
+        }
+
+        rc = fs_mount(&user_mnt);
+        if (rc < 0) {
+            LOG_ERR("Failed to remount user LFS after erase: %d", rc);
+            return rc;
+        }
+        LOG_INF("User LFS reformatted and remounted at %s", ZSW_USER_LFS_MOUNT_POINT);
+        rc = log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    }
+
+    lsdir(ZSW_USER_LFS_MOUNT_POINT);
+
+    return rc;
 }
 
 SYS_INIT(zsw_filesystem_ls, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
