@@ -1,5 +1,5 @@
 diff --git a/subsys/mgmt/mcumgr/grp/fs_mgmt/src/fs_mgmt.c b/subsys/mgmt/mcumgr/grp/fs_mgmt/src/fs_mgmt.c
-index 44926c7eff0..33d3dd7c571 100644
+index 44926c7eff0..a6264ca1790 100644
 --- a/subsys/mgmt/mcumgr/grp/fs_mgmt/src/fs_mgmt.c
 +++ b/subsys/mgmt/mcumgr/grp/fs_mgmt/src/fs_mgmt.c
 @@ -143,6 +143,8 @@ static void file_close_work_handler(struct k_work *work)
@@ -11,7 +11,7 @@ index 44926c7eff0..33d3dd7c571 100644
  	(void)fs_mgmt_cleanup();
  
  	k_sem_give(&fs_mgmt_ctxt.lock_sem);
-@@ -510,16 +512,19 @@ static int fs_mgmt_file_upload(struct smp_streamer *ctxt)
+@@ -510,16 +512,24 @@ static int fs_mgmt_file_upload(struct smp_streamer *ctxt)
  
  	/* Verify that the data offset matches the expected offset (i.e. current size of file) */
  	if (off > 0 && off != fs_mgmt_ctxt.off) {
@@ -23,7 +23,7 @@ index 44926c7eff0..33d3dd7c571 100644
 -		/* Because the client would most likely decide to abort and transfer and start
 -		 * again, clean everything up and release the file handle so it can be used
 -		 * elsewhere (if needed).
-+		/* Offset mismatch — likely caused by BLE packet loss (write-without-response).
++		/* Offset mismatch - likely caused by BLE packet loss (write-without-response).
 +		 * Instead of aborting, respond with the server's current offset so the
 +		 * mcumgr client library can resend from the correct position.
  		 */
@@ -35,6 +35,11 @@ index 44926c7eff0..33d3dd7c571 100644
 +			LOG_ERR("Upload offset behind (skipping): client=%llu expected=%zu file=%s",
 +				off, fs_mgmt_ctxt.off, fs_mgmt_ctxt.path);
 +		}
++
++		/* Reschedule the idle close timer so the file is not auto-closed
++		 * while the client is recovering from the offset mismatch.
++		 */
++		k_work_reschedule(&fs_mgmt_ctxt.file_close_work, FILE_CLOSE_IDLE_TIME);
 +
 +		ok = fs_mgmt_file_rsp(zse, MGMT_ERR_EOK, fs_mgmt_ctxt.off);
  		goto end;
