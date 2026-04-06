@@ -37,6 +37,10 @@ typedef bool zsw_settings_ble_log_en_t;
 #define ZSW_SETTINGS_KEY_BLE_LOG_EN "ble_log"
 #define ZSW_SETTINGS_BLE_LOG_EN (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_LOG_EN)
 
+typedef bool zsw_settings_fs_log_en_t;
+#define ZSW_SETTINGS_KEY_FS_LOG_EN "fs_log"
+#define ZSW_SETTINGS_FS_LOG_EN (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_FS_LOG_EN)
+
 typedef bool zsw_settings_ble_aoa_en_t;
 #define ZSW_SETTINGS_KEY_BLE_AOA_EN "aoa_en"
 #define ZSW_SETTINGS_BLE_AOA_EN (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_AOA_EN)
