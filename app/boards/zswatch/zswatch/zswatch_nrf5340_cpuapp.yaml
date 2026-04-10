@@ -1,0 +1,26 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: zswatch/nrf5340/cpuapp
+name: ZSWatch-nRF5340-Application-MCU
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - xtools
+  - zephyr
+ram: 448
+flash: 1024
+supported:
+  - gpio
+  - i2c
+  - i2s
+  - pwm
+  - watchdog
+  - usb_cdc
+  - usb_device
+  - usbd
+  - netif:openthread
+  - gpio
+  - spi
+vendor: ZSWatch

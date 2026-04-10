@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&gpio0 {
+    displa-en {
+        gpio-hog;
+        gpios = <10 GPIO_ACTIVE_HIGH>; 
+        output-high;
+    };
+};

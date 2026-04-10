@@ -1,0 +1,18 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: zswatch
+  full_name: ZSWatch
+  vendor: zswatch
+  socs:
+  - name: 'nrf5340'
+    variants:
+    - name: 'ns'
+      cpucluster: 'cpuapp'
+  revision:
+    format: number
+    default: "1"
+    exact: false
+    revisions:
+    - name: "1"

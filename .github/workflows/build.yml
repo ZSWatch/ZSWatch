@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         build_type: [debug, release]
-        board: [watchdk@1/nrf5340/cpuapp, zswatch_legacy@4/nrf5340/cpuapp, zswatch_legacy@5/nrf5340/cpuapp, native_sim/native/64]
+        board: [zswatch@1/nrf5340/cpuapp, watchdk@1/nrf5340/cpuapp, zswatch_legacy@4/nrf5340/cpuapp, zswatch_legacy@5/nrf5340/cpuapp, native_sim/native/64]
     steps:
       - name: Free disk space on runner
         run: |
@@ -119,7 +119,7 @@ jobs:
 
           if [ "${{ matrix.build_type }}" = "debug" ]; then
             case "${{ matrix.board }}" in
-              "watchdk@1/nrf5340/cpuapp")
+                "watchdk@1/nrf5340/cpuapp"|"zswatch@1/nrf5340/cpuapp")
                 append_var EXTRA_CONF_FILE "boards/debug.conf;boards/log_on_uart.conf"
                 append_var EXTRA_DTC_OVERLAY "boards/log_on_uart.overlay"
                 ;;

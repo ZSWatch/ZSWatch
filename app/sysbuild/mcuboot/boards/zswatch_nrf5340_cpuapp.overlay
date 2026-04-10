@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&uart0 {
+    status = "okay";
+    disable-rx; // Allows logs but keeps power consumption down.
+};
+
+/ {
+    chosen {
+        zephyr,console = &uart0;
+    };
+};
+
+&bmi270 {
+    status = "disabled";
+};
+
+&cst816s {
+    status = "disabled";
+};
+
+&npm1300_pmic {
+    status = "disabled";
+};
+
+&npm1300_gpio {
+    status = "disabled";
+};
+
+&gpio0 {
+    displa-en {
+        status = "disabled";
+    };
+};
