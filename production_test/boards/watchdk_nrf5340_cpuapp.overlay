@@ -7,4 +7,10 @@
     chosen {
         zephyr,console = &uart0;
     };
+
+};
+&i2c1 {
+    clock-frequency = <I2C_BITRATE_FAST>;
+    // Flash buffer size is needed for the I2C bootloader to flash the firmware
+    zephyr,flash-buf-max-size = <8250>;
 };

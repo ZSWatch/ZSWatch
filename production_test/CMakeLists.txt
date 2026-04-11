@@ -40,6 +40,10 @@ if (CONFIG_AUDIO_DMIC)
     )
 endif()
 
+if (CONFIG_MAX32664C_USE_FIRMWARE_LOADER)
+    target_include_directories(app PRIVATE ../app/src/ext_drivers/firmware)
+endif()
+
 target_sources(app PRIVATE 
     src/main.c
     src/production_test_runner.c
