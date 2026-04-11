@@ -29,7 +29,13 @@
 
 LOG_MODULE_REGISTER(zsw_hr, LOG_LEVEL_DBG);
 
+#define HR_LOG_DATA_FOR_PLOTTING
+
+#ifdef HR_LOG_DATA_FOR_PLOTTING
+#define ZSW_HR_THREAD_STACK_SIZE 2048
+#else
 #define ZSW_HR_THREAD_STACK_SIZE 1024
+#endif
 #define ZSW_HR_THREAD_PRIORITY   K_PRIO_PREEMPT(10)
 
 static const struct device *const sensor_hub = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr_hub));
@@ -135,11 +141,28 @@ static int fetch_sample(struct zsw_hr_sample *sample)
     struct sensor_value rr;
     struct sensor_value skin_contact;
     struct sensor_value activity;
+#ifdef HR_LOG_DATA_FOR_PLOTTING
+    struct sensor_value green;
+    struct sensor_value ir;
+    struct sensor_value red;
+    struct sensor_value acc_x;
+    struct sensor_value acc_y;
+    struct sensor_value acc_z;
+#endif
 
     rc = sensor_sample_fetch(sensor_hub);
     if (rc) {
         return rc;
     }
+
+#ifdef HR_LOG_DATA_FOR_PLOTTING
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_GREEN, &green);
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_IR, &ir);
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_RED, &red);
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_ACCEL_X, &acc_x);
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_ACCEL_Y, &acc_y);
+    sensor_channel_get(sensor_hub, SENSOR_CHAN_ACCEL_Z, &acc_z);
+#endif
 
     rc = sensor_channel_get(sensor_hub, SENSOR_CHAN_MAX32664C_HEARTRATE, &hr);
     if (rc) {
@@ -175,6 +198,27 @@ static int fetch_sample(struct zsw_hr_sample *sample)
     sample->respiration_confidence = (uint8_t)rr.val2;
     sample->skin_contact = (skin_contact.val1 != 0);
     sample->activity_class = activity.val1;
+
+#ifdef HR_LOG_DATA_FOR_PLOTTING
+    LOG_PRINTK("TS,%d,ms;"
+               "GREEN1,%i,;GREEN2,%i,;"
+               "IR1,%i,;IR2,%i,;"
+               "RED1,%i,;RED2,%i,;"
+               "X,%i,;Y,%i,;Z,%i;"
+               "HR,%u,bpm;HR_Conf,%u,;"
+               "RR,%u,ms;RR_Conf,%u,;"
+               "SC,%u,;Activity,%u,;"
+               "SpO2,%u,%%;SpO2_Conf,%u;\n",
+               k_uptime_get_32(),
+               green.val1, green.val2,
+               ir.val1, ir.val2,
+               red.val1, red.val2,
+               acc_x.val1, acc_y.val1, acc_z.val1,
+               hr.val1, hr.val2,
+               rr.val1, rr.val2,
+               skin_contact.val1, activity.val1,
+               spo2.val1, spo2.val2);
+#endif
 
     return 0;
 }
@@ -231,7 +275,11 @@ static void hr_thread(void *p1, void *p2, void *p3)
             }
         }
 
+#ifdef HR_LOG_DATA_FOR_PLOTTING
+        k_msleep(ZSW_HR_REALTIME_INTERVAL_MS);
+#else
         k_msleep(interval_ms);
+#endif
     }
 }
 
@@ -386,9 +434,28 @@ bool zsw_hr_is_running(void)
     return running;
 }
 
+#define FW_VERSION_MAJOR 30
+#define FW_VERSION_MINOR 13
+#define FW_VERSION_PATCH 31
+
 static int zsw_hr_init(const struct device *unused)
 {
     ARG_UNUSED(unused);
+
+    uint8_t major, minor, patch;
+    int err = max32664c_read_fw_version(sensor_hub, &major, &minor, &patch);
+    if (err || major != FW_VERSION_MAJOR || minor != FW_VERSION_MINOR || patch != FW_VERSION_PATCH) {
+        if (err) {
+            LOG_ERR("No MAX32664C detected. Either not connected or sensor hub have no firmware: %d", err);
+        } else {
+            LOG_WRN("Sensor hub firmware version %u.%u.%u is outdated, expected %u.%u.%u",
+                    major, minor, patch, FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH);
+        }
+
+        return err;
+    } else {
+        LOG_INF("Firmware up to date: %u.%u.%u", major, minor, patch);
+    }
 
     if (!sensor_hub) {
         LOG_WRN("Heart rate hub alias not defined");
