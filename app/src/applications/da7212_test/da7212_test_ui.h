@@ -19,9 +19,19 @@
 
 #include <lvgl.h>
 
-typedef void (*da7212_test_ui_evt_cb_t)(bool play);
+typedef enum {
+	DA7212_TEST_UI_STATE_IDLE,
+	DA7212_TEST_UI_STATE_PLAYING_MELODY,
+	DA7212_TEST_UI_STATE_RECORDING_VOICE,
+	DA7212_TEST_UI_STATE_PLAYING_VOICE,
+} da7212_test_ui_state_t;
 
-void da7212_test_ui_show(lv_obj_t *root, da7212_test_ui_evt_cb_t play_cb);
+typedef void (*da7212_test_ui_evt_cb_t)(void);
+
+void da7212_test_ui_show(lv_obj_t *root,
+						 da7212_test_ui_evt_cb_t melody_cb,
+						 da7212_test_ui_evt_cb_t voice_demo_cb,
+						 da7212_test_ui_evt_cb_t stop_cb);
 void da7212_test_ui_remove(void);
 void da7212_test_ui_set_status(const char *text);
-void da7212_test_ui_set_playing(bool playing);
+void da7212_test_ui_set_state(da7212_test_ui_state_t state);
