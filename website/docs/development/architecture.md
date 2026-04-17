@@ -163,7 +163,24 @@ Incoming BLE data is parsed and published to `ble_comm_data_chan` with a **type 
 
 Outbound commands (e.g., music play/pause) flow in reverse: the app publishes to `music_control_data_chan`, and the BLE module picks it up and sends it to the phone.
 
-## Audio Recording and Codec
+## Audio System
+
+### Audio Playback
+
+The **Speaker Manager** (`zsw_speaker_manager`) provides audio playback through the DA7212 audio codec via I2S. It supports three playback modes:
+
+- **Callback mode** (`ZSW_SPEAKER_SOURCE_CALLBACK`) - Real-time audio generation; a fill callback is invoked to produce interleaved stereo 16-bit PCM samples at 48 kHz
+- **Buffer mode** (`ZSW_SPEAKER_SOURCE_BUFFER`) - Play a pre-loaded PCM buffer
+- **File mode** (`ZSW_SPEAKER_SOURCE_FILE`) - Stream audio from a file (not yet implemented)
+
+Key API functions:
+- `zsw_speaker_manager_start()` - Start playback with a given configuration
+- `zsw_speaker_manager_stop()` - Stop playback and shut down hardware
+- `zsw_speaker_manager_is_playing()` - Query playback status
+
+The speaker manager handles codec configuration, I2S setup, and runs a dedicated streaming thread to feed audio data to the hardware.
+
+### Audio Recording
 
 The **Recording Manager** (`zsw_recording_manager`) handles voice memo recording and storage. Audio is captured via the microphone driver, encoded using the **Opus codec** (`app/src/codec/`), and stored in the filesystem as `.opus` files.
 
