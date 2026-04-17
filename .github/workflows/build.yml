@@ -174,12 +174,17 @@ jobs:
         run: |
           west build production_test --build-dir production_test/${{ env.BUILD_DIR }} --pristine --board ${{ matrix.board }}
 
-      - name: Build production_test watchdk
-        if: ${{ matrix.board == 'watchdk@1/nrf5340/cpuapp' }}
+      - name: Build production_test zswatch/watchdk
+        if: ${{ matrix.board == 'watchdk@1/nrf5340/cpuapp' || matrix.board == 'zswatch@1/nrf5340/cpuapp' }}
         working-directory: ZSWatch
         run: |
           west build production_test --build-dir production_test/${{ env.BUILD_DIR }}_production --board ${{ matrix.board }} -- -DBOARD_ROOT="${PWD}/app"
-          mv production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex fw_images/production_test_watchdk.hex
+          if [ "${{ matrix.board }}" = "watchdk@1/nrf5340/cpuapp" ]; then
+            OUTPUT_NAME="production_test_watchdk.hex"
+          else
+            OUTPUT_NAME="production_test_zswatch.hex"
+          fi
+          mv production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex fw_images/${OUTPUT_NAME}
 
       - name: Remove build directories to free space
         working-directory: ZSWatch
