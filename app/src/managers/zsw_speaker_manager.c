@@ -35,6 +35,8 @@ LOG_MODULE_REGISTER(zsw_speaker_manager, LOG_LEVEL_DBG);
 #define DA7212_DAC_R_GAIN               0x46
 #define DA7212_DAC_GAIN_MAX             0x7F
 
+#define DA7212_HP_VOLUME_MAX            0x3F
+
 #define DA7212_LINE_GAIN                0x4A
 #define DA7212_LINE_CTRL                0x6D
 #define DA7212_LINE_GAIN_MAX            0x3F
@@ -51,6 +53,7 @@ LOG_MODULE_REGISTER(zsw_speaker_manager, LOG_LEVEL_DBG);
 #define BLOCK_COUNT         4
 #define INITIAL_BLOCKS      2
 #define FRAMES_PER_BLOCK    (BLOCK_SIZE / (BYTES_PER_SAMPLE * NUMBER_OF_CHANNELS))
+#define BLOCK_DURATION_MS   (FRAMES_PER_BLOCK * 1000 / SAMPLE_FREQUENCY)
 
 K_MEM_SLAB_DEFINE_STATIC(spk_mem_slab, BLOCK_SIZE, BLOCK_COUNT, 4);
 
@@ -71,6 +74,33 @@ static struct {
     zsw_speaker_event_cb_t callback;
     void *user_data;
 } spk;
+
+static void finish_playback(zsw_speaker_event_t event)
+{
+    int ret;
+
+    if (event == ZSW_SPEAKER_EVENT_PLAYBACK_FINISHED) {
+        ret = i2s_trigger(spk.i2s_dev, I2S_DIR_TX, I2S_TRIGGER_DRAIN);
+        if (ret < 0) {
+            LOG_WRN("I2S drain trigger failed: %d", ret);
+        } else {
+            k_msleep(BLOCK_DURATION_MS * BLOCK_COUNT + 5);
+        }
+    }
+
+    audio_codec_stop_output(spk.codec_dev);
+
+    ret = i2s_trigger(spk.i2s_dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
+    if (ret < 0) {
+        LOG_WRN("I2S drop trigger failed: %d", ret);
+    }
+
+    spk.thread_id = NULL;
+
+    if (spk.callback) {
+        spk.callback(event, spk.user_data);
+    }
+}
 
 static int fill_block(void **buf_out)
 {
@@ -110,17 +140,13 @@ static void stream_thread_fn(void *arg1, void *arg2, void *arg3)
         if (ret > 0) {
             /* End-of-stream signalled by fill callback */
             spk.streaming = false;
-            if (spk.callback) {
-                spk.callback(ZSW_SPEAKER_EVENT_PLAYBACK_FINISHED, spk.user_data);
-            }
+            finish_playback(ZSW_SPEAKER_EVENT_PLAYBACK_FINISHED);
             return;
         }
         if (ret < 0) {
             LOG_ERR("fill_block failed: %d", ret);
             spk.streaming = false;
-            if (spk.callback) {
-                spk.callback(ZSW_SPEAKER_EVENT_PLAYBACK_ERROR, spk.user_data);
-            }
+            finish_playback(ZSW_SPEAKER_EVENT_PLAYBACK_ERROR);
             return;
         }
 
@@ -130,13 +156,15 @@ static void stream_thread_fn(void *arg1, void *arg2, void *arg3)
             if (spk.streaming) {
                 LOG_ERR("i2s_write failed: %d", ret);
                 spk.streaming = false;
-                if (spk.callback) {
-                    spk.callback(ZSW_SPEAKER_EVENT_PLAYBACK_ERROR, spk.user_data);
-                }
+                finish_playback(ZSW_SPEAKER_EVENT_PLAYBACK_ERROR);
+            } else {
+                spk.thread_id = NULL;
             }
             return;
         }
     }
+
+    spk.thread_id = NULL;
 }
 
 static int configure_codec_gains(void)
@@ -145,8 +173,8 @@ static int configure_codec_gains(void)
 
     // TODO: move to driver
 
-    /* HP volume via codec API — ~50% */
-    audio_property_value_t vol = { .vol = 0x20 };
+    /* HP volume via codec API — 100% */
+    audio_property_value_t vol = { .vol = DA7212_HP_VOLUME_MAX };
     ret = audio_codec_set_property(spk.codec_dev, AUDIO_PROPERTY_OUTPUT_VOLUME,
                                    AUDIO_CHANNEL_ALL, vol);
     if (ret < 0) {
@@ -170,7 +198,7 @@ static int configure_codec_gains(void)
         return ret;
     }
 
-    LOG_INF("Codec gains configured (HP=0x20, DAC=0x7F, LINE=0x3F)");
+    LOG_INF("Codec gains configured (HP=0x3F, DAC=0x7F, LINE=0x3F)");
     return 0;
 }
 
