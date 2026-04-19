@@ -19,6 +19,7 @@ ZSWatch is built around the **Nordic nRF5340** SoC (dual-core ARM Cortex-M33, 12
 | **External flash** | Macronix MX25U51245G | 64 MB QSPI flash (images, XIP code) |
 | **RTC** | Micro Crystal RV-8263 | Timekeeping and alarms |
 | **Microphone** | Knowles SPK0641HT4H | I2S digital microphone |
+| **Audio codec** | Dialog DA7212 | Audio playback via I2S (speaker output) |
 | **PMIC** | Nordic nPM1300 | Battery charging, power management |
 
 ## Hardware Variants
