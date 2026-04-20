@@ -43,6 +43,7 @@ endif()
 target_sources(app PRIVATE 
     src/main.c
     src/production_test_runner.c
+    src/netcore_check.c
     src/screens/button_test_screen.c
     src/screens/vibration_test_screen.c
     src/screens/brightness_test_screen.c

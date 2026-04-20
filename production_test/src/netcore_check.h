@@ -17,16 +17,15 @@
 
 #pragma once
 
-#include "../production_test_runner.h"
+#include "production_test_runner.h"
 
 /**
- * @brief Initialize the result screen
+ * @brief Check if the network core is alive and responding.
+ *
+ * Uses the Net Core Monitor (NCM) GPMEM heartbeat to verify that the
+ * CPUNET is running and feeding its liveness counter. Requires the
+ * net core image (ipc_radio) to have CONFIG_NET_CORE_MONITOR=y.
+ *
+ * @return TEST_RESULT_PASSED if net core is alive, TEST_RESULT_FAILED otherwise.
  */
-void result_screen_init(void);
-
-/**
- * @brief Show the final result screen
- * @param metadata Array of test metadata
- * @param num_tests Number of tests in the metadata array
- */
-void result_screen_show(const test_metadata_t *metadata, size_t num_tests);
+test_result_t netcore_check_run(void);

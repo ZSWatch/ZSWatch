@@ -20,11 +20,6 @@
 #include <stddef.h>
 #include "../production_test_runner.h"
 
-typedef struct {
-    const char *name;
-    const test_result_t *result_ptr;
-} test_metadata_t;
-
 /**
  * @brief Initialize the sensor scan screen
  */
