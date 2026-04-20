@@ -18,6 +18,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
+#include <stdio.h>
+#include <string.h>
 #include "result_screen.h"
 
 LOG_MODULE_REGISTER(result_screen, LOG_LEVEL_INF);
@@ -77,7 +79,7 @@ void result_screen_init(void)
     lv_obj_set_width(action_label, 180);
 }
 
-void result_screen_show(production_test_runner_context_t *context, const char **test_names, int num_tests)
+void result_screen_show(const test_metadata_t *metadata, size_t num_tests)
 {
     LOG_INF("Showing final result screen");
 
@@ -88,23 +90,21 @@ void result_screen_show(production_test_runner_context_t *context, const char **
     static char failed_tests_text[200] = {0};
     bool first_failure = true;
 
-    // Check all test results
-    test_result_t *results = (test_result_t *)&context->results;
-    int num_results = sizeof(context->results) / sizeof(test_result_t);
+    for (size_t i = 0; i < num_tests; i++) {
+        test_result_t result = *metadata[i].result_ptr;
 
-    for (int i = 0; i < num_results && i < num_tests; i++) {
-        if (results[i] != TEST_RESULT_PENDING) {
+        if (result != TEST_RESULT_PENDING) {
             total_tests++;
-            if (results[i] == TEST_RESULT_PASSED) {
+            if (result == TEST_RESULT_PASSED) {
                 passed_tests++;
-            } else if (results[i] == TEST_RESULT_FAILED) {
+            } else if (result == TEST_RESULT_FAILED) {
                 failed_count++;
                 if (first_failure) {
-                    snprintf(failed_tests_text, sizeof(failed_tests_text), "Failed: %s", test_names[i]);
+                    snprintf(failed_tests_text, sizeof(failed_tests_text), "Failed: %s", metadata[i].name);
                     first_failure = false;
                 } else {
                     size_t len = strlen(failed_tests_text);
-                    snprintf(failed_tests_text + len, sizeof(failed_tests_text) - len, ", %s", test_names[i]);
+                    snprintf(failed_tests_text + len, sizeof(failed_tests_text) - len, ", %s", metadata[i].name);
                 }
             }
         }

@@ -39,18 +39,24 @@ typedef enum {
 } test_result_t;
 
 typedef struct {
+    const char *name;
+    const test_result_t *result_ptr;
+} test_metadata_t;
+
+typedef struct {
     test_result_t buttons;
     test_result_t vibration;
     test_result_t backlight;
     test_result_t touch;
-    test_result_t display;
+    test_result_t microphone;
+    test_result_t sensor_scan;
     test_result_t imu;
     test_result_t pressure;
     test_result_t magnetometer;
     test_result_t light;
     test_result_t flash;
-    test_result_t microphone;
     test_result_t rtc;
+    test_result_t netcore;
 } test_results_t;
 
 typedef struct {

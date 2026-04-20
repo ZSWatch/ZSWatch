@@ -41,6 +41,7 @@
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_microphone.h"
 #include "applications/mic/spectrum_analyzer.h"
+#include "netcore_check.h"
 
 LOG_MODULE_REGISTER(prod_test_runner, LOG_LEVEL_INF);
 
@@ -125,6 +126,7 @@ static const test_step_t *current_step(void);
 static const test_step_t *find_step(production_test_runner_state_t state);
 static int button_index_from_code(uint32_t button_code);
 static bool set_device_result(test_result_t *slot, const struct device *dev, const char *name);
+static size_t build_test_metadata(test_metadata_t *metadata, size_t max_count);
 
 K_WORK_DELAYABLE_DEFINE(state_work, state_work_handler);
 K_WORK_DELAYABLE_DEFINE(timeout_work, timeout_work_handler);
@@ -341,6 +343,9 @@ void production_test_runner_init(void)
     for (size_t i = 0; i < ARRAY_SIZE(device_checks); i++) {
         set_device_result(device_checks[i].slot, device_checks[i].device, device_checks[i].name);
     }
+
+    // Check if the network core is alive (requires NCM-enabled ipc_radio)
+    test_context.results.netcore = netcore_check_run();
 }
 
 void production_test_runner_start(void)
@@ -348,7 +353,7 @@ void production_test_runner_start(void)
     LOG_INF("Starting production test sequence");
 
     test_context.current_state = TEST_STATE_COMPLETE;
-    test_context.results.display = TEST_RESULT_PASSED;
+    test_context.results.sensor_scan = TEST_RESULT_PASSED;
 
     schedule_state_transition(TEST_STATE_BUTTON_TEST, K_NO_WAIT);
 }
@@ -694,7 +699,7 @@ static void touch_step_enter(void)
     if (!hardware_ready && !sim_ready) {
         LOG_WRN("No touch controller available - skipping touch test");
         test_context.results.touch = TEST_RESULT_FAILED;
-        test_context.results.display = TEST_RESULT_PASSED;
+        test_context.results.sensor_scan = TEST_RESULT_PASSED;
         advance_to_next_step(K_NO_WAIT);
         return;
     }
@@ -722,7 +727,7 @@ static void touch_step_on_timeout(void)
 /* ------------------------------------------------------------------------- */
 static void microphone_step_enter(void)
 {
-    test_context.results.display = TEST_RESULT_PASSED;
+    test_context.results.sensor_scan = TEST_RESULT_PASSED;
     test_context.results.microphone = TEST_RESULT_RUNNING;
 
     mic_sample_count = 0;
@@ -789,6 +794,56 @@ static bool any_test_failed(void)
     return false;
 }
 
+static size_t build_test_metadata(test_metadata_t *metadata, size_t max_count)
+{
+    size_t count = 0;
+
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Buttons", &test_context.results.buttons
+        };
+    }
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Vibration", &test_context.results.vibration
+        };
+    }
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Backlight", &test_context.results.backlight
+        };
+    }
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Touch", &test_context.results.touch
+        };
+    }
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Microphone", &test_context.results.microphone
+        };
+    }
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Sensor scan", &test_context.results.sensor_scan
+        };
+    }
+
+    for (size_t i = 0; i < ARRAY_SIZE(device_checks) && count < max_count; i++) {
+        metadata[count++] = (test_metadata_t) {
+            device_checks[i].name, device_checks[i].slot
+        };
+    }
+
+    if (count < max_count) {
+        metadata[count++] = (test_metadata_t) {
+            "Net core flashed", &test_context.results.netcore
+        };
+    }
+
+    return count;
+}
+
 static void sensor_scan_step_enter(void)
 {
     // Skip sensor scan screen if all tests passed
@@ -798,53 +853,22 @@ static void sensor_scan_step_enter(void)
         return;
     }
 
-    int count = 0;
     test_metadata_t metadata[MAX_NUM_TEST_METADATA];
-
-    // Add interactive tests (these are tested by user interaction)
-    metadata[count++] = (test_metadata_t) {
-        "Buttons", &test_context.results.buttons
-    };
-    metadata[count++] = (test_metadata_t) {
-        "Vibration", &test_context.results.vibration
-    };
-    metadata[count++] = (test_metadata_t) {
-        "Backlight", &test_context.results.backlight
-    };
-    metadata[count++] = (test_metadata_t) {
-        "Touch", &test_context.results.touch
-    };
-    metadata[count++] = (test_metadata_t) {
-        "Display", &test_context.results.display
-    };
-    metadata[count++] = (test_metadata_t) {
-        "Microphone", &test_context.results.microphone
-    };
-
-    // Add device/sensor tests
-    for (size_t i = 0; i < ARRAY_SIZE(device_checks); i++) {
-        if (count < MAX_NUM_TEST_METADATA) {
-            metadata[count++] = (test_metadata_t) {
-                device_checks[i].name, device_checks[i].slot
-            };
-        }
-    }
-
-    assert(count <= MAX_NUM_TEST_METADATA);
+    size_t count = build_test_metadata(metadata, ARRAY_SIZE(metadata));
 
     // We want to show failed tests first in list, so "sort" the metadata array
     test_metadata_t sorted_metadata[MAX_NUM_TEST_METADATA];
-    int sorted_count = 0;
+    size_t sorted_count = 0;
 
     // Pick all failed tests
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         if (*metadata[i].result_ptr == TEST_RESULT_FAILED) {
             sorted_metadata[sorted_count++] = metadata[i];
         }
     }
 
     // Pick the rest
-    for (int i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         if (*metadata[i].result_ptr != TEST_RESULT_FAILED) {
             sorted_metadata[sorted_count++] = metadata[i];
         }
@@ -861,18 +885,17 @@ static void sensor_scan_step_on_timeout(void)
 /* ------------------------------------------------------------------------- */
 /* Final result                                                              */
 /* ------------------------------------------------------------------------- */
-static int count_test_results(void)
+static int count_test_results(const test_metadata_t *metadata, size_t count)
 {
     int total = 0;
     int passed = 0;
 
-    test_result_t *results = (test_result_t *)&test_context.results;
-    size_t count = sizeof(test_results_t) / sizeof(test_result_t);
-
     for (size_t i = 0; i < count; i++) {
-        if (results[i] != TEST_RESULT_PENDING) {
+        test_result_t result = *metadata[i].result_ptr;
+
+        if (result != TEST_RESULT_PENDING) {
             total++;
-            if (results[i] == TEST_RESULT_PASSED) {
+            if (result == TEST_RESULT_PASSED) {
                 passed++;
             }
         }
@@ -884,27 +907,12 @@ static int count_test_results(void)
 
 static void final_result_step_enter(void)
 {
-    test_context.total_tests = count_test_results();
+    test_metadata_t metadata[MAX_NUM_TEST_METADATA];
+    size_t count = build_test_metadata(metadata, ARRAY_SIZE(metadata));
 
-    // Build complete test names array (interactive + device tests)
-    const char *test_names[MAX_NUM_TEST_METADATA];
-    int num_test_names = 0;
+    test_context.total_tests = count_test_results(metadata, count);
 
-    // Add interactive test names from test_steps array
-    for (size_t i = 0; i < ARRAY_SIZE(test_steps); i++) {
-        if (test_steps[i].state != TEST_STATE_FINAL_RESULT) {
-            test_names[num_test_names++] = test_steps[i].name;
-        }
-    }
-
-    // Add device/sensor test names from device_checks array
-    for (size_t i = 0; i < ARRAY_SIZE(device_checks); i++) {
-        if (num_test_names < MAX_NUM_TEST_METADATA) {
-            test_names[num_test_names++] = device_checks[i].name;
-        }
-    }
-
-    result_screen_show(&test_context, test_names, num_test_names);
+    result_screen_show(metadata, count);
     test_context.current_state = TEST_STATE_FINAL_RESULT;
 }
 

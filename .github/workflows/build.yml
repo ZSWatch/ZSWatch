@@ -158,6 +158,9 @@ jobs:
           # Only one copy of Net Core image needed, it's the same for all builds
           mv ${{ env.BUILD_DIR }}/merged_CPUNET.hex fw_images/zswatch_nrf5340_CPUNET.hex
 
+          # Export MCUboot hex for reuse by production_test
+          cp ${{ env.BUILD_DIR }}/mcuboot/zephyr/zephyr.hex fw_images/mcuboot.hex
+
           # Copy qspi ini file
           mv app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini fw_images/qspi_mx25u51245.ini
 
@@ -175,16 +178,30 @@ jobs:
           west build production_test --build-dir production_test/${{ env.BUILD_DIR }} --pristine --board ${{ matrix.board }}
 
       - name: Build production_test zswatch/watchdk
-        if: ${{ matrix.board == 'watchdk@1/nrf5340/cpuapp' || matrix.board == 'zswatch@1/nrf5340/cpuapp' }}
+        if: ${{ matrix.build_type == 'debug' && (matrix.board == 'watchdk@1/nrf5340/cpuapp' || matrix.board == 'zswatch@1/nrf5340/cpuapp') }}
         working-directory: ZSWatch
         run: |
-          west build production_test --build-dir production_test/${{ env.BUILD_DIR }}_production --board ${{ matrix.board }} -- -DBOARD_ROOT="${PWD}/app"
+          west build production_test --build-dir production_test/${{ env.BUILD_DIR }}_production --board ${{ matrix.board }} -- -DBOARD_ROOT="${PWD}/app" -DPRODUCTION_TEST_FACTORY_BUILD=ON
           if [ "${{ matrix.board }}" = "watchdk@1/nrf5340/cpuapp" ]; then
-            OUTPUT_NAME="production_test_watchdk.hex"
+            OUTPUT_NAME="production_test_watchdk"
           else
-            OUTPUT_NAME="production_test_zswatch.hex"
+            OUTPUT_NAME="production_test_zswatch"
           fi
-          mv production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex fw_images/${OUTPUT_NAME}
+          # Sign production_test with imgtool (MCUboot header, no crypto)
+          # Header size 0x200, slot size 0xd3e00 from pm_static
+          python3 bootloader/mcuboot/scripts/imgtool.py sign \
+            --header-size 0x200 \
+            --align 4 \
+            --slot-size 0xd3e00 \
+            --version 0.0.0+0 \
+            --pad-header \
+            production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.hex \
+            production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.signed.hex
+          # Merge app's MCUboot with signed production_test for factory CPUAPP image
+          python3 zephyr/scripts/build/mergehex.py \
+            -o fw_images/${OUTPUT_NAME}.hex \
+            fw_images/mcuboot.hex \
+            production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.signed.hex
 
       - name: Remove build directories to free space
         working-directory: ZSWatch
