@@ -244,7 +244,10 @@ static void handle_screen_gesture(lv_dir_t event_code)
             default:
                 __ASSERT(false, "Not a valid gesture code: %d", event_code);
         }
-        lv_indev_wait_release(lv_indev_get_act());
+        lv_indev_t *indev = lv_indev_get_act();
+        if (indev) {
+            lv_indev_wait_release(indev);
+        }
     } else if (overlay_active) {
         if (zsw_notification_popup_is_shown()) {
             zsw_notification_popup_remove();

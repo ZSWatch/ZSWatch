@@ -28,10 +28,6 @@
 
 LOG_MODULE_REGISTER(voice_memo_ui, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
-/* Screen dimensions */
-#define DISP_WIDTH   240
-#define DISP_HEIGHT  240
-
 static struct {
     /* Common */
     lv_obj_t *root_obj;
@@ -66,11 +62,11 @@ static struct {
     /* Entry filenames for delete callback */
     char entry_filenames[ZSW_RECORDING_MAX_FILES][VOICE_MEMO_MAX_FILENAME];
 
-    /* Pulsing animation for recording indicator */
-    lv_anim_t rec_pulse_anim;
+    /* Blink state for recording indicator */
+    bool dot_visible;
+    uint8_t blink_counter;
 } ui;
 
-/* ---------- Relative time helper ---------- */
 static void format_relative_time(uint32_t timestamp, char *buf, size_t buf_size)
 {
     if (timestamp == 0) {
@@ -105,12 +101,6 @@ static void format_relative_time(uint32_t timestamp, char *buf, size_t buf_size)
         uint32_t days = diff / 86400;
         snprintf(buf, buf_size, "%u days ago", days);
     }
-}
-
-/* ---------- Pulsing animation callback ---------- */
-static void rec_pulse_cb(void *obj, int32_t val)
-{
-    lv_obj_set_style_opa((lv_obj_t *)obj, (lv_opa_t)val, 0);
 }
 
 static void record_btn_cb(lv_event_t *e)
@@ -208,7 +198,7 @@ static void entry_delete_btn_cb(lv_event_t *e)
 static void create_list_screen(void)
 {
     ui.list_screen = lv_obj_create(ui.root_obj);
-    lv_obj_set_size(ui.list_screen, DISP_WIDTH, DISP_HEIGHT);
+    lv_obj_set_size(ui.list_screen, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
     lv_obj_set_style_bg_opa(ui.list_screen, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(ui.list_screen, 0, 0);
     lv_obj_set_style_pad_all(ui.list_screen, 0, 0);
@@ -230,7 +220,7 @@ static void create_list_screen(void)
 
     /* Scrollable list container */
     ui.list_container = lv_obj_create(ui.list_screen);
-    lv_obj_set_size(ui.list_container, DISP_WIDTH - 20, DISP_HEIGHT - 100);
+    lv_obj_set_size(ui.list_container, lv_disp_get_hor_res(NULL) - 20, lv_disp_get_ver_res(NULL) - 100);
     lv_obj_set_style_bg_opa(ui.list_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(ui.list_container, 0, 0);
     lv_obj_set_style_pad_all(ui.list_container, 4, 0);
@@ -265,7 +255,7 @@ static void create_list_screen(void)
 static void create_recording_screen(void)
 {
     ui.rec_screen = lv_obj_create(ui.root_obj);
-    lv_obj_set_size(ui.rec_screen, DISP_WIDTH, DISP_HEIGHT);
+    lv_obj_set_size(ui.rec_screen, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
     lv_obj_set_style_bg_opa(ui.rec_screen, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(ui.rec_screen, 0, 0);
     lv_obj_set_style_pad_all(ui.rec_screen, 0, 0);
@@ -280,15 +270,8 @@ static void create_recording_screen(void)
     lv_obj_set_style_border_width(ui.rec_indicator, 0, 0);
     lv_obj_align(ui.rec_indicator, LV_ALIGN_TOP_MID, 0, 40);
 
-    /* Setup pulsing animation */
-    lv_anim_init(&ui.rec_pulse_anim);
-    lv_anim_set_var(&ui.rec_pulse_anim, ui.rec_indicator);
-    lv_anim_set_exec_cb(&ui.rec_pulse_anim, rec_pulse_cb);
-    lv_anim_set_values(&ui.rec_pulse_anim, LV_OPA_40, LV_OPA_COVER);
-    lv_anim_set_duration(&ui.rec_pulse_anim, 800);
-    lv_anim_set_playback_duration(&ui.rec_pulse_anim, 800);
-    lv_anim_set_repeat_count(&ui.rec_pulse_anim, LV_ANIM_REPEAT_INFINITE);
-    lv_anim_start(&ui.rec_pulse_anim);
+    ui.dot_visible = true;
+    ui.blink_counter = 0;
 
     /* Timer label */
     ui.time_label = lv_label_create(ui.rec_screen);
@@ -344,9 +327,6 @@ void voice_memo_ui_show(lv_obj_t *root, const voice_memo_ui_callbacks_t *cbs)
 
 void voice_memo_ui_remove(void)
 {
-    /* Stop pulsing animation */
-    lv_anim_delete(ui.rec_indicator, rec_pulse_cb);
-
     if (ui.back_confirm_msgbox) {
         lv_msgbox_close(ui.back_confirm_msgbox);
         ui.back_confirm_msgbox = NULL;
@@ -414,6 +394,13 @@ void voice_memo_ui_update_time(uint32_t elapsed_ms, uint32_t remaining_s)
 
     lv_label_set_text_fmt(ui.time_label, "%02u:%02u", mins, secs);
 
+    ui.blink_counter++;
+    if (ui.blink_counter >= 2) {
+        ui.blink_counter = 0;
+        ui.dot_visible = !ui.dot_visible;
+        lv_obj_set_style_opa(ui.rec_indicator, ui.dot_visible ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+    }
+
     if (ui.remaining_label && remaining_s > 0) {
         lv_label_set_text_fmt(ui.remaining_label, "%u:%02u left",
                               remaining_s / 60, remaining_s % 60);
@@ -471,7 +458,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
         }
 
         lv_obj_t *entry = lv_obj_create(ui.list_container);
-        lv_obj_set_size(entry, DISP_WIDTH - 40, 44);
+        lv_obj_set_size(entry, lv_disp_get_hor_res(NULL) - 40, 44);
         lv_obj_set_style_bg_color(entry, zsw_color_dark_gray(), 0);
         lv_obj_set_style_bg_opa(entry, LV_OPA_COVER, 0);
         lv_obj_set_style_radius(entry, 8, 0);

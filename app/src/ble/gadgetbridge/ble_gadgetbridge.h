@@ -15,6 +15,10 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len);
 
 void ble_gadgetbridge_send_version_info(void);
 
+void ble_gadgetbridge_send_fw_info(void);
+
+void ble_gadgetbridge_send_coredump_info(void);
+
 /**
  * @brief Send a notification action to Gadgetbridge.
  *

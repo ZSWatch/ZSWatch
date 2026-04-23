@@ -29,6 +29,7 @@
 #include <zephyr/debug/coredump.h>
 #include <zephyr/fs/fs.h>
 #include <zsw_clock.h>
+#include <filesystem/zsw_filesystem.h>
 
 LOG_MODULE_REGISTER(zsw_coredump, LOG_LEVEL_DBG);
 
@@ -48,7 +49,7 @@ int zsw_coredump_to_log(void)
 {
     int err;
     struct fs_file_t file;
-    const char *path = "/lvgl_lfs/coredump.txt";
+    const char *path = ZSW_USER_LFS_MOUNT_POINT "/coredump.txt";
 
     fs_file_t_init(&file);
     err = fs_open(&file, path, FS_O_READ);
@@ -86,7 +87,7 @@ int zsw_coredump_to_log(void)
 void zsw_coredump_erase(int index)
 {
     // TODO Handle when multiple coredumps are saved
-    const char *path = "/lvgl_lfs/coredump.txt";
+    const char *path = ZSW_USER_LFS_MOUNT_POINT "/coredump.txt";
     fs_unlink(path);
 
     retention_clear(retention_area);
@@ -96,7 +97,7 @@ int zsw_coredump_get_summary(zsw_coredump_sumary_t *summary, int max_dumps, int 
 {
     int err;
     struct fs_file_t file;
-    const char *path = "/lvgl_lfs/coredump.txt";
+    const char *path = ZSW_USER_LFS_MOUNT_POINT "/coredump.txt";
     uint8_t buf[FILE_CHUNK_LENGTH + 1];
     ssize_t read;
 
@@ -163,7 +164,7 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
     struct fs_file_t file;
     struct coredump_cmd_copy_arg args;
     zsw_coredump_sumary_t cb_summary = {0};
-    const char *path = "/lvgl_lfs/coredump.txt";
+    const char *path = ZSW_USER_LFS_MOUNT_POINT "/coredump.txt";
     char file_write_chunk[FILE_CHUNK_LENGTH] = {0};
     uint8_t coredump[FILE_CHUNK_LENGTH / 2 - COREDUMP_LINE_OVERHEAD] = {0};
 
@@ -251,12 +252,13 @@ static int write_coredump_to_filesystem(struct crash_info_header *header)
     fs_close(&file);
 
     if (err < 0) {
-        err = fs_unlink(path);
+        fs_unlink(path);
     }
 
     coredump_cmd(COREDUMP_CMD_INVALIDATE_STORED_DUMP, &args);
 
-    return err;
+    /* fs_write returns bytes written (positive) on success — normalize to 0 */
+    return err < 0 ? err : 0;
 }
 
 static void coredump_logging_backend_start(void)
@@ -327,6 +329,7 @@ static int coredump_logging_backend_cmd(enum coredump_cmd_id cmd_id,
             } else {
                 ret = 0;
             }
+            break;
         case COREDUMP_CMD_ERASE_STORED_DUMP:
             clear_stored_dump();
             break;
@@ -385,15 +388,25 @@ int zsw_coredump_init(void)
     if (retention_is_valid(retention_area)) {
         struct crash_info_header header;
         int ret = read_crash_header(&header);
-        if (ret == 0 && header.crash_line != 0 && header.crash_file[0] != '\0') {
-            LOG_ERR("ASSERT: %s (line: %d)", header.crash_file, header.crash_line);
+        bool has_crash_info = (ret == 0 && header.crash_line != 0 && header.crash_file[0] != '\0');
+
+        if (has_crash_info) {
+            LOG_ERR("ASSERT: %s (line: %d), coredump bytes: %d",
+                    header.crash_file, header.crash_line, header.length);
         } else {
-            LOG_DBG("No assert found");
+            LOG_DBG("No assert found (length: %d)", header.length);
         }
 
-        if (header.length > 0) {
-            write_coredump_to_filesystem(&header);
+        if (has_crash_info || header.length > 0) {
+            ret = write_coredump_to_filesystem(&header);
+            if (ret == 0) {
+                LOG_INF("Coredump saved to filesystem");
+            } else {
+                LOG_ERR("Failed to save coredump to filesystem: %d", ret);
+            }
         }
+
+        retention_clear(retention_area);
     } else {
         retention_clear(retention_area);
     }

@@ -40,7 +40,6 @@ BOOT_TIMEOUT = 15  # seconds
 # Boot marker: fired by zsw_ui_controller after the watchface is up.
 BOOT_MARKER = "UI Controller initialized"
 
-
 # ── Override conftest autouse fixtures ────────────────────────
 # The global conftest.py has autouse fixtures (prepare_device, reset_device,
 # uart_logs) that depend on device_config, which triggers device parametrization.

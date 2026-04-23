@@ -1,3 +1,6 @@
+config:
+  coredump_server_url: "https://zswatch-production.up.railway.app"
+
 devices:
   watchdk@1:
     jlink_serial: "1057760264"

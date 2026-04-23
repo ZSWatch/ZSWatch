@@ -22,6 +22,7 @@
 #include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
+#include "zsw_coredump.h"
 
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
@@ -741,10 +742,8 @@ static int parse_reset_command(char *data, int len)
     ARG_UNUSED(data);
     ARG_UNUSED(len);
     LOG_INF("Reboot requested via companion app");
-    /* Short delay to let the BLE response/ACK go out */
     k_sleep(K_MSEC(500));
     sys_reboot(SYS_REBOOT_COLD);
-    /* unreachable */
     return 0;
 }
 
@@ -927,6 +926,15 @@ static int parse_data(char *data, int len)
 
     if (strlen("ver") == type_len && strncmp(type, "ver", type_len) == 0) {
         ble_gadgetbridge_send_version_info();
+        ble_gadgetbridge_send_fw_info();
+        ble_gadgetbridge_send_coredump_info();
+        return 0;
+    }
+
+    if (strlen("coredump_erase") == type_len && strncmp(type, "coredump_erase", type_len) == 0) {
+        zsw_coredump_erase(0);
+        ble_comm_send("{\"t\":\"coredump\",\"available\":false} \n",
+                      strlen("{\"t\":\"coredump\",\"available\":false} \n"));
         return 0;
     }
 
@@ -967,30 +975,34 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
 {
     LOG_HEXDUMP_DBG(data, len, "RX");
 
-    if (strncmp("Control:", data, MIN(strlen("Control:"), len)) == 0) {
-        char *time_start = strstr(data, "Control:");
-        return parse_remote_control(time_start + strlen("Control:"), len - strlen("Control:"));
+    // NULL terminate the data to make string parsing easier and safer.
+    char *safe_buf = k_malloc(len + 1);
+    if (safe_buf == NULL) {
+        LOG_ERR("Failed to allocate %u bytes for NUS parse buffer", len + 1);
+        return;
     }
+    memcpy(safe_buf, data, len);
+    safe_buf[len] = '\0';
 
-    char *gb_start = strstr(data, "GB(");
+    char *gb_start = strstr(safe_buf, "GB(");
     if (gb_start && parse_state != WAIT_GB) {
         LOG_ERR("Parsing error, was waiting end, but got GB");
         parse_state = WAIT_GB;
     }
 
-    char *time_start = strstr(data, "setTime(");
+    char *time_start = strstr(safe_buf, "setTime(");
     if (time_start && parse_state == WAIT_GB) {
         time_start += strlen("setTime(");
         parse_time(time_start);
-        return;
+        goto done;
     }
 
     // ie. ;E.setTimeZone(1.0);
-    char *offset = strstr(data, ";E.setTimeZone(");
+    char *offset = strstr(safe_buf, ";E.setTimeZone(");
     if (offset && parse_state == WAIT_GB) {
         offset += strlen(";E.setTimeZone(");
         parse_time_zone(offset);
-        return;
+        goto done;
     }
 
     switch (parse_state) {
@@ -1001,13 +1013,13 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
                 num_parsed_brackets = 0;
                 parsed_data_index = 0;
                 memset(receive_buf, 0, sizeof(receive_buf));
-                uint32_t index = gb_start - (char *)data;
+                uint32_t index = gb_start - safe_buf;
                 for (int i = index; i < len; i++) {
-                    receive_buf[parsed_data_index] = data[i];
+                    receive_buf[parsed_data_index] = safe_buf[i];
                     parsed_data_index++;
-                    if (data[i] == '{') {
+                    if (safe_buf[i] == '{') {
                         num_parsed_brackets++;
-                    } else if (data[i] == '}') {
+                    } else if (safe_buf[i] == '}') {
                         num_parsed_brackets--;
                         if (num_parsed_brackets == 0) {
                             parse_state = PARSE_STATE_DONE;
@@ -1020,16 +1032,16 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         }
         case WAIT_END: {
             for (int i = 0; i < len; i++) {
-                receive_buf[parsed_data_index] = data[i];
+                receive_buf[parsed_data_index] = safe_buf[i];
                 parsed_data_index++;
                 if (parsed_data_index >= MAX_GB_PACKET_LENGTH) {
                     LOG_ERR("Data from Gadgetbridge does not fit in MAX_GB_PACKET_LENGTH (%d)", MAX_GB_PACKET_LENGTH);
                     parse_state = WAIT_GB;
                     break;
                 }
-                if (data[i] == '{') {
+                if (safe_buf[i] == '{') {
                     num_parsed_brackets++;
-                } else if (data[i] == '}') {
+                } else if (safe_buf[i] == '}') {
                     num_parsed_brackets--;
                     if (num_parsed_brackets == 0) {
                         parse_state = PARSE_STATE_DONE;
@@ -1052,17 +1064,52 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         LOG_DBG("%s", receive_buf);
         parse_data(receive_buf, parsed_data_index);
     }
+
+done:
+    k_free(safe_buf);
 }
 
 void ble_gadgetbridge_send_version_info(void)
 {
-    char version_msg[100];
+    char version_msg[140];
     int len = snprintf(version_msg, sizeof(version_msg),
-                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"} \n",
-                       APP_VERSION_STRING, CONFIG_BOARD_TARGET);
+                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\","
+                       "\"sha\":\"%s\",\"dbg\":%d} \n",
+                       APP_VERSION_STRING, CONFIG_BOARD_TARGET,
+                       STRINGIFY(APP_BUILD_VERSION),
+#ifdef CONFIG_DEBUG
+                       1
+#else
+                       0
+#endif
+                      );
     if (len > 0 && len < sizeof(version_msg)) {
-        LOG_DBG("Sending version info: %s", version_msg);
         ble_comm_send(version_msg, len);
+    }
+}
+
+void ble_gadgetbridge_send_fw_info(void)
+{
+    /* fw_info fields are now included in the ver message */
+}
+
+void ble_gadgetbridge_send_coredump_info(void)
+{
+    zsw_coredump_sumary_t summary = {0};
+    int num_dumps = 0;
+    char msg[150];
+    int len;
+
+    if (zsw_coredump_get_summary(&summary, 1, &num_dumps) != 0 || num_dumps == 0) {
+        return;
+    }
+
+    len = snprintf(msg, sizeof(msg),
+                   "{\"t\":\"coredump\",\"available\":true,"
+                   "\"file\":\"%s\",\"line\":%d,\"time\":\"%s\"} \n",
+                   summary.file, summary.line, summary.datetime);
+    if (len > 0 && len < sizeof(msg)) {
+        ble_comm_send(msg, len);
     }
 }
 

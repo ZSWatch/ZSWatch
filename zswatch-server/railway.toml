@@ -1,0 +1,13 @@
+# ZSWatch Server — Railway deployment config
+#
+# Railway reads this file from the repo root to configure
+# how to build and deploy the service.
+
+[build]
+dockerfilePath = "zswatch-server/deploy/Dockerfile.dokku"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

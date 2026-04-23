@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/zswatch/>.
- * Copyright (c) 2025 ZSWatch Project.
+ * Copyright (c) 2026 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,6 @@ struct zsw_voice_memo_recording_event {
 struct zsw_voice_memo_result_event {
     char title[128];
     char filename[32];
-    char action_type[20];   /* "calendar_event", "task", "reminder", or "" */
-    char datetime[32];      /* ISO datetime string or "" */
+    char action_type[20];
+    char datetime[32];
 };

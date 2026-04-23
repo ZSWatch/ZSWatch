@@ -273,11 +273,60 @@ static int cmd_coredump_summary(const struct shell *sh, size_t argc, char **argv
     return 0;
 }
 
+// Dummy call chain so GDB backtrace is multi level and easy to verify.
+static volatile int crash_dummy_val;
+
+static void __noinline crash_level_3(int val)
+{
+    crash_dummy_val = val * 3;
+    __ASSERT(0, "test crash");
+    k_panic();
+}
+
+static void __noinline crash_level_2(int val)
+{
+    crash_level_3(val + 7);
+}
+
+static void __noinline crash_level_1(int val)
+{
+    crash_level_2(val + 3);
+}
+
+#define CRASH_THREAD_STACK_SIZE 1024
+#define CRASH_THREAD_PRIORITY   5
+
+static K_THREAD_STACK_DEFINE(crash_stack, CRASH_THREAD_STACK_SIZE);
+static struct k_thread crash_thread_data;
+
+static void crash_thread_entry(void *p1, void *p2, void *p3)
+{
+    ARG_UNUSED(p2);
+    ARG_UNUSED(p3);
+    int seed = (int)(intptr_t)p1;
+
+    crash_level_1(seed);
+}
+
+static int cmd_coredump_crash(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+
+    shell_print(sh, "Spawning crash thread...");
+    k_thread_create(&crash_thread_data, crash_stack,
+                    CRASH_THREAD_STACK_SIZE,
+                    crash_thread_entry, (void *)42, NULL, NULL,
+                    CRASH_THREAD_PRIORITY, 0, K_NO_WAIT);
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_coredump,
-                               SHELL_CMD_ARG(init, NULL, "Initialize coredump handling", cmd_coredump_init, 1, 0),
-                               SHELL_CMD_ARG(log, NULL, "Print stored coredump to log", cmd_coredump_to_log, 1, 0),
-                               SHELL_CMD_ARG(erase, NULL, "Erase stored coredump by index", cmd_coredump_erase, 2, 0),
-                               SHELL_CMD_ARG(summary, NULL, "Show summary of stored coredump", cmd_coredump_summary, 1, 0),
+                               SHELL_CMD_ARG(init, NULL, "Init coredump", cmd_coredump_init, 1, 0),
+                               SHELL_CMD_ARG(log, NULL, "Print coredump", cmd_coredump_to_log, 1, 0),
+                               SHELL_CMD_ARG(erase, NULL, "Erase coredump", cmd_coredump_erase, 2, 0),
+                               SHELL_CMD_ARG(summary, NULL, "Show summary", cmd_coredump_summary, 1, 0),
+                               SHELL_CMD_ARG(crash, NULL, "Trigger assert crash", cmd_coredump_crash, 1, 0),
                                SHELL_SUBCMD_SET_END
                               );
 
@@ -336,8 +385,6 @@ SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
 
 #endif /* CONFIG_RETENTION_BOOT_MODE */
 
-/* --- app management commands --- */
-
 static int cmd_app_list(const struct shell *sh, size_t argc, char **argv)
 {
     ARG_UNUSED(argc);
@@ -378,7 +425,7 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         return -EINVAL;
     }
 
-    /* Concatenate all remaining args to support app names with spaces */
+    // App names can have spaces, concatenate
     static char app_name_buf[64];
     app_name_buf[0] = '\0';
     for (int i = 1; i < argc; i++) {
@@ -387,6 +434,9 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         }
         strncat(app_name_buf, argv[i], sizeof(app_name_buf) - strlen(app_name_buf) - 1);
     }
+
+    //Wake the display so the launched app is visible
+    zsw_power_manager_reset_idle_timout();
 
     if (zsw_ui_controller_get_state() != ZSW_UI_STATE_WATCHFACE) {
         shell_error(sh, "Cannot launch app: not on watchface");
@@ -452,51 +502,118 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_app,
 
 SHELL_CMD_REGISTER(app, &sub_app, "App management commands", NULL);
 
-/* --- input simulation commands --- */
+/* --- touch simulation commands --- */
 
-static int cmd_input_button(const struct shell *sh, size_t argc, char **argv)
+/* Convert display-space (x, y) to sensor-space using the inverse of the LVGL
+ * pointer input transforms defined in the board DT overlay. */
+#define LVGL_PTR DT_NODELABEL(lvgl_pointer_input)
+static void touch_display_to_sensor(long x, long y, int32_t *sx, int32_t *sy)
 {
-    if (argc < 2) {
-        shell_error(sh, "Usage: input button <1|2|3|4>");
+    *sx = (int32_t)x;
+    *sy = (int32_t)y;
+#if DT_PROP_OR(LVGL_PTR, invert_y, 0)
+    *sy = 239 - *sy;
+#endif
+#if DT_PROP_OR(LVGL_PTR, invert_x, 0)
+    *sx = 239 - *sx;
+#endif
+#if DT_PROP_OR(LVGL_PTR, swap_xy, 0)
+    {
+        int32_t tmp = *sx;
+        *sx = *sy;
+        *sy = tmp;
+    }
+#endif
+}
+#undef LVGL_PTR
+
+static int parse_touch_xy(const struct shell *sh, char **argv, long *x, long *y)
+{
+    char *endptr;
+    *x = strtol(argv[1], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[1] || *x < 0 || *x > 239) {
+        shell_error(sh, "Invalid x (0-239)");
         return -EINVAL;
     }
-
-    uint16_t key_code;
-    switch (atoi(argv[1])) {
-        case 1:
-            key_code = INPUT_KEY_1;
-            break;
-        case 2:
-            key_code = INPUT_KEY_2;
-            break;
-        case 3:
-            key_code = INPUT_KEY_3;
-            break;
-        case 4:
-            key_code = INPUT_KEY_4;
-            break;
-        default:
-            shell_error(sh, "Invalid button (expected 1-4)");
-            return -EINVAL;
+    *y = strtol(argv[2], &endptr, 10);
+    if (*endptr != '\0' || endptr == argv[2] || *y < 0 || *y > 239) {
+        shell_error(sh, "Invalid y (0-239)");
+        return -EINVAL;
     }
-
-    input_report_key(NULL, key_code, 1, false, K_FOREVER);
-    k_msleep(50);
-    input_report_key(NULL, key_code, 0, false, K_FOREVER);
-
-    shell_print(sh, "Button %s pressed", argv[1]);
     return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_input,
-                               SHELL_CMD_ARG(button, NULL, "Simulate button press: input button <1|2|3|4>",
-                                             cmd_input_button, 2, 0),
-                               SHELL_SUBCMD_SET_END
-                              );
+#if DT_HAS_COMPAT_STATUS_OKAY(zephyr_input_sdl_touch)
+#define TOUCH_DEV DEVICE_DT_GET(DT_NODELABEL(input_sdl_touch))
+#else
+#define TOUCH_DEV DEVICE_DT_GET(DT_NODELABEL(cst816s))
+#endif
 
-SHELL_CMD_REGISTER(input, &sub_input, "Input simulation commands", NULL);
+static int cmd_touch(const struct shell *sh, size_t argc, char **argv)
+{
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
+        return -EINVAL;
+    }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
 
-/* --- event injection commands --- */
+    const struct device *touch_dev = TOUCH_DEV;
+    zsw_power_manager_reset_idle_timout();
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, false, K_FOREVER);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+    k_msleep(50);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+    return 0;
+}
+
+static int cmd_touch_down(const struct shell *sh, size_t argc, char **argv)
+{
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
+        return -EINVAL;
+    }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
+
+    const struct device *touch_dev = TOUCH_DEV;
+    zsw_power_manager_reset_idle_timout();
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, false, K_FOREVER);
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 1, true, K_FOREVER);
+    return 0;
+}
+
+static int cmd_touch_move(const struct shell *sh, size_t argc, char **argv)
+{
+    long x, y;
+    if (parse_touch_xy(sh, argv, &x, &y) != 0) {
+        return -EINVAL;
+    }
+    int32_t sx, sy;
+    touch_display_to_sensor(x, y, &sx, &sy);
+
+    const struct device *touch_dev = TOUCH_DEV;
+    zsw_power_manager_reset_idle_timout();
+    input_report_abs(touch_dev, INPUT_ABS_X, sx, false, K_FOREVER);
+    input_report_abs(touch_dev, INPUT_ABS_Y, sy, true, K_FOREVER);
+    return 0;
+}
+
+static int cmd_touch_up(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    const struct device *touch_dev = TOUCH_DEV;
+    input_report_key(touch_dev, INPUT_BTN_TOUCH, 0, true, K_FOREVER);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(touch,     NULL, "Tap at display coords: touch <x> <y>",      cmd_touch,      3, 0);
+SHELL_CMD_ARG_REGISTER(touchdown, NULL, "Press at display coords: touchdown <x> <y>", cmd_touch_down, 3, 0);
+SHELL_CMD_ARG_REGISTER(touchmove, NULL, "Move to display coords: touchmove <x> <y>",  cmd_touch_move, 3, 0);
+SHELL_CMD_ARG_REGISTER(touchup,   NULL, "Release touch: touchup",                     cmd_touch_up,   1, 0);
 
 static int cmd_event_battery(const struct shell *sh, size_t argc, char **argv)
 {
