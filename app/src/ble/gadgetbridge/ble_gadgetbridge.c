@@ -17,8 +17,10 @@
 #include "ble/ble_comm.h"
 #include "ble/ble_log_backend.h"
 #include "ble/ble_transport.h"
+#include "drivers/zsw_vibration_motor.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
+#include "managers/zsw_power_manager.h"
 #include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
 #include "app_version.h"
@@ -75,6 +77,23 @@ static void on_ble_recording_event(const struct zbus_channel *chan)
     }
 }
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
+
+static void find_dev_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    (void)zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_FIND);
+    (void)zsw_power_manager_reset_idle_timout();
+}
+
+static K_WORK_DEFINE(find_dev_work, find_dev_work_handler);
+
+static void find_dev_timer_cb(struct k_timer *timer_id)
+{
+    ARG_UNUSED(timer_id);
+    k_work_submit(&find_dev_work);
+}
+
+static K_TIMER_DEFINE(find_dev_timer, find_dev_timer_cb, NULL);
 
 static void send_ble_data_event(struct ble_data_event *evt)
 {
@@ -873,6 +892,43 @@ static int parse_voice_memo_command(char *data, int len)
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
 }
 
+/* {"t":"find","n":true/false} */
+static int parse_find_command(char *data, int len)
+{
+    ARG_UNUSED(len);
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_ERR("Failed to parse find command");
+        return -EINVAL;
+    }
+
+    cJSON *n = cJSON_GetObjectItem(root, "n");
+    if (!cJSON_IsBool(n)) {
+        LOG_WRN("Find command missing 'n'");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    bool find = cJSON_IsTrue(n);
+    cJSON_Delete(root);
+
+    if (find) {
+        /* starts the vibration motor and wake display */
+        k_work_submit(&find_dev_work);
+
+        /* Find pattern is 1s, let's trigger the timer slightly longer */
+        k_timer_start(&find_dev_timer, K_MSEC(1100), K_MSEC(1100));
+    } else {
+        k_timer_stop(&find_dev_timer);
+        zsw_vibration_stop();
+    }
+
+    LOG_INF("Find command received, find=%s", find ? "true" : "false");
+
+    return 0;
+}
+
 static int parse_data(char *data, int len)
 {
     int type_len;
@@ -940,6 +996,10 @@ static int parse_data(char *data, int len)
 
     if (strlen("reset") == type_len && strncmp(type, "reset", type_len) == 0) {
         return parse_reset_command(data, len);
+    }
+
+    if (strlen("find") == type_len && strncmp(type, "find", type_len) == 0) {
+        return parse_find_command(data, len);
     }
 
     return 0;
