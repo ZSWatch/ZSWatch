@@ -99,6 +99,17 @@ static vib_motor_state_t quick_rec_error_pattern[] = {
     {.enabled = false, .percent = 0, .delay = 0},
 };
 
+/* Find device: Triple buzz (1s) */
+static vib_motor_state_t find_pattern[] = {
+    {.enabled = true,  .percent = 100, .delay = 80},
+    {.enabled = false, .percent = 0,   .delay = 80},
+    {.enabled = true,  .percent = 100, .delay = 80},
+    {.enabled = false, .percent = 0,   .delay = 80},
+    {.enabled = true,  .percent = 100, .delay = 80},
+    {.enabled = false, .percent = 0,   .delay = 600},
+    {.enabled = false, .percent = 0,   .delay = 0},
+};
+
 static vib_motor_state_t *active_pattern;
 static uint8_t active_pattern_index;
 static uint8_t active_pattern_len;
@@ -148,6 +159,10 @@ int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
             active_pattern = quick_rec_error_pattern;
             active_pattern_len = ARRAY_SIZE(quick_rec_error_pattern);
             break;
+        case ZSW_VIBRATION_PATTERN_FIND:
+            active_pattern = find_pattern;
+            active_pattern_len = ARRAY_SIZE(find_pattern);
+            break;
         default:
             __ASSERT(false, "Invalid vibration pattern");
             return -EINVAL;
@@ -170,6 +185,13 @@ int zsw_vibration_set_enabled(bool enable)
     vib_motor_enabled = enable;
 
     return 0;
+}
+
+void zsw_vibration_stop(void)
+{
+    k_timer_stop(&vibration_timer);
+    vibration_motor_set_on(false);
+    vib_motor_busy = false;
 }
 
 static void run_next_motor_state(vib_motor_state_t *state)

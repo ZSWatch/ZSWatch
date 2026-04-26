@@ -26,6 +26,7 @@ typedef enum zsw_vibration_pattern {
     ZSW_VIBRATION_PATTERN_QUICK_REC_START,   /* Short-Long: recording started */
     ZSW_VIBRATION_PATTERN_QUICK_REC_STOP,    /* Short-Short: recording stopped */
     ZSW_VIBRATION_PATTERN_QUICK_REC_ERROR,   /* Long-Long: recording error */
+    ZSW_VIBRATION_PATTERN_FIND,              /* Triple buzz: find device */
 } zsw_vibration_pattern_t;
 
 /*
@@ -38,6 +39,14 @@ typedef enum zsw_vibration_pattern {
 * @return 0 on success, negative error code on failure
 */
 int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern);
+
+/*
+ * @brief Stop any ongoing vibration pattern
+ *
+ * @details This can be used to stop an ongoing pattern, for example when
+ * a timer alarm is dismissed.
+*/
+void zsw_vibration_stop(void);
 
 /*
 * @brief Enable or disable the vibration motor
