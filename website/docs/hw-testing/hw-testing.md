@@ -50,8 +50,12 @@ This guide describes how to run the production test on the ZSWatch Development K
 
 Download the pre-built production test firmware or build it from source in `production_test/`.
 
-Firmware can be downloaded from Github and is part of ci build artifacts:
+Firmware can be downloaded from GitHub as part of CI build artifacts:
 `watchdk@1_nrf5340_cpuapp_debug/production_test_watchdk.hex`
+
+:::info MCUboot-based Image
+The production test firmware is a **factory image** that includes MCUboot bootloader merged with a signed production test application. This allows verification that the network core firmware is flashed correctly, as both cores boot together.
+:::
 
 Flash using nrfjprog:
 ```bash
@@ -59,6 +63,11 @@ nrfjprog --recover --coprocessor CP_NETWORK -f nrf53
 nrfjprog --recover -f nrf53
 nrfjprog --program production_test_watchdk.hex --chiperase --verify --reset -f nrf53
 ```
+
+The `production_test_watchdk.hex` includes:
+- **MCUboot bootloader** for the application core
+- **Signed production_test firmware** (linked at MCUboot slot address)
+- The network core firmware must be flashed separately (see commands above)
 
 ## Test Sequence
 
@@ -100,9 +109,14 @@ Direct link to video: https://vimeo.com/1141434425
 - **Action:** Make some noise (speak, clap, tap near the microphone)
 - **Pass criteria:** Audio activity detected above threshold
 
-### 6. Sensor Scan (Automatic)
+### 6. Sensor Scan & Network Core Verification (Automatic)
 
-The following sensors are checked automatically at boot. Results are shown if any test failed.
+The following checks run automatically:
+
+- **Sensor detection**: All hardware sensors (IMU, magnetometer, pressure, environment, light) are scanned at boot
+- **Network core verification**: Verifies the nRF5340 network core (BLE radio firmware) is flashed and running correctly
+
+Results are shown if any test failed.
 
 ### 7. Final Result
 
