@@ -117,7 +117,7 @@ function HomepageHeader() {
                 iOS
               </a>
               {' · '}
-              <Link to="/docs/getting-started/companion_app#android-experimental" style={{color: '#9EC8F6', textDecoration: 'none'}}>
+              <Link to="/docs/getting-started/companion_app#android" style={{color: '#9EC8F6', textDecoration: 'none'}}>
                 Android (reach out for invite)
               </Link>
             </div>

@@ -74,7 +74,7 @@ For full setup instructions, see the [Native Simulator](./linux_development.md) 
 
 ### Quick Start
 
-1. Build for `native_sim/native/64` (see [Native Simulator - Build](./linux_development.md#2-build-the-project)).
+1. Build for `native_sim/native/64` (see [Native Simulator - Build](./linux_development.md#2-build)).
 2. In VS Code, go to **Run and Debug** (`Ctrl+Shift+D`).
 3. Select **Debug Native (with sudo)** and press **F5**.
 4. A simulated display window will open. Debug logs appear in the VS Code terminal.

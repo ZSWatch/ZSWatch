@@ -9,10 +9,10 @@ This guide describes how to run the production test on the ZSWatch Development K
 ## Required Equipment
 
 - **USB-C cable** - for power
-- **SEGGER J-Link debugger or Nordic nRF Dev Kit** (e.g., nRF54KL15DK) - for programming the device
+- **SEGGER J-Link debugger or Nordic nRF Dev Kit** (e.g., nRF54KL15DK) - for programming the device (using standard 10 pin SWD connector)
 - **ZSWatch Development kit (WatchDK)** - the device under test
-- **Vibration motor** - must be connected to the WatchDK
-- **Display** - must be connected to the WatchDK
+- **Vibration motor and Display** - must be connected to the WatchDK
+- **LiPo Battery** - Connect to the battery pin header
 
 ## Software Requirements
 
@@ -21,17 +21,18 @@ This guide describes how to run the production test on the ZSWatch Development K
 
 ## Hardware Setup
 
-1. Connect the J-Link debugger to the WatchDK debug header
-2. Connect the vibration motor and display to the designated connector
-3. Mount all jumpers if not already mounted according to image below
-4. Connect USB-C cable for power. No battery needed.
+1. Connect the vibration motor and display to the designated connector
+2. Connect the J-Link debugger to the WatchDK debug header
+3. Mount all jumpers if not already mounted according Figure 1
+4. Connect the battery
+5. Connect USB-C cable
 
 <div style={{padding: '0 20px'}}>
 
-![Production test hardware setup](dk_jumper_setup.png)
+![Production test hardware setup](dk_jumper_setup_new.png)
 
 <div style={{textAlign: 'center', fontSize: '0.9em'}}>
-  Jumper configuration for production testing. Ensure all jumpers are mounted as shown.
+  Figure 1: Jumper configuration for production testing. Ensure all jumpers are mounted as shown.
 </div>
 
 </div>
@@ -41,32 +42,46 @@ This guide describes how to run the production test on the ZSWatch Development K
 ![Production test hardware setup](prod_test_hw.jpg)
 
 <div style={{textAlign: 'center', fontSize: '0.9em'}}>
-  Full setup, ignore the battery, not needed.
+  Figure 2: Full setup.
 </div>
 
 </div>
 
 ## Flashing the Test Firmware
 
-Download the pre-built production test firmware or build it from source in `production_test/`.
+Locate and unzip the attached pre-built production test firmware.
 
-Firmware can be downloaded from Github and is part of ci build artifacts:
-`watchdk@1_nrf5340_cpuapp_debug/production_test_watchdk.hex`
-
-Flash using nrfjprog:
+Open a terminal and flash using nrfjprog:
 ```bash
 nrfjprog --recover --coprocessor CP_NETWORK -f nrf53
 nrfjprog --recover -f nrf53
+nrfjprog --program zswatch_nrf5340_CPUNET.hex --chiperase --verify --reset --coprocessor CP_NETWORK -f nrf53
 nrfjprog --program production_test_watchdk.hex --chiperase --verify --reset -f nrf53
 ```
 
 ## Test Sequence
 
-The production test runs automatically through the following tests in order. Each interactive test has a **15-second timeout**. The UI will guide you, but here is a short summary of what it does.
+The production test runs automatically through the following tests in order. Each interactive test has a **15-second timeout**. The UI will guide you. If more detailed information is needeed check below.
+
+## Definition of PASSED Hardware Test
+<div style={{padding: '0 20px'}}>
+
+![Definition of test pass](prod_test_definition_of_pass.png)
+
+<div style={{textAlign: 'center', fontSize: '0.9em'}}>
+  Figure 3: Definition of passed hardware test.
+</div>
+
+</div>
+
+
+
 
 ### Video Walkthrough
 
-Watch a full run of the production test app to see the expected prompts and pacing before you start.
+The UI should be enough to guide through the process, but here is a video also.
+
+Watch a full run of the production test app to see the expected prompts and pacing if needed.
 
 <div style={{position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)'}}>
   <iframe src="https://player.vimeo.com/video/1141434425?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}} frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" title="WatchDK production test walk-through"></iframe>
@@ -114,19 +129,6 @@ The following sensors are checked automatically at boot. Results are shown if an
 
 Press any button on the final result screen to reboot and start a fresh test run.
 
-## Post Test - Flashing ZSWatch Firmware
-
-After a successful production test, flash the full ZSWatch firmware:
-
-**Step 1:** Flash the app core (with QSPI configuration):
-```bash
-nrfjprog --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini --coprocessor CP_APPLICATION -f nrf53
-```
-
-**Step 2:** Flash the net core:
-```bash
-nrfjprog --program zswatch_nrf5340_CPUNET.hex --chiperase --verify --reset --coprocessor CP_NETWORK -f nrf53
-```
 
 ### Full Expected Output
 
@@ -146,19 +148,7 @@ Erasing user code and UICR flash areas.
 Writing image to disable ap protect.
 ```
 
-**Step 3 - Flash production test firmware:**
-
-Now you would runt he production test sequence.
-```
-$ nrfjprog --program production_test_watchdk.hex --chiperase --verify --reset -f nrf53
-[ #################### ]   0.352s | Erase file - Done erasing
-[ #################### ]   2.994s | Program file - Done programming
-[ #################### ]   3.003s | Verify file - Done verifying
-Applying system reset.
-Run.
-```
-
-**Step 1 - Flash net core image:**
+**Step 3 - Flash net core image:**
 ```
 $ nrfjprog --program zswatch_nrf5340_CPUNET.hex --chiperase --verify --reset --coprocessor CP_NETWORK -f nrf53
 [ #################### ]   0.293s | Erase file - Done erasing
@@ -168,13 +158,16 @@ Applying system reset.
 Run.
 ```
 
-**Step 5 - Flash app core image:**
+**Step 4 - Flash production test firmware:**
+
 ```
-$ nrfjprog --program watchdk@1_nrf5340_cpuapp_debug.hex --chiperase --qspisectorerase --verify --reset --qspiini qspi_mx25u51245.ini --coprocessor CP_APPLICATION -f nrf53
-[ #################### ]   0.000s | Erasing non-volatile memory - Erase successful
-[ #################### ]   1.611s | Erase file - Done erasing
-[ #################### ]  11.610s | Program file - Done programming
-[ #################### ]  11.506s | Verify file - Done verifying
+$ nrfjprog --program production_test_watchdk.hex --chiperase --verify --reset -f nrf53
+[ #################### ]   0.352s | Erase file - Done erasing
+[ #################### ]   2.994s | Program file - Done programming
+[ #################### ]   3.003s | Verify file - Done verifying
 Applying system reset.
 Run.
 ```
+
+
+Now you would run the production test sequence.
