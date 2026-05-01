@@ -336,8 +336,6 @@ SHELL_CMD_REGISTER(boot, NULL, "Enter bootloader mode (start)", cmd_boot);
 
 #endif /* CONFIG_RETENTION_BOOT_MODE */
 
-/* --- app management commands --- */
-
 static int cmd_app_list(const struct shell *sh, size_t argc, char **argv)
 {
     ARG_UNUSED(argc);
@@ -378,7 +376,7 @@ static int cmd_app_launch(const struct shell *sh, size_t argc, char **argv)
         return -EINVAL;
     }
 
-    /* Concatenate all remaining args to support app names with spaces */
+    // App names can have spaces, concatenate
     static char app_name_buf[64];
     app_name_buf[0] = '\0';
     for (int i = 1; i < argc; i++) {
@@ -516,7 +514,6 @@ static int cmd_input_swipe(const struct shell *sh, size_t argc, char **argv)
     }
 
     zsw_power_manager_reset_idle_timout();
-    zsw_ui_controller_simulate_gesture(dir);
 
     shell_print(sh, "Swipe %s sent", argv[1]);
     return 0;
