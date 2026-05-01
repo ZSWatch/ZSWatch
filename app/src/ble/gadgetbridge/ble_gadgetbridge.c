@@ -1005,24 +1005,6 @@ static int parse_data(char *data, int len)
     return 0;
 }
 
-static void parse_remote_control(char *data, int len)
-{
-    int button;
-    struct ble_data_event cb;
-    memset(&cb, 0, sizeof(cb));
-
-    button = atoi(data);
-    LOG_DBG("Pressed: %d, len: %d", button, len);
-    if (button < 0) {
-        return;
-    }
-
-    cb.data.type = BLE_COMM_DATA_TYPE_REMOTE_CONTROL;
-    cb.data.data.remote_control.button = button;
-
-    send_ble_data_event(&cb);
-}
-
 void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
 {
     LOG_HEXDUMP_DBG(data, len, "RX");
