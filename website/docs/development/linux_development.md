@@ -100,3 +100,25 @@ Once running, a simulated display window should appear.
 | **Backspace** | Back button |
 | **Arrow Up** | Navigate next / up |
 | **Arrow Down** | Navigate previous / down |
+
+---
+
+## Shell Access
+
+The native simulator provides full access to the Zephyr shell via the terminal where you launched the executable. You can:
+
+- Launch and close apps programmatically
+- Simulate touch events without clicking the window
+- Inject sensor events for testing
+- Monitor kernel threads and stack usage
+
+For a full list of available shell commands, see the [Shell Commands Reference](./debugging.md#shell-commands-reference) in the Debugging guide.
+
+**Example: Launch an app from the shell**
+
+While the simulator window is open, type in the terminal:
+```bash
+app launch Calculator
+```
+
+The Calculator app will open in the simulated display window. This is especially useful for automated testing and scripting.

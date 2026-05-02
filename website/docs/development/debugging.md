@@ -131,7 +131,115 @@ If you are running a **pre-built firmware** (downloaded from GitHub Releases or 
 From the Zephyr shell (if enabled):
 
 ```
-zsw coredump_erase 0
+coredump erase 0
 ```
 
 Or the coredump can be erased from the Info app on the watch.
+
+---
+
+## Shell Commands Reference
+
+ZSWatch includes an interactive Zephyr shell for debugging, testing, and automation. The shell is available via UART, RTT, or USB depending on your build configuration.
+
+### Accessing the Shell
+
+Connect to the serial port (UART, RTT, or USB CDC ACM) at **115200 baud** and press **Enter** to see the prompt:
+
+```
+uart:~$
+```
+
+Type `help` to list all available commands, or `<command> help` to see subcommands.
+
+### Hardware Control
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `battery` | Show battery voltage, level, and charging status | `battery` |
+| `power status` | Show power state and sleep timer | `power status` |
+| `power wake` | Reset idle timeout to keep display awake | `power wake` |
+| `vibration run_pattern <pattern>` | Run vibration pattern (`click`, `notification`, `alarm`) | `vibration run_pattern click` |
+| `display set_brightness <0-100>` | Set display brightness (percent) | `display set_brightness 50` |
+| `display get_brightness` | Get current display brightness | `display get_brightness` |
+| `cpu freq` | Show current CPU frequency profile | `cpu freq` |
+
+### App Management
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `app list` | List all registered apps and their states | `app list` |
+| `app launch <name>` | Launch an app by name (supports names with spaces) | `app launch Calculator` |
+| `app close` | Close the currently running app | `app close` |
+| `app state` | Show current UI state and running app | `app state` |
+
+### Touch Simulation
+
+Touch simulation commands allow automated testing and remote control via shell.
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `touch <x> <y>` | Tap at display coordinates (0-239) | `touch 120 120` |
+| `touchdown <x> <y>` | Press and hold at coordinates | `touchdown 50 180` |
+| `touchmove <x> <y>` | Move touch to coordinates (while pressed) | `touchmove 100 180` |
+| `touchup` | Release touch | `touchup` |
+
+:::tip Testing apps from shell
+You can script UI interactions from the companion app or pytest tests:
+```bash
+app launch Calculator
+touch 120 120    # Tap the center button
+touchup
+app close
+```
+:::
+
+### Debugging & Diagnostics
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `coredump summary` | Show summary of stored coredump | `coredump summary` |
+| `coredump log` | Print stored coredump to log output | `coredump log` |
+| `coredump erase <index>` | Erase stored coredump by index | `coredump erase 0` |
+| `factory_reset` | Erase all settings and reboot device | `factory_reset` |
+| `boot start` | Enter serial recovery / bootloader mode | `boot start` |
+
+### Kernel & System Monitoring
+
+ZSWatch enables the **Zephyr kernel shell** for low-level debugging:
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `kernel threads` | List all threads, stack usage, CPU time | `kernel threads` |
+| `kernel stacks` | Show thread stack usage summary | `kernel stacks` |
+| `kernel uptime` | Show system uptime | `kernel uptime` |
+| `kernel reboot warm\|cold` | Reboot the device | `kernel reboot cold` |
+
+:::info Thread Monitoring
+The `kernel threads` command shows:
+- Thread names and priorities
+- Stack usage (current / max size)
+- CPU utilization percentage
+- Thread states (ready, suspended, pending)
+
+This is useful for diagnosing stack overflows and performance issues.
+:::
+
+### Event Injection (Testing)
+
+The `event` subcommands allow injecting synthetic sensor events for testing without real sensor input. Run `event help` to see available commands.
+
+### Microphone Commands
+
+The `mic` subcommands control microphone recording. Run `mic help` to see available commands.
+
+---
+
+## Remote Control via Companion App
+
+The ZSWatch companion app can execute shell commands remotely over BLE, enabling:
+- Automated testing from a phone/tablet
+- Remote diagnostics without serial connection
+- Scripted UI interactions
+
+Commands are sent via the GadgetBridge protocol and executed in the shell context. This allows the companion app to launch apps, simulate touches, and query device state.
