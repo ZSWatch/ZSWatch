@@ -257,7 +257,7 @@ static void populate_slot(int slot_index, picker_item_t *item)
 
         if (app_icon_bgs[slot_index]) {
             lv_obj_set_style_bg_color(app_icon_bgs[slot_index],
-                                      lv_color_hex(0x495060), LV_PART_MAIN);
+                                      lv_color_hex(0x1e2028), LV_PART_MAIN);
         }
     } else {
         if (app_icons[slot_index] && item->folder.icon) {
@@ -375,7 +375,7 @@ static void show_folder_contents(zsw_app_category_t category)
             lv_obj_set_size(icon_bg, 55, 55);
             lv_obj_align(icon_bg, LV_ALIGN_TOP_MID, 0, 0);
             lv_obj_set_style_radius(icon_bg, 28, LV_PART_MAIN);
-            lv_obj_set_style_bg_color(icon_bg, lv_color_hex(0x495060), LV_PART_MAIN);
+            lv_obj_set_style_bg_color(icon_bg, lv_color_hex(0x1e2028), LV_PART_MAIN);
             lv_obj_set_style_border_width(icon_bg, 0, LV_PART_MAIN);
             lv_obj_remove_flag(icon_bg, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_remove_flag(icon_bg, LV_OBJ_FLAG_CLICKABLE);

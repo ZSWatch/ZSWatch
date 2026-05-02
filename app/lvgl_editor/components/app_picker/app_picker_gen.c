@@ -56,7 +56,8 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
         lv_style_init(&style_root);
         lv_style_set_width(&style_root, 240);
         lv_style_set_height(&style_root, 240);
-        lv_style_set_bg_opa(&style_root, 0);
+        lv_style_set_bg_color(&style_root, lv_color_hex(0x000000));
+        lv_style_set_bg_opa(&style_root, 210);
         lv_style_set_border_width(&style_root, 0);
         lv_style_set_pad_all(&style_root, 0);
 
@@ -142,7 +143,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
         lv_style_set_width(&style_folder_close, 55);
         lv_style_set_height(&style_folder_close, 55);
         lv_style_set_radius(&style_folder_close, 28);
-        lv_style_set_bg_color(&style_folder_close, lv_color_hex(0x495060));
+        lv_style_set_bg_color(&style_folder_close, lv_color_hex(0x1e2028));
         lv_style_set_bg_opa(&style_folder_close, 255);
         lv_style_set_border_width(&style_folder_close, 0);
         lv_style_set_pad_all(&style_folder_close, 0);
@@ -151,7 +152,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
         lv_style_set_width(&style_nav_arrow, 28);
         lv_style_set_height(&style_nav_arrow, 90);
         lv_style_set_radius(&style_nav_arrow, 14);
-        lv_style_set_bg_color(&style_nav_arrow, lv_color_hex(0x495060));
+        lv_style_set_bg_color(&style_nav_arrow, lv_color_hex(0x1e2028));
         lv_style_set_bg_opa(&style_nav_arrow, 255);
         lv_style_set_border_width(&style_nav_arrow, 0);
         lv_style_set_pad_all(&style_nav_arrow, 0);
