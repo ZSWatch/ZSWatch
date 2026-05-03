@@ -64,10 +64,11 @@ typedef struct watchface_ui_api_t {
     void (*set_step)(int32_t steps, int32_t distance, int32_t kcal);
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t number);
-    void (*set_weather)(int8_t temperature, int weather_code);
+    void (*set_weather)(int8_t temperature, int weather_code, uint16_t humidity);
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int pressure);
+    void (*set_music)(const char *track, const char *artist); /* NULL/NULL to hide */
     void (*set_charging)(bool is_charging);
     void (*ui_invalidate_cached)(void);
     void (*set_watchface_bg)(const void *bg_img);

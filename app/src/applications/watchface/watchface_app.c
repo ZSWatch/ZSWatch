@@ -359,15 +359,19 @@ static void refresh_ui(void)
     zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, last_batt_evt.is_charging, last_batt_evt.tte,
                                                last_batt_evt.ttf);
     if (strlen(last_weather_data.report_text) > 0) {
-        watchfaces[watchface_settings.watchface_index]->set_weather(last_weather_data.temperature_c,
-                                                                    last_weather_data.weather_code);
+        watchfaces[watchface_settings.watchface_index]->set_weather(
+            last_weather_data.temperature_c, last_weather_data.weather_code, last_weather_data.humidity);
     }
     if (zsw_imu_fetch_num_steps(&steps) == 0) {
         // TODO: Add calculation for distance and kcal
         watchfaces[watchface_settings.watchface_index]->set_step(steps, 0, 0);
     }
-    if (strlen(last_music_info.track_name) > 0) {
+    if (strlen(last_music_info.track_name) > 0 && last_music_state.playing) {
         zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
+        if (watchfaces[watchface_settings.watchface_index]->set_music) {
+            watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
+                                                                      last_music_info.artist);
+        }
     }
 }
 
@@ -471,12 +475,25 @@ static void update_ui_from_event(struct k_work *item)
                     last_weather_data.weather_code,
                     last_weather_data.wind,
                     last_weather_data.wind_direction);
-            watchfaces[watchface_settings.watchface_index]->set_weather(last_weather_data.temperature_c,
-                                                                        last_weather_data.weather_code);
+            watchfaces[watchface_settings.watchface_index]->set_weather(
+                last_weather_data.temperature_c, last_weather_data.weather_code, last_weather_data.humidity);
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
             zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
+            if (watchfaces[watchface_settings.watchface_index]->set_music) {
+                watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
+                                                                          last_music_info.artist);
+            }
+        } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_STATE) {
+            if (watchfaces[watchface_settings.watchface_index]->set_music) {
+                if (last_music_state.playing && strlen(last_music_info.track_name) > 0) {
+                    watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
+                                                                              last_music_info.artist);
+                } else {
+                    watchfaces[watchface_settings.watchface_index]->set_music(NULL, NULL);
+                }
+            }
         }
         return;
     }
@@ -504,6 +521,10 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
     }
     if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
         memcpy(&last_music_info, &event->data.data.music_info, sizeof(event->data.data.music_info));
+        last_music_state.playing = true;
+    }
+    if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_STATE) {
+        memcpy(&last_music_state, &event->data.data.music_state, sizeof(event->data.data.music_state));
     }
     if (running && !is_suspended) {
         k_work_submit(&update_ui_work);

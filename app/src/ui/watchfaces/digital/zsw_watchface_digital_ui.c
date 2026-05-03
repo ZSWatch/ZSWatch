@@ -521,7 +521,7 @@ static void watchface_set_ble_connected(bool connected)
     zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
-static void watchface_set_weather(int8_t temperature, int weather_code)
+static void watchface_set_weather(int8_t temperature, int weather_code, uint16_t humidity)
 {
     if (!root_page) {
         return;
@@ -529,6 +529,7 @@ static void watchface_set_weather(int8_t temperature, int weather_code)
     lv_color_t icon_color;
     const lv_img_dsc_t *icon;
 
+    ARG_UNUSED(humidity);
     lv_label_set_text_fmt(ui_weather_temperature_label, "%d°", temperature);
     icon = zsw_ui_utils_icon_from_weather_code(weather_code, &icon_color);
     lv_image_set_src(ui_weather_icon, icon);

@@ -272,8 +272,9 @@ static void watchface_116_2_dial_set_hrm(int32_t bpm, int32_t oxygen)
 
 }
 
-static void watchface_116_2_dial_set_weather(int8_t temp, int icon)
+static void watchface_116_2_dial_set_weather(int8_t temp, int icon, uint16_t humidity)
 {
+    ARG_UNUSED(humidity);
     if (!face_116_2_dial) {
         return;
     }
