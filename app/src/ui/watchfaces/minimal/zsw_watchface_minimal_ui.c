@@ -169,8 +169,11 @@ static void watchface_set_ble_connected(bool connected)
     zsw_ui_notification_area_ble_connected(zsw_ui_notifications_area, connected);
 }
 
-static void watchface_set_weather(int8_t temperature, int weather_code)
+static void watchface_set_weather(int8_t temperature, int weather_code, uint16_t humidity)
 {
+    ARG_UNUSED(temperature);
+    ARG_UNUSED(weather_code);
+    ARG_UNUSED(humidity);
 }
 
 static void watchface_set_datetime(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour,
