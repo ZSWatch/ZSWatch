@@ -61,6 +61,12 @@ static void timer_app_stop(void)
     zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &timer_app_1s_event_listener);
 }
 
+static void on_close_timer_cb(bool yes_pressed)
+{
+    ARG_UNUSED(yes_pressed);
+    zsw_vibration_stop();
+}
+
 static void alarm_triggered_cb(void *user_data)
 {
     // TODO also check:
@@ -84,9 +90,9 @@ static void alarm_triggered_cb(void *user_data)
     static char buf[50];
     snprintf(buf, sizeof(buf), "Timer %d triggered", timer_id);
 
-    zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_ALARM);
-    // TODO: Make a different popup for timer, and make it vibrate until timer is dismissed
-    zsw_popup_show("Timer", buf, NULL, 10, false);
+    /* Run pattern until pop up is dismissed or timeout */
+    zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_ALARM);
+    zsw_popup_show("Timer", buf, on_close_timer_cb, 30, false);
 }
 
 static int find_free_timer_slot(void)
