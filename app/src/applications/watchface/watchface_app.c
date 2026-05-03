@@ -24,7 +24,9 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/fs/fs.h>
 #include <lvgl.h>
+#include <lvgl_zephyr.h>
 #include <zsw_clock.h>
 #include <zsw_retained_ram_storage.h>
 #include <zephyr/zbus/zbus.h>
@@ -32,6 +34,7 @@
 
 #include "watchface_app.h"
 #include "zsw_settings.h"
+#include "ui/utils/zsw_ui_utils.h"
 #include "events/accel_event.h"
 #include "events/battery_event.h"
 #include "events/activity_event.h"
@@ -47,6 +50,25 @@ LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 #define MAX_WATCHFACES  15
 #define NORMAL_TIME_UPDATE_INTERVAL   K_MSEC(1000)
 #define SMOOTH_TIME_UPDATE_INTERVAL   K_MSEC(50)
+
+#define CUSTOM_BG_PATH       "/user/bg.bin"
+#define CUSTOM_BG_NEW_PATH   "/user/bg_new.bin"
+#define CUSTOM_BG_MIN_SIZE   12
+
+#if CONFIG_WATCHFACE_BACKGROUND_SPACE
+ZSW_LV_IMG_DECLARE(space_blur_bg);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(space_blur_bg);
+#elif CONFIG_WATCHFACE_BACKGROUND_FLOWER
+ZSW_LV_IMG_DECLARE(flower_watchface_bg);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(flower_watchface_bg);
+#elif CONFIG_WATCHFACE_BACKGROUND_PLANET
+ZSW_LV_IMG_DECLARE(earth_blur_move);
+static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(earth_blur_move);
+#else
+static const void *default_watchface_bg_img = NULL;
+#endif
+
+const void *global_watchface_bg_img = NULL;
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
@@ -110,6 +132,7 @@ static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
 static ble_comm_data_type_t last_data_update_type;
 static ble_comm_weather_t last_weather_data;
 static ble_comm_music_info_t last_music_info;
+static ble_comm_music_state_t last_music_state;
 static struct battery_sample_event last_batt_evt = {.percent = 100, .mV = 4300};
 
 static bool running;

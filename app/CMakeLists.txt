@@ -107,9 +107,7 @@ zephyr_compile_options(-Wno-double-promotion)
 # XIP Code Relocation
 if (CONFIG_MCUMGR)
     # Should work in XIP as we use update_app to enable FW update which forces XIP on during update.
-    zephyr_code_relocate(LIBRARY mcumgr_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(LIBRARY mcumgr_util LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(LIBRARY mcumgr_grp_img_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
+    # Can't relocate everything as code writing to flash code can't be in XIP, e.g. mcumgr's fs commands.
     zephyr_code_relocate(LIBRARY mcumgr_grp_os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
 endif()
 
