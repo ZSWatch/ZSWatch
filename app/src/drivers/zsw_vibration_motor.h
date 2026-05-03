@@ -33,12 +33,24 @@ typedef enum zsw_vibration_pattern {
 * @brief Run a vibration pattern
 *
 * @details Run a vibration pattern, the pattern will run asynchronously and
-* any try to run a pattern while another is running will resutlt in -EBUSY.
+* any try to run a pattern while another is running will result in -EBUSY.
 *
 * @param pattern The pattern to run
 * @return 0 on success, negative error code on failure
 */
 int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern);
+
+/*
+ * @brief Run a vibration pattern in loop
+ *
+ * @details Run a vibration pattern in a loop until @ref zsw_vibration_stop is called,
+ * the pattern will run asynchronously and any try to run a pattern while another
+ * is running will result in -EBUSY.
+ *
+ * @param pattern The pattern to run
+ * @return 0 on success, negative error code on failure
+ */
+int zsw_vibration_run_pattern_loop(zsw_vibration_pattern_t pattern);
 
 /*
  * @brief Stop any ongoing vibration pattern

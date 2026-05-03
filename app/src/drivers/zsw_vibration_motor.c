@@ -115,6 +115,7 @@ static uint8_t active_pattern_index;
 static uint8_t active_pattern_len;
 static bool vib_motor_busy;
 static bool vib_motor_enabled;
+static bool repeat_pattern = false;
 
 int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
 {
@@ -171,8 +172,20 @@ int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
 
     vib_motor_busy = true;
     active_pattern_index = 0;
+    repeat_pattern = false;
     run_next_motor_state(&active_pattern[active_pattern_index]);
 
+    return 0;
+}
+
+int zsw_vibration_run_pattern_loop(zsw_vibration_pattern_t pattern)
+{
+    int ret = zsw_vibration_run_pattern(pattern);
+    if (ret != 0) {
+        return ret;
+    }
+
+    repeat_pattern = true;
     return 0;
 }
 
@@ -192,6 +205,7 @@ void zsw_vibration_stop(void)
     k_timer_stop(&vibration_timer);
     vibration_motor_set_on(false);
     vib_motor_busy = false;
+    repeat_pattern = false;
 }
 
 static void run_next_motor_state(vib_motor_state_t *state)
@@ -226,12 +240,18 @@ static void vibration_motor_set_on(bool on)
 static void pattern_timer_timeout(struct k_timer *timer_id)
 {
     active_pattern_index++;
-    if (active_pattern_index < active_pattern_len) {
-        run_next_motor_state(&active_pattern[active_pattern_index]);
-    } else {
-        // Pattern done
-        vib_motor_busy = false;
+
+    if (active_pattern_index >= active_pattern_len) {
+        /* If not repeat, then pattern is done */
+        if (!repeat_pattern) {
+            vib_motor_busy = false;
+            return;
+        }
+
+        active_pattern_index = 0;
     }
+
+    run_next_motor_state(&active_pattern[active_pattern_index]);
 }
 
 static int vibration_motor_init(void)
