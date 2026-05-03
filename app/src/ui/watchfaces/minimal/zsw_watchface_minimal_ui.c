@@ -67,7 +67,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     ui_minimal_watchface = root_page;
     lv_obj_clear_flag(ui_minimal_watchface, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_img_src(ui_minimal_watchface, global_watchface_bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_minimal_watchface, watchface_app_get_bg(), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_hour_img = lv_image_create(ui_minimal_watchface);
     lv_image_set_src(ui_hour_img, &hour_minimal);
@@ -215,6 +215,13 @@ static const void *watchface_get_preview_img(void)
     return ZSW_LV_IMG_USE(face_minimal_preview);
 }
 
+static void watchface_set_bg(const void *bg_img)
+{
+    if (ui_minimal_watchface && lv_obj_is_valid(ui_minimal_watchface)) {
+        lv_obj_set_style_bg_img_src(ui_minimal_watchface, bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -227,6 +234,7 @@ static watchface_ui_api_t ui_api = {
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
+    .set_watchface_bg = watchface_set_bg,
     .get_preview_img = watchface_get_preview_img,
     .name = "Analog Minimal",
 };

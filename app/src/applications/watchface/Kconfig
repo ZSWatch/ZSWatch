@@ -18,19 +18,4 @@ menu "Watchface"
         bool
         prompt "Add minimal watchface"
         default y
-
-    choice WATCHFACE_BACKGROUND_IMG
-        bool
-        prompt "Select which watchface background image to use. Not all watchfaces support this."
-        default WATCHFACE_BACKGROUND_SPACE
-
-    config WATCHFACE_BACKGROUND_SPACE
-        bool "Space themed background"
-    config WATCHFACE_BACKGROUND_FLOWER
-        bool "Flower themed background"
-    config WATCHFACE_BACKGROUND_PLANET
-        bool "Planet earth themed background"
-    config WATCHFACE_BACKGROUND_NONE
-        bool "No background"
-    endchoice
 endmenu

@@ -99,7 +99,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_digital_watchface = root_page;
-    lv_obj_set_style_bg_img_src(ui_digital_watchface, global_watchface_bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_img_src(ui_digital_watchface, watchface_app_get_bg(), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_clear_flag(ui_digital_watchface, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -620,6 +620,13 @@ static void arc_event_pressed(lv_event_t *e)
     }
 }
 
+static void watchface_set_bg(const void *bg_img)
+{
+    if (ui_digital_watchface && lv_obj_is_valid(ui_digital_watchface)) {
+        lv_obj_set_style_bg_img_src(ui_digital_watchface, bg_img, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -633,6 +640,7 @@ static watchface_ui_api_t ui_api = {
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .set_charging = watchface_set_charging,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
+    .set_watchface_bg = watchface_set_bg,
     .get_preview_img = watchface_get_preview_img,
     .name = "ZSWatch Digital",
 };
