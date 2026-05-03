@@ -81,7 +81,6 @@ static void on_ble_recording_event(const struct zbus_channel *chan)
 static void find_dev_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
-    (void)zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_FIND);
     (void)zsw_power_manager_reset_idle_timout();
 }
 
@@ -915,6 +914,7 @@ static int parse_find_command(char *data, int len)
 
     if (find) {
         /* starts the vibration motor and wake display */
+        (void)zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_FIND);
         k_work_submit(&find_dev_work);
 
         /* Find pattern is 1s, let's trigger the timer slightly longer */
