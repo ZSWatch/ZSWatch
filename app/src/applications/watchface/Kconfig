@@ -9,6 +9,11 @@ menu "Watchface"
         prompt "Add digital watchface"
         default y
 
+    config WATCHFACE_DIGITAL_MINIMAL
+        bool
+        prompt "Add digital minimal watchface"
+        default y
+
     config WATCHFACE_MINIMAL
         bool
         prompt "Add minimal watchface"
