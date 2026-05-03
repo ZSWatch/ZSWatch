@@ -27,6 +27,7 @@
 #include <zephyr/fs/fs.h>
 #include <lvgl.h>
 #include <lvgl_zephyr.h>
+#include <misc/cache/instance/lv_image_cache.h>
 #include <zsw_clock.h>
 #include <zsw_retained_ram_storage.h>
 #include <zephyr/zbus/zbus.h>
@@ -45,7 +46,7 @@
 #include "managers/zsw_notification_manager.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
-LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(watchface_app, LOG_LEVEL_WRN);
 
 #define MAX_WATCHFACES  15
 #define NORMAL_TIME_UPDATE_INTERVAL   K_MSEC(1000)
@@ -53,22 +54,13 @@ LOG_MODULE_REGISTER(watcface_app, LOG_LEVEL_WRN);
 
 #define CUSTOM_BG_PATH       "/user/bg.bin"
 #define CUSTOM_BG_NEW_PATH   "/user/bg_new.bin"
-#define CUSTOM_BG_MIN_SIZE   12
 
-#if CONFIG_WATCHFACE_BACKGROUND_SPACE
+#define CUSTOM_BG_HEADER_SIZE ((uint32_t)sizeof(lv_image_header_t))
+
 ZSW_LV_IMG_DECLARE(space_blur_bg);
 static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(space_blur_bg);
-#elif CONFIG_WATCHFACE_BACKGROUND_FLOWER
-ZSW_LV_IMG_DECLARE(flower_watchface_bg);
-static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(flower_watchface_bg);
-#elif CONFIG_WATCHFACE_BACKGROUND_PLANET
-ZSW_LV_IMG_DECLARE(earth_blur_move);
-static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(earth_blur_move);
-#else
-static const void *default_watchface_bg_img = NULL;
-#endif
 
-const void *global_watchface_bg_img = NULL;
+static const void *watchface_bg_img = NULL;
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
@@ -167,9 +159,101 @@ void watchface_app_register_ui(watchface_ui_api_t *ui_api)
     num_watchfaces++;
 }
 
+static bool bg_file_exists(const char *path, uint32_t *size)
+{
+    struct fs_dirent dirent;
+    int rc = fs_stat(path, &dirent);
+
+    if (size != NULL) {
+        *size = 0;
+    }
+
+    if (rc != 0 || dirent.type != FS_DIR_ENTRY_FILE || dirent.size <= CUSTOM_BG_HEADER_SIZE) {
+        return false;
+    }
+
+    if (size != NULL) {
+        *size = dirent.size;
+    }
+
+    return true;
+}
+
+static void watchface_app_load_bg(void)
+{
+    uint32_t size;
+
+    if (bg_file_exists(CUSTOM_BG_PATH, &size)) {
+        LOG_INF("Custom watchface background found: %s (%u bytes)",
+                CUSTOM_BG_PATH, size);
+        watchface_bg_img = CUSTOM_BG_PATH;
+    } else {
+        watchface_bg_img = default_watchface_bg_img;
+    }
+}
+
+const void *watchface_app_get_bg(void)
+{
+    return watchface_bg_img;
+}
+
+static void watchface_notify_new_bg(void)
+{
+    if (running && watchface_views_created) {
+        watchface_ui_api_t *wf = watchfaces[watchface_settings.watchface_index];
+        if (wf->set_watchface_bg) {
+            wf->set_watchface_bg(watchface_bg_img);
+        }
+    }
+}
+
+int watchface_app_reload_bg(void)
+{
+    if (!bg_file_exists(CUSTOM_BG_NEW_PATH, NULL)) {
+        return -ENOENT;
+    }
+
+    lvgl_lock();
+    lv_image_cache_drop(CUSTOM_BG_PATH);
+
+    int rc = fs_unlink(CUSTOM_BG_PATH);
+    if (rc == 0 || rc == -ENOENT) {
+        rc = fs_rename(CUSTOM_BG_NEW_PATH, CUSTOM_BG_PATH);
+    }
+
+    if (rc == 0) {
+        watchface_app_load_bg();
+    } else {
+        watchface_bg_img = default_watchface_bg_img;
+        LOG_ERR("Failed to update custom background: %d", rc);
+    }
+
+    watchface_notify_new_bg();
+    lvgl_unlock();
+
+    return rc;
+}
+
+int watchface_app_reset_bg(void)
+{
+    lvgl_lock();
+    watchface_bg_img = default_watchface_bg_img;
+    watchface_notify_new_bg();
+    lv_image_cache_drop(CUSTOM_BG_PATH);
+    lvgl_unlock();
+
+    int rc = fs_unlink(CUSTOM_BG_PATH);
+    if (rc != 0 && rc != -ENOENT) {
+        return rc;
+    }
+
+    return 0;
+}
+
 void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app_evt_listener evt_cb)
 {
     __ASSERT(num_watchfaces > 0, "Must enable at least one watchface.");
+    watchface_app_load_bg();
     int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler_watchface, &watchface_settings);
     if (err != 0) {
         LOG_ERR("Failed loading watchface settings");

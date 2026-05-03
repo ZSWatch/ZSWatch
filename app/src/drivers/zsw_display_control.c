@@ -27,6 +27,7 @@
 #include <zephyr/drivers/display.h>
 #include <zephyr/logging/log.h>
 #include "lvgl.h"
+#include <lvgl_zephyr.h>
 
 #include <zephyr/drivers/counter.h>
 
@@ -306,7 +307,9 @@ void zsw_display_control_set_brightness(uint8_t percent)
 
 static void lvgl_render(struct k_work *item)
 {
+    lvgl_lock();
     const int64_t next_update_in_ms = lv_task_handler();
+    lvgl_unlock();
     if (first_render_since_poweron) {
         zsw_display_control_set_brightness(last_brightness);
         first_render_since_poweron = false;

@@ -20,6 +20,7 @@
 #include "drivers/zsw_vibration_motor.h"
 #include "events/ble_event.h"
 #include "events/music_event.h"
+#include "applications/watchface/watchface_app.h"
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
@@ -891,6 +892,87 @@ static int parse_voice_memo_command(char *data, int len)
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
 }
 
+static const char *watchface_bg_error_str(int rc)
+{
+    switch (rc) {
+        case -ENOENT:
+            return "staged_missing";
+        case -EINVAL:
+            return "invalid_background";
+        default:
+            return "operation_failed";
+    }
+}
+
+static int send_watchface_bg_result(const char *action, int rc)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return -ENOMEM;
+    }
+
+    char action_result[24];
+    int len = snprintf(action_result, sizeof(action_result), "%s_result", action);
+    if (len <= 0 || len >= sizeof(action_result)) {
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+
+    cJSON_AddStringToObject(root, "t", "watchface_bg");
+    cJSON_AddStringToObject(root, "action", action_result);
+    cJSON_AddBoolToObject(root, "ok", rc == 0);
+    if (rc != 0) {
+        cJSON_AddNumberToObject(root, "rc", rc);
+        cJSON_AddStringToObject(root, "error", watchface_bg_error_str(rc));
+    }
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (json_str == NULL) {
+        return -ENOMEM;
+    }
+
+    ble_comm_send(json_str, strlen(json_str));
+    cJSON_free(json_str);
+    return rc;
+}
+
+static int parse_watchface_bg_command(char *data, int len)
+{
+    ARG_UNUSED(len);
+
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_WRN("watchface_bg: JSON parse failed");
+        return -EINVAL;
+    }
+
+    cJSON *action_obj = cJSON_GetObjectItem(root, "action");
+    if (!cJSON_IsString(action_obj)) {
+        LOG_WRN("watchface_bg: missing action");
+        cJSON_Delete(root);
+        return send_watchface_bg_result("unknown", -EINVAL);
+    }
+
+    int rc;
+    const char *action = action_obj->valuestring;
+    if (strcmp(action, "apply") == 0) {
+        cJSON_Delete(root);
+        rc = watchface_app_reload_bg();
+        return send_watchface_bg_result("apply", rc);
+    }
+
+    if (strcmp(action, "reset") == 0) {
+        cJSON_Delete(root);
+        rc = watchface_app_reset_bg();
+        return send_watchface_bg_result("reset", rc);
+    }
+
+    LOG_WRN("watchface_bg: unknown action '%s'", action);
+    cJSON_Delete(root);
+    return send_watchface_bg_result("unknown", -ENOTSUP);
+}
+
 /* {"t":"find","n":true/false} */
 static int parse_find_command(char *data, int len)
 {
@@ -988,6 +1070,10 @@ static int parse_data(char *data, int len)
 
     if (strlen("voice_memo") == type_len && strncmp(type, "voice_memo", type_len) == 0) {
         return parse_voice_memo_command(data, len);
+    }
+
+    if (strlen("watchface_bg") == type_len && strncmp(type, "watchface_bg", type_len) == 0) {
+        return parse_watchface_bg_command(data, len);
     }
 
     if (strlen("smp") == type_len && strncmp(type, "smp", type_len) == 0) {

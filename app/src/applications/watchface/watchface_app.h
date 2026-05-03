@@ -55,6 +55,7 @@ typedef struct watchface_app_evt_t {
 
 typedef void(*watchface_app_evt_listener)(watchface_app_evt_t);
 
+// Most callbacks are optional
 typedef struct watchface_ui_api_t {
     void (*show)(lv_obj_t *root_screen, watchface_app_evt_listener, zsw_settings_watchface_t *settings);
     void (*remove)(void);
@@ -69,6 +70,7 @@ typedef struct watchface_ui_api_t {
     void (*set_watch_env_sensors)(int pressure);
     void (*set_charging)(bool is_charging);
     void (*ui_invalidate_cached)(void);
+    void (*set_watchface_bg)(const void *bg_img);
     const void *(*get_preview_img)(void);
     const char *name;
 } watchface_ui_api_t;
@@ -81,3 +83,20 @@ void watchface_app_register_ui(watchface_ui_api_t *ui);
 
 int watchface_app_get_num_faces(void);
 int watchface_app_get_face_info(int index, const lv_img_dsc_t **preview,  const char **name);
+
+/**
+ * @brief Get the current watchface background source.
+ */
+const void *watchface_app_get_bg(void);
+
+/**
+ * @brief Let the watchface app know that a new background image is available and should be loaded.
+ */
+int watchface_app_reload_bg(void);
+
+/**
+ * @brief Remove the custom background and switch back to the default built in.
+ *
+ * This function may block until LVGL has finished any rendering work.
+ */
+int watchface_app_reset_bg(void);
