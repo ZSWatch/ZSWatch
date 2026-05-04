@@ -27,9 +27,8 @@ void zsw_display_control_set_brightness(uint8_t percent);
 uint8_t zsw_display_control_get_brightness(void);
 
 /*
-* Set LVGL rendering on or off.
-* When rendering is off, lv_task_handler will not be called periodically.
-* Needed when working with the LVGL image resources so LVGL does not
-* try to render while the image data is being updated.
+* Block LVGL rendering while external flash contents used by LVGL are updated.
+* Blocks are counted so overlapping users cannot re-enable rendering early.
 */
-int zsw_display_control_set_render_enabled(bool on);
+int zsw_display_control_block_render(void);
+int zsw_display_control_unblock_render(void);

@@ -30,6 +30,7 @@ menu "ZSWatch"
         select MCUMGR_GRP_OS
         select MCUMGR_GRP_OS_TASKSTAT
         select MCUMGR_GRP_FS
+        select MCUMGR_GRP_FS_FILE_ACCESS_HOOK
         select BT_GATT_DYNAMIC_DB
         select MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION
         select MCUMGR_MGMT_NOTIFICATION_HOOKS
