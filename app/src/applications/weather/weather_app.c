@@ -76,8 +76,6 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     zsw_timeval_t time_now;
     weather_ui_current_weather_data_t current_weather;
     weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS];
-    char *days[] = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-
     // TODO: We should cache the last successful weather data and populate it when app opens.
 
     if (status == BLE_HTTP_STATUS_OK) {
@@ -112,7 +110,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             forecasts[i].rain_percent = cJSON_GetArrayItem(precipitation_probability_max_list, i)->valueint;
             forecasts[i].icon = zsw_ui_utils_icon_from_wmo_weather_code(cJSON_GetArrayItem(weather_code_list, i)->valueint,
                                                                         &forecasts[i].color, &forecasts[i].text);
-            sprintf(forecasts[i].day, "%s", days[(time_now.tm.tm_wday + i) % 7]);
+            sprintf(forecasts[i].day, "%s", zsw_ui_utils_day_name((time_now.tm.tm_wday + i) % 7));
         }
         if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
             weather_ui_set_weather_data(current_weather, forecasts, cJSON_GetArraySize(weather_code_list));

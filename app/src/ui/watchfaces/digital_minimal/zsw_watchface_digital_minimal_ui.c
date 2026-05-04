@@ -439,8 +439,14 @@ static void watchface_set_num_notifcations(int32_t number)
     if (!root_page) {
         return;
     }
-    lv_label_set_text_fmt(ui_notif_count_label, "%d", (int)number);
-    lv_obj_clear_flag(ui_notif_icon, LV_OBJ_FLAG_HIDDEN);
+
+    if (number > 0) {
+        lv_label_set_text_fmt(ui_notif_count_label, "%d", (int)number);
+        lv_obj_clear_flag(ui_notif_icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_label_set_text(ui_notif_count_label, "");
+        lv_obj_add_flag(ui_notif_icon, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static void watchface_set_weather(int8_t temperature, int weather_code, uint16_t humidity)
@@ -593,7 +599,6 @@ static watchface_ui_api_t ui_api = {
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .set_watchface_bg     = watchface_set_bg,
     .get_preview_img      = watchface_get_preview_img,
-    .set_weather          = watchface_set_weather,
     .set_music            = watchface_set_music,
     .name                 = "Digital Minimal",
 };

@@ -23,6 +23,24 @@
 
 LOG_MODULE_REGISTER(zsw_ui_utils, LOG_LEVEL_WRN);
 
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_0);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_1);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_2);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_3);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_4);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_5);
+ZSW_LV_IMG_DECLARE(face_goog_20_61728_6);
+
+static const void *battery_icons[] = {
+    ZSW_LV_IMG_USE(face_goog_20_61728_0),
+    ZSW_LV_IMG_USE(face_goog_20_61728_1),
+    ZSW_LV_IMG_USE(face_goog_20_61728_2),
+    ZSW_LV_IMG_USE(face_goog_20_61728_3),
+    ZSW_LV_IMG_USE(face_goog_20_61728_4),
+    ZSW_LV_IMG_USE(face_goog_20_61728_5),
+    ZSW_LV_IMG_USE(face_goog_20_61728_6),
+};
+
 LV_IMG_DECLARE(stormy);
 LV_IMG_DECLARE(snowy);
 LV_IMG_DECLARE(rainy);
@@ -464,4 +482,49 @@ void zsw_ui_utils_seconds_to_day_hour_min(int seconds, int *days, int *hours, in
     *hours = seconds / 3600;
     seconds = seconds % 3600;
     *minutes = seconds / 60;
+}
+
+const void *zsw_ui_utils_battery_icon(int percent)
+{
+    int idx;
+
+    if (percent <= 10) {
+        idx = 0;
+    } else if (percent <= 20) {
+        idx = 1;
+    } else if (percent <= 40) {
+        idx = 2;
+    } else if (percent <= 60) {
+        idx = 3;
+    } else if (percent <= 80) {
+        idx = 4;
+    } else if (percent <= 90) {
+        idx = 5;
+    } else {
+        idx = 6;
+    }
+    return battery_icons[idx];
+}
+
+const char *zsw_ui_utils_day_name(int day_of_week)
+{
+    static const char *const names[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+
+    if (day_of_week < 0 || day_of_week > 6) {
+        return "???";
+    }
+    return names[day_of_week];
+}
+
+const char *zsw_ui_utils_month_name(int month)
+{
+    static const char *const names[] = {
+        "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+        "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+    };
+
+    if (month < 0 || month > 11) {
+        return "???";
+    }
+    return names[month];
 }
