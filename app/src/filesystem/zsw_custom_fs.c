@@ -23,7 +23,6 @@
 #include <zephyr/storage/stream_flash.h>
 #include <zephyr/sys/util.h>
 #include <filesystem/zsw_filesystem.h>
-#include <drivers/zsw_display_control.h>
 #include <lvgl.h>
 #include "lv_conf.h"
 
@@ -228,7 +227,6 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
                 return rc;
             }
 
-            zsw_display_control_set_render_enabled(false);
             full_fs_file.len = 0; // Reset for fresh write
             full_fs_stream_active = true;
         }
@@ -275,7 +273,6 @@ static int zsw_fs_close(struct fs_file_t *zfp)
         LOG_INF("Closing full_fs, total bytes written: %u", full_fs_file.len);
         full_fs_file.opened = false;
         full_fs_file.index = 0;
-        zsw_display_control_set_render_enabled(true);
         return rc;
     } else {
         lvgl_fs_close(NULL, zfp->filep);
@@ -593,7 +590,6 @@ int zsw_filesytem_erase(void)
     full_fs_file.len = 0;
     full_fs_file.index = 0;
     full_fs_stream_active = false;
-
     int num_opened_files = 0;
     for (int i = 0; i < MAX_OPENED_FILES; i++) {
         if (opened_files[i].header != NULL) {

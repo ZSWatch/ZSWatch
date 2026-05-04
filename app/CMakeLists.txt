@@ -105,11 +105,6 @@ set_target_properties(app PROPERTIES COMPILE_FLAGS -Wno-double-promotion)
 zephyr_compile_options(-Wno-double-promotion)
 
 # XIP Code Relocation
-if (CONFIG_MCUMGR)
-    # Should work in XIP as we use update_app to enable FW update which forces XIP on during update.
-    # Can't relocate everything as code writing to flash code can't be in XIP, e.g. mcumgr's fs commands.
-    zephyr_code_relocate(LIBRARY mcumgr_grp_os_mgmt LOCATION EXTFLASH_TEXT NOCOPY)
-endif()
 
 # Relocate some LVGL sources to external flash.
 # More can be added here if needed.

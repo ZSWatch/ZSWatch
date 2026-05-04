@@ -18,6 +18,7 @@
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_xip_manager.h"
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
@@ -30,12 +31,15 @@
 #include <lvgl_zephyr.h>
 
 #include <zephyr/drivers/counter.h>
+#include <stdint.h>
 
 LOG_MODULE_REGISTER(display_control, LOG_LEVEL_WRN);
 
 #define DISPLAY_BRIGHTNESS_LEVELS 32
 
 static void lvgl_render(struct k_work *item);
+static int schedule_render_locked(k_timeout_t delay);
+
 static void set_brightness_level(uint8_t brightness);
 static void brightness_alarm_start_cb(const struct device *counter_dev, uint8_t chan_id, uint32_t ticks,
                                       void *user_data);
@@ -62,6 +66,8 @@ K_SEM_DEFINE(brightness_sem, 1, 1);
 
 static struct k_work_sync cancel_work_sync;
 static display_state_t display_state;
+static atomic_t render_enabled = ATOMIC_INIT(0);
+static uint8_t render_block_count;
 static bool first_render_since_poweron;
 static uint8_t last_brightness = 1;
 static struct counter_alarm_cfg bri_alarm_start, bri_alarm_run, bri_alarm_stop;
@@ -120,6 +126,7 @@ int zsw_display_control_sleep_ctrl(bool on)
                 LOG_DBG("Put display to sleep");
                 // Cancel pending call to lv_task_handler
                 // Or let it finish if it's running.
+                atomic_set(&render_enabled, 0);
                 k_work_cancel_delayable_sync(&lvgl_work, &cancel_work_sync);
                 // Since actual flushing the data over SPI to the screen is done in a
                 // thread in the display driver, we need to give it some time to complete
@@ -162,7 +169,9 @@ int zsw_display_control_sleep_ctrl(bool on)
                     zsw_display_control_set_brightness(last_brightness);
                 }
                 display_blanking_off(display_dev);
-                k_work_schedule(&lvgl_work, K_MSEC(250));
+                if (schedule_render_locked(K_MSEC(250)) != 0) {
+                    atomic_set(&render_enabled, 0);
+                }
                 res = 0;
             } else {
                 LOG_DBG("Display already sleeping");
@@ -254,29 +263,50 @@ uint8_t zsw_display_control_get_brightness(void)
     return last_brightness;
 }
 
-int zsw_display_control_set_render_enabled(bool on)
+int zsw_display_control_block_render(void)
 {
     int res = -EALREADY;
+    bool cancel_render_work = false;
 
     k_mutex_lock(&display_mutex, K_FOREVER);
 
-    if (on) {
-        if (k_work_delayable_is_pending(&lvgl_work)) {
-            LOG_DBG("Rendering already enabled");
-            res = -EALREADY;
-        } else {
-            LOG_DBG("Enable rendering");
-            k_work_schedule(&lvgl_work, K_MSEC(100));
-            res = 0;
-        }
+    if (render_block_count == UINT8_MAX) {
+        LOG_ERR("Render block count overflow");
+        res = -EOVERFLOW;
     } else {
-        if (k_work_delayable_is_pending(&lvgl_work)) {
-            LOG_DBG("Disable rendering");
-            k_work_cancel_delayable_sync(&lvgl_work, &cancel_work_sync);
-            res = 0;
-        } else {
-            LOG_DBG("Rendering already disabled");
-            res = -EALREADY;
+        render_block_count++;
+        if (atomic_get(&render_enabled)) {
+            atomic_set(&render_enabled, 0);
+            cancel_render_work = true;
+        }
+        LOG_DBG("Rendering blocked, count=%u", render_block_count);
+        res = 0;
+    }
+
+    k_mutex_unlock(&display_mutex);
+
+    if (cancel_render_work) {
+        k_work_cancel_delayable_sync(&lvgl_work, &cancel_work_sync);
+    }
+
+    return res;
+}
+
+int zsw_display_control_unblock_render(void)
+{
+    int res;
+
+    k_mutex_lock(&display_mutex, K_FOREVER);
+
+    if (render_block_count == 0) {
+        LOG_DBG("Rendering already unblocked");
+        res = -EALREADY;
+    } else {
+        render_block_count--;
+        LOG_DBG("Rendering unblocked, count=%u", render_block_count);
+        res = 0;
+        if (render_block_count == 0 && !atomic_get(&render_enabled)) {
+            (void)schedule_render_locked(K_MSEC(100));
         }
     }
 
@@ -305,8 +335,23 @@ void zsw_display_control_set_brightness(uint8_t percent)
     k_mutex_unlock(&display_mutex);
 }
 
+static int schedule_render_locked(k_timeout_t delay)
+{
+    if (!(display_state == DISPLAY_STATE_AWAKE && render_block_count == 0)) {
+        return -EALREADY;
+    }
+
+    atomic_set(&render_enabled, 1);
+    k_work_schedule(&lvgl_work, delay);
+    return 0;
+}
+
 static void lvgl_render(struct k_work *item)
 {
+    if (!atomic_get(&render_enabled)) {
+        return;
+    }
+
     lvgl_lock();
     const int64_t next_update_in_ms = lv_task_handler();
     lvgl_unlock();
@@ -314,7 +359,9 @@ static void lvgl_render(struct k_work *item)
         zsw_display_control_set_brightness(last_brightness);
         first_render_since_poweron = false;
     }
-    k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
+    if (atomic_get(&render_enabled)) {
+        k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));
+    }
 }
 
 static void set_brightness_level(uint8_t brightness)
