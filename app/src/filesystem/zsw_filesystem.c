@@ -138,6 +138,32 @@ static int zsw_user_lfs_init(void)
     }
 
     LOG_INF("User LFS mounted at %s", ZSW_USER_LFS_MOUNT_POINT);
+    rc = log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    if (rc == 0) {
+        return 0;
+    }
+
+    LOG_WRN("User LFS stats failed (%d), recreating filesystem", rc);
+
+    rc = fs_unmount(&user_mnt);
+    if (rc < 0) {
+        LOG_ERR("Failed to unmount %s before format: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+        return rc;
+    }
+
+    rc = fs_mkfs(FS_LITTLEFS, (uintptr_t)user_mnt.storage_dev, &user_lfs_data, user_mnt.flags);
+    if (rc < 0) {
+        LOG_ERR("Failed to format %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+        return rc;
+    }
+
+    rc = fs_mount(&user_mnt);
+    if (rc < 0) {
+        LOG_ERR("Failed to mount recreated %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+        return rc;
+    }
+
+    LOG_INF("User LFS recreated at %s", ZSW_USER_LFS_MOUNT_POINT);
     return log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
 }
 
