@@ -61,6 +61,7 @@ static lv_obj_t *ui_min_label;
 static lv_obj_t *ui_steps_label;
 static lv_obj_t *ui_notif_icon;
 static lv_obj_t *ui_notif_count_label;
+static lv_obj_t *ui_notif_sep_after;
 static lv_obj_t *ui_batt_icon;
 static lv_obj_t *ui_batt_label;
 static lv_obj_t *ui_ble_dot;
@@ -126,12 +127,13 @@ static void make_container(lv_obj_t *obj)
 }
 
 /* Separator between stats items — use ASCII | (always in font). */
-static void add_sep(lv_obj_t *parent)
+static lv_obj_t *add_sep(lv_obj_t *parent)
 {
     lv_obj_t *s = lv_label_create(parent);
     lv_label_set_text(s, "|");
     lv_obj_set_style_text_color(s, lv_color_hex(0x666666), LV_PART_MAIN);
     lv_obj_set_style_text_font(s, &lv_font_montserrat_12, LV_PART_MAIN);
+    return s;
 }
 
 /* Use icons at native 24×24 size — LVGL transform scale causes the flex
@@ -203,8 +205,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_obj_set_style_text_color(ui_date_label, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
     lv_obj_set_style_text_font(ui_date_label, &lv_font_montserrat_14, LV_PART_MAIN);
 
-    /* ── Weather row  y = -65 ── */
-    lv_obj_t *weather_row = make_row(root_page, -65);
+    /* ── Weather row  y = -55 ── */
+    lv_obj_t *weather_row = make_row(root_page, -55);
     lv_obj_add_flag(weather_row, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(weather_row, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_add_event_cb(weather_row, on_tap, LV_EVENT_CLICKED,
@@ -217,7 +219,6 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_image_set_src(ui_weather_icon, w_icon);
     lv_obj_set_style_img_recolor(ui_weather_icon, icon_color, LV_PART_MAIN);
     lv_obj_set_style_img_recolor_opa(ui_weather_icon, LV_OPA_COVER, LV_PART_MAIN);
-    lv_image_set_scale(ui_weather_icon, 200);  /* 24→19 for weather row */
 
     ui_weather_temp_label = lv_label_create(weather_row);
     lv_label_set_text(ui_weather_temp_label, "--\xc2\xb0");   /* --° (UTF-8 degree) */
@@ -228,7 +229,6 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_image_set_src(humidity_icon, ZSW_LV_IMG_USE(drop_icon));
     lv_obj_set_style_img_recolor(humidity_icon, lv_color_hex(0x60AEF7), LV_PART_MAIN);
     lv_obj_set_style_img_recolor_opa(humidity_icon, LV_OPA_COVER, LV_PART_MAIN);
-    lv_image_set_scale(humidity_icon, 200);  /* 24→19 */
     lv_obj_set_style_pad_right(humidity_icon, -6, LV_PART_MAIN);
 
     ui_weather_humidity_label = lv_label_create(weather_row);
@@ -295,7 +295,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_obj_set_style_text_font(ui_notif_count_label, &lv_font_montserrat_10, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui_notif_count_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
 
-    add_sep(stats_row);
+    ui_notif_sep_after = add_sep(stats_row);
 
     /* Battery icon with dynamic fill level (26×20, tappable) */
     ui_batt_icon = lv_image_create(stats_row);
@@ -344,6 +344,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb,
     lv_obj_set_style_text_color(ui_music_label, lv_color_hex(0x4CAF50), LV_PART_MAIN);
     lv_obj_set_style_text_font(ui_music_label, &lv_font_montserrat_10, LV_PART_MAIN);
 
+    /* Hide notification elements until a count > 0 is received */
+    watchface_set_num_notifcations(0);
 }
 
 /* ── remove ────────────────────────────────────────────────────────────── */
@@ -443,9 +445,11 @@ static void watchface_set_num_notifcations(int32_t number)
     if (number > 0) {
         lv_label_set_text_fmt(ui_notif_count_label, "%d", (int)number);
         lv_obj_clear_flag(ui_notif_icon, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ui_notif_sep_after, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_label_set_text(ui_notif_count_label, "");
         lv_obj_add_flag(ui_notif_icon, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ui_notif_sep_after, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
