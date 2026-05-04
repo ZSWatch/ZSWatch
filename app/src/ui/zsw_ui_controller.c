@@ -71,18 +71,52 @@ static lv_obj_t *root_screen;
 static lv_group_t *input_group;
 static lv_group_t *temp_group;
 static lv_indev_t *enc_indev;
+static lv_indev_t *touch_indev;
 static uint8_t last_pressed;
 static ui_state_t watch_state = INIT_STATE;
+static bool swipe_back_enabled;
 
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
 static void on_watchface_app_event_callback(watchface_app_evt_t evt);
+static void on_root_screen_gesture(lv_event_t *e);
 static void async_turn_off_buttons_allocation(void *unused);
 static void open_application_manager_page(void *app_name);
 static void on_application_manager_close(void);
 static void on_onboarding_done(void);
+static bool handle_back_action(void);
+static int settings_load_handler_swipe_back(const char *key, size_t len,
+                                            settings_read_cb read_cb,
+                                            void *cb_arg, void *param);
 
 LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
+
+static bool handle_back_action(void)
+{
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+    if (zsw_recording_overlay_is_shown()) {
+        zsw_recording_manager_stop();
+        zsw_recording_overlay_hide();
+        return true;
+    }
+
+    if (zsw_voice_memo_popup_is_shown()) {
+        return true;
+    }
+#endif
+
+    if (zsw_notification_popup_is_shown()) {
+        zsw_notification_popup_remove();
+        return true;
+    }
+
+    if (watch_state == APPLICATION_MANAGER_STATE) {
+        zsw_app_manager_exit_app();
+        return true;
+    }
+
+    return false;
+}
 
 static void run_input_work(struct k_work *item)
 {
@@ -108,21 +142,7 @@ static void run_input_work(struct k_work *item)
                 break;
             }
             case INPUT_KEY_3: {
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-                if (zsw_recording_overlay_is_shown()) {
-                    zsw_recording_manager_stop();
-                    zsw_recording_overlay_hide();
-                    break;
-                }
-                if (zsw_voice_memo_popup_is_shown()) {
-                    break;
-                }
-#endif
-                if (zsw_notification_popup_is_shown()) {
-                    zsw_notification_popup_remove();
-                } else if (watch_state == APPLICATION_MANAGER_STATE) {
-                    zsw_app_manager_exit_app();
-
+                if (handle_back_action()) {
                     return;
                 }
 
@@ -164,6 +184,11 @@ static void open_application_manager_page(void *app_name)
     zsw_app_manager_show(on_application_manager_close, root_screen, input_group, (char *)app_name);
 }
 
+void zsw_ui_controller_set_swipe_back_enabled(bool enabled)
+{
+    swipe_back_enabled = enabled;
+}
+
 void zsw_ui_controller_set_notification_mode(void)
 {
     lv_group_set_default(temp_group);
@@ -193,6 +218,29 @@ static void on_application_manager_close(void)
 static void async_turn_off_buttons_allocation(void *unused)
 {
     is_buttons_for_lvgl = false;
+}
+
+static void on_root_screen_gesture(lv_event_t *e)
+{
+    lv_indev_t *indev = lv_indev_active();
+
+    if (lv_event_get_code(e) != LV_EVENT_GESTURE || indev == NULL) {
+        return;
+    }
+
+    lv_dir_t dir = lv_indev_get_gesture_dir(indev);
+
+    if (!swipe_back_enabled) {
+        return;
+    }
+
+    if (dir != LV_DIR_TOP) {
+        return;
+    }
+
+    if (handle_back_action()) {
+        lv_indev_wait_release(indev);
+    }
 }
 
 static void on_input_subsys_callback(struct input_event *evt, void *user_data)
@@ -398,14 +446,29 @@ static int settings_load_handler_onboarding(const char *key, size_t len,
     return 0;
 }
 
+static int settings_load_handler_swipe_back(const char *key, size_t len,
+                                            settings_read_cb read_cb,
+                                            void *cb_arg, void *param)
+{
+    if (len != sizeof(zsw_settings_swipe_back_t)) {
+        return -EINVAL;
+    }
+
+    int rc = read_cb(cb_arg, param, sizeof(zsw_settings_swipe_back_t));
+    if (rc < 0) {
+        return rc;
+    }
+
+    return 0;
+}
+
 int zsw_ui_controller_init(void)
 {
-    lv_indev_t *touch_indev;
-
     // Initialize LVGL Editor subjects and assets
     lvgl_editor_init_gen("");
 
     root_screen = lv_scr_act();
+    lv_obj_add_event_cb(root_screen, on_root_screen_gesture, LV_EVENT_GESTURE, NULL);
 
     lv_obj_set_style_bg_color(root_screen, zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
 
@@ -437,13 +500,22 @@ int zsw_ui_controller_init(void)
     }
 
     zsw_settings_onboarding_done_t onboarding_done = false;
+    swipe_back_enabled = false;
+    int err = settings_load_subtree_direct(ZSW_SETTINGS_SWIPE_BACK,
+                                           settings_load_handler_swipe_back,
+                                           &swipe_back_enabled);
+    if (err != 0) {
+        LOG_WRN("Failed to load swipe-back setting, defaulting disabled");
+    } else {
+        LOG_INF("Swipe-back setting loaded: %d", swipe_back_enabled);
+    }
 #ifdef CONFIG_ZSW_TEST_SKIP_ONBOARDING
     onboarding_done = true;
     LOG_INF("Test mode: skipping onboarding");
 #else
-    int err = settings_load_subtree_direct(ZSW_SETTINGS_ONBOARDING_DONE,
-                                           settings_load_handler_onboarding,
-                                           &onboarding_done);
+    err = settings_load_subtree_direct(ZSW_SETTINGS_ONBOARDING_DONE,
+                                       settings_load_handler_onboarding,
+                                       &onboarding_done);
     if (err != 0) {
         LOG_WRN("Failed to load onboarding setting, assuming first boot");
     }

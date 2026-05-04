@@ -58,4 +58,8 @@ typedef bool zsw_settings_onboarding_done_t;
 #define ZSW_SETTINGS_KEY_ONBOARDING_DONE "onboard"
 #define ZSW_SETTINGS_ONBOARDING_DONE (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_ONBOARDING_DONE)
 
+typedef bool zsw_settings_swipe_back_t;
+#define ZSW_SETTINGS_KEY_SWIPE_BACK "swipe_back"
+#define ZSW_SETTINGS_SWIPE_BACK (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_SWIPE_BACK)
+
 int zsw_settings_erase_all(void);
