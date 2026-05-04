@@ -60,7 +60,6 @@ static struct mgmt_callback fs_access_callback_entry = {
     .event_id = MGMT_EVT_OP_FS_MGMT_FILE_ACCESS | MGMT_EVT_OP_FS_MGMT_FILE_ACCESS_DONE,
 };
 
-
 static void smp_auto_disable_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
