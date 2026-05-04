@@ -46,3 +46,21 @@ const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src);
 const char *zsw_ui_utils_source_from_notification(zsw_notification_src_t src);
 
 void zsw_ui_utils_seconds_to_day_hour_min(int seconds, int *days, int *hours, int *minutes);
+
+/**
+ * Returns the battery icon image source for the given battery percentage.
+ * Uses the face_goog_20_61728_N icon set (0=empty ... 6=full).
+ */
+const void *zsw_ui_utils_battery_icon(int percent);
+
+/**
+ * Returns the abbreviated uppercase day name for day_of_week (0=Sun ... 6=Sat).
+ * e.g. "SUN", "MON", ...
+ */
+const char *zsw_ui_utils_day_name(int day_of_week);
+
+/**
+ * Returns the abbreviated uppercase month name for month (0=Jan ... 11=Dec).
+ * e.g. "JAN", "FEB", ...
+ */
+const char *zsw_ui_utils_month_name(int month);

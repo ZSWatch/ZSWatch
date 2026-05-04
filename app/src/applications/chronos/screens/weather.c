@@ -24,8 +24,6 @@ static const void *weatherIcons[] = {
     ZSW_LV_IMG_USE(chronos_day_7_icon)
 };
 
-const char *days[7] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-
 static lv_obj_t *ui_weeklypanel;
 static lv_obj_t *ui_hourlypanel;
 
@@ -274,7 +272,7 @@ void chronos_ui_add_weather_weekly(chronos_weather_t weather)
     lv_obj_set_width(ui_daylabel, 70);
     lv_obj_set_height(ui_daylabel, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_daylabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_daylabel, days[weather.day % 7]);
+    lv_label_set_text(ui_daylabel, zsw_ui_utils_day_name(weather.day % 7));
     lv_obj_set_style_text_align(ui_daylabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_daylabel, CHRONOS_FONT_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 

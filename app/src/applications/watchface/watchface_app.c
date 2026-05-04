@@ -372,6 +372,11 @@ static void refresh_ui(void)
             watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
                                                                       last_music_info.artist);
         }
+    } else {
+        zsw_watchface_dropdown_ui_set_music_info(NULL, NULL);
+        if (watchfaces[watchface_settings.watchface_index]->set_music) {
+            watchfaces[watchface_settings.watchface_index]->set_music(NULL, NULL);
+        }
     }
 }
 
@@ -480,12 +485,25 @@ static void update_ui_from_event(struct k_work *item)
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
-            zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
-            if (watchfaces[watchface_settings.watchface_index]->set_music) {
+            if (last_music_state.playing && strlen(last_music_info.track_name) > 0) {
+                zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
+            } else {
+                zsw_watchface_dropdown_ui_set_music_info(NULL, NULL);
+            }
+
+            if (watchfaces[watchface_settings.watchface_index]->set_music &&
+                last_music_state.playing && strlen(last_music_info.track_name) > 0) {
                 watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
                                                                           last_music_info.artist);
+            } else if (watchfaces[watchface_settings.watchface_index]->set_music) {
+                watchfaces[watchface_settings.watchface_index]->set_music(NULL, NULL);
             }
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_STATE) {
+            if (last_music_state.playing && strlen(last_music_info.track_name) > 0) {
+                zsw_watchface_dropdown_ui_set_music_info(last_music_info.track_name, last_music_info.artist);
+            } else {
+                zsw_watchface_dropdown_ui_set_music_info(NULL, NULL);
+            }
             if (watchfaces[watchface_settings.watchface_index]->set_music) {
                 if (last_music_state.playing && strlen(last_music_info.track_name) > 0) {
                     watchfaces[watchface_settings.watchface_index]->set_music(last_music_info.track_name,
@@ -521,7 +539,6 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
     }
     if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
         memcpy(&last_music_info, &event->data.data.music_info, sizeof(event->data.data.music_info));
-        last_music_state.playing = true;
     }
     if (event->data.type == BLE_COMM_DATA_TYPE_MUSIC_STATE) {
         memcpy(&last_music_state, &event->data.data.music_state, sizeof(event->data.data.music_state));
