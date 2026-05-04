@@ -28,6 +28,7 @@
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
 #include "events/zsw_voice_memo_event.h"
+#include "events/zsw_chat_event.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
@@ -71,7 +72,8 @@ static K_WORK_DEFINE(ble_recording_notify_work, ble_recording_notify_work_fn);
 static void on_ble_recording_event(const struct zbus_channel *chan)
 {
     const struct zsw_voice_memo_recording_event *evt = zbus_chan_const_msg(chan);
-    if (evt->state == ZSW_VOICE_MEMO_RECORDING_STOPPED) {
+    if (evt->state == ZSW_VOICE_MEMO_RECORDING_STOPPED &&
+        evt->client == ZSW_RECORDING_CLIENT_VOICE_MEMO) {
         memcpy(&ble_recording_evt_copy, evt, sizeof(ble_recording_evt_copy));
         k_work_submit(&ble_recording_notify_work);
     }
@@ -481,6 +483,8 @@ static void convert_to_encoded_text(char *data, int len, char *out_data, int out
     }
     out_data[j] = '\0';
 }
+
+static int parse_chat_command(char *data, int len);
 
 static int parse_notify(char *data, int len)
 {
@@ -990,6 +994,10 @@ static int parse_data(char *data, int len)
         return parse_voice_memo_command(data, len);
     }
 
+    if (strlen("chat") == type_len && strncmp(type, "chat", type_len) == 0) {
+        return parse_chat_command(data, len);
+    }
+
     if (strlen("smp") == type_len && strncmp(type, "smp", type_len) == 0) {
         return parse_smp_command(data, len);
     }
@@ -1266,6 +1274,189 @@ void ble_gadgetbridge_send_voice_memo_new(const char *filename, uint32_t duratio
     ble_comm_send(json_str, msg_len);
     cJSON_free(json_str);
     LOG_INF("voice_memo: sent new recording notification: %s", filename);
+}
+
+static int parse_chat_command(char *data, int len)
+{
+#ifndef CONFIG_APPLICATIONS_USE_CHAT
+    ARG_UNUSED(data);
+    ARG_UNUSED(len);
+    LOG_WRN("chat: app not enabled");
+    return -ENOTSUP;
+#else
+    LOG_WRN("chat command: %s", data);
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        LOG_WRN("chat: JSON parse failed");
+        return -EINVAL;
+    }
+
+    cJSON *action_obj = cJSON_GetObjectItem(root, "action");
+    if (!cJSON_IsString(action_obj)) {
+        LOG_WRN("chat: missing action");
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
+    const char *action = action_obj->valuestring;
+
+    if (strcmp(action, "state") == 0) {
+        cJSON *state_obj = cJSON_GetObjectItem(root, "state");
+        cJSON *sid_obj = cJSON_GetObjectItem(root, "session_id");
+
+        ZBUS_CHAN_DECLARE(chat_state_chan);
+        struct zsw_chat_state_event evt = {0};
+        evt.state = cJSON_IsNumber(state_obj) ? (enum zsw_chat_state)state_obj->valueint
+                                              : ZSW_CHAT_STATE_IDLE;
+        evt.session_id = cJSON_IsNumber(sid_obj) ? (uint32_t)sid_obj->valueint : 0;
+        zbus_chan_pub(&chat_state_chan, &evt, K_MSEC(100));
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    if (strcmp(action, "transcript") == 0) {
+        cJSON *text_obj = cJSON_GetObjectItem(root, "text");
+        cJSON *sid_obj = cJSON_GetObjectItem(root, "session_id");
+
+        if (!cJSON_IsString(text_obj)) {
+            LOG_WRN("chat transcript: missing text");
+            cJSON_Delete(root);
+            return -EINVAL;
+        }
+
+        ZBUS_CHAN_DECLARE(chat_transcript_chan);
+        struct zsw_chat_transcript_event evt = {0};
+        evt.session_id = cJSON_IsNumber(sid_obj) ? (uint32_t)sid_obj->valueint : 0;
+        strncpy(evt.transcript, text_obj->valuestring, sizeof(evt.transcript) - 1);
+        zbus_chan_pub(&chat_transcript_chan, &evt, K_MSEC(100));
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    if (strcmp(action, "reply_ready") == 0) {
+        cJSON *sid_obj = cJSON_GetObjectItem(root, "session_id");
+        cJSON *path_obj = cJSON_GetObjectItem(root, "path");
+        cJSON *codec_obj = cJSON_GetObjectItem(root, "codec");
+        cJSON *sr_obj = cJSON_GetObjectItem(root, "sample_rate");
+        cJSON *dur_obj = cJSON_GetObjectItem(root, "duration_ms");
+
+        ZBUS_CHAN_DECLARE(chat_reply_ready_chan);
+        struct zsw_chat_reply_ready_event evt = {0};
+        evt.session_id = cJSON_IsNumber(sid_obj) ? (uint32_t)sid_obj->valueint : 0;
+        if (cJSON_IsString(path_obj)) {
+            strncpy(evt.path, path_obj->valuestring, sizeof(evt.path) - 1);
+        }
+        if (cJSON_IsString(codec_obj)) {
+            strncpy(evt.codec, codec_obj->valuestring, sizeof(evt.codec) - 1);
+        }
+        evt.sample_rate = cJSON_IsNumber(sr_obj) ? (uint32_t)sr_obj->valueint : 16000;
+        evt.duration_ms = cJSON_IsNumber(dur_obj) ? (uint32_t)dur_obj->valueint : 0;
+        zbus_chan_pub(&chat_reply_ready_chan, &evt, K_MSEC(100));
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    if (strcmp(action, "error") == 0) {
+        cJSON *msg_obj = cJSON_GetObjectItem(root, "message");
+        cJSON *sid_obj = cJSON_GetObjectItem(root, "session_id");
+
+        ZBUS_CHAN_DECLARE(chat_error_chan);
+        struct zsw_chat_error_event evt = {0};
+        evt.session_id = cJSON_IsNumber(sid_obj) ? (uint32_t)sid_obj->valueint : 0;
+        if (cJSON_IsString(msg_obj)) {
+            strncpy(evt.message, msg_obj->valuestring, sizeof(evt.message) - 1);
+        }
+        zbus_chan_pub(&chat_error_chan, &evt, K_MSEC(100));
+        cJSON_Delete(root);
+        return 0;
+    }
+
+    LOG_WRN("chat: unknown action '%s'", action);
+    cJSON_Delete(root);
+    return -ENOTSUP;
+#endif /* CONFIG_APPLICATIONS_USE_CHAT */
+}
+
+void ble_gadgetbridge_send_chat_question_ready(uint32_t session_id, const char *path,
+                                               uint32_t duration_ms, uint32_t size_bytes,
+                                               uint32_t sample_rate, const char *codec)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERR("chat question_ready: cJSON alloc failed");
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "t", "chat");
+    cJSON_AddStringToObject(root, "action", "question_ready");
+    cJSON_AddNumberToObject(root, "session_id", session_id);
+    cJSON_AddStringToObject(root, "path", path);
+    cJSON_AddStringToObject(root, "codec", codec ? codec : "opus_zsw");
+    cJSON_AddNumberToObject(root, "sample_rate", sample_rate);
+    cJSON_AddNumberToObject(root, "duration_ms", duration_ms);
+    cJSON_AddNumberToObject(root, "size_bytes", size_bytes);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (json_str == NULL) {
+        LOG_ERR("chat question_ready: JSON print failed");
+        return;
+    }
+
+    ble_comm_send(json_str, strlen(json_str));
+    cJSON_free(json_str);
+    LOG_INF("chat: sent question_ready (session %u, %s, %u bytes)",
+            session_id, path, size_bytes);
+}
+
+void ble_gadgetbridge_send_chat_cancel(uint32_t session_id)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERR("chat cancel: cJSON alloc failed");
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "t", "chat");
+    cJSON_AddStringToObject(root, "action", "cancel");
+    cJSON_AddNumberToObject(root, "session_id", session_id);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (json_str == NULL) {
+        LOG_ERR("chat cancel: JSON print failed");
+        return;
+    }
+
+    ble_comm_send(json_str, strlen(json_str));
+    cJSON_free(json_str);
+    LOG_INF("chat: sent cancel (session %u)", session_id);
+}
+
+void ble_gadgetbridge_send_chat_playback_done(uint32_t session_id)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        LOG_ERR("chat playback_done: cJSON alloc failed");
+        return;
+    }
+
+    cJSON_AddStringToObject(root, "t", "chat");
+    cJSON_AddStringToObject(root, "action", "playback_done");
+    cJSON_AddNumberToObject(root, "session_id", session_id);
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (json_str == NULL) {
+        LOG_ERR("chat playback_done: JSON print failed");
+        return;
+    }
+
+    ble_comm_send(json_str, strlen(json_str));
+    cJSON_free(json_str);
+    LOG_INF("chat: sent playback_done (session %u)", session_id);
 }
 
 void ble_gadgetbridge_send_voice_memo_undo(const char *filename)

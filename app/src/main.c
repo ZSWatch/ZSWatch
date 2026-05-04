@@ -118,8 +118,10 @@ static void run_init_work(struct k_work *item)
     zsw_microphone_manager_init();
 #endif
 
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
+#if defined(CONFIG_APPLICATIONS_USE_VOICE_MEMO) || defined(CONFIG_APPLICATIONS_USE_CHAT)
     zsw_recording_manager_init();
+#endif
+#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
     zsw_voice_memo_popup_init();
 #endif
 

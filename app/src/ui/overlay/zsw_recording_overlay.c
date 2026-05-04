@@ -41,7 +41,7 @@ static void stop_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
     if (zsw_recording_manager_is_recording()) {
-        zsw_recording_manager_stop();
+        zsw_recording_manager_stop(NULL);
     }
     zsw_recording_overlay_hide();
 }

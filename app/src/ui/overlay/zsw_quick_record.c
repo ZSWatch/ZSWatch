@@ -32,7 +32,7 @@ static void quick_record_work_fn(struct k_work *work)
     ARG_UNUSED(work);
 
     if (zsw_recording_manager_is_recording()) {
-        int ret = zsw_recording_manager_stop();
+        int ret = zsw_recording_manager_stop(NULL);
         if (ret == 0) {
             LOG_INF("Quick-record stopped");
             zsw_recording_overlay_hide();
@@ -40,7 +40,7 @@ static void quick_record_work_fn(struct k_work *work)
             LOG_ERR("Quick-record stop failed: %d", ret);
         }
     } else {
-        int ret = zsw_recording_manager_start();
+        int ret = zsw_recording_manager_start(ZSW_RECORDING_CLIENT_VOICE_MEMO);
         if (ret == 0) {
             LOG_INF("Quick-record started");
             zsw_recording_overlay_show();

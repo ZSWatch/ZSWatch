@@ -23,7 +23,7 @@ static int cmd_voice_memo_start(const struct shell *sh, size_t argc, char **argv
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    int ret = zsw_recording_manager_start();
+    int ret = zsw_recording_manager_start(ZSW_RECORDING_CLIENT_VOICE_MEMO);
     if (ret == 0) {
         shell_print(sh, "Recording started");
     } else {
@@ -37,7 +37,7 @@ static int cmd_voice_memo_stop(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    int ret = zsw_recording_manager_stop();
+    int ret = zsw_recording_manager_stop(NULL);
     if (ret == 0) {
         shell_print(sh, "Recording stopped");
     } else {

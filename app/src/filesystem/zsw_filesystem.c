@@ -133,12 +133,52 @@ static int zsw_user_lfs_init(void)
 
     rc = fs_mount(&user_mnt);
     if (rc < 0) {
-        LOG_ERR("Failed to mount %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
-        return rc;
+        LOG_ERR("Failed to mount %s (%d), attempting reformat...", ZSW_USER_LFS_MOUNT_POINT, rc);
+
+        rc = fs_mkfs(FS_LITTLEFS, (uintptr_t)FIXED_PARTITION_ID(user_storage), NULL, 0);
+        if (rc < 0) {
+            LOG_ERR("Failed to format %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+            return rc;
+        }
+
+        LOG_WRN("Reformatted %s — all user data erased", ZSW_USER_LFS_MOUNT_POINT);
+
+        rc = fs_mount(&user_mnt);
+        if (rc < 0) {
+            LOG_ERR("Failed to mount %s after reformat: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+            return rc;
+        }
     }
 
     LOG_INF("User LFS mounted at %s", ZSW_USER_LFS_MOUNT_POINT);
-    return log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+
+    rc = log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    if (rc == -EFAULT) {
+        /* LFS_ERR_CORRUPT: filesystem mounted but tree traversal found a corrupt
+         * block (e.g. an interrupted write during a hard reset while programming
+         * external flash). Unmount, reformat, and remount to recover. */
+        LOG_ERR("User LFS reported corruption after mount — reformatting to recover");
+        fs_unmount(&user_mnt);
+
+        rc = fs_mkfs(FS_LITTLEFS, (uintptr_t)FIXED_PARTITION_ID(user_storage), NULL, 0);
+        if (rc < 0) {
+            LOG_ERR("Failed to reformat corrupt %s: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+            return rc;
+        }
+
+        LOG_WRN("Reformatted %s — all user data erased", ZSW_USER_LFS_MOUNT_POINT);
+
+        rc = fs_mount(&user_mnt);
+        if (rc < 0) {
+            LOG_ERR("Failed to remount %s after reformat: %d", ZSW_USER_LFS_MOUNT_POINT, rc);
+            return rc;
+        }
+
+        LOG_INF("User LFS remounted at %s after reformat", ZSW_USER_LFS_MOUNT_POINT);
+        return log_fs_stats(ZSW_USER_LFS_MOUNT_POINT, false);
+    }
+
+    return rc;
 }
 
 SYS_INIT(zsw_filesystem_ls, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);

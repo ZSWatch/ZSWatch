@@ -110,7 +110,7 @@ static void run_input_work(struct k_work *item)
             case INPUT_KEY_3: {
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
                 if (zsw_recording_overlay_is_shown()) {
-                    zsw_recording_manager_stop();
+                    zsw_recording_manager_stop(NULL);
                     zsw_recording_overlay_hide();
                     break;
                 }

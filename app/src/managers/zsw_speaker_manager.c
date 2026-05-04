@@ -20,6 +20,7 @@
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/audio/codec.h>
+#include <zephyr/fs/fs.h>
 #include <zephyr/logging/log.h>
 #include <string.h>
 
@@ -64,6 +65,25 @@ K_THREAD_STACK_DEFINE(spk_stream_stack, STREAM_STACK_SIZE);
 
 static const struct i2c_dt_spec codec_i2c = I2C_DT_SPEC_GET(DA7212_NODE);
 
+/* File-source playback state.
+ * The reply WAV must already be 48 kHz / 16-bit / stereo (the phone converts
+ * before uploading). We skip the standard 44-byte PCM WAV header and stream
+ * the raw sample data into the I2S slab directly.
+ */
+#define WAV_HEADER_SIZE 44
+
+static struct {
+    struct fs_file_t file;
+    bool open;
+} file_pb;
+
+typedef uint32_t (*spk_fill_cb_t)(int16_t *buf, uint32_t num_frames);
+
+static spk_fill_cb_t active_fill_cb;
+
+static void speaker_event_work_handler(struct k_work *work);
+static K_WORK_DEFINE(speaker_event_work, speaker_event_work_handler);
+
 static struct {
     const struct device *i2s_dev;
     const struct device *codec_dev;
@@ -73,7 +93,38 @@ static struct {
     zsw_speaker_config_t config;
     zsw_speaker_event_cb_t callback;
     void *user_data;
+    zsw_speaker_event_t pending_event;
 } spk;
+
+static void speaker_event_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    if (spk.callback) {
+        spk.callback(spk.pending_event, spk.user_data);
+    }
+}
+
+static void close_file_pb(void)
+{
+    if (file_pb.open) {
+        fs_close(&file_pb.file);
+        file_pb.open = false;
+    }
+}
+
+static uint32_t file_fill_cb(int16_t *buf, uint32_t num_frames)
+{
+    size_t bytes_to_read = num_frames * NUMBER_OF_CHANNELS * sizeof(int16_t);
+    ssize_t got = fs_read(&file_pb.file, buf, bytes_to_read);
+    if (got <= 0) {
+        if (got < 0) {
+            LOG_ERR("fs_read failed: %d", (int)got);
+        }
+        return 0;
+    }
+    return (uint32_t)got / (NUMBER_OF_CHANNELS * sizeof(int16_t));
+}
 
 static void finish_playback(zsw_speaker_event_t event)
 {
@@ -95,10 +146,13 @@ static void finish_playback(zsw_speaker_event_t event)
         LOG_WRN("I2S drop trigger failed: %d", ret);
     }
 
+    close_file_pb();
+
     spk.thread_id = NULL;
 
     if (spk.callback) {
-        spk.callback(event, spk.user_data);
+        spk.pending_event = event;
+        k_work_submit(&speaker_event_work);
     }
 }
 
@@ -111,7 +165,7 @@ static int fill_block(void **buf_out)
     }
 
     int16_t *samples = (int16_t *)buf;
-    uint32_t frames_written = spk.config.callback.fill_cb(samples, FRAMES_PER_BLOCK);
+    uint32_t frames_written = active_fill_cb(samples, FRAMES_PER_BLOCK);
 
     if (frames_written == 0) {
         k_mem_slab_free(&spk_mem_slab, buf);
@@ -223,8 +277,29 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
             LOG_ERR("fill_cb is NULL");
             return -EINVAL;
         }
+        active_fill_cb = config->callback.fill_cb;
         break;
     case ZSW_SPEAKER_SOURCE_FILE:
+        if (!config->file.path) {
+            LOG_ERR("file.path is NULL");
+            return -EINVAL;
+        }
+        close_file_pb();
+        fs_file_t_init(&file_pb.file);
+        ret = fs_open(&file_pb.file, config->file.path, FS_O_READ);
+        if (ret < 0) {
+            LOG_ERR("Failed to open '%s': %d", config->file.path, ret);
+            return ret;
+        }
+        file_pb.open = true;
+        ret = fs_seek(&file_pb.file, WAV_HEADER_SIZE, FS_SEEK_SET);
+        if (ret < 0) {
+            LOG_ERR("Failed to seek past WAV header: %d", ret);
+            close_file_pb();
+            return ret;
+        }
+        active_fill_cb = file_fill_cb;
+        break;
     case ZSW_SPEAKER_SOURCE_BUFFER:
         LOG_WRN("Source type %d not implemented yet", config->source);
         return -ENOTSUP;
@@ -237,12 +312,14 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
 
     if (!device_is_ready(spk.i2s_dev)) {
         LOG_ERR("I2S device not ready");
-        return -ENODEV;
+        ret = -ENODEV;
+        goto err;
     }
 
     if (!device_is_ready(spk.codec_dev)) {
         LOG_ERR("Codec device not ready");
-        return -ENODEV;
+        ret = -ENODEV;
+        goto err;
     }
 
     spk.config = *config;
@@ -266,7 +343,7 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
     ret = audio_codec_configure(spk.codec_dev, &audio_cfg);
     if (ret < 0) {
         LOG_ERR("Codec configure failed: %d", ret);
-        return ret;
+        goto err;
     }
 
     struct i2s_config i2s_cfg = {
@@ -283,7 +360,7 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
     ret = i2s_configure(spk.i2s_dev, I2S_DIR_TX, &i2s_cfg);
     if (ret < 0) {
         LOG_ERR("I2S TX configure failed: %d", ret);
-        return ret;
+        goto err;
     }
 
     for (int i = 0; i < INITIAL_BLOCKS; i++) {
@@ -291,21 +368,24 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
         ret = fill_block(&buf);
         if (ret != 0) {
             LOG_ERR("Failed to fill initial block %d: %d", i, ret);
-            return (ret < 0) ? ret : -EIO;
+            if (ret > 0) {
+                ret = -EIO;
+            }
+            goto err;
         }
 
         ret = i2s_write(spk.i2s_dev, buf, BLOCK_SIZE);
         if (ret < 0) {
             LOG_ERR("i2s_write initial block failed: %d", ret);
             k_mem_slab_free(&spk_mem_slab, buf);
-            return ret;
+            goto err;
         }
     }
 
     ret = i2s_trigger(spk.i2s_dev, I2S_DIR_TX, I2S_TRIGGER_START);
     if (ret < 0) {
         LOG_ERR("I2S start trigger failed: %d", ret);
-        return ret;
+        goto err;
     }
 
     spk.streaming = true;
@@ -321,6 +401,10 @@ int zsw_speaker_manager_start(const zsw_speaker_config_t *config,
 
     LOG_INF("Speaker playback started (48kHz/16bit/stereo)");
     return 0;
+
+err:
+    close_file_pb();
+    return ret;
 }
 
 int zsw_speaker_manager_stop(void)
@@ -345,6 +429,8 @@ int zsw_speaker_manager_stop(void)
         k_thread_join(&spk.thread_data, K_MSEC(500));
         spk.thread_id = NULL;
     }
+
+    close_file_pb();
 
     LOG_INF("Speaker playback stopped");
     return 0;

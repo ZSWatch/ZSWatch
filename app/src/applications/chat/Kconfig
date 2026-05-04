@@ -1,0 +1,30 @@
+# Copyright (c) 2025 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Chat"
+
+config APPLICATIONS_USE_CHAT
+    bool
+    prompt "Activate the application 'Chat'"
+    default y
+    depends on ZSW_MIC && ZSW_OPUS_CODEC && DT_HAS_DLG_DA7212_ENABLED
+
+config APPLICATIONS_CHAT_AUTO_PLAY_TEST
+    bool "Auto-play /user/chat/reply_current.wav after boot (test hack)"
+    default n
+    depends on APPLICATIONS_USE_CHAT
+    help
+      For automated playback testing. Triggers start_reply_playback on a
+      pre-existing reply file shortly after boot, bypassing the BLE upload
+      flow.
+
+config APPLICATIONS_CHAT_AUTO_PLAY_DELAY_MS
+    int "Delay before auto-play (ms)"
+    default 8000
+    depends on APPLICATIONS_CHAT_AUTO_PLAY_TEST
+
+endmenu
+
+module = ZSW_CHAT
+module-str = ZSW_CHAT
+source "subsys/logging/Kconfig.template.log_config"

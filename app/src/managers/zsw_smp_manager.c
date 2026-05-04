@@ -20,6 +20,7 @@
 #include <zephyr/init.h>
 #include "zsw_smp_manager.h"
 #include "zsw_xip_manager.h"
+#include "drivers/zsw_display_control.h"
 #include "ble/ble_comm.h"
 
 #ifndef CONFIG_ARCH_POSIX
@@ -37,6 +38,23 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 
 static bool smp_enabled;
 static bool auto_disable_active;
+static bool fs_write_render_paused;
+
+static void pause_lvgl_for_fs_write(void)
+{
+    if (!fs_write_render_paused) {
+        (void)zsw_display_control_set_render_enabled(false);
+        fs_write_render_paused = true;
+    }
+}
+
+static void resume_lvgl_after_fs_write(void)
+{
+    if (fs_write_render_paused) {
+        (void)zsw_display_control_set_render_enabled(true);
+        fs_write_render_paused = false;
+    }
+}
 
 static void smp_auto_disable_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(smp_auto_disable_work, smp_auto_disable_work_handler);
@@ -60,6 +78,8 @@ static void smp_auto_disable_work_handler(struct k_work *work)
     ble_comm_set_default_adv_interval();
     ble_comm_set_default_connection_interval();
     zsw_xip_disable();
+
+    resume_lvgl_after_fs_write();
 
     smp_enabled = false;
     auto_disable_active = false;
@@ -93,15 +113,28 @@ static enum mgmt_cb_return fs_mgmt_callback(uint32_t event, enum mgmt_cb_return 
                                             int32_t *rc, uint16_t *group, bool *abort_more,
                                             void *data, size_t data_size)
 {
-    ARG_UNUSED(event);
+    struct fs_mgmt_file_access *file_access = data;
+
     ARG_UNUSED(prev_status);
     ARG_UNUSED(rc);
     ARG_UNUSED(group);
     ARG_UNUSED(abort_more);
-    ARG_UNUSED(data);
-    ARG_UNUSED(data_size);
 
     reset_auto_disable_timer();
+
+    if (data_size < sizeof(*file_access)) {
+        return MGMT_CB_OK;
+    }
+
+    if (file_access->access != FS_MGMT_FILE_ACCESS_WRITE) {
+        return MGMT_CB_OK;
+    }
+
+    if (event == MGMT_EVT_OP_FS_MGMT_FILE_ACCESS) {
+        pause_lvgl_for_fs_write();
+    } else if (event == MGMT_EVT_OP_FS_MGMT_FILE_ACCESS_DONE) {
+        resume_lvgl_after_fs_write();
+    }
 
     return MGMT_CB_OK;
 }
@@ -114,6 +147,11 @@ static struct mgmt_callback img_callback = {
 static struct mgmt_callback fs_callback = {
     .callback = fs_mgmt_callback,
     .event_id = MGMT_EVT_OP_FS_MGMT_FILE_ACCESS,
+};
+
+static struct mgmt_callback fs_done_callback = {
+    .callback = fs_mgmt_callback,
+    .event_id = MGMT_EVT_OP_FS_MGMT_FILE_ACCESS_DONE,
 };
 
 int zsw_smp_manager_enable(bool auto_disable)
@@ -179,6 +217,8 @@ int zsw_smp_manager_disable(void)
 
     zsw_xip_disable();
 
+    resume_lvgl_after_fs_write();
+
     smp_enabled = false;
     auto_disable_active = false;
 
@@ -200,9 +240,11 @@ static int zsw_smp_manager_init(void)
 {
     mgmt_callback_register(&img_callback);
     mgmt_callback_register(&fs_callback);
+    mgmt_callback_register(&fs_done_callback);
 
     smp_enabled = false;
     auto_disable_active = false;
+    fs_write_render_paused = false;
 
     int rc = smp_bt_unregister();
     if (rc != 0) {

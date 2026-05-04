@@ -92,6 +92,9 @@ static void recording_stopped_async(void *data)
 static void on_recording_event(const struct zbus_channel *chan)
 {
     const struct zsw_voice_memo_recording_event *evt = zbus_chan_const_msg(chan);
+    if (evt->client != ZSW_RECORDING_CLIENT_VOICE_MEMO) {
+        return;
+    }
     if (evt->state == ZSW_VOICE_MEMO_RECORDING_STOPPED ||
         evt->state == ZSW_VOICE_MEMO_RECORDING_ABORTED) {
         k_work_submit(&recording_event_work);
@@ -122,7 +125,7 @@ static void on_result_event(const struct zbus_channel *chan)
 
 static void on_start_recording(void)
 {
-    int ret = zsw_recording_manager_start();
+    int ret = zsw_recording_manager_start(ZSW_RECORDING_CLIENT_VOICE_MEMO);
     if (ret == 0) {
         recording_screen_shown = true;
         voice_memo_ui_show_recording();
@@ -133,7 +136,7 @@ static void on_start_recording(void)
 
 static void on_stop_recording(void)
 {
-    zsw_recording_manager_stop();
+    zsw_recording_manager_stop(NULL);
     recording_screen_shown = false;
     voice_memo_ui_show_list();
     refresh_list();
@@ -148,7 +151,7 @@ static void on_delete(const char *filename)
 static void on_back_during_recording(bool save)
 {
     if (save) {
-        zsw_recording_manager_stop();
+        zsw_recording_manager_stop(NULL);
     } else {
         zsw_recording_manager_abort();
     }
@@ -228,7 +231,7 @@ static void voice_memo_app_start(lv_obj_t *root, lv_group_t *group)
 static void voice_memo_app_stop(void)
 {
     if (zsw_recording_manager_is_recording()) {
-        zsw_recording_manager_stop();
+        zsw_recording_manager_stop(NULL);
     }
 
     if (ui_timer) {

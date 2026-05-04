@@ -43,6 +43,7 @@ static bool codec_thread_running;
 static uint32_t recording_start_time;
 static uint32_t peak_level;
 static bool auto_stop_pending;
+static enum zsw_recording_client current_client;
 
 static struct ring_buf pcm_ring_buf;
 static uint8_t *pcm_ring_buf_data;
@@ -172,7 +173,7 @@ static void auto_stop_work_fn(struct k_work *work)
         auto_stop_pending = false;
         return;
     }
-    (void)zsw_recording_manager_stop();
+    (void)zsw_recording_manager_stop(NULL);
     auto_stop_pending = false;
 }
 
@@ -182,13 +183,15 @@ int zsw_recording_manager_init(void)
     return zsw_recording_manager_store_init();
 }
 
-int zsw_recording_manager_start(void)
+int zsw_recording_manager_start(enum zsw_recording_client client)
 {
     int ret;
 
     if (is_recording) {
         return -EALREADY;
     }
+
+    current_client = client;
 
     if (!pcm_ring_buf_data) {
         pcm_ring_buf_data = k_malloc(CODEC_RING_BUF_SIZE);
@@ -254,6 +257,7 @@ int zsw_recording_manager_start(void)
 
     struct zsw_voice_memo_recording_event evt = {
         .state = ZSW_VOICE_MEMO_RECORDING_STARTED,
+        .client = current_client,
     };
     zbus_chan_pub(&voice_memo_recording_chan, &evt, K_MSEC(50));
 
@@ -278,10 +282,14 @@ static void shutdown_pipeline(void)
     zsw_audio_codec_deinit();
 }
 
-int zsw_recording_manager_stop(void)
+int zsw_recording_manager_stop(zsw_recording_result_t *out_result)
 {
     uint32_t duration_ms = 0;
     uint32_t size_bytes = 0;
+
+    if (out_result) {
+        memset(out_result, 0, sizeof(*out_result));
+    }
 
     if (!is_recording && !codec_thread_running) {
         return -EINVAL;
@@ -308,18 +316,29 @@ int zsw_recording_manager_stop(void)
             duration_ms, size_bytes);
 
     if (store_ret == 0 && saved_filename[0] != '\0' && duration_ms > 0 && size_bytes > 0) {
+        uint32_t timestamp = zsw_recording_manager_store_get_unix_timestamp();
         struct zsw_voice_memo_recording_event evt = {
             .state = ZSW_VOICE_MEMO_RECORDING_STOPPED,
+            .client = current_client,
             .duration_ms = duration_ms,
             .size_bytes = size_bytes,
-            .timestamp = zsw_recording_manager_store_get_unix_timestamp(),
+            .timestamp = timestamp,
         };
         strncpy(evt.filename, saved_filename, sizeof(evt.filename) - 1);
         evt.filename[sizeof(evt.filename) - 1] = '\0';
         zbus_chan_pub(&voice_memo_recording_chan, &evt, K_MSEC(50));
+
+        if (out_result) {
+            strncpy(out_result->filename, saved_filename,
+                    sizeof(out_result->filename) - 1);
+            out_result->filename[sizeof(out_result->filename) - 1] = '\0';
+            out_result->duration_ms = duration_ms;
+            out_result->size_bytes = size_bytes;
+            out_result->timestamp = timestamp;
+        }
     }
 
-    return 0;
+    return store_ret;
 }
 
 int zsw_recording_manager_abort(void)
@@ -335,6 +354,7 @@ int zsw_recording_manager_abort(void)
 
     struct zsw_voice_memo_recording_event evt = {
         .state = ZSW_VOICE_MEMO_RECORDING_ABORTED,
+        .client = current_client,
     };
     zbus_chan_pub(&voice_memo_recording_chan, &evt, K_MSEC(50));
 

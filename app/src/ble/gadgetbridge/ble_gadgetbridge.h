@@ -50,3 +50,23 @@ void ble_gadgetbridge_send_voice_memo_new(const char *filename, uint32_t duratio
 
 /** Send an undo command for the last processed voice memo to the companion app. */
 void ble_gadgetbridge_send_voice_memo_undo(const char *filename);
+
+/**
+ * @brief Notify companion app that a question audio file is ready for download.
+ *
+ * @param session_id   Session identifier
+ * @param path         On-device path to the WAV file (e.g. "/lfs1/chat/question.wav")
+ * @param duration_ms  Recording duration in milliseconds
+ * @param size_bytes   File size in bytes (including WAV header)
+ * @param sample_rate  Sample rate in Hz
+ * @param codec        Codec identifier string (e.g. "opus_zsw", "pcm_wav")
+ */
+void ble_gadgetbridge_send_chat_question_ready(uint32_t session_id, const char *path,
+                                               uint32_t duration_ms, uint32_t size_bytes,
+                                               uint32_t sample_rate, const char *codec);
+
+/** Cancel the current chat session. */
+void ble_gadgetbridge_send_chat_cancel(uint32_t session_id);
+
+/** Notify companion app that reply audio playback has finished. */
+void ble_gadgetbridge_send_chat_playback_done(uint32_t session_id);

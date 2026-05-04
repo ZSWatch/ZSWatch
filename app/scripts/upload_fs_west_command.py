@@ -189,9 +189,20 @@ class UploadFsWestCommand(WestCommand):
             if args.type == "raw":
                 source_dir = f"{images_path}/S"
                 partition = partition if partition else "lvgl_raw_partition"
+                lvgl_raw_partition_size = 0x800000  # 8 MB — must match pm_static/DTS
                 create_custom_raw_fs_image(filename, source_dir, block_size)
+                img_bytes = os.path.getsize(filename)
+                if img_bytes > lvgl_raw_partition_size:
+                    print(
+                        f"ERROR: Raw FS image ({img_bytes} bytes, {img_bytes / 1024 / 1024:.2f} MB) "
+                        f"exceeds lvgl_raw_partition size ({lvgl_raw_partition_size} bytes, "
+                        f"{lvgl_raw_partition_size / 1024 / 1024:.1f} MB). "
+                        "This would overflow into settings_storage / user_storage and corrupt them!"
+                    )
+                    sys.exit(1)
                 qspi_flash_address = qspi_flash_address + 0x520000
                 print("lvgl_raw_partition partition address:", qspi_flash_address)
+                print(f"Image size: {img_bytes} bytes ({img_bytes / 1024 / 1024:.2f} MB / {lvgl_raw_partition_size / 1024 / 1024:.1f} MB)")
             elif args.type == "lfs":
                 source_dir = f"{images_path}/lvgl_lfs"
                 partition = partition if partition else "littlefs_storage"

@@ -25,8 +25,17 @@ enum zsw_voice_memo_recording_state {
     ZSW_VOICE_MEMO_RECORDING_ABORTED,
 };
 
+/** Identifies which subsystem owns an in-progress recording so that
+ *  unrelated listeners (BLE auto-notify, voice memo list refresh) can
+ *  filter out events not intended for them. */
+enum zsw_recording_client {
+    ZSW_RECORDING_CLIENT_VOICE_MEMO = 0,
+    ZSW_RECORDING_CLIENT_CHAT,
+};
+
 struct zsw_voice_memo_recording_event {
     enum zsw_voice_memo_recording_state state;
+    enum zsw_recording_client client;
     char filename[32];
     uint32_t duration_ms;
     uint32_t size_bytes;

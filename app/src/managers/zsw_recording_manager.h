@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "zsw_recording_manager_store.h"
+#include "events/zsw_voice_memo_event.h"
 
 /** Maximum recording duration in seconds before auto-stop. */
 #define ZSW_RECORDING_MAX_DURATION_S    300
@@ -35,11 +36,22 @@ typedef struct {
 /** @brief Initialize recording manager and storage. Call once at startup. */
 int zsw_recording_manager_init(void);
 
-/** @brief Start a new recording. Returns 0 on success, negative on error. */
-int zsw_recording_manager_start(void);
+/** @brief Start a new recording on behalf of the given client.
+ *
+ * The client identifier is propagated through the recording lifecycle
+ * events on voice_memo_recording_chan so that listeners can filter out
+ * recordings that aren't theirs (e.g. the BLE voice-memo auto-notify
+ * must NOT fire for chat recordings).
+ */
+int zsw_recording_manager_start(enum zsw_recording_client client);
 
-/** @brief Stop recording, finalize file, and publish zbus event. */
-int zsw_recording_manager_stop(void);
+/** @brief Stop recording, finalize file, and publish zbus event.
+ *
+ * @param out_result Optional. If non-NULL, populated with the saved
+ *                   recording's filename, duration, size and timestamp.
+ * @return 0 on success, negative errno on failure.
+ */
+int zsw_recording_manager_stop(zsw_recording_result_t *out_result);
 
 /** @brief Abort recording and discard the file. */
 int zsw_recording_manager_abort(void);
