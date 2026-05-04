@@ -152,16 +152,21 @@ ZSWatch supports two phone platforms through different BLE profiles:
 
 | Platform | Protocol | Services |
 |----------|----------|----------|
-| **Android** | GadgetBridge JSON | Notifications, music, weather, time, calls, navigation |
+| **Android** | GadgetBridge JSON | Notifications, music, weather, time, calls, navigation, custom watchface backgrounds |
 | **iOS** | Apple ANCS + AMS + CTS | Notifications (ANCS), media control (AMS), time (CTS) |
 
 Incoming BLE data is parsed and published to `ble_comm_data_chan` with a **type field**. Consumers filter by type:
 
 - **Notification Manager** - handles notification types, stores up to 10
 - **Music app** - handles music info/state types
-- **Watchface** - handles weather and time types
+- **Watchface** - handles weather, time types, and custom background management
+- **File transfers** - MCUmgr/SMP protocol for firmware updates, file upload/download, and watchface backgrounds
 
 Outbound commands (e.g., music play/pause) flow in reverse: the app publishes to `music_control_data_chan`, and the BLE module picks it up and sends it to the phone.
+
+:::tip Custom Watchface Backgrounds
+The companion app can now upload custom watchface backgrounds via BLE. See the [GadgetBridge Protocol](./gadgetbridge.md#custom-watchface-backgrounds) guide for details.
+:::
 
 ## Audio System
 
