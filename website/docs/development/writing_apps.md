@@ -33,7 +33,7 @@ STOPPED → UI_VISIBLE ↔ UI_HIDDEN → STOPPED
 1. **User opens app** → `start_func(root, group)` is called. Create your UI under `root`.
 2. **Screen turns off** (idle timeout) → `ui_unavailable_func()` fires. Stop timers, pause UI updates.
 3. **Screen turns back on** → `ui_available_func()` fires. Resume UI updates.
-4. **User presses back** → `back_func()` is called. Return `true` to consume the event (stay in app), or `false` to exit.
+4. **Back action triggered** → `back_func()` is called (via button press or swipe-up gesture if enabled in settings). Return `true` to consume the event (stay in app), or `false` to exit.
 5. **App exits** → `stop_func()` is called. You **must** clean up all LVGL objects, timers, and event subscriptions.
 
 ## Creating a New App Step by Step
@@ -106,7 +106,7 @@ static void my_app_stop(void)
 
 static bool my_app_back(void)
 {
-    // Optional: handle the back button.
+    // Optional: handle back action (button or swipe-up gesture).
     // Return true to consume the event (stay in app).
     // Return false to exit the app.
     return false;
@@ -205,7 +205,7 @@ These macros abstract away whether the image is stored in internal or external f
 | `icon` | `const void *` | Yes | App icon. Use `ZSW_LV_IMG_USE(icon_name)`. |
 | `start_func` | `void (*)(lv_obj_t *, lv_group_t *)` | Yes | Called when the app launches. Create a child container under `root` and build UI inside it. |
 | `stop_func` | `void (*)(void)` | Yes | Called when the app exits. Must delete your root element (`lv_obj_del(root_page)`), timers, and event subscriptions. |
-| `back_func` | `bool (*)(void)` | No | Called on back button press. Return `true` to consume (stay in app), `false` to exit. |
+| `back_func` | `bool (*)(void)` | No | Called when back action is triggered (bottom-right button press or swipe-up gesture if enabled). Return `true` to consume (stay in app), `false` to exit. |
 | `ui_unavailable_func` | `void (*)(void)` | No | Called when the screen turns off. Pause UI updates. |
 | `ui_available_func` | `void (*)(void)` | No | Called when the screen turns back on. Resume UI updates. |
 | `category` | `zsw_app_category_t` | Yes | Determines which folder the app appears in within the app picker. |

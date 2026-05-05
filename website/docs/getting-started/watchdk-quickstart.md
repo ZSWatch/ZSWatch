@@ -123,7 +123,21 @@ See [Phone Setup](./phone_setup.md) for detailed pairing instructions.
 
 ## Step 5 - Done!
 
-Your WatchDK should now be running the latest firmware with all icons and images visible. Navigate around the UI using the four buttons and the touchscreen.
+Your WatchDK should now be running the latest firmware with all icons and images visible.
+
+### Navigation Controls
+
+The watch can be navigated using:
+
+- **Four hardware buttons**:
+  - **Top-right button**: Open the app picker / scroll up
+  - **Top-left button**: Toggle flashlight / scroll down
+  - **Bottom-left button**: Music control / select/confirm
+  - **Bottom-right button**: Go back / exit app
+  
+- **Touchscreen**: Tap to interact, swipe to navigate between apps and watchfaces
+
+- **Swipe gesture** (optional): Enable "Swipe up to go back" in **Settings → General** to use an upward swipe as an alternative to the back button. This is useful for navigating without physical buttons.
 
 If you want to view logs or debug the firmware, see the **[Debugging guide](../development/debugging.md)**, including how to connect the nRF54L15 DK for UART logs or use RTT.
 
