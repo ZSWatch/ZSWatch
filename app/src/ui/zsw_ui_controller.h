@@ -18,6 +18,8 @@
 #ifndef ZSW_UI_CONTROLLER_H
 #define ZSW_UI_CONTROLLER_H
 
+#include <stdbool.h>
+
 /**
  * @brief Initialize the UI controller system
  *
@@ -57,6 +59,9 @@ void zsw_ui_controller_set_notification_mode(void);
  * This returns input handling to the appropriate state based on current UI mode.
  */
 void zsw_ui_controller_clear_notification_mode(void);
+
+/** @brief Enable or disable swipe-up back navigation at runtime. */
+void zsw_ui_controller_set_swipe_back_enabled(bool enabled);
 
 typedef enum {
     ZSW_UI_STATE_INIT = 0,

@@ -30,6 +30,7 @@
 #include "sensors/zsw_imu.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
+#include "ui/zsw_ui_controller.h"
 #include "zsw_settings.h"
 #include <filesystem/zsw_rtt_flash_loader.h>
 #include "ui/popup/zsw_popup_window.h"
@@ -55,6 +56,7 @@ static void on_clear_external_flash_changed(lv_setting_value_t value, bool final
 static void on_factory_reset_changed(lv_setting_value_t value, bool final);
 static void on_ble_log_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
+static void on_swipe_back_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
@@ -66,6 +68,7 @@ typedef struct setting_app {
     zsw_settings_brightness_t           brightness;
     zsw_settings_vib_on_press_t         vibration_on_click;
     zsw_settings_display_always_on_t    display_always_on;
+    zsw_settings_swipe_back_t           swipe_back_enabled;
     zsw_settings_ble_log_en_t           ble_log_enabled;
     zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
@@ -79,6 +82,7 @@ static setting_app_t settings_app = {
     .brightness = 50,
     .vibration_on_click = true,
     .display_always_on = false,
+    .swipe_back_enabled = false,
     .ble_log_enabled = false,
     .ble_aoa_enabled = false,
     .ble_aoa_tx_interval = 100,
@@ -182,6 +186,17 @@ static lv_settings_item_t general_page_items[] = {
             .sw = {
                 .name = "Vibrate on click",
                 .inital_val = &settings_app.vibration_on_click,
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_LEFT,
+        .change_callback = on_swipe_back_changed,
+        .item = {
+            .sw = {
+                .name = "Swipe up to go back",
+                .inital_val = &settings_app.swipe_back_enabled,
             }
         }
     },
@@ -361,6 +376,15 @@ static void on_display_vib_press_changed(lv_setting_value_t value, bool final)
                       sizeof(settings_app.vibration_on_click));
 }
 
+static void on_swipe_back_changed(lv_setting_value_t value, bool final)
+{
+    settings_app.swipe_back_enabled = value.item.sw;
+    LOG_INF("Swipe-back setting changed: %d final=%d", settings_app.swipe_back_enabled, final);
+    zsw_ui_controller_set_swipe_back_enabled(settings_app.swipe_back_enabled);
+    settings_save_one(ZSW_SETTINGS_SWIPE_BACK, &settings_app.swipe_back_enabled,
+                      sizeof(settings_app.swipe_back_enabled));
+}
+
 static void on_ble_log_changed(lv_setting_value_t value, bool final)
 {
     settings_app.ble_log_enabled = value.item.sw;
@@ -532,6 +556,17 @@ static int settings_load_cb(const char *name, size_t len,
         }
 
         rc = read_cb(cb_arg, &settings_app.display_always_on, sizeof(settings_app.display_always_on));
+        if (rc >= 0) {
+            return 0;
+        }
+        return rc;
+    }
+    if (settings_name_steq(name, ZSW_SETTINGS_KEY_SWIPE_BACK, &next) && !next) {
+        if (len != sizeof(settings_app.swipe_back_enabled)) {
+            return -EINVAL;
+        }
+
+        rc = read_cb(cb_arg, &settings_app.swipe_back_enabled, sizeof(settings_app.swipe_back_enabled));
         if (rc >= 0) {
             return 0;
         }

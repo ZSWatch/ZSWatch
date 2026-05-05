@@ -57,6 +57,7 @@ typedef struct {
 static const zsw_app_folder_info_t *folder_info;
 
 static lv_obj_t *picker_root;
+static lv_obj_t *gesture_root;
 static app_picker_on_app_selected_cb app_selected_cb;
 static int current_page;
 static int total_pages;
@@ -478,6 +479,7 @@ lv_obj_t *app_picker_ui_create(lv_obj_t *root, lv_group_t *group,
 
     cache_object_references();
 
+    gesture_root = root;
     lv_obj_add_event_cb(root, on_swipe_event, LV_EVENT_GESTURE, NULL);
 
     if (nav_left) {
@@ -511,6 +513,11 @@ void app_picker_ui_delete(void)
     /* Save state before deleting */
     last_page = current_page;
     last_folder = open_folder;
+
+    if (gesture_root && lv_obj_is_valid(gesture_root)) {
+        lv_obj_remove_event_cb(gesture_root, on_swipe_event);
+    }
+    gesture_root = NULL;
 
     if (picker_root) {
         lv_obj_del(picker_root);
