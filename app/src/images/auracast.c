@@ -164,11 +164,10 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_AURACAST 
 };
 
 const lv_img_dsc_t auracast = {
-  .header.cf = LV_IMG_CF_TRUE_COLOR_ALPHA,
-  .header.always_zero = 0,
-  .header.reserved = 0,
+  .header.cf = LV_COLOR_FORMAT_NATIVE_WITH_ALPHA,
+  .header.magic = LV_IMAGE_HEADER_MAGIC,
   .header.w = 32,
   .header.h = 32,
-  .data_size = 1024 * LV_IMG_PX_SIZE_ALPHA_BYTE,
+  .data_size = 1024 * LV_COLOR_NATIVE_WITH_ALPHA_SIZE,
   .data = auracast_map,
 };

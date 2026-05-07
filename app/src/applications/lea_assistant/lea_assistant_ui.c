@@ -1,6 +1,7 @@
 #include "lea_assistant_ui.h"
 #include "managers/zsw_app_manager.h"
 
+#include <assert.h>
 #include <zephyr/logging/log.h>
 
 #define MAX_DEVICES_NUM 6
@@ -39,10 +40,9 @@ static void click_popup_event_cb(lv_event_t *e)
 
 static void timeout_popup(void)
 {
-    mbox = lv_msgbox_create(NULL, "Scan timeout!", NULL, NULL, true);
-    lv_obj_t *close_btn = lv_msgbox_get_close_btn(mbox);
-    // LVGL is not calling for the event cb below, so need to remove all events before adding a new one.
-    lv_obj_remove_event_cb(close_btn, NULL);
+    mbox = lv_msgbox_create(lv_layer_top());
+    lv_msgbox_add_title(mbox, "Scan timeout!");
+    lv_obj_t *close_btn = lv_msgbox_add_header_button(mbox, LV_SYMBOL_CLOSE);
     lv_obj_add_event_cb(close_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_center(mbox);
     lv_obj_set_size(mbox, 180, LV_SIZE_CONTENT);
@@ -69,8 +69,8 @@ static void scroll_event_cb(lv_event_t *e)
     lv_obj_t *cont = lv_event_get_target(e);
     lv_area_t cont_a;
     lv_obj_get_coords(cont, &cont_a);
-    lv_coord_t cont_y_center = cont_a.y1 + lv_area_get_height(&cont_a) / 2;
-    lv_coord_t r = lv_obj_get_height(cont) * 5 / 10;
+    int32_t cont_y_center = cont_a.y1 + lv_area_get_height(&cont_a) / 2;
+    int32_t r = lv_obj_get_height(cont) * 5 / 10;
 
     uint32_t i;
     uint32_t child_cnt = lv_obj_get_child_cnt(cont);
@@ -79,13 +79,13 @@ static void scroll_event_cb(lv_event_t *e)
         lv_area_t child_a;
         lv_obj_get_coords(child, &child_a);
 
-        lv_coord_t child_y_center = child_a.y1 + lv_area_get_height(&child_a) / 2;
+        int32_t child_y_center = child_a.y1 + lv_area_get_height(&child_a) / 2;
 
-        lv_coord_t diff_y = child_y_center - cont_y_center;
+        int32_t diff_y = child_y_center - cont_y_center;
         diff_y = LV_ABS(diff_y);
 
         /* Get the x of diff_y on a circle. */
-        lv_coord_t x;
+        int32_t x;
         /* If diff_y is out of the circle use the last point of the circle (the radius) */
         if (diff_y >= r) {
             x = r;
@@ -134,7 +134,8 @@ static void page_init(lv_obj_t *root, const char *header)
     lv_label_set_text(title, header);
 
     /*Create a spinner*/
-    spinner = lv_spinner_create(lv_layer_top(), 1000, 60);
+    spinner = lv_spinner_create(lv_layer_top());
+    lv_spinner_set_anim_params(spinner, 1000, 400);
     lv_obj_set_size(spinner, LV_PCT(40), LV_PCT(40));
     lv_obj_center(spinner);
 }
@@ -142,7 +143,7 @@ static void page_init(lv_obj_t *root, const char *header)
 static void lea_assistant_ui_add_list_entry(lea_assistant_device_t *device)
 {
     if (spinner != NULL) {
-        lv_obj_del(spinner);
+        lv_obj_delete(spinner);
         spinner = NULL;
     }
 
@@ -221,7 +222,7 @@ void lea_assistant_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_
 void lea_assistant_ui_show_source(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
 {
     if (root_page != NULL) {
-        lv_obj_del(root_page);
+        lv_obj_delete(root_page);
         root_page = NULL;
     }
 
@@ -238,12 +239,12 @@ void lea_assistant_ui_remove(void)
     }
 
     if (root_page != NULL) {
-        lv_obj_del(root_page);
+        lv_obj_delete(root_page);
         root_page = NULL;
     }
 
     if (spinner != NULL) {
-        lv_obj_del(spinner);
+        lv_obj_delete(spinner);
         spinner = NULL;
     }
 }
