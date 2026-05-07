@@ -76,7 +76,7 @@ static void heartbeat_timeout_handler(struct k_timer *timer)
 	struct net_buf *tx_net_buf;
 	int ret;
 
-	tx_net_buf = net_buf_alloc(&command_tx_msg_pool, K_NO_WAIT);
+	tx_net_buf = message_alloc_tx_message();
 	if (!tx_net_buf) {
 		LOG_WRN("heartbeat: no tx buffer");
 		return;
@@ -120,6 +120,7 @@ static void send_simple_message(enum message_type mtype, enum message_sub_type s
 	tx_net_buf = message_alloc_tx_message();
 	if (!tx_net_buf) {
 		LOG_ERR("Failed to allocate net_buf");
+		return;
 	}
 
 	/* Append error code payload */
