@@ -69,14 +69,16 @@ static void log_ltv(uint8_t *data, uint16_t data_len)
 }
 
 static struct webusb_ltv_data parsed_ltv_data;
+static bool heartbeat_on;
 static void heartbeat_timeout_handler(struct k_timer *timer)
 {
 	static uint8_t heartbeat_cnt = 0;
 	struct net_buf *tx_net_buf;
 	int ret;
 
-	tx_net_buf = net_buf_alloc(&command_tx_msg_pool, K_FOREVER);
+	tx_net_buf = net_buf_alloc(&command_tx_msg_pool, K_NO_WAIT);
 	if (!tx_net_buf) {
+		LOG_WRN("heartbeat: no tx buffer");
 		return;
 	}
 
@@ -170,7 +172,7 @@ void send_net_buf_event(enum message_sub_type stype, struct net_buf *tx_net_buf)
 	}
 }
 
-bool ltv_found(struct bt_data *data, void *user_data)
+static bool ltv_found(struct bt_data *data, void *user_data)
 {
 	struct webusb_ltv_data *_parsed = (struct webusb_ltv_data *)user_data;
 
@@ -190,13 +192,14 @@ bool ltv_found(struct bt_data *data, void *user_data)
 		LOG_DBG("BT_DATA_BROADCAST_ID");
 		return true;
 	case BT_DATA_RPA:
-	case BT_DATA_IDENTITY:
+	case BT_DATA_IDENTITY: {
 		char addr_str[BT_ADDR_LE_STR_LEN];
 		_parsed->addr.type = data->data[0];
 		memcpy(&_parsed->addr.a, &data->data[1], sizeof(bt_addr_t));
 		bt_addr_le_to_str(&_parsed->addr, addr_str, sizeof(addr_str));
 		LOG_DBG("Addr: %s", addr_str);
 		return true;
+	}
 	default:
 		LOG_DBG("Unknown type");
 	}
@@ -217,6 +220,8 @@ void message_handler(struct webusb_message *msg_ptr, uint16_t msg_length)
 	int32_t msg_rc = 0;
 	struct net_buf_simple msg_net_buf;
 
+	memset(&parsed_ltv_data, 0, sizeof(parsed_ltv_data));
+
 	msg_net_buf.data = msg_ptr->payload;
 	msg_net_buf.len = msg_ptr->length;
 	msg_net_buf.size = CONFIG_TX_MSG_MAX_PAYLOAD_LEN;
@@ -225,19 +230,17 @@ void message_handler(struct webusb_message *msg_ptr, uint16_t msg_length)
 	bt_data_parse(&msg_net_buf, ltv_found, (void *)&parsed_ltv_data);
 
 	switch (msg_sub_type) {
-	case MESSAGE_SUBTYPE_HEARTBEAT:
-			static bool heartbeat_on = false;
-			if (!heartbeat_on) {
-			// Start generating heartbeats every second
-				heartbeat_on = true;
+	case MESSAGE_SUBTYPE_HEARTBEAT: {
+		if (!heartbeat_on) {
+			heartbeat_on = true;
 			k_timer_start(&heartbeat_timer, K_SECONDS(1), K_SECONDS(1));
 		} else {
-				heartbeat_on = false;
-			// Stop heartbeat timer if running
+			heartbeat_on = false;
 			k_timer_stop(&heartbeat_timer);
 		}
 		send_response(MESSAGE_SUBTYPE_HEARTBEAT, msg_seq_no, 0);
 		break;
+	}
 
 	case MESSAGE_SUBTYPE_START_SINK_SCAN:
 		LOG_DBG("MESSAGE_SUBTYPE_START_SINK_SCAN");
@@ -308,5 +311,4 @@ void message_handler(struct webusb_message *msg_ptr, uint16_t msg_length)
 
 void message_handler_init(void)
 {
-	k_timer_init(&heartbeat_timer, heartbeat_timeout_handler, NULL);
 }
