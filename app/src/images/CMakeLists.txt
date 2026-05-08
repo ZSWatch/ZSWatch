@@ -1,4 +1,9 @@
 FILE(GLOB app_sources *.c)
+
+if(CONFIG_STORE_IMAGES_EXTERNAL_FLASH)
+    list(REMOVE_ITEM app_sources ${CMAKE_CURRENT_SOURCE_DIR}/auracast.c)
+endif()
+
 target_sources(app PRIVATE ${app_sources})
 
 add_subdirectory(assets_watchfaces)

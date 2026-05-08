@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LEA Assistant UI Options</title>
+    <style>
+        :root {
+            --page-bg: #12141b;
+            --picker-bg: #000000;
+            --panel: #1e2028;
+            --panel-2: #30343f;
+            --muted: #495060;
+            --text: #ffffff;
+            --soft: #d7dbe8;
+            --rose: #ffbaaf;
+            --blue: #9ec8f6;
+            --mint: #87e6be;
+            --amber: #ffd166;
+            --violet: #c6a4ff;
+            --shadow: rgba(0, 0, 0, 0.42);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background: var(--page-bg);
+        }
+
+        main {
+            width: min(1280px, calc(100vw - 32px));
+            margin: 0 auto;
+            padding: 32px 0 48px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 34px;
+            line-height: 1.05;
+            font-weight: 760;
+        }
+
+        .lead {
+            margin: 0;
+            max-width: 760px;
+            color: var(--soft);
+            font-size: 15px;
+            line-height: 1.45;
+        }
+
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(5, 24px);
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .option {
+            min-height: 498px;
+            padding: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            background: #191c25;
+            box-shadow: 0 20px 48px var(--shadow);
+        }
+
+        .option-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .option h2 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.1;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            min-height: 26px;
+            padding: 0 9px;
+            border-radius: 7px;
+            font-size: 11px;
+            font-weight: 750;
+            color: #080a0f;
+            background: var(--blue);
+        }
+
+        .preview-wrap {
+            display: grid;
+            place-items: center;
+            margin-bottom: 18px;
+        }
+
+        .watch {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            overflow: hidden;
+            border-radius: 50%;
+            color: var(--text);
+            background: var(--picker-bg);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.03), 0 18px 28px rgba(0, 0, 0, 0.38);
+        }
+
+        .watch::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            box-shadow: inset 0 -24px 42px rgba(0, 0, 0, 0.48), inset 0 18px 34px rgba(255, 255, 255, 0.025);
+            pointer-events: none;
+        }
+
+        .safe {
+            position: absolute;
+            inset: 14px;
+        }
+
+        .mini-label {
+            color: var(--rose);
+            font-size: 11px;
+            font-weight: 760;
+            text-transform: uppercase;
+        }
+
+        .muted {
+            color: #9fa6b7;
+        }
+
+        .option-copy {
+            display: grid;
+            gap: 8px;
+            color: var(--soft);
+            font-size: 13px;
+            line-height: 1.38;
+        }
+
+        .option-copy strong {
+            color: var(--text);
+        }
+
+        .asset-note {
+            color: #aab2c5;
+            font-size: 12px;
+        }
+
+        .top-row {
+            position: absolute;
+            top: 20px;
+            left: 28px;
+            right: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 2;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            min-height: 22px;
+            padding: 0 8px;
+            border-radius: 7px;
+            background: var(--panel-2);
+            color: var(--soft);
+            font-size: 10px;
+            font-weight: 760;
+        }
+
+        .segmented {
+            position: absolute;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            display: flex;
+            width: 146px;
+            height: 30px;
+            padding: 3px;
+            border-radius: 8px;
+            background: var(--panel-2);
+            z-index: 2;
+        }
+
+        .segmented span {
+            display: grid;
+            place-items: center;
+            flex: 1;
+            border-radius: 6px;
+            color: #b9bfce;
+            font-size: 11px;
+            font-weight: 760;
+        }
+
+        .segmented .active {
+            color: #071018;
+            background: var(--blue);
+        }
+
+        .circle-button {
+            display: grid;
+            place-items: center;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: var(--panel);
+            color: var(--rose);
+            font-size: 20px;
+            font-weight: 760;
+        }
+
+        .tiny {
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .option-1 .halo {
+            position: absolute;
+            inset: 42px;
+            border-radius: 50%;
+            border: 2px solid rgba(158, 200, 246, 0.18);
+        }
+
+        .option-1 .halo::before,
+        .option-1 .halo::after {
+            content: "";
+            position: absolute;
+            inset: 22px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 186, 175, 0.18);
+        }
+
+        .option-1 .halo::after {
+            inset: 44px;
+            border-color: rgba(135, 230, 190, 0.26);
+        }
+
+        .option-1 .scan-arc {
+            position: absolute;
+            inset: 35px;
+            border-radius: 50%;
+            background: conic-gradient(from 310deg, transparent 0 74%, var(--blue) 75% 86%, transparent 87% 100%);
+            mask: radial-gradient(circle, transparent 66px, #000 67px 71px, transparent 72px);
+            opacity: 0.95;
+        }
+
+        .option-1 .device-card {
+            position: absolute;
+            left: 42px;
+            right: 42px;
+            top: 80px;
+            min-height: 74px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            background: rgba(30, 32, 40, 0.94);
+            border: 1px solid rgba(158, 200, 246, 0.22);
+            z-index: 2;
+        }
+
+        .option-1 .device-card .name {
+            margin: 3px 0 6px;
+            font-size: 17px;
+            font-weight: 780;
+        }
+
+        .option-1 .bars {
+            display: flex;
+            gap: 4px;
+            align-items: end;
+            height: 19px;
+        }
+
+        .option-1 .bars i {
+            display: block;
+            width: 6px;
+            border-radius: 3px;
+            background: var(--mint);
+        }
+
+        .option-1 .bars i:nth-child(1) { height: 7px; }
+        .option-1 .bars i:nth-child(2) { height: 12px; }
+        .option-1 .bars i:nth-child(3) { height: 17px; }
+
+        .option-2 .radar {
+            position: absolute;
+            inset: 34px;
+            border-radius: 50%;
+            border: 1px solid rgba(73, 80, 96, 0.9);
+            background:
+                linear-gradient(rgba(73, 80, 96, 0.2) 1px, transparent 1px) center / 32px 32px,
+                linear-gradient(90deg, rgba(73, 80, 96, 0.2) 1px, transparent 1px) center / 32px 32px;
+        }
+
+        .option-2 .radar::before,
+        .option-2 .radar::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(73, 80, 96, 0.8);
+        }
+
+        .option-2 .radar::before { inset: 27px; }
+        .option-2 .radar::after { inset: 54px; }
+
+        .option-2 .sweep {
+            position: absolute;
+            inset: 34px;
+            border-radius: 50%;
+            background: conic-gradient(from 18deg, rgba(158, 200, 246, 0.48), rgba(158, 200, 246, 0.08) 18%, transparent 29%);
+            opacity: 0.82;
+        }
+
+        .dot {
+            position: absolute;
+            display: grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 2px solid var(--blue);
+            color: var(--text);
+            font-size: 9px;
+            font-weight: 800;
+            z-index: 2;
+        }
+
+        .option-2 .dot.a { left: 54px; top: 83px; }
+        .option-2 .dot.b { right: 49px; top: 128px; border-color: var(--mint); }
+        .option-2 .dot.c { left: 118px; top: 52px; border-color: var(--rose); }
+
+        .option-2 .radar-readout {
+            position: absolute;
+            left: 70px;
+            right: 70px;
+            top: 94px;
+            text-align: center;
+            z-index: 3;
+        }
+
+        .option-2 .radar-readout .number {
+            font-size: 34px;
+            line-height: 1;
+            font-weight: 820;
+        }
+
+        .option-3 .stepper {
+            position: absolute;
+            left: 43px;
+            right: 43px;
+            top: 56px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .option-3 .step {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            align-items: center;
+            min-height: 43px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .option-3 .step.active {
+            background: #242b34;
+            border-color: rgba(135, 230, 190, 0.38);
+        }
+
+        .option-3 .num {
+            display: grid;
+            place-items: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            color: #080a0f;
+            background: var(--mint);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .option-3 .step-title {
+            font-size: 12px;
+            font-weight: 770;
+        }
+
+        .option-3 .step-sub {
+            color: #a9b0bf;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        .option-3 .progress-dots {
+            position: absolute;
+            top: 33px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 7px;
+        }
+
+        .option-3 .progress-dots i {
+            display: block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+
+        .option-3 .progress-dots i:nth-child(-n+2) {
+            background: var(--blue);
+        }
+
+        .option-4 .stage {
+            position: absolute;
+            inset: 42px 30px 48px;
+        }
+
+        .option-4 .node {
+            position: absolute;
+            display: grid;
+            place-items: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 2px solid var(--blue);
+            z-index: 2;
+        }
+
+        .option-4 .node.left { left: 4px; top: 40px; }
+        .option-4 .node.right { right: 4px; top: 40px; border-color: var(--rose); }
+
+        .option-4 .node span {
+            font-size: 10px;
+            font-weight: 820;
+            text-align: center;
+        }
+
+        .option-4 .link {
+            position: absolute;
+            left: 64px;
+            right: 64px;
+            top: 70px;
+            height: 2px;
+            background: var(--muted);
+        }
+
+        .option-4 .link::before,
+        .option-4 .link::after {
+            content: "";
+            position: absolute;
+            top: -12px;
+            width: 20px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--mint);
+            border-right-color: var(--mint);
+        }
+
+        .option-4 .link::before { left: -2px; }
+        .option-4 .link::after { right: -2px; transform: rotate(180deg); }
+
+        .option-4 .source-title {
+            position: absolute;
+            left: 31px;
+            right: 31px;
+            bottom: 27px;
+            min-height: 43px;
+            padding: 7px 10px;
+            border-radius: 8px;
+            background: rgba(30, 32, 40, 0.95);
+            text-align: center;
+            z-index: 2;
+        }
+
+        .option-4 .source-title strong {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .option-5 .orbit-slot {
+            position: absolute;
+            z-index: 2;
+        }
+
+        .option-5 .orbit-slot .label {
+            width: 62px;
+            margin-top: 4px;
+            color: var(--rose);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 760;
+        }
+
+        .option-5 .orbit-slot.top { left: 92px; top: 12px; }
+        .option-5 .orbit-slot.right { right: 28px; top: 90px; }
+        .option-5 .orbit-slot.bottom { left: 92px; bottom: 13px; }
+        .option-5 .orbit-slot.left { left: 28px; top: 90px; }
+
+        .option-5 .center-panel {
+            position: absolute;
+            left: 74px;
+            top: 80px;
+            display: grid;
+            place-items: center;
+            width: 92px;
+            height: 82px;
+            padding: 8px;
+            border-radius: 8px;
+            background: var(--panel);
+            border: 1px solid rgba(158, 200, 246, 0.26);
+            text-align: center;
+            z-index: 3;
+        }
+
+        .option-5 .center-panel strong {
+            font-size: 18px;
+            line-height: 1.05;
+        }
+
+        .option-5 .center-panel span {
+            margin-top: 4px;
+            color: #abb2c2;
+            font-size: 10px;
+            font-weight: 720;
+        }
+
+        .waves {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 4px);
+            gap: 3px;
+            align-items: end;
+            height: 18px;
+        }
+
+        .waves i {
+            width: 4px;
+            border-radius: 3px;
+            background: currentColor;
+        }
+
+        .waves i:nth-child(1) { height: 8px; }
+        .waves i:nth-child(2) { height: 15px; }
+        .waves i:nth-child(3) { height: 11px; }
+
+        @media (max-width: 760px) {
+            main {
+                width: min(100vw - 20px, 420px);
+                padding-top: 20px;
+            }
+
+            .page-header {
+                display: block;
+            }
+
+            .palette {
+                width: max-content;
+                margin-top: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header class="page-header">
+        <div>
+            <h1>LEA Assistant UI directions</h1>
+            <p class="lead">Five 240x240 round-screen concepts using the app picker dark base. Each option supports the real sink scan and a compile-time fake source discovery path for conference demos.</p>
+        </div>
+        <div class="palette" aria-label="ZSWatch palette">
+            <span class="swatch" style="background:#000000"></span>
+            <span class="swatch" style="background:#1e2028"></span>
+            <span class="swatch" style="background:#495060"></span>
+            <span class="swatch" style="background:#ffbaaf"></span>
+            <span class="swatch" style="background:#9ec8f6"></span>
+        </div>
+    </header>
+
+    <section class="grid">
+        <article class="option option-1">
+            <div class="option-top">
+                <h2>1. Halo Pairing</h2>
+                <span class="tag">Premium Demo</span>
+            </div>
+            <div class="preview-wrap">
+                <div class="watch">
+                    <div class="top-row">
+                        <span class="mini-label">LE Audio</span>
+                        <span class="pill">Sink</span>
+                    </div>
+                    <div class="halo"></div>
+                    <div class="scan-arc"></div>
+                    <div class="device-card">
+                        <div class="mini-label">Found receiver</div>
+                        <div class="name">Hall RX</div>
+                        <div class="bars"><i></i><i></i><i></i></div>
+                    </div>
+                    <div class="segmented"><span class="active">Sink</span><span>Source</span></div>
+                </div>
+            </div>
+            <div class="option-copy">
+                <div><strong>Feel:</strong> big visual confidence, clean stage-demo moment, easy for the audience to read from a distance.</div>
+                <div><strong>Flow:</strong> sink scan halo, connect card, fake source appears as the segment flips to Source.</div>
+                <div class="asset-note">Optional later asset: one 40x40 Auracast/broadcast glyph.</div>
+            </div>
+        </article>
+
+        <article class="option option-2">
+            <div class="option-top">
+                <h2>2. Broadcast Radar</h2>
+                <span class="tag" style="background:var(--mint)">Discovery</span>
+            </div>
+            <div class="preview-wrap">
+                <div class="watch">
+                    <div class="top-row">
+                        <span class="mini-label">Scanning</span>
+                        <span class="pill">Fake SRC</span>
+                    </div>
+                    <div class="radar"></div>
+                    <div class="sweep"></div>
+                    <div class="dot a">RX</div>
+                    <div class="dot b">SRC</div>
+                    <div class="dot c">RX</div>
+                    <div class="radar-readout">
+                        <div class="number">3</div>
+                        <div class="tiny muted">devices</div>
+                    </div>
+                    <div class="segmented"><span class="active">Scan</span><span>Select</span></div>
+                </div>
+            </div>
+            <div class="option-copy">
+                <div><strong>Feel:</strong> technical and conference-friendly; it makes scanning look active even when the source side is mocked.</div>
+                <div><strong>Flow:</strong> live sinks and fake sources share one radar, then tap a dot or bottom select state.</div>
+                <div class="asset-note">No external resources needed; can be pure LVGL arcs, lines, and circles.</div>
+            </div>
+        </article>
+
+        <article class="option option-3">
+            <div class="option-top">
+                <h2>3. Broadcast Deck</h2>
+                <span class="tag" style="background:var(--amber)">Guided</span>
+            </div>
+            <div class="preview-wrap">
+                <div class="watch">
+                    <div class="top-row">
+                        <span class="mini-label">Assistant</span>
+                        <span class="pill">2/3</span>
+                    </div>
+                    <div class="progress-dots"><i></i><i></i><i></i></div>
+                    <div class="stepper">
+                        <div class="step">
+                            <div class="num">1</div>
+                            <div><div class="step-title">Sink ready</div><div class="step-sub">Hall RX connected</div></div>
+                        </div>
+                        <div class="step active">
+                            <div class="num">2</div>
+                            <div><div class="step-title">Pick source</div><div class="step-sub">Zephyr Keynote</div></div>
+                        </div>
+                        <div class="step">
+                            <div class="num">3</div>
+                            <div><div class="step-title">Sync audio</div><div class="step-sub">Waiting</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="option-copy">
+                <div><strong>Feel:</strong> controlled and reliable, like a tiny setup wizard for demos with fewer surprises.</div>
+                <div><strong>Flow:</strong> step cards move from sink scan to fake source selection to synced confirmation.</div>
+                <div class="asset-note">Optional later asset: none required; text and simple status dots carry it.</div>
+            </div>
+        </article>
+
+        <article class="option option-4">
+            <div class="option-top">
+                <h2>4. Stage Link</h2>
+                <span class="tag" style="background:var(--rose)">Story</span>
+            </div>
+            <div class="preview-wrap">
+                <div class="watch">
+                    <div class="top-row">
+                        <span class="mini-label">Broadcast</span>
+                        <span class="pill">Live</span>
+                    </div>
+                    <div class="stage">
+                        <div class="node left"><span>Hall<br>RX</span></div>
+                        <div class="link"></div>
+                        <div class="node right"><span>Stage<br>SRC</span></div>
+                    </div>
+                    <div class="source-title">
+                        <strong>Zephyr Keynote</strong>
+                        <span class="muted tiny">source synced</span>
+                    </div>
+                </div>
+            </div>
+            <div class="option-copy">
+                <div><strong>Feel:</strong> the most narrative option; the audience sees a receiver and broadcast source linking up.</div>
+                <div><strong>Flow:</strong> sink node appears from scan, source node can be injected by a define, link becomes Live.</div>
+                <div class="asset-note">Optional later asset: two small 40x40 icons for receiver and broadcast source.</div>
+            </div>
+        </article>
+
+        <article class="option option-5">
+            <div class="option-top">
+                <h2>5. Picker Orbit</h2>
+                <span class="tag" style="background:var(--violet)">Native</span>
+            </div>
+            <div class="preview-wrap">
+                <div class="watch">
+                    <div class="orbit-slot top">
+                        <div class="circle-button"><span class="waves"><i></i><i></i><i></i></span></div>
+                        <div class="label">Scan</div>
+                    </div>
+                    <div class="orbit-slot right">
+                        <div class="circle-button" style="color:var(--mint)">RX</div>
+                        <div class="label">Sink</div>
+                    </div>
+                    <div class="orbit-slot bottom">
+                        <div class="circle-button" style="color:var(--rose)">SRC</div>
+                        <div class="label">Source</div>
+                    </div>
+                    <div class="orbit-slot left">
+                        <div class="circle-button" style="color:var(--blue)">OK</div>
+                        <div class="label">Sync</div>
+                    </div>
+                    <div class="center-panel">
+                        <strong>LEA</strong>
+                        <span>2 sinks<br>1 fake source</span>
+                    </div>
+                </div>
+            </div>
+            <div class="option-copy">
+                <div><strong>Feel:</strong> closest to the app picker, with familiar round targets and a compact center status.</div>
+                <div><strong>Flow:</strong> orbit slots act as scan/status stages; device entries reuse app-picker-like circular buttons.</div>
+                <div class="asset-note">Optional later asset: reuse existing Auracast icon or create 40x40 glyphs.</div>
+            </div>
+        </article>
+    </section>
+</main>
+</body>
+</html>

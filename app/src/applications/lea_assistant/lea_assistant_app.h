@@ -18,3 +18,5 @@ void lea_assistant_app_add_source_entry(lea_assistant_device_t *device);
 void lea_assistant_app_add_sink_entry(lea_assistant_device_t *device);
 
 void lea_assistant_app_sink_connected(void);
+
+void lea_assistant_app_source_added(void);

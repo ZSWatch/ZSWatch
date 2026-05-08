@@ -127,6 +127,7 @@ int webusb_transmit(struct net_buf *tx_net_buf)
 
         case MESSAGE_SUBTYPE_SOURCE_ADDED:
             LOG_DBG("MESSAGE_SUBTYPE_SOURCE_ADDED");
+            lea_assistant_app_source_added();
             break;
 
         default:

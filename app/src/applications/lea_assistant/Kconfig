@@ -1,3 +1,11 @@
+config ZSW_LEA_ASSISTANT_FAKE_SOURCE_DISCOVERY
+		bool "Add a demo LE Audio source during source scan"
+		depends on APPLICATIONS_USE_LEA_ASSISTANT
+		default y
+		help
+			Adds a fake broadcast source to the LE Audio Assistant source list so the
+			conference demo can exercise the full UI without source hardware.
+
 module = ZSW_LEA_ASSISTANT_APP
 module-str = ZSW_LEA_ASSISTANT_APP
 source "subsys/logging/Kconfig.template.log_config"
