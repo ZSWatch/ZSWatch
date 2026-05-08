@@ -324,6 +324,12 @@ static void ams_discover_retry_handle(struct k_work *item)
 static void security_changed(struct bt_conn *conn, bt_security_t level,
                              enum bt_security_err err)
 {
+    struct bt_conn_info info;
+    bt_conn_get_info(conn, &info);
+    if (info.role != BT_CONN_ROLE_PERIPHERAL) {
+        return;
+    }
+
     if (!err) {
         LOG_DBG("Security changed: level %u", level);
 
