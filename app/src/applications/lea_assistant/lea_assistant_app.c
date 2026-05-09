@@ -24,6 +24,8 @@
 
 #include "message_handler.h"
 
+#define COMPLETE_CLOSE_DELAY_MS 5200
+
 LOG_MODULE_REGISTER(lea_assistant_app, CONFIG_ZSW_LEA_ASSISTANT_APP_LOG_LEVEL);
 
 // Functions needed for all applications
@@ -125,8 +127,8 @@ static void show_complete_async(void *data)
     }
 
     completion_visible = true;
-    lea_assistant_ui_show_complete(_root, "Audio ready");
-    k_work_reschedule(&close_app_work, K_MSEC(1800));
+    lea_assistant_ui_show_complete(_root, "Headphones tuned in");
+    k_work_reschedule(&close_app_work, K_MSEC(COMPLETE_CLOSE_DELAY_MS));
 }
 
 static void show_complete_work_handler(struct k_work *work)

@@ -13,6 +13,11 @@
 #define SCAN_TIMEOUT_MS       30000
 #define DEVICE_ROW_HEIGHT     40
 #define DEVICE_LIST_HEIGHT    106
+#define SUCCESS_RING_COUNT    3
+#define SUCCESS_BAR_COUNT     5
+#define SUCCESS_TIMER_MS      70
+#define SUCCESS_RING_MIN_SIZE 58
+#define SUCCESS_RING_RANGE    58
 #define LEA_COLOR_PANEL       lv_color_hex(0x1e2028)
 #define LEA_COLOR_PANEL_HI    lv_color_hex(0x242b34)
 #define LEA_COLOR_TEXT_DIM    lv_color_hex(0xa9b0bf)
@@ -41,10 +46,14 @@ static lv_obj_t *empty_label;
 static lv_obj_t *stage_pill_label;
 static lv_obj_t *step_subtitle_labels[STEP_COUNT];
 static lv_obj_t *progress_dots[STEP_COUNT];
+static lv_obj_t *success_rings[SUCCESS_RING_COUNT];
+static lv_obj_t *success_bars[SUCCESS_BAR_COUNT];
 static lv_timer_t *timeout_timer;
+static lv_timer_t *success_timer;
 static on_button_press_cb_t click_callback;
 static on_close_cb_t close_callback;
 static lea_ui_stage_t current_stage;
+static uint8_t success_tick;
 static char active_name[BT_NAME_LEN];
 static char error_title[32];
 static char error_message[64];
@@ -65,6 +74,14 @@ static void stop_timeout_timer(void)
     }
 }
 
+static void stop_success_timer(void)
+{
+    if (success_timer != NULL) {
+        lv_timer_del(success_timer);
+        success_timer = NULL;
+    }
+}
+
 static void reset_ui_refs(void)
 {
     list_container = NULL;
@@ -75,11 +92,22 @@ static void reset_ui_refs(void)
         step_subtitle_labels[step_index] = NULL;
         progress_dots[step_index] = NULL;
     }
+
+    for (int ring_index = 0; ring_index < SUCCESS_RING_COUNT; ring_index++) {
+        success_rings[ring_index] = NULL;
+    }
+
+    for (int bar_index = 0; bar_index < SUCCESS_BAR_COUNT; bar_index++) {
+        success_bars[bar_index] = NULL;
+    }
+
+    success_tick = 0;
 }
 
 static void clear_root_page(void)
 {
     stop_timeout_timer();
+    stop_success_timer();
 
     if (root_page != NULL) {
         lv_obj_del(root_page);
@@ -355,6 +383,103 @@ static void create_status_panel(const char *title, const char *subtitle, lv_colo
     lv_obj_align(subtitle_label, LV_ALIGN_TOP_MID, 0, 29);
 }
 
+static void align_success_center(lv_obj_t *obj)
+{
+    lv_obj_align(obj, LV_ALIGN_CENTER, 0, 6);
+}
+
+static void success_timer_cb(lv_timer_t *timer)
+{
+    LV_UNUSED(timer);
+
+    success_tick++;
+
+    for (int ring_index = 0; ring_index < SUCCESS_RING_COUNT; ring_index++) {
+        if (success_rings[ring_index] == NULL) {
+            continue;
+        }
+
+        uint8_t phase = (success_tick * 5 + ring_index * 32) % 100;
+        int32_t size = SUCCESS_RING_MIN_SIZE + (phase * SUCCESS_RING_RANGE) / 100;
+        lv_opa_t opacity = (lv_opa_t)(180 - (phase * 150) / 100);
+
+        lv_obj_set_size(success_rings[ring_index], size, size);
+        align_success_center(success_rings[ring_index]);
+        lv_obj_set_style_border_opa(success_rings[ring_index], opacity, LV_PART_MAIN);
+    }
+
+    for (int bar_index = 0; bar_index < SUCCESS_BAR_COUNT; bar_index++) {
+        if (success_bars[bar_index] == NULL) {
+            continue;
+        }
+
+        uint8_t phase = (success_tick + bar_index * 2) % 10;
+        if (phase > 5) {
+            phase = 10 - phase;
+        }
+
+        lv_obj_set_height(success_bars[bar_index], 8 + phase * 4);
+    }
+}
+
+static void create_success_scene(void)
+{
+    for (int ring_index = 0; ring_index < SUCCESS_RING_COUNT; ring_index++) {
+        lv_obj_t *ring = lv_obj_create(root_page);
+        style_clean_container(ring, lv_color_black(), LV_OPA_TRANSP);
+        lv_obj_set_size(ring, SUCCESS_RING_MIN_SIZE + ring_index * 16, SUCCESS_RING_MIN_SIZE + ring_index * 16);
+        lv_obj_set_style_radius(ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        lv_obj_set_style_border_width(ring, 2, LV_PART_MAIN);
+        lv_obj_set_style_border_color(ring, ring_index == 1 ? zsw_color_blue() : LEA_COLOR_MINT, LV_PART_MAIN);
+        lv_obj_set_style_border_opa(ring, LV_OPA_60, LV_PART_MAIN);
+        align_success_center(ring);
+        success_rings[ring_index] = ring;
+    }
+
+    lv_obj_t *title = create_label(root_page, "Broadcast linked", &lv_font_montserrat_14, lv_color_white());
+    lv_obj_set_width(title, 160);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 62);
+
+    lv_obj_t *core = lv_obj_create(root_page);
+    style_clean_container(core, LEA_COLOR_MINT, LV_OPA_COVER);
+    lv_obj_set_size(core, 58, 58);
+    lv_obj_set_style_radius(core, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_border_width(core, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(core, zsw_color_blue(), LV_PART_MAIN);
+    align_success_center(core);
+
+    lv_obj_t *core_label = create_label(core, "LIVE", &lv_font_montserrat_16, lv_color_black());
+    lv_obj_center(core_label);
+
+    lv_obj_t *subtitle = create_label(root_page,
+                                      active_name[0] != '\0' ? active_name : "Headphones tuned in",
+                                      &lv_font_montserrat_12, LEA_COLOR_TEXT_DIM);
+    lv_obj_set_width(subtitle, 160);
+    lv_label_set_long_mode(subtitle, LV_LABEL_LONG_DOT);
+    lv_obj_align(subtitle, LV_ALIGN_BOTTOM_MID, 0, -42);
+
+    lv_obj_t *bars = lv_obj_create(root_page);
+    style_clean_container(bars, lv_color_black(), LV_OPA_TRANSP);
+    lv_obj_set_size(bars, 72, 28);
+    lv_obj_align(bars, LV_ALIGN_BOTTOM_MID, 0, -14);
+    lv_obj_set_flex_flow(bars, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(bars, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+    lv_obj_set_style_pad_column(bars, 6, LV_PART_MAIN);
+
+    for (int bar_index = 0; bar_index < SUCCESS_BAR_COUNT; bar_index++) {
+        lv_obj_t *bar = lv_obj_create(bars);
+        style_clean_container(bar, bar_index % 2 == 0 ? LEA_COLOR_MINT : zsw_color_blue(), LV_OPA_COVER);
+        lv_obj_set_size(bar, 6, 10 + bar_index * 2);
+        lv_obj_set_style_radius(bar, 3, LV_PART_MAIN);
+        success_bars[bar_index] = bar;
+    }
+
+    success_tick = 0;
+    success_timer = lv_timer_create(success_timer_cb, SUCCESS_TIMER_MS, NULL);
+    success_timer_cb(success_timer);
+}
+
 static void timeout_timer_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
@@ -388,7 +513,10 @@ static void build_page(lv_obj_t *root)
 
     create_header();
     create_progress_dots();
-    create_steps();
+
+    if (current_stage != LEA_UI_STAGE_COMPLETE) {
+        create_steps();
+    }
 
     switch (current_stage) {
     case LEA_UI_STAGE_SINK_SCAN:
@@ -403,7 +531,7 @@ static void build_page(lv_obj_t *root)
         create_status_panel(active_name[0] != '\0' ? active_name : "Broadcast source", "Sending broadcast info", LEA_COLOR_MINT);
         break;
     case LEA_UI_STAGE_COMPLETE:
-        create_status_panel(active_name[0] != '\0' ? active_name : "Audio ready", "Source sent to receiver", LEA_COLOR_MINT);
+        create_success_scene();
         break;
     case LEA_UI_STAGE_ERROR:
         create_status_panel(error_title[0] != '\0' ? error_title : "LE Audio error",
