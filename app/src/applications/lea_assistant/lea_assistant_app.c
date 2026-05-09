@@ -20,6 +20,7 @@
 #include "ble/ble_comm.h"
 #include "events/ble_event.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "zsw_xip_manager.h"
 
 #include "message_handler.h"
 
@@ -185,6 +186,8 @@ static void lea_assistant_app_start(lv_obj_t *root, lv_group_t *group)
     k_work_cancel_delayable(&show_complete_work);
     k_work_cancel_delayable(&close_app_work);
 
+    zsw_xip_enable();
+
     LOG_DBG("LEA Assistant app start");
 
     message_handler(&(struct webusb_message ) {
@@ -211,6 +214,8 @@ static void lea_assistant_app_stop(void)
     source_stage_visible = false;
     fake_source_added = false;
     completion_visible = false;
+
+    zsw_xip_disable();
 }
 
 static int lea_assistant_app_add(void)

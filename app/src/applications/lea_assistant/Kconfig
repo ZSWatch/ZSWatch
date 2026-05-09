@@ -1,7 +1,7 @@
 config ZSW_LEA_ASSISTANT_FAKE_SOURCE_DISCOVERY
 		bool "Add a demo LE Audio source during source scan"
 		depends on APPLICATIONS_USE_LEA_ASSISTANT
-		default y
+		default n
 		help
 			Adds a fake broadcast source to the LE Audio Assistant source list so the
 			conference demo can exercise the full UI without source hardware.
