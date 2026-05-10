@@ -159,3 +159,4 @@ This project is partly funded through [NGI0 Commons Fund](https://nlnet.nl/commo
 ## Miscellaneous
 
 - [Watch my presentation at Zephyr Developer Summit 2023](https://www.youtube.com/watch?v=MmCzV0jV9hs)
+
