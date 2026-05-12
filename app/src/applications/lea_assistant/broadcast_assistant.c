@@ -404,15 +404,25 @@ static void connected(struct bt_conn *conn, uint8_t err)
         return;
     }
 
-    /* Only set security on our CENTRAL connections (not phone→watch) */
+    /*
+     * Don't force pairing immediately — some sinks (e.g. hearing aids) reject
+     * unsolicited Pairing Requests and disconnect.  Instead, start BASS
+     * discovery right away (service discovery works without encryption).
+     * Security will be elevated automatically when:
+     *   a) the sink sends a Slave Security Request, or
+     *   b) a GATT write requires encryption (Zephyr auto-elevates).
+     * If neither happens, we request security explicitly after discovery.
+     */
     struct bt_conn_info info;
 
     bt_conn_get_info(conn, &info);
     if (info.role == BT_CONN_ROLE_CENTRAL) {
-        int sec_err = bt_conn_set_security(conn, BT_SECURITY_L2 | BT_SECURITY_FORCE_PAIR);
+        LOG_INF("Starting BASS discovery (security deferred)");
+        int disc_err = bt_bap_broadcast_assistant_discover(ba_sink_conn);
 
-        if (sec_err) {
-            LOG_ERR("Security setup failed (err %d)", sec_err);
+        if (disc_err) {
+            LOG_ERR("BASS discover start failed (err %d)", disc_err);
+            bt_conn_disconnect(ba_sink_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
         }
     }
 }
@@ -455,7 +465,7 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 {
     /*
      * Guard: this callback fires for ALL connections (phone, sink, etc.).
-     * Only trigger BASS discovery for our sink connection.
+     * Only handle security changes for our sink connection.
      */
     if (conn != ba_sink_conn) {
         return;
@@ -469,13 +479,12 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
         return;
     }
 
-    LOG_INF("Starting BASS discovery");
-    int disc_err = bt_bap_broadcast_assistant_discover(ba_sink_conn);
-
-    if (disc_err) {
-        LOG_ERR("BASS discover start failed (err %d)", disc_err);
-        bt_conn_disconnect(ba_sink_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-    }
+    /*
+     * Security is now established.  BASS discovery was already started in the
+     * connected callback (it works without encryption for service discovery).
+     * Nothing else to do here — the discover_cb path continues from there.
+     */
+    LOG_INF("Security elevated to level %d", level);
 }
 
 static void identity_resolved_cb(struct bt_conn *conn, const bt_addr_le_t *rpa,
