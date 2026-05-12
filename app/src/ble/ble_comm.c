@@ -423,12 +423,22 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
     ble_chronos_state(false);
 }
 
+/**
+ * Called when a connection object is recycled after disconnection.
+ * Restarts advertising if no active connection is present.
+ * Errors indicating the controller is busy are silently ignored
+ * to avoid false alarms from concurrent BLE activity (ie Phone + Broadcast assistant).
+ */
 static void ble_recycled(void)
 {
+    if (current_conn) {
+        return;
+    }
+
     int err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
-    if (err) {
+    if (err && err != -ENOMEM && err != -EALREADY) {
         LOG_ERR("Advertising failed to start (err %d)", err);
-    } else {
+    } else if (err == 0) {
         LOG_DBG("Advertising successfully started");
     }
 }
