@@ -48,7 +48,7 @@ ZSW_LV_IMG_DECLARE(folder_icon);
 ZSW_LV_IMG_DECLARE(tools);
 ZSW_LV_IMG_DECLARE(fitness);
 ZSW_LV_IMG_DECLARE(system);
-ZSW_LV_IMG_DECLARE(random);
+ZSW_LV_IMG_DECLARE(random_category_icon);
 ZSW_LV_IMG_DECLARE(sensors);
 ZSW_LV_IMG_DECLARE(games);
 
@@ -93,7 +93,7 @@ static const zsw_app_folder_info_t app_folders[ZSW_APP_CATEGORY_COUNT] = {
     },
     [ZSW_APP_CATEGORY_RANDOM] = {
         .name = "Random",
-        .icon = ZSW_LV_IMG_USE(random),
+        .icon = ZSW_LV_IMG_USE(random_category_icon),
         .color = LV_COLOR_MAKE(0xE9, 0x1E, 0x63),
         .category = ZSW_APP_CATEGORY_RANDOM
     },
