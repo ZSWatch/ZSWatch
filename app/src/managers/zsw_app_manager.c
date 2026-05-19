@@ -45,6 +45,12 @@ ZBUS_CHAN_DECLARE(activity_state_data_chan);
 ZBUS_LISTENER_DEFINE(app_manager_activity_state_event_lis, zbus_activity_event_callback);
 
 ZSW_LV_IMG_DECLARE(folder_icon);
+ZSW_LV_IMG_DECLARE(tools_icon);
+ZSW_LV_IMG_DECLARE(fitness_icon);
+ZSW_LV_IMG_DECLARE(system_icon);
+ZSW_LV_IMG_DECLARE(random_icon);
+ZSW_LV_IMG_DECLARE(sensors_icon);
+ZSW_LV_IMG_DECLARE(games_icon);
 
 static application_t *apps[MAX_APPS];
 static uint8_t num_apps;
@@ -69,37 +75,37 @@ static const zsw_app_folder_info_t app_folders[ZSW_APP_CATEGORY_COUNT] = {
     },
     [ZSW_APP_CATEGORY_TOOLS] = {
         .name = "Tools",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(tools_icon),
         .color = LV_COLOR_MAKE(0xFF, 0x98, 0x00),
         .category = ZSW_APP_CATEGORY_TOOLS
     },
     [ZSW_APP_CATEGORY_FITNESS] = {
         .name = "Fitness",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(fitness_icon),
         .color = LV_COLOR_MAKE(0x4C, 0xAF, 0x50),
         .category = ZSW_APP_CATEGORY_FITNESS
     },
     [ZSW_APP_CATEGORY_SYSTEM] = {
         .name = "System",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(system_icon),
         .color = LV_COLOR_MAKE(0xF4, 0x43, 0x36),
         .category = ZSW_APP_CATEGORY_SYSTEM
     },
     [ZSW_APP_CATEGORY_RANDOM] = {
         .name = "Random",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(random_icon),
         .color = LV_COLOR_MAKE(0xE9, 0x1E, 0x63),
         .category = ZSW_APP_CATEGORY_RANDOM
     },
     [ZSW_APP_CATEGORY_SENSORS] = {
         .name = "Sensors",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(sensors_icon),
         .color = LV_COLOR_MAKE(0x00, 0xBC, 0xD4),
         .category = ZSW_APP_CATEGORY_SENSORS
     },
     [ZSW_APP_CATEGORY_GAMES] = {
         .name = "Games",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(games_icon),
         .color = LV_COLOR_MAKE(0x21, 0x96, 0xF3),
         .category = ZSW_APP_CATEGORY_GAMES
     },
