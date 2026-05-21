@@ -263,8 +263,6 @@ static void populate_slot(int slot_index, picker_item_t *item)
     } else {
         if (app_icons[slot_index] && item->folder.icon) {
             lv_image_set_src(app_icons[slot_index], item->folder.icon);
-            //lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_70, LV_PART_MAIN); //leave dedicated icons in their original colors
-            //lv_obj_set_style_image_recolor(app_icons[slot_index], item->folder.color, LV_PART_MAIN);  //leave dedicated icons in their original colors
         }
 
         if (app_labels[slot_index] && item->folder.name) {
