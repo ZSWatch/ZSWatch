@@ -331,9 +331,9 @@ dmic_dev: &pdm0 {
             };
 
             regulator_3v3: BUCK2 {
-                regulator-min-microvolt = <3000000>;
-                regulator-max-microvolt = <3000000>;
-                regulator-init-microvolt = <3000000>;
+                regulator-min-microvolt = <3300000>;
+                regulator-max-microvolt = <3300000>;
+                regulator-init-microvolt = <3300000>;
                 regulator-boot-on;
             };
 
