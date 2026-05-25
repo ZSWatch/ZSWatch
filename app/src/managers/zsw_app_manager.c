@@ -44,7 +44,7 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(activity_state_data_chan);
 ZBUS_LISTENER_DEFINE(app_manager_activity_state_event_lis, zbus_activity_event_callback);
 
-ZSW_LV_IMG_DECLARE(folder_icon);
+ZSW_LV_IMG_DECLARE(folder);
 ZSW_LV_IMG_DECLARE(tools);
 ZSW_LV_IMG_DECLARE(fitness);
 ZSW_LV_IMG_DECLARE(system);
@@ -69,7 +69,7 @@ static bool screen_is_on = true;
 static const zsw_app_folder_info_t app_folders[ZSW_APP_CATEGORY_COUNT] = {
     [ZSW_APP_CATEGORY_ROOT] = {
         .name = "Root",
-        .icon = ZSW_LV_IMG_USE(folder_icon),
+        .icon = ZSW_LV_IMG_USE(folder),
         .color = LV_COLOR_MAKE(0x9E, 0x9E, 0x9E),
         .category = ZSW_APP_CATEGORY_ROOT
     },
