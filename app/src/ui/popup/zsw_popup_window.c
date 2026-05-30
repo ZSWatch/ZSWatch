@@ -21,12 +21,56 @@
 static void on_popup_button_pressed(lv_event_t *e);
 static void on_popup_close_button_pressed(lv_event_t *e);
 static void close_popup_timer(lv_timer_t *timer);
+static void on_timer_popup_dismiss_pressed(lv_event_t *e);
 
 static lv_obj_t *mbox;
 static lv_obj_t *yes_btn;
 static lv_obj_t *no_btn;
 static on_close_popup_cb_t on_close_cb;
 static lv_timer_t *auto_close_timer;
+
+void zsw_timer_popup_show(char *title, char *body, on_close_popup_cb_t close_cb)
+{
+    if (mbox) {
+    // TODO handle queue of popups
+        return;
+    }
+
+    zsw_power_manager_reset_idle_timout();
+    on_close_cb = close_cb;
+    auto_close_timer = NULL;
+
+    mbox = lv_msgbox_create(lv_layer_top());
+    lv_msgbox_add_title(mbox, title);
+    lv_msgbox_add_text(mbox, body);
+
+    lv_obj_t *dismiss_btn =
+        lv_msgbox_add_footer_button(mbox, "Dismiss");
+
+    lv_obj_add_event_cb(dismiss_btn, on_timer_popup_dismiss_pressed, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_set_scrollbar_mode(lv_layer_top(), LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scrollbar_mode(mbox, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_center(mbox);
+
+    lv_group_focus_obj(dismiss_btn);
+
+    lv_obj_set_size(mbox, 180, LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(mbox, 5, 0);
+    lv_obj_clear_flag(mbox, LV_OBJ_FLAG_SCROLLABLE);
+
+    static lv_style_t style_indic_not_bg;
+    lv_style_init(&style_indic_not_bg);
+    lv_style_set_bg_color(&style_indic_not_bg, lv_color_hex(0x2C3333));
+    lv_obj_add_style(mbox, &style_indic_not_bg, 0);
+
+    static lv_style_t color_style;
+    lv_style_init(&color_style);
+    lv_style_set_text_color(&color_style, lv_color_hex(0xCBE4DE));
+    lv_style_set_bg_color(&color_style, lv_color_hex(0x2C3333));
+    lv_obj_add_style(dismiss_btn, &color_style, 0);
+}
+
 
 void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint32_t close_after_seconds,
                     bool display_yes_no)
@@ -79,14 +123,32 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
     lv_timer_set_repeat_count(auto_close_timer, 1);
 }
 
+
 void zsw_popup_remove(void)
 {
     if (mbox) {
-        lv_timer_del(auto_close_timer);
+        if (auto_close_timer) {
+            lv_timer_del(auto_close_timer);
+            auto_close_timer = NULL;
+        }
+
         lv_msgbox_close(mbox);
         mbox = NULL;
     }
 }
+
+
+static void on_timer_popup_dismiss_pressed(lv_event_t *e)
+{
+    ARG_UNUSED(e);
+
+    zsw_popup_remove();
+
+    if (on_close_cb) {
+        on_close_cb(true);
+    }
+}
+
 
 static void on_popup_button_pressed(lv_event_t *e)
 {
