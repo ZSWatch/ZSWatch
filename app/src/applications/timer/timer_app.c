@@ -91,9 +91,9 @@ static void alarm_triggered_cb(void *user_data)
     snprintf(buf, sizeof(buf), "Timer %d is up!", timer_id);
 
     /* Run pattern until popup is dismissed. */
-    zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_ALARM);
-    zsw_timer_popup_show("Timer", buf, on_close_timer_cb);
-
+    if (zsw_timer_popup_show("Timer", buf, on_close_timer_cb)) {
+       zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_ALARM);
+    }
 
 
 }

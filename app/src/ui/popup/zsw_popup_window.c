@@ -29,11 +29,11 @@ static lv_obj_t *no_btn;
 static on_close_popup_cb_t on_close_cb;
 static lv_timer_t *auto_close_timer;
 
-void zsw_timer_popup_show(char *title, char *body, on_close_popup_cb_t close_cb)
+bool zsw_timer_popup_show(char *title, char *body, on_close_popup_cb_t close_cb)
 {
     if (mbox) {
     // TODO handle queue of popups
-        return;
+        return false;
     }
 
     zsw_power_manager_reset_idle_timout();
@@ -69,6 +69,9 @@ void zsw_timer_popup_show(char *title, char *body, on_close_popup_cb_t close_cb)
     lv_style_set_text_color(&color_style, lv_color_hex(0xCBE4DE));
     lv_style_set_bg_color(&color_style, lv_color_hex(0x2C3333));
     lv_obj_add_style(dismiss_btn, &color_style, 0);
+
+    return true;
+
 }
 
 
