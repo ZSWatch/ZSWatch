@@ -8,16 +8,16 @@
     <subtitle>ZSWatch Blog</subtitle>
     <icon>https://zswatch.dev/img/favicon.ico</icon>
     <entry>
-        <title type="html"><![CDATA[First Real ZSWatch Prototype is Working]]></title>
+        <title type="html"><![CDATA[First Real "New" ZSWatch Prototype is Working]]></title>
         <id>https://zswatch.dev/blog/first-real-prototype-working</id>
         <link href="https://zswatch.dev/blog/first-real-prototype-working"/>
         <updated>2026-05-31T00:00:00.000Z</updated>
-        <summary type="html"><![CDATA[The first real ZSWatch prototype is assembled, running, and confirmed working! This is the small watch PCB we have been working toward after validating the larger DevKit. We also have an initial case, the heart-rate extension PCB is working, the speaker is alive, and the companion app has some new microphone and watchface features.]]></summary>
-        <content type="html"><![CDATA[<p>The first real ZSWatch prototype is assembled, running, and confirmed working! This is the small watch PCB we have been working toward after validating the larger DevKit. We also have an initial case, the heart-rate extension PCB is working, the speaker is alive, and the companion app has some new microphone and watchface features.</p>
+        <summary type="html"><![CDATA[The first real "reworked" ZSWatch prototype is assembled, running, and confirmed working! This is the small watch PCB we have been working toward after validating the larger DevKit. We also have an initial case, the heart-rate extension PCB is working, the speaker is alive, and the companion app has some new microphone and watchface features.]]></summary>
+        <content type="html"><![CDATA[<p>The first real "reworked" ZSWatch prototype is assembled, running, and confirmed working! This is the small watch PCB we have been working toward after validating the larger DevKit. We also have an initial case, the heart-rate extension PCB is working, the speaker is alive, and the companion app has some new microphone and watchface features.</p>
 <a href="https://zswatch.dev/assets/images/assembled-first-protototype-watch-995ee716f6c8bb1879a705831281d4ba.jpg" target="_blank" rel="noopener noreferrer"><img src="https://zswatch.dev/assets/images/assembled-first-protototype-watch-995ee716f6c8bb1879a705831281d4ba.jpg" alt="First assembled ZSWatch prototype in a wearable case" style="width:100%;max-height:720px;object-fit:contain"></a>
 <p>Let's break it down.</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="first-watch-pcb-prototype-working">First Watch PCB Prototype: Working!<a href="https://zswatch.dev/blog/first-real-prototype-working#first-watch-pcb-prototype-working" class="hash-link" aria-label="Direct link to First Watch PCB Prototype: Working!" title="Direct link to First Watch PCB Prototype: Working!">​</a></h3>
-<p>The main watch PCB prototypes are finished, and the important part is done: they work. This is the compact PCB that takes what we validated on the ZSWatch DevKit and fits it into the real watch size.</p>
+<p>The main watch PCB prototypes are finished, and the important part is done and they work. This is the compact PCB that takes what we validated on the ZSWatch DevKit and fits it into the real watch size.</p>
 <p>So far the hardware bring-up has gone very well and all tested functions are verified.</p>
 <div style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center"><a href="https://zswatch.dev/assets/images/bare-pcb-watch-and-hr-extention-e669e4a37c13ce06ea31f5c81bdf0737.jpg" target="_blank" rel="noopener noreferrer" style="flex:1 1 320px;max-width:520px"><img src="https://zswatch.dev/assets/images/bare-pcb-watch-and-hr-extention-e669e4a37c13ce06ea31f5c81bdf0737.jpg" alt="ZSWatch main PCB and heart-rate extension PCB" style="width:100%"></a><a href="https://zswatch.dev/assets/images/bare-pcb-with-hr-mounted-bottom-view-40f10deca2d198acb170e0b18d30b8d7.jpg" target="_blank" rel="noopener noreferrer" style="flex:1 1 320px;max-width:520px"><img src="https://zswatch.dev/assets/images/bare-pcb-with-hr-mounted-bottom-view-40f10deca2d198acb170e0b18d30b8d7.jpg" alt="ZSWatch PCB with heart-rate extension mounted on the bottom" style="width:100%"></a></div>
 <p>The watch PCB is much smaller, but the design was already verified on hardware before this form factor existed. In the pictures above you can see the main PCB and the optional extension PCB. Ignore the marked red area, those parts are snipped off.</p>
@@ -37,7 +37,7 @@
 <p>A possible middle ground is a case variant with only the two tiny right-side buttons. Those buttons are the important ones: one goes to the nPM1300 PMIC, and the other is for bootloader recovery if firmware breaks. Both are needed for the most robust setup.</p>
 <hr>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="heart-rate-extension-and-speaker">Heart Rate Extension and Speaker<a href="https://zswatch.dev/blog/first-real-prototype-working#heart-rate-extension-and-speaker" class="hash-link" aria-label="Direct link to Heart Rate Extension and Speaker" title="Direct link to Heart Rate Extension and Speaker">​</a></h3>
-<p>The heart-rate extension PCB is also working. Heart-rate readings are coming in, and the speaker path is working too.</p>
+<p>The heart-rate extension PCB is also working. Heart-rate readings are working, and the speaker path is working too.</p>
 <p>This is especially nice because the extension board is very compact and includes some tricky hardware. Daniel has been pushing a lot of this work forward, and getting both HR and speaker verified on the real watch stack is a great step.</p>
 <p>Some work to tune the bottom of the case is still needed to make it work well with the HR LEDs and sensors.</p>
 <p>A proper demo video will come when I have time to record one.</p>
