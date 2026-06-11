@@ -1,3 +1,20 @@
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "matrix.h"
 
 #include "stdlib.h"
@@ -37,7 +54,7 @@ Matrix mat_copy_submat(Matrix matA, const unsigned int frow, const unsigned int 
 }
 Matrix mat_from_array(const double *array, const unsigned int rows, const unsigned int columns) {
     Matrix res = malloc(sizeof(Matrix_t));
-    res->rows = columns;
+    res->rows = rows;
     res->columns = columns;
     res->data = array;
     return res;
@@ -175,7 +192,7 @@ void mat_orthogonalize(Matrix matA) {
     assert(matA->rows == matA->columns);
     for (int i = 1; i < matA->columns; i++) {
         Vector column = mat_copy_column(matA, i);
-        for (int j = 1; j < i; j++) {
+        for (int j = 0; j < i; j++) {
             Vector prevColumn =  mat_copy_column(matA, j);
             vec_multiply_scalar(prevColumn, vec_dot_product(prevColumn, column));
             vec_sub(column, prevColumn);
@@ -342,8 +359,9 @@ bool mat_inv_4x4(Matrix matA) {
 
     det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
-    if (det == 0)
-        return false;
+    if (fabs(det) < 1e-10) {
+      return false;
+      }
 
     det = 1.0 / det;
 
@@ -369,8 +387,9 @@ bool mat_inv_3x3(Matrix matA) {
 
     det = m[0] * inv[0] + m[1] * inv[3] + m[2] * inv[6];
 
-    if (det == 0)
-        return false;
+    if (fabs(det) < 1e-10) {
+      return false;
+      }
 
     det = 1.0 / det;
 
@@ -452,7 +471,6 @@ void mat_free(Matrix matA) {
     if (matA == NULL) return;
     free(matA->data);
     free(matA);
-    matA = NULL;
 }
 
 void mat_from_array_free(Matrix matA) {

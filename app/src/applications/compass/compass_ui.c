@@ -93,8 +93,14 @@ void compass_ui_show(lv_obj_t *root, on_start_calibration_cb_t start_cal_cb)
 
 void compass_ui_remove(void)
 {
-    lv_obj_del(root_page);
-    root_page = NULL;
+    compass_ui_hide_calibration();
+
+    if (root_page) {
+        lv_obj_del(root_page);
+        root_page = NULL;
+    }
+
+    start_cal = NULL;
 }
 
 void compass_ui_set_heading(double heading)

@@ -1,3 +1,20 @@
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "sensor_calibration.h"
 
 #include "stdio.h"
@@ -6,7 +23,7 @@
 #include "ellipsoid_fit.h"
 #include "eigen.h"
 
-Matrix calib_ellipsoid_matrix(Vector coefA) {
+static Matrix calib_ellipsoid_matrix(Vector coefA) {
     Matrix res = mat_new(3, 3);
     MAT_ELEM(res, 0, 0) = VEC_ELEM(coefA, 0);
     MAT_ELEM(res, 0, 1) = VEC_ELEM(coefA, 5);
@@ -22,7 +39,7 @@ Matrix calib_ellipsoid_matrix(Vector coefA) {
     return res;
 }
 
-Matrix calib_calibrate_rotation(Matrix ellipMat, Vector prq, double d) {
+static Matrix calib_calibrate_rotation(Matrix ellipMat, Vector prq, double d) {
     Eigen_t eig = eig_solve(ellipMat);
     mat_orthogonalize(eig.eigenvectors);  // compensating inaccuracy
     Matrix rotation = mat_transpose(eig.eigenvectors);
@@ -51,15 +68,15 @@ Matrix calib_calibrate_rotation(Matrix ellipMat, Vector prq, double d) {
     return res;
 }
 
-Vector calib_calibrate_offset(Matrix ellipMat, Vector prq) {
+static Vector calib_calibrate_offset(Matrix ellipMat, Vector prq) {
     mat_inv_3x3(ellipMat);
     Vector res = mat_multiply_vec(ellipMat, prq);
     vec_negate(res);
     return res;
 }
 
-Callibration_t calib_calibrate_sensor(Vector x, Vector y, Vector z) {
-    Callibration_t res;
+Calibration_t calib_calibrate_sensor(Vector x, Vector y, Vector z) {
+    Calibration_t res;
     res.offset = (Vector)0;
     res.transform = (Matrix)0;
     if (x->size < 6) return res;  //needs at least 6 samples to fit an ellipsoid, though in real use you want far more.
@@ -75,7 +92,7 @@ Callibration_t calib_calibrate_sensor(Vector x, Vector y, Vector z) {
     return res;
 }
 
-bool calib_calibration_success(Callibration_t calib) {
+bool calib_calibration_success(Calibration_t calib) {
     return !(vec_check_nan(calib.offset) || mat_check_nan(calib.transform));
 }
 
@@ -86,7 +103,7 @@ bool calib_calibration_success(Callibration_t calib) {
 
 
 
-void calib_calibrate_multiple_points(Callibration_t calib, Vector x, Vector y, Vector z) {
+void calib_calibrate_multiple_points(Calibration_t calib, Vector x, Vector y, Vector z) {
     assert(x->size == y->size);
     assert(x->size == z->size);
 
@@ -109,7 +126,7 @@ void calib_calibrate_multiple_points(Callibration_t calib, Vector x, Vector y, V
     }
 }
 
-void calib_calibrate_point(Callibration_t calib, Vector point) {
+void calib_calibrate_point(Calibration_t calib, Vector point) {
     vec_sub(point, calib.offset);
     mat_multiply_vec3_into(calib.transform, point);
 }
@@ -134,7 +151,7 @@ double square_distance_variance(Vector x, Vector y, Vector z) {
     return res;
 }
 
-void calib_free(Callibration_t calibA) {
+void calib_free(Calibration_t calibA) {
     vec_free(calibA.offset);
     mat_free(calibA.transform);
 }

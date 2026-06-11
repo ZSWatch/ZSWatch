@@ -45,16 +45,14 @@ LOG_MODULE_REGISTER(zsw_magnetometer, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 #define SETTINGS_KEY_CALIB              "calibr"
 #define SETTINGS_MAGN_CALIB             SETTINGS_NAME_MAGN "/" SETTINGS_KEY_CALIB
 
-#define CONFIG_BOARD_NATIVE_SIM
-
 typedef struct {
-    float offset_x; //for hard correction
+    float offset_x;
     float offset_y;
     float offset_z;
-    float transform[3][3]; //for soft correction
+    float transform[3][3];
 } magn_calib_data_t;
 
-static magn_calib_data_t calibration_data = { //transform needs an identity default
+static magn_calib_data_t calibration_data = {
     .transform = {
         {1.0f, 0.0f, 0.0f},
         {0.0f, 1.0f, 0.0f},
@@ -63,7 +61,7 @@ static magn_calib_data_t calibration_data = { //transform needs an identity defa
 };
 
 static void copy_offset_and_matrix_to_calibration_data(
-    const Callibration_t calib);
+    const Calibration_t calib);
 
 static double last_x;
 static double last_y;
@@ -76,10 +74,7 @@ static double min_y;
 static double min_z;
 static bool getting_data;
 static bool calibration_ready;
-
-#ifdef CONFIG_BOARD_NATIVE_SIM
-static int dummy_count;
-#endif
+static bool recalibration_required;
 
 #define CAL_MIN_RANGE 20.0 // Axis range required for 100% progress; tune on hardware.
 
@@ -90,8 +85,14 @@ static double cal_y[CAL_SAMPLE_MAX];
 static double cal_z[CAL_SAMPLE_MAX];
 static int cal_sample_count;
 
+static int cal_progress_x;
+static int cal_progress_y;
+static int cal_progress_z;
 
-
+bool zsw_magnetometer_recalibration_required(void)
+{
+    return recalibration_required;
+}
 
 
 static int axis_progress(double min, double max)
@@ -102,52 +103,6 @@ static int axis_progress(double min, double max)
     return MIN(progress, 100);
 }
 
-//dummy parametric ellipsoid calibration data as have no hardware for data gathering
-
-#define DUMMY_N 80
-
-double dummy_x[DUMMY_N], dummy_y[DUMMY_N], dummy_z[DUMMY_N];
-
-static void debug_fill_dummy_samples(double x[], double y[], double z[])
-{
-    const double ox = 8.0, oy = -5.0, oz = 3.0;
-    const double ax = 40.0, by = 25.0, cz = 15.0;
-
-
-    /*
-
-    I verified the ellipsoid fitting using synthetic magnetometer data generated from a known ellipsoid with hard-iron offsets (8, -5, 3) and axis radii (40, 25, 15)
-    The recovered hard-iron offsets matched the synthetic offsets
-    The recovered scale factors matched the expected inverse axis scaling (1/40, 1/25, 1/15), transforming the ellipsoid back into a unit sphere
-
-
-
-
-    */
-
-
-
-    for (int i = 0; i < DUMMY_N; i++) {
-        double t = (2.0 * M_PI * i) / DUMMY_N;
-        double p = M_PI * ((i * 37) % DUMMY_N) / DUMMY_N;
-
-        x[i] = ox + ax * cos(t) * sin(p);
-        y[i] = oy + by * sin(t) * sin(p);
-        z[i] = oz + cz * cos(p);
-    }
-
-    //for (int i = 0; i < DUMMY_N; i++) {
-    //printf("%f\n", dummy_x[i]);
-    //}
-      //ok so below shows the same sample format as the library used
-      /*
-      8.000000
-      47.600286
-      ...
-
-      */
-
-}
 
 static void zbus_periodic_slow_callback(const struct zbus_channel *chan);
 
@@ -195,7 +150,6 @@ static void lis2mdl_trigger_handler(const struct device *dev,
     last_y = sensor_value_to_float(&magn[0]) * 10;
     last_z = sensor_value_to_float(&magn[2]) * 10;
 
-    /* gathering data for subsequent calibration */
     if (getting_data) {
         if (last_x < min_x) {
             min_x = last_x;
@@ -218,34 +172,30 @@ static void lis2mdl_trigger_handler(const struct device *dev,
             max_z = last_z;
         }
 
-        if (cal_sample_count < CAL_SAMPLE_MAX) {  //storing real data
+        if (cal_sample_count < CAL_SAMPLE_MAX) {
             cal_x[cal_sample_count] = last_x;
             cal_y[cal_sample_count] = last_y;
             cal_z[cal_sample_count] = last_z;
             cal_sample_count++;
         }
 
-
-
-        int px = axis_progress(min_x, max_x);
-        int py = axis_progress(min_y, max_y);
-        int pz = axis_progress(min_z, max_z);
-
-        compass_ui_set_calibration_progress(px, py, pz);
+        cal_progress_x = axis_progress(min_x, max_x);
+        cal_progress_y = axis_progress(min_y, max_y);
+        cal_progress_z = axis_progress(min_z, max_z);
 
         calibration_ready =
-        (px == 100) &&
-        (py == 100) &&
-        (pz == 100);
+            (cal_progress_x == 100) &&
+            (cal_progress_y == 100) &&
+            (cal_progress_z == 100);
 
     }
 
-    /* apply last known Hard-iron correction */
+
     const double x = last_x - calibration_data.offset_x;
     const double y = last_y - calibration_data.offset_y;
     const double z = last_z - calibration_data.offset_z;
 
-    /* apply last known Soft-iron correction */
+
     last_x =
         calibration_data.transform[0][0] * x +
         calibration_data.transform[0][1] * y +
@@ -267,14 +217,38 @@ static void lis2mdl_trigger_handler(const struct device *dev,
 
 
 
+int zsw_magnetometer_get_calibration_progress(int *px, int *py, int *pz)
+  {
+    if (!px || !py || !pz) {
+        return -EINVAL;
+    }
+
+    *px = cal_progress_x;
+    *py = cal_progress_y;
+    *pz = cal_progress_z;
+
+    return 0;
+  }
+
+
+
 static int magn_cal_load(const char *p_key, size_t len,
                          settings_read_cb read_cb, void *p_cb_arg, void *p_param)
 {
     ARG_UNUSED(p_key);
 
     if (len != sizeof(magn_calib_data_t)) {
-        LOG_ERR("Invalid length of magn calibration data");
-        return -EINVAL;
+        LOG_ERR("Ignoring old magnetometer calibration data. Recalibration required.");
+
+        calibration_data.offset_x = 0.0f;
+        calibration_data.offset_y = 0.0f;
+        calibration_data.offset_z = 0.0f;
+
+        recalibration_required = true;
+
+        return 0;
+
+
     }
 
     if (read_cb(p_cb_arg, &calibration_data, len) != sizeof(magn_calib_data_t)) {
@@ -357,20 +331,28 @@ int zsw_magnetometer_set_enable(bool enabled)
     return 0;
 }
 
+
+
+int zsw_magnetometer_cancel_calibration(void)
+{
+    getting_data = false;
+    calibration_ready = false;
+    cal_sample_count = 0;
+
+    return 0;
+}
+
+
 int zsw_magnetometer_gather_data(void)
 {
     calibration_ready = false;
     cal_sample_count = 0;
 
-    //commented out as on simulator
-    /*
+
+
     if (!device_is_ready(magnetometer)) {
         return -ENODEV;
     }
-    */
-    #ifdef CONFIG_BOARD_NATIVE_SIM
-    dummy_count = 0;
-    #endif
 
     max_x = -100000;
     max_y = -100000;
@@ -379,138 +361,47 @@ int zsw_magnetometer_gather_data(void)
     min_y = 100000;
     min_z = 100000;
 
-    getting_data = true;  //trigger data gathering part of lis2mdl_trigger_handler
+    getting_data = true;
 
     return 0;
 }
 
-bool zsw_magnetometer_calibration_ready(void) //exercising the whole UI flow without hardware
+bool zsw_magnetometer_calibration_ready(void)
 {
-#ifdef CONFIG_BOARD_NATIVE_SIM
-
-    dummy_count++;
-    return dummy_count > 20;   // ready after ~20 timer ticks
-
-#else
     return calibration_ready;
-#endif
+
 }
 
-int zsw_magnetometer_compute_compensation(void)   //this used to be called zsw_magnetometer_stop_calibration
+int zsw_magnetometer_compute_compensation(void)
 {
 
-
-    //calibration_data.offset_x = (max_x + min_x) / 2;  //old simple method
-    //calibration_data.offset_y = (max_y + min_y) / 2;
-    //calibration_data.offset_z = (max_z + min_z) / 2;
-
-
-
-
-
-
-
-    //return 1;
-
-    //commented out as on simulator
-    //if (!device_is_ready(magnetometer)) {
-        //return -ENODEV;
-    //}
+    if (!device_is_ready(magnetometer)) {
+        return -ENODEV;
+    }
 
     getting_data = false;
-
-    //following hard and soft calibration method from https://github.com/michal34512/Magnetometer-calibration
-    //LOG_INF("dummy: creating vectors");
-
-    //debug_fill_dummy_samples(dummy_x, dummy_y, dummy_z);
-
-    //Vector vx = vec_from_array(dummy_x, DUMMY_N);
-    //Vector vy = vec_from_array(dummy_y, DUMMY_N);
-    //Vector vz = vec_from_array(dummy_z, DUMMY_N);
-
-
-
-
-    //running on real data
-
 
     Vector vx = vec_from_array(cal_x, cal_sample_count);
     Vector vy = vec_from_array(cal_y, cal_sample_count);
     Vector vz = vec_from_array(cal_z, cal_sample_count);
 
-    LOG_INF("Data: running fit");
-    Callibration_t calib = calib_calibrate_sensor(vx, vy, vz);
+    Calibration_t calib = calib_calibrate_sensor(vx, vy, vz);
 
-
-
-
-
-
-    /*
-    //checking the end result of the compensation:
-
-    <pre>[00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: Calibration successful
-    [00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: Offset: 8.000 -5.000 3.000 //stored but not applied hard iron cal paramaters
-    [00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: Transform:
-    [00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: 0.025 0.000 0.000  //stored but not applied soft iron cal parameters
-    [00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: 0.000 0.040 0.000
-    [00:00:04.908,400] &lt;inf&gt; zsw_magnetometer: 0.000 0.000 0.067
-    </pre>
-
-
-
-
-    //soft iron ie distortion
-    The corrected points should lie on a sphere.
-
-
-
-    //hard iron re offset
-    The corrected points should be centred approximately at (0, 0, 0)
-
-
-
-
-
-
-    */
-
-
-    LOG_INF("dummy: success=%d", calib_calibration_success(calib));
     if (!calib_calibration_success(calib)) {
         calib_free(calib);
         return -EINVAL;
     }
 
-    LOG_INF("dummy: copying result");
     copy_offset_and_matrix_to_calibration_data(calib);
 
-    LOG_INF("dummy: saving settings");
-    settings_save_one(SETTINGS_MAGN_CALIB, &calibration_data, sizeof(calibration_data));
-
-    /* this could do with eg:
-    if (settings_save_one(...) != 0) {
+    int ret = settings_save_one(SETTINGS_MAGN_CALIB,
+                            &calibration_data,
+                            sizeof(calibration_data));
+    if (ret != 0) {
+        LOG_ERR("Failed to save magnetometer calibration: %d", ret);
         calib_free(calib);
-        return -EIO;
+        return ret;
     }
-    */
-
-    LOG_INF("Calibration successful");
-    LOG_INF("Offset: %.3f %.3f %.3f",
-      calibration_data.offset_x,  //new hard correction
-      calibration_data.offset_y,
-      calibration_data.offset_z);
-
-    LOG_INF("Transform:");
-    LOG_INF("%.3f %.3f %.3f", calibration_data.transform[0][0], calibration_data.transform[0][1], calibration_data.transform[0][2]);  //new soft correction
-    LOG_INF("%.3f %.3f %.3f", calibration_data.transform[1][0], calibration_data.transform[1][1], calibration_data.transform[1][2]);
-    LOG_INF("%.3f %.3f %.3f", calibration_data.transform[2][0], calibration_data.transform[2][1], calibration_data.transform[2][2]);
-
-
-
-
-
-
 
     calib_free(calib);
 
@@ -534,61 +425,15 @@ int zsw_magnetometer_get_all(float *x, float *y, float *z)
 }
 
 
-
-
-
-/*
-
-debug only function that bypasses the sensor
-dummy samples
-library fit
-save settings
-later reads use the created matrix.
-nb this provides both hard and soft correction
-
-https://github.com/michal34512/Magnetometer-calibration
-
-Vendor the source files
-
-sensor_calibration.c/.h
-ellipsoid_fit.c/.h
-eigen.c/.h
-qr.c/.h
-matrix.c/.h
-vector.c/.h
-
-copied into new folder src/ext/magnetometer_calibration/
-
-Then add them to the Zephyr build with CMakeLists.txt.
-
-For a dummy calibration path, just use a handful of points that obviously aren't centered
-
-temporarily call dummy function from zsw_magnetometer_start_calibration()
-
-*/
-
-
-/*
-lib guves me:
-Callibration_t calib
-calib.offset      // Vector *
-calib.transform   // Matrix *
-
-But zsw wants:
-magn_calib_data_t calibration_data;
-
-*/
-
-static void copy_offset_and_matrix_to_calibration_data( //converting to zsw friendly format
-    const Callibration_t calib)
+static void copy_offset_and_matrix_to_calibration_data(
+    const Calibration_t calib)
 {
 
-    //convert hard
+
     calibration_data.offset_x = VEC_X(calib.offset);
     calibration_data.offset_y = VEC_Y(calib.offset);
     calibration_data.offset_z = VEC_Z(calib.offset);
 
-    //convert soft
     for (int r = 0; r < 3; r++) {
         for (int c = 0; c < 3; c++) {
             calibration_data.transform[r][c] =

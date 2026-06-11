@@ -1,3 +1,21 @@
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include "ellipsoid_fit.h"
 
 #include "assert.h"
@@ -6,7 +24,7 @@
 
 #define ALPHA 16
 
-Matrix ellipsoid_generate_data_mat(Vector x, Vector y, Vector z) {
+static Matrix ellipsoid_generate_data_mat(Vector x, Vector y, Vector z) {
     assert(x->size == y->size);
     assert(x->size == z->size);
     Matrix res = mat_new(10, x->size);
@@ -27,7 +45,8 @@ Matrix ellipsoid_generate_data_mat(Vector x, Vector y, Vector z) {
     }
     return res;
 }
-double C_inv[] = {(double)(ALPHA - 4)/(- ALPHA*ALPHA + 3*ALPHA), -(double)(ALPHA - 2)/(- ALPHA*ALPHA + 3*ALPHA),
+
+static const double C_inv[] = {(double)(ALPHA - 4)/(- ALPHA*ALPHA + 3*ALPHA), -(double)(ALPHA - 2)/(- ALPHA*ALPHA + 3*ALPHA),
                         -(double)(ALPHA - 2)/(- ALPHA*ALPHA + 3*ALPHA), 0, 0, 0,
                         -(double)(ALPHA - 2)/(- ALPHA*ALPHA + 3*ALPHA), (double)(ALPHA - 4)/(- ALPHA*ALPHA + 3*ALPHA),
                         -(double)(ALPHA - 2)/(- ALPHA*ALPHA + 3*ALPHA), 0, 0, 0,
@@ -36,7 +55,7 @@ double C_inv[] = {(double)(ALPHA - 4)/(- ALPHA*ALPHA + 3*ALPHA), -(double)(ALPHA
                         0, 0, 0, -1.f/ALPHA, 0, 0,
                         0, 0, 0, 0, -1.f/ALPHA, 0,
                         0, 0, 0, 0, 0, -1.f/ALPHA};
-Matrix ellipsoid_generate_inverse_restrain_mat() {
+static Matrix ellipsoid_generate_inverse_restrain_mat(void) {
     return mat_from_array(C_inv, 6, 6);
 }
 

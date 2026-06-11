@@ -1,9 +1,26 @@
+/*
+ * This file is part of ZSWatch project <https://github.com/zswatch/>.
+ * Copyright (c) 2025 ZSWatch Project.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "vector.h"
 
-#include "assert.h"
-#include "stdlib.h"
-#include "stdio.h"
-#include "math.h"
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
 Vector vec_new(unsigned int size) {
     Vector res = malloc(sizeof(Vector_t));
@@ -126,7 +143,7 @@ void vec_rotate_x(Vector vec, float rad) {
 
     double temp = VEC_ELEM(vec, 1);
     VEC_ELEM(vec, 1) = cosA * temp - sinA * VEC_ELEM(vec, 2);
-    VEC_ELEM(vec, 2) = cosA * temp - sinA * VEC_ELEM(vec, 2);
+    VEC_ELEM(vec, 2) = sinA * temp + cosA * VEC_ELEM(vec, 2);
 }
 
 void vec_rotate_y(Vector vec, float rad) {
@@ -151,7 +168,7 @@ void vec_rotate_z(Vector vec, float rad) {
 
 bool vec_contains(Vector vecA, double val, double tol) {
     for (int i = 0; i < vecA->size; i++) {
-        if (fabs(VEC_ELEM(vecA, i)) > tol)
+        if (fabs(VEC_ELEM(vecA, i) - val) <= tol)
             return true;
     }
     return false;

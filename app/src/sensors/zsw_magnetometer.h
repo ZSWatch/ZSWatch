@@ -37,3 +37,6 @@ bool zsw_magnetometer_calibration_ready(void);
 int zsw_magnetometer_get_all(float *x, float *y, float *z);
 int zsw_magnetometer_gather_data(void);
 int zsw_magnetometer_compute_compensation(void);
+bool zsw_magnetometer_recalibration_required(void);
+int zsw_magnetometer_cancel_calibration(void);
+int zsw_magnetometer_get_calibration_progress(int *px, int *py, int *pz);
