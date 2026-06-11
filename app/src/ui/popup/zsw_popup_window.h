@@ -21,9 +21,6 @@
 
 typedef void(*on_close_popup_cb_t)(bool confirmed);
 
-bool zsw_timer_popup_show(char *title, char *body, on_close_popup_cb_t dismiss_cb);
-
 void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint32_t close_after_seconds,
                     bool display_yes_no);
-
 void zsw_popup_remove(void);

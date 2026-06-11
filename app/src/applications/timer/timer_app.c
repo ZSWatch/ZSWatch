@@ -88,14 +88,11 @@ static void alarm_triggered_cb(void *user_data)
     }
 
     static char buf[50];
-    snprintf(buf, sizeof(buf), "Timer %d is up!", timer_id);
+    snprintf(buf, sizeof(buf), "Timer %d triggered", timer_id);
 
-    /* Run pattern until popup is dismissed. */
-    if (zsw_timer_popup_show("Timer", buf, on_close_timer_cb)) {
-       zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_ALARM);
-    }
-
-
+    /* Run pattern until pop up is dismissed or timeout */
+    zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_ALARM);
+    zsw_popup_show("Timer", buf, on_close_timer_cb, 30, false);
 }
 
 static int find_free_timer_slot(void)
