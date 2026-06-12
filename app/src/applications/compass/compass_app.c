@@ -76,9 +76,9 @@ static void compass_app_stop(void)
     if (getting_data) {
         getting_data = false;
         zsw_magnetometer_cancel_calibration();
-        zsw_popup_remove();
-    }
 
+    }
+    zsw_popup_remove();
     compass_ui_remove();
     zsw_sensor_fusion_deinit();
 }
