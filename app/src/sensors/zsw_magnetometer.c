@@ -218,17 +218,19 @@ static void lis2mdl_trigger_handler(const struct device *dev,
 
 
 int zsw_magnetometer_get_calibration_progress(int *px, int *py, int *pz)
-  {
+
+{
     if (!px || !py || !pz) {
         return -EINVAL;
-    }
+}
 
     *px = cal_progress_x;
     *py = cal_progress_y;
     *pz = cal_progress_z;
 
     return 0;
-  }
+
+}
 
 
 
@@ -386,6 +388,10 @@ int zsw_magnetometer_compute_compensation(void)
     Vector vz = vec_from_array(cal_z, cal_sample_count);
 
     Calibration_t calib = calib_calibrate_sensor(vx, vy, vz);
+
+    vec_from_array_free(vx);
+    vec_from_array_free(vy);
+    vec_from_array_free(vz);
 
     if (!calib_calibration_success(calib)) {
         calib_free(calib);

@@ -21,7 +21,6 @@
 
 int zsw_magnetometer_init(void);
 int zsw_magnetometer_set_enable(bool enabled);
-double zsw_magnetometer_get_heading(void);  //is not defined, below is used instead
 bool zsw_magnetometer_calibration_ready(void);
 /*
 * Get the magnetometer data in micro Tesla.

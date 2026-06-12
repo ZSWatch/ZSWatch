@@ -59,6 +59,14 @@ Matrix mat_from_array(const double *array, const unsigned int rows, const unsign
     res->data = array;
     return res;
 }
+
+
+
+
+
+
+
+
 void mat_replace(Matrix matA, Matrix matB) {
     free(matA->data);
     matA->rows = matB->rows;
@@ -97,7 +105,7 @@ void mat_fill(Matrix matA, double val) {
     }
 }
 void mat_fill_diag(Matrix matA, double val) {
-    assert(matA->rows == matA->rows);
+    assert(matA && matA->rows == matA->columns);
     for (int i = 0; i < matA->rows; i++)  {
         MAT_ELEM(matA, i, i) = val;
     }
@@ -229,7 +237,7 @@ Vector mat_linsolve_upperr_triang(Matrix R, Vector b) {
     assert(R->rows == R->columns);
 
     Vector solution = vec_new(b->size);
-    float back_substitute;
+    double back_substitute;
     for (int i = b->size - 1; i >= 0; i--) {
         back_substitute = 0;
         for (int j = i+1; j <= b->size - 1; j++) {

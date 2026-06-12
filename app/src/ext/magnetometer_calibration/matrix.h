@@ -72,4 +72,3 @@ void mat_print(Matrix matA);
 
 void mat_free(Matrix matA);
 void mat_from_array_free(Matrix matA);
-

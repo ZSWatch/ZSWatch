@@ -40,10 +40,15 @@ Vector eig_solve_eigenvalues(Matrix M) {
     return res;
 }
 
-Vector linsolve_from_qr(QR_t qr, Vector b) {
-    Vector rhs = mat_multiply_vec(qr.Q, b);
+Vector linsolve_from_qr(QR_t qr, Vector b)
+{
+    Matrix Qt = mat_transpose(qr.Q);
+    Vector rhs = mat_multiply_vec(Qt, b);
+    mat_free(Qt);
+
     Vector solution = mat_linsolve_upperr_triang(qr.R, rhs);
     vec_free(rhs);
+
     return solution;
 }
 

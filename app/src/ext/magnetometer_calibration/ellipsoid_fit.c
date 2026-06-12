@@ -21,6 +21,7 @@
 #include "assert.h"
 #include "matrix.h"
 #include "eigen.h"
+#include <stddef.h>
 
 #define ALPHA 16
 
@@ -68,8 +69,25 @@ Ellipsoid_t ellipsoid_fit(Vector x, Vector y, Vector z) {
     Matrix S12 = mat_copy_submat(S, 0, 6, 6, 4);
     Matrix S21 = mat_copy_submat(S, 6, 0, 4, 6);
     Matrix invS22 = mat_copy_submat(S, 6, 6, 4, 4);
-    mat_inv_4x4(invS22);
-    mat_free(S);
+
+    if (!mat_inv_4x4(invS22)) {
+         mat_free(S);
+         mat_free(S11);
+         mat_free(S12);
+         mat_free(S21);
+         mat_free(invS22);
+         mat_from_array_free(invC);
+
+         Ellipsoid_t fail = {
+             .coefA = NULL,
+             .coefB = NULL,
+         };
+
+         return fail;
+     }
+
+     mat_free(S);
+
     // M = C1^-1*(S11-S12*(S22^-1*S21));
     Matrix invS22_S21 = mat_multiply(invS22, S21);
     mat_free(S21);

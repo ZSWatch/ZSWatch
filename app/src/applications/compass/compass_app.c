@@ -53,14 +53,16 @@ static void compass_app_start(lv_obj_t *root, lv_group_t *group)
     compass_ui_show(root, on_start_calibration);
 
     if (zsw_magnetometer_recalibration_required()) {
-    zsw_popup_show("Calibration",
-                 "Compass calibration format changed. Please recalibrate.",
-                 NULL,
-                 5,
-                 false);
+        zsw_popup_show("Calibration",
+                       "Compass calibration format changed. Please recalibrate.",
+                       NULL,
+                       5,
+                       false);
     }
 
-    refresh_timer = lv_timer_create(timer_callback, CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,  NULL);
+    refresh_timer = lv_timer_create(timer_callback,
+                                    CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,
+                                    NULL);
     zsw_sensor_fusion_init();
 }
 
@@ -70,22 +72,22 @@ static void compass_app_stop(void)
         lv_timer_del(refresh_timer);
         refresh_timer = NULL;
     }
-    compass_ui_remove();
-    zsw_sensor_fusion_deinit();
 
     if (getting_data) {
-      getting_data = false;
-      zsw_magnetometer_cancel_calibration();
-      zsw_popup_remove();
-}
-}
+        getting_data = false;
+        zsw_magnetometer_cancel_calibration();
+        zsw_popup_remove();
+    }
 
+    compass_ui_remove();
+    zsw_sensor_fusion_deinit();
+}
 
 static void on_start_calibration(void)
 {
-      if (getting_data) {
-      return;
-      }
+    if (getting_data) {
+        return;
+    }
 
     zsw_popup_remove();
 
@@ -102,9 +104,7 @@ static void on_start_calibration(void)
     getting_data = true;
     cal_start_ms = lv_tick_get();
     compass_ui_show_calibration();
-
 }
-
 
 static void timer_callback(lv_timer_t *timer)
 {
@@ -112,7 +112,6 @@ static void timer_callback(lv_timer_t *timer)
     bool app_visible = app.current_state == ZSW_APP_STATE_UI_VISIBLE;
 
     if (getting_data && app_visible) {
-
         int px;
         int py;
         int pz;
@@ -120,12 +119,9 @@ static void timer_callback(lv_timer_t *timer)
         if (zsw_magnetometer_get_calibration_progress(&px, &py, &pz) == 0) {
             compass_ui_set_calibration_progress(px, py, pz);
         }
-
     }
 
-    if (getting_data &&
-        zsw_magnetometer_calibration_ready()) {
-
+    if (getting_data && zsw_magnetometer_calibration_ready()) {
         int ret = zsw_magnetometer_compute_compensation();
 
         getting_data = false;
@@ -141,11 +137,7 @@ static void timer_callback(lv_timer_t *timer)
         }
 
         return;
-
-
-
-        }
-
+    }
 
     if (getting_data &&
         lv_tick_elaps(cal_start_ms) >=
@@ -154,16 +146,14 @@ static void timer_callback(lv_timer_t *timer)
         zsw_magnetometer_cancel_calibration();
 
         if (app_visible) {
-          compass_ui_hide_calibration();
-          zsw_popup_show("Calibration", "Calibration time out", NULL, 3, false);
-          }
+            compass_ui_hide_calibration();
+            zsw_popup_show("Calibration", "Calibration time out", NULL, 3, false);
+        }
 
-          return;
+        return;
+    }
 
-          }
-
-
-    if (!getting_data && app_visible) {  //heading refresh when not calibrating
+    if (!getting_data && app_visible) {
         zsw_sensor_fusion_get_heading(&heading);
         compass_ui_set_heading(heading);
     }

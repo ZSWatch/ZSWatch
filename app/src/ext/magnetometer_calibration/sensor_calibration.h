@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "stdbool.h"
+#include <stdbool.h>
 #include "matrix.h"
 #include "vector.h"
 

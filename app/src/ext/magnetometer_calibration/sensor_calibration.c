@@ -17,9 +17,10 @@
 
 #include "sensor_calibration.h"
 
-#include "stdio.h"
-#include "math.h"
-#include "assert.h"
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
+
 #include "ellipsoid_fit.h"
 #include "eigen.h"
 
