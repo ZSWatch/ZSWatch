@@ -19,8 +19,23 @@
 
 #include <lvgl.h>
 
+/** @brief Callback fired when a popup closes.
+ *  @param confirmed true only when the user pressed "Yes".
+ */
 typedef void(*on_close_popup_cb_t)(bool confirmed);
 
+/** @brief Show a popup on the top layer.
+ *  Requests are queued when another popup is already visible.
+ *  @param title Popup title string.
+ *  @param body Popup body string.
+ *  @param close_cb Callback called when popup closes.
+ *  @param close_after_seconds Auto-close timeout in seconds.
+ *  @param display_yes_no true to show Yes/No buttons, false for close button.
+ */
 void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint32_t close_after_seconds,
                     bool display_yes_no);
+
+/** @brief Remove the active popup.
+ *  If queued requests exist, the next popup is shown automatically.
+ */
 void zsw_popup_remove(void);
