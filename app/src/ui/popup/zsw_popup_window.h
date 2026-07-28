@@ -26,6 +26,9 @@ typedef void(*on_close_popup_cb_t)(bool confirmed);
 
 /** @brief Show a popup on the top layer.
  *  Requests are queued when another popup is already visible.
+ *  The pending queue holds at most 8 requests; additional requests are dropped
+ *  and only a warning is logged.
+ *  close_after_seconds == 0 disables auto-close.
  *  @param title Popup title string.
  *  @param body Popup body string.
  *  @param close_cb Callback called when popup closes.

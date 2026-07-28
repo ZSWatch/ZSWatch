@@ -17,6 +17,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
@@ -30,8 +31,6 @@ LOG_MODULE_REGISTER(zsw_popup_window, LOG_LEVEL_INF);
 #define POPUP_BODY_MAX_LEN       192
 
 typedef struct popup_request {
-    /* k_fifo links items through the first word, so it must stay first. */
-    void *fifo_reserved;
     char title[POPUP_TITLE_MAX_LEN];
     char body[POPUP_BODY_MAX_LEN];
     on_close_popup_cb_t close_cb;
@@ -44,56 +43,26 @@ static void on_popup_close_button_pressed(lv_event_t *e);
 static void close_popup_timer(lv_timer_t *timer);
 static void finalize_current_popup(bool confirmed);
 static void show_popup_request(popup_request_t *req);
-static void init_popup_queue(void);
-static popup_request_t *acquire_popup_request_slot(void);
-static void release_popup_request_slot(popup_request_t *req);
 static void copy_text_to_request(char *dst, size_t dst_size, const char *src, const char *name);
+static int popup_queue_init(void);
 
 static lv_obj_t *mbox;
 static lv_obj_t *yes_btn;
 static lv_obj_t *no_btn;
 static lv_timer_t *auto_close_timer;
+static bool popup_active;
 
-static bool popup_queue_initialized;
-static popup_request_t popup_request_pool[POPUP_QUEUE_SIZE];
-static popup_request_t *current_popup;
+static popup_request_t current_popup;
 
-/* Separate free/pending FIFOs avoid dynamic allocation while keeping FIFO order. */
-K_FIFO_DEFINE(free_popup_fifo);
-K_FIFO_DEFINE(pending_popup_fifo);
+K_MSGQ_DEFINE(pending_popup_msgq, sizeof(popup_request_t), POPUP_QUEUE_SIZE, 4);
 
-static void init_popup_queue(void)
+static int popup_queue_init(void)
 {
-    if (popup_queue_initialized) {
-        return;
-    }
-
-    for (int i = 0; i < POPUP_QUEUE_SIZE; i++) {
-        k_fifo_put(&free_popup_fifo, &popup_request_pool[i]);
-    }
-
-    popup_queue_initialized = true;
+    k_msgq_purge(&pending_popup_msgq);
+    return 0;
 }
 
-static popup_request_t *acquire_popup_request_slot(void)
-{
-    return k_fifo_get(&free_popup_fifo, K_NO_WAIT);
-}
-
-static void release_popup_request_slot(popup_request_t *req)
-{
-    if (!req) {
-        return;
-    }
-
-    req->title[0] = '\0';
-    req->body[0] = '\0';
-    req->close_cb = NULL;
-    req->close_after_seconds = 0;
-    req->display_yes_no = false;
-
-    k_fifo_put(&free_popup_fifo, req);
-}
+SYS_INIT(popup_queue_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
 
 static void copy_text_to_request(char *dst, size_t dst_size, const char *src, const char *name)
 {
@@ -115,15 +84,18 @@ static void copy_text_to_request(char *dst, size_t dst_size, const char *src, co
 
 static void show_popup_request(popup_request_t *req)
 {
+    __ASSERT_NO_MSG(req != NULL);
+
     lv_obj_t *close_btn = NULL;
 
-    current_popup = req;
+    current_popup = *req;
+    popup_active = true;
     zsw_power_manager_reset_idle_timout();
 
     mbox = lv_msgbox_create(lv_layer_top());
-    lv_msgbox_add_title(mbox, current_popup->title);
-    lv_msgbox_add_text(mbox, current_popup->body);
-    if (current_popup->display_yes_no) {
+    lv_msgbox_add_title(mbox, current_popup.title);
+    lv_msgbox_add_text(mbox, current_popup.body);
+    if (current_popup.display_yes_no) {
         yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
         no_btn = lv_msgbox_add_footer_button(mbox, "No");
         lv_obj_add_event_cb(yes_btn, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
@@ -156,69 +128,78 @@ static void show_popup_request(popup_request_t *req)
         lv_obj_add_style(close_btn, &color_style, 0);
     }
 
-    auto_close_timer = lv_timer_create(close_popup_timer, current_popup->close_after_seconds * 1000,  NULL);
-    lv_timer_set_repeat_count(auto_close_timer, 1);
+    if (current_popup.close_after_seconds > 0) {
+        auto_close_timer = lv_timer_create(close_popup_timer, current_popup.close_after_seconds * 1000, NULL);
+        lv_timer_set_repeat_count(auto_close_timer, 1);
+    } else {
+        auto_close_timer = NULL;
+    }
 }
 
 static void finalize_current_popup(bool confirmed)
 {
-    popup_request_t *finished_popup = current_popup;
+    on_close_popup_cb_t finished_cb = NULL;
+
+    if (!popup_active) {
+        return;
+    }
+
+    finished_cb = current_popup.close_cb;
 
     if (mbox) {
         if (auto_close_timer) {
             lv_timer_del(auto_close_timer);
             auto_close_timer = NULL;
         }
-        lv_msgbox_close(mbox);
+        lv_obj_delete_async(mbox);
         mbox = NULL;
     }
 
     yes_btn = NULL;
     no_btn = NULL;
-    current_popup = NULL;
+    popup_active = false;
 
-    if (finished_popup && finished_popup->close_cb) {
-        /* Callback is fired before slot recycling to preserve request context. */
-        finished_popup->close_cb(confirmed);
+    if (finished_cb) {
+        finished_cb(confirmed);
     }
 
-    release_popup_request_slot(finished_popup);
-
-    popup_request_t *next_popup = k_fifo_get(&pending_popup_fifo, K_NO_WAIT);
-    if (next_popup) {
-        show_popup_request(next_popup);
+    if (mbox == NULL) {
+        popup_request_t next_popup;
+        if (k_msgq_get(&pending_popup_msgq, &next_popup, K_NO_WAIT) == 0) {
+            show_popup_request(&next_popup);
+        }
     }
 }
 
 void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint32_t close_after_seconds,
                     bool display_yes_no)
 {
-    popup_request_t *req;
+    popup_request_t req = {
+        .close_cb = close_cb,
+        .close_after_seconds = close_after_seconds,
+        .display_yes_no = display_yes_no,
+    };
 
-    init_popup_queue();
+    copy_text_to_request(req.title, sizeof(req.title), title, "title");
+    copy_text_to_request(req.body, sizeof(req.body), body, "body");
 
-    req = acquire_popup_request_slot();
-    if (!req) {
-        LOG_WRN("Popup queue full, dropping popup");
+    if (popup_active) {
+        int ret = k_msgq_put(&pending_popup_msgq, &req, K_NO_WAIT);
+        if (ret != 0) {
+            LOG_WRN("Popup queue full, dropping popup");
+        }
         return;
     }
 
-    copy_text_to_request(req->title, sizeof(req->title), title, "title");
-    copy_text_to_request(req->body, sizeof(req->body), body, "body");
-    req->close_cb = close_cb;
-    req->close_after_seconds = close_after_seconds;
-    req->display_yes_no = display_yes_no;
-
-    if (mbox) {
-        k_fifo_put(&pending_popup_fifo, req);
-        return;
-    }
-
-    show_popup_request(req);
+    show_popup_request(&req);
 }
 
 void zsw_popup_remove(void)
 {
+    if (!popup_active) {
+        return;
+    }
+
     finalize_current_popup(false);
 }
 
@@ -232,10 +213,12 @@ static void on_popup_button_pressed(lv_event_t *e)
 
 static void on_popup_close_button_pressed(lv_event_t *e)
 {
+    LV_UNUSED(e);
     finalize_current_popup(false);
 }
 
 static void close_popup_timer(lv_timer_t *timer)
 {
+    LV_UNUSED(timer);
     finalize_current_popup(false);
 }
