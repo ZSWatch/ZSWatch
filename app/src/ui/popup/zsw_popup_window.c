@@ -20,6 +20,7 @@
 #include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/spinlock.h>
 
 #include "managers/zsw_power_manager.h"
 #include "ui/popup/zsw_popup_window.h"
@@ -51,6 +52,7 @@ static lv_obj_t *yes_btn;
 static lv_obj_t *no_btn;
 static lv_timer_t *auto_close_timer;
 static bool popup_active;
+static struct k_spinlock popup_lock;
 
 static popup_request_t current_popup;
 
@@ -89,7 +91,6 @@ static void show_popup_request(popup_request_t *req)
     lv_obj_t *close_btn = NULL;
 
     current_popup = *req;
-    popup_active = true;
     zsw_power_manager_reset_idle_timout();
 
     mbox = lv_msgbox_create(lv_layer_top());
@@ -157,7 +158,6 @@ static void finalize_current_popup(bool confirmed)
 
     yes_btn = NULL;
     no_btn = NULL;
-    popup_active = false;
 
     if (finished_cb) {
         finished_cb(confirmed);
@@ -165,7 +165,17 @@ static void finalize_current_popup(bool confirmed)
 
     if (mbox == NULL) {
         popup_request_t next_popup;
+        bool has_next = false;
+
+        k_spinlock_key_t key = k_spin_lock(&popup_lock);
         if (k_msgq_get(&pending_popup_msgq, &next_popup, K_NO_WAIT) == 0) {
+            has_next = true;
+        } else {
+            popup_active = false;
+        }
+        k_spin_unlock(&popup_lock, key);
+
+        if (has_next) {
             show_popup_request(&next_popup);
         }
     }
@@ -183,13 +193,18 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
     copy_text_to_request(req.title, sizeof(req.title), title, "title");
     copy_text_to_request(req.body, sizeof(req.body), body, "body");
 
+    k_spinlock_key_t key = k_spin_lock(&popup_lock);
     if (popup_active) {
         int ret = k_msgq_put(&pending_popup_msgq, &req, K_NO_WAIT);
+        k_spin_unlock(&popup_lock, key);
         if (ret != 0) {
             LOG_WRN("Popup queue full, dropping popup");
         }
         return;
     }
+    
+    popup_active = true;
+    k_spin_unlock(&popup_lock, key);
 
     show_popup_request(&req);
 }
