@@ -61,7 +61,7 @@
             <category>ZSWatch</category>
             <category>ZSWatch Hardware</category>
             <category>ZSWatch Software</category>
-            <category>ZSWatch Heart Rate</category>
+            <category>zswatch_hr</category>
         </item>
         <item>
             <title><![CDATA[DevKit Ready to Order, Main Watch PCB & Dynamic App Loading Experiments]]></title>
@@ -173,7 +173,7 @@ The DevKit from Elecrow won't have the nice UV print shown on the PCB images as 
             <category>ZSWatch</category>
             <category>ZSWatch Hardware</category>
             <category>ZSWatch Software</category>
-            <category>ZSWatch Heart Rate</category>
+            <category>zswatch_hr</category>
         </item>
         <item>
             <title><![CDATA[Power consumption, HW update & Production test]]></title>
