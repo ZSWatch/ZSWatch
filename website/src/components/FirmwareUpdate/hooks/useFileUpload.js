@@ -168,7 +168,12 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      if (selectedUploadFile.type === "application/zip") {
+      // MIME types are OS/browser dependent. In particular, Windows commonly
+      // reports ZIP archives as "application/x-zip-compressed" (or an empty
+      // string), which previously caused dfu_application.zip to be handled as
+      // a firmware binary and prompt for an image number.
+      const isZipFile = selectedUploadFile.name.toLowerCase().endsWith(".zip");
+      if (isZipFile) {
         await handleZipFileUpload(selectedUploadFile, reader);
       } else {
         await handleBinFileUpload(selectedUploadFile, reader);
