@@ -202,7 +202,7 @@ void zsw_popup_show(char *title, char *body, on_close_popup_cb_t close_cb, uint3
         }
         return;
     }
-    
+
     popup_active = true;
     k_spin_unlock(&popup_lock, key);
 
