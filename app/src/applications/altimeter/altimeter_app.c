@@ -34,6 +34,7 @@
 LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 
 #define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/elevation?latitude=%f&longitude=%f"
+#define HISTORY_SAMPLES 24
 
 // Functions needed for all applications
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group);
@@ -51,7 +52,9 @@ static float current_sea_level_pressure = 1013.25; // Default standard atmospher
 static bool is_calibrated = false;
 static float current_altitude = 0.0;
 static float current_raw_pressure = 0.0;
-
+static float altitude_history[HISTORY_SAMPLES];
+static uint8_t history_index = 0;
+static bool has_history = false;
 
 // ZBUS channel and listener for BLE communication
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -132,6 +135,9 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
     LOG_INF("Altimeter app started!");
     altimeter_ui_show(root); 
     ble_comm_request_gps_status(true);
+
+    // Kickstart the background data sampling for the chart immediately
+    k_work_reschedule(&altimeter_app_fetch_work, K_NO_WAIT);
 }
 
 static void altimeter_app_stop(void)
@@ -144,10 +150,20 @@ static void altimeter_app_stop(void)
 
 static void periodic_fetch_altimeter_data(struct k_work *work)
 {
-    // Fetch GPS data and then make HTTP request to get altimeter data
-    LOG_INF("Fetching altimeter data...");
-    ble_comm_request_gps_status(true);
-    k_work_submit(&altimeter_app_publish);
+    // Save current altitude into the ring buffer history
+    if (current_raw_pressure > 0.0) {
+        altitude_history[history_index] = current_altitude; // <-- Save Altitude!
+        history_index = (history_index + 1) % HISTORY_SAMPLES;
+        has_history = true;
+    } else {
+        LOG_WRN("Skipped history sample (pressure is 0).");
+    }
+    
+    // Update UI if screen is on
+    k_work_submit(&ui_update_work);
+
+    // Keep it at 1 minute for testing, change to K_HOURS(1) for production!
+    k_work_reschedule(&altimeter_app_fetch_work, K_SECONDS(10));
 }
 
 static void publish_altimeter_data(struct k_work *work)
@@ -188,7 +204,8 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 static void update_altimeter_ui_safely(struct k_work *work)
 {
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-        altimeter_ui_update(current_altitude, current_raw_pressure, is_calibrated);
+        altimeter_ui_update(current_altitude, current_raw_pressure, is_calibrated, 
+                            altitude_history, history_index, has_history); // <-- Pass new array
     }
 }
 
