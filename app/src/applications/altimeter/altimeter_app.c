@@ -33,7 +33,7 @@
 
 LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 
-#define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=pressure_msl&timezone=auto"
+#define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/elevation?latitude=%f&longitude=%f"
 
 // Functions needed for all applications
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group);
@@ -83,21 +83,35 @@ static application_t app = {
 static void http_rsp_cb(ble_http_status_code_t status, char *response)
 {
     if (status == BLE_HTTP_STATUS_OK) {
-        cJSON *parsed_response = cJSON_Parse((char *)response);
+        cJSON *parsed_response = cJSON_Parse(response);
         if (parsed_response == NULL) {
             LOG_ERR("Failed to parse JSON");
             return;
         }
         
-        cJSON *current = cJSON_GetObjectItem(parsed_response, "current");
-        if (current) {
-            cJSON *pressure_node = cJSON_GetObjectItem(current, "pressure_msl");
-            if (pressure_node && cJSON_IsNumber(pressure_node)) {
-                // Update our global state
-                current_sea_level_pressure = pressure_node->valuedouble;
-                is_calibrated = true;
+        cJSON *elevation_array = cJSON_GetObjectItem(parsed_response, "elevation");
+        if (elevation_array && cJSON_IsArray(elevation_array)) {
+            cJSON *elevation_node = cJSON_GetArrayItem(elevation_array, 0);
+            if (elevation_node && cJSON_IsNumber(elevation_node)) {
                 
-                LOG_INF("Successfully Calibrated MSL Pressure: %.2f hPa", current_sea_level_pressure);
+                float real_altitude = elevation_node->valuedouble;
+                
+                // Only calibrate if we have received at least one raw pressure reading
+                if (current_raw_pressure > 0.0) {
+                    // Reverse hypsometric formula to get the localized sea level pressure
+                    // P_sea = P / ( (1 - (h / 44330.0)) ^ (1 / 0.1903) )
+                    // (1 / 0.1903) is approximately 5.255
+                    current_sea_level_pressure = current_raw_pressure / pow(1.0 - (real_altitude / 44330.0), 5.255);
+                    
+                    is_calibrated = true;
+                    LOG_INF("Calibrated! True Alt: %.1fm -> New MSL Reference: %.2f hPa", 
+                            real_altitude, current_sea_level_pressure);
+                            
+                    // Trigger UI update directly so user sees the calibration instantly
+                    k_work_submit(&ui_update_work);
+                } else {
+                    LOG_WRN("Received elevation but raw pressure is 0. Waiting for sensor.");
+                }
             }
         }
         
