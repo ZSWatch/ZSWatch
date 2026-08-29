@@ -35,7 +35,6 @@
 LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 
 #define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,pressure_msl&models=dmi_seamless"
-#define HISTORY_SAMPLES 24
 #define ALTIMETER_CALIBRATION_INTERVAL_S (30 * 60)
 
 // Standard Atmosphere model constants (float32 to leverage the FPU)
@@ -50,8 +49,7 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void on_zbus_pressure_callback(const struct zbus_channel *chan);
 static void periodic_calibration_handler(struct k_work *work);
 static void http_rsp_cb(ble_http_status_code_t status, char *response);
-static void update_altimeter_ui_safely(struct k_work *work);
-static void calibrate_sea_level(float api_pressure_msl);
+static void update_altimeter_ui(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
 
 typedef struct {
@@ -61,12 +59,16 @@ typedef struct {
 
 // Static variables
 static altimeter_state_t alt_state = { .ref_slp = 1013.25f, .filtered_pressure = 0.0f };
-static bool is_calibrated = false;
-static float current_altitude = 0.0;
-static float current_raw_pressure = 0.0;
 static float altitude_history[HISTORY_SAMPLES];
-static uint8_t history_index = 0;
-static bool has_history = false;
+static altimeter_ui_data_t ui_data = {
+    .altitude = 0.0f,
+    .raw_pressure = 0.0f,
+    .history_data = altitude_history,
+    .start_idx = 0,
+    .history_count = HISTORY_SAMPLES,
+    .is_calibrated = false,
+    .has_data = false
+};
 
 // ZBUS channel and listener for BLE communication
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -80,7 +82,7 @@ ZBUS_CHAN_ADD_OBS(pressure_data_chan, altimeter_pressure_lis, 1);
 
 K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler);
 
-K_WORK_DEFINE(ui_update_work, update_altimeter_ui_safely);
+K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 
 ZSW_LV_IMG_DECLARE(altimeter_icon); 
 
@@ -93,17 +95,10 @@ static application_t app = {
     .category = ZSW_APP_CATEGORY_SENSORS,
 };
 
-// Phase 1: API sync (every 30 min) - sets the reference sea-level pressure
-static void calibrate_sea_level(float api_pressure_msl)
-{
-    alt_state.ref_slp = api_pressure_msl;
-}
-
-// Phase 2: live UI loop (10s) - EMA-smoothed pressure converted to altitude
 static float get_current_altitude(float pressure_sensor)
 {
     if (alt_state.filtered_pressure <= 0.0f) {
-        // Bootstrap the filter with the first real reading instead of blending from 0
+        // for the first reading, just assigned
         alt_state.filtered_pressure = pressure_sensor;
     } else {
         alt_state.filtered_pressure = (EMA_ALPHA * pressure_sensor) +
@@ -173,15 +168,13 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             cJSON *temperature_2m_node = cJSON_GetObjectItem(current, "temperature_2m");
 
             if (pressure_msl_node && cJSON_IsNumber(pressure_msl_node)) {
-                float ms_pressure = (float)pressure_msl_node->valuedouble;
+                alt_state.ref_slp = (float)pressure_msl_node->valuedouble;
+                ui_data.is_calibrated = true;
+                ui_data.has_data = false; // don't present this time, wait for next pressure reading to populate history
                 float temp = 0.0f;
-
                 if (temperature_2m_node && cJSON_IsNumber(temperature_2m_node)) {
                     temp = (float)temperature_2m_node->valuedouble;
                 }
-
-                calibrate_sea_level(ms_pressure);
-                is_calibrated = true;
                 LOG_INF("Calibrated! New MSL Reference: %.2f hPa (Temp 2m: %.1f C)",
                         alt_state.ref_slp, temp);
 
@@ -205,7 +198,6 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
 
     if (event->data.type == BLE_COMM_DATA_TYPE_GPS) {
-        // GPS received! Stop requesting if you want, or just proceed.
         ble_comm_request_gps_status(false);
         
         float lat = event->data.data.gps.lat;
@@ -213,11 +205,9 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
         
         LOG_INF("GPS received: %.4f, %.4f. Requesting Altimeter data...", lat, lon);
         
-        // Ensure you declare a buffer large enough
         static char http_url[256];
         snprintf(http_url, sizeof(http_url), HTTP_REQUEST_URL_ALTIMETER_FMT, lat, lon);
         
-        // Execute the proxy HTTP GET
         int ret = zsw_ble_http_get(http_url, http_rsp_cb);
         if (ret != 0 && ret != -EBUSY) {
             LOG_ERR("Failed to proxy HTTP request: %d", ret);
@@ -225,12 +215,11 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     }
 }
 
-static void update_altimeter_ui_safely(struct k_work *work)
+static void update_altimeter_ui(struct k_work *work)
 {
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         zsw_power_manager_reset_idle_timout();
-        altimeter_ui_update(current_altitude, current_raw_pressure, is_calibrated, 
-                            altitude_history, history_index, has_history); // <-- Pass new array
+        altimeter_ui_update(&ui_data);
     }
 }
 
@@ -238,14 +227,14 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
 {
     const struct pressure_event *event = zbus_chan_const_msg(chan);
 
-    current_raw_pressure = event->pressure / 100.0f;
-    current_altitude = get_current_altitude(current_raw_pressure);
-
+    float current_raw_pressure = event->pressure / 100.0f; // Convert Pa to hPa
+    ui_data.altitude = get_current_altitude(current_raw_pressure);
+    ui_data.raw_pressure = current_raw_pressure;
     // Append to altitude history
     if (current_raw_pressure > 0.0f) {
-        altitude_history[history_index] = current_altitude;
-        history_index = (history_index + 1) % HISTORY_SAMPLES;
-        has_history = true;
+        altitude_history[ui_data.start_idx] = ui_data.altitude;
+        ui_data.start_idx = (ui_data.start_idx + 1) % HISTORY_SAMPLES;
+        ui_data.has_data = true;
     }
 
     k_work_submit(&ui_update_work); // Defer UI updates safely!

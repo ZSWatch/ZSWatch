@@ -55,27 +55,27 @@ void altimeter_ui_remove(void)
     }
 }
 
-void altimeter_ui_update(float altitude, float raw_pressure, bool is_calibrated, float *history_data, uint8_t start_idx, bool has_data)
+void altimeter_ui_update(altimeter_ui_data_t *data)
 {
-    if (root_page == NULL) return; 
+    if (root_page == NULL || data == NULL) return;
 
-    lv_label_set_text_fmt(alt_label, "%.0f m", altitude);
-    lv_label_set_text_fmt(pressure_label, "%.1f hPa", raw_pressure);
+    lv_label_set_text_fmt(alt_label, "%.2f m", data->altitude);
+    lv_label_set_text_fmt(pressure_label, "%.2f hPa", data->raw_pressure);
 
-    if (is_calibrated) {
+    if (data->is_calibrated) {
         lv_label_set_text(status_label, "Calibrated");
         lv_obj_set_style_text_color(status_label, zsw_color_blue(), LV_PART_MAIN); 
     }
 
     // Update Chart
-    if (has_data && chart != NULL && chart_series != NULL) {
+    if (data->has_data && chart != NULL && chart_series != NULL) {
         float min = 99999.0;
         float max = -99999.0;
         
-        for (int i = 0; i < 24; i++) {
-            if (history_data[i] == 0.0) continue; 
-            if (history_data[i] < min) min = history_data[i];
-            if (history_data[i] > max) max = history_data[i];
+        for (int i = 0; i < HISTORY_SAMPLES; i++) {
+            if (data->history_data[i] == 0.0) continue; 
+            if (data->history_data[i] < min) min = data->history_data[i];
+            if (data->history_data[i] > max) max = data->history_data[i];
         }
         
         // Give chart tightly zoomed +/- 5 meters breathing room 
@@ -84,13 +84,13 @@ void altimeter_ui_update(float altitude, float raw_pressure, bool is_calibrated,
         }
 
         // Feed chronologically
-        for (int i = 0; i < 24; i++) {
-            int actual_idx = (start_idx + i) % 24; 
-            if (history_data[actual_idx] == 0.0) {
+        for (int i = 0; i < HISTORY_SAMPLES; i++) {
+            int actual_idx = (data->start_idx + i) % HISTORY_SAMPLES;
+            if (data->history_data[actual_idx] == 0.0) {
                 // Skips drawing a huge plummeting line for empty array slots
                 lv_chart_set_next_value(chart, chart_series, LV_CHART_POINT_NONE); 
             } else {
-                lv_chart_set_next_value(chart, chart_series, (int)history_data[actual_idx]);
+                lv_chart_set_next_value(chart, chart_series, (int)data->history_data[actual_idx]);
             }
         }
         lv_chart_refresh(chart);
