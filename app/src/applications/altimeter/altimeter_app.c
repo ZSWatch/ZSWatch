@@ -84,7 +84,7 @@ K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler
 
 K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 
-ZSW_LV_IMG_DECLARE(altimeter_icon); 
+ZSW_LV_IMG_DECLARE(altimeter_icon);
 
 
 static application_t app = {
@@ -102,7 +102,7 @@ static float get_current_altitude(float pressure_sensor)
         alt_state.filtered_pressure = pressure_sensor;
     } else {
         alt_state.filtered_pressure = (EMA_ALPHA * pressure_sensor) +
-                                       ((1.0f - EMA_ALPHA) * alt_state.filtered_pressure);
+                                      ((1.0f - EMA_ALPHA) * alt_state.filtered_pressure);
     }
 
     if (alt_state.ref_slp <= 0.0f) {
@@ -124,7 +124,7 @@ static int altimeter_app_add(void)
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 {
     LOG_INF("Altimeter app started!");
-    altimeter_ui_show(root); 
+    altimeter_ui_show(root);
 
     // Run the first calibration now, periodic_calibration_handler takes it from here
     k_work_reschedule(&altimeter_calibration_work, K_NO_WAIT);
@@ -133,7 +133,7 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 static void altimeter_app_stop(void)
 {
     LOG_INF("Altimeter app stopped!");
-    altimeter_ui_remove(); 
+    altimeter_ui_remove();
     k_work_cancel_delayable(&altimeter_calibration_work);
     k_work_cancel(&ui_update_work);
     ble_comm_request_gps_status(false);
@@ -199,15 +199,15 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 
     if (event->data.type == BLE_COMM_DATA_TYPE_GPS) {
         ble_comm_request_gps_status(false);
-        
+
         float lat = event->data.data.gps.lat;
         float lon = event->data.data.gps.lon;
-        
+
         LOG_INF("GPS received: %.4f, %.4f. Requesting Altimeter data...", lat, lon);
-        
+
         static char http_url[256];
         snprintf(http_url, sizeof(http_url), HTTP_REQUEST_URL_ALTIMETER_FMT, lat, lon);
-        
+
         int ret = zsw_ble_http_get(http_url, http_rsp_cb);
         if (ret != 0 && ret != -EBUSY) {
             LOG_ERR("Failed to proxy HTTP request: %d", ret);
