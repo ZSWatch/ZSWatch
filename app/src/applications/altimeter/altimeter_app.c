@@ -139,7 +139,8 @@ static int altimeter_app_add(void)
 {
     zsw_app_manager_add_application(&app);
     return 0;
-}static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
+}
+static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 {
     LOG_INF("Altimeter app started!");
     altimeter_ui_show(root);
@@ -269,11 +270,11 @@ static void update_floor_count(float altitude)
     if (delta > 0.0f) {
         // Reversal beyond hysteresis discards opposite progress, otherwise noise is ignored
         floor_state.descend_accum = (delta > FLOOR_HYSTERESIS_M) ? 0.0f :
-                                     MAX(0.0f, floor_state.descend_accum - delta);
+                                    MAX(0.0f, floor_state.descend_accum - delta);
         floor_state.climb_accum += delta;
     } else if (delta < 0.0f) {
         floor_state.climb_accum = (-delta > FLOOR_HYSTERESIS_M) ? 0.0f :
-                                   MAX(0.0f, floor_state.climb_accum + delta);
+                                  MAX(0.0f, floor_state.climb_accum + delta);
         floor_state.descend_accum -= delta;
     }
 

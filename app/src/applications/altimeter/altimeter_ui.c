@@ -1,5 +1,5 @@
 #include "altimeter_ui.h"
-#include "ui/zsw_ui.h" 
+#include "ui/zsw_ui.h"
 #include <stdio.h>
 
 static lv_obj_t *root_page = NULL;
