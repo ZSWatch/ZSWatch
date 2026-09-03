@@ -9,7 +9,6 @@ typedef struct {
     float raw_pressure;      // Current raw pressure in hPa
     float *history_data;     // Pointer to historical altitude data (24 samples)
     uint8_t start_idx;       // Starting index for the circular buffer of history data
-    uint8_t history_count;   // Number of valid historical data points
     bool is_calibrated;      // Calibration status
     bool has_data;           // Flag indicating if historical data is available
 } altimeter_ui_data_t;

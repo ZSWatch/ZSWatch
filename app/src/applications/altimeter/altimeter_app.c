@@ -27,6 +27,7 @@
 #include <ble/ble_http.h>
 #include "events/ble_event.h"
 #include "events/pressure_event.h"
+#include "events/altitude_event.h"
 #include "altimeter_ui.h"
 #include <zsw_clock.h>
 #include <stdio.h>
@@ -65,7 +66,6 @@ static altimeter_ui_data_t ui_data = {
     .raw_pressure = 0.0f,
     .history_data = altitude_history,
     .start_idx = 0,
-    .history_count = HISTORY_SAMPLES,
     .is_calibrated = false,
     .has_data = false
 };
@@ -79,6 +79,9 @@ ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, altimeter_ble_comm_lis, 1);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_LISTENER_DEFINE(altimeter_pressure_lis, on_zbus_pressure_callback);
 ZBUS_CHAN_ADD_OBS(pressure_data_chan, altimeter_pressure_lis, 1);
+
+// ZBUS channel this app publishes calibrated altitude to
+ZBUS_CHAN_DECLARE(altitude_data_chan);
 
 K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler);
 
@@ -205,7 +208,7 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
 
         LOG_INF("GPS received: %.4f, %.4f. Requesting Altimeter data...", lat, lon);
 
-        static char http_url[256];
+        char http_url[256];
         snprintf(http_url, sizeof(http_url), HTTP_REQUEST_URL_ALTIMETER_FMT, lat, lon);
 
         int ret = zsw_ble_http_get(http_url, http_rsp_cb);
@@ -236,6 +239,12 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
         ui_data.start_idx = (ui_data.start_idx + 1) % HISTORY_SAMPLES;
         ui_data.has_data = true;
     }
+
+    struct altitude_event alt_evt = {
+        .altitude_m = ui_data.altitude,
+        .is_calibrated = ui_data.is_calibrated,
+    };
+    zbus_chan_pub(&altitude_data_chan, &alt_evt, K_MSEC(250));
 
     k_work_submit(&ui_update_work); // Defer UI updates safely!
 }
