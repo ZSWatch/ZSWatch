@@ -11,6 +11,8 @@ typedef struct {
     uint8_t start_idx;       // Starting index for the circular buffer of history data
     bool is_calibrated;      // Calibration status
     bool has_data;           // Flag indicating if historical data is available
+    uint16_t floors_up;      // Floors climbed today
+    uint16_t floors_down;    // Floors descended today
 } altimeter_ui_data_t;
 
 #define HISTORY_SAMPLES 24

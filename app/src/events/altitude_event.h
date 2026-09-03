@@ -18,8 +18,11 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct altitude_event {
     float altitude_m;
     bool is_calibrated;
+    uint16_t floors_up;
+    uint16_t floors_down;
 };

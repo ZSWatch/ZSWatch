@@ -8,6 +8,8 @@ static lv_obj_t *pressure_label = NULL;
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *chart = NULL;
 static lv_chart_series_t *chart_series = NULL;
+static lv_obj_t *floors_up_label = NULL;
+static lv_obj_t *floors_down_label = NULL;
 
 void altimeter_ui_show(lv_obj_t *root)
 {
@@ -27,6 +29,17 @@ void altimeter_ui_show(lv_obj_t *root)
     lv_obj_set_style_text_color(pressure_label, zsw_color_gray(), LV_PART_MAIN);
     lv_label_set_text(pressure_label, "-- hPa");
     lv_obj_align(pressure_label, LV_ALIGN_TOP_MID, 0, 55); // Tucked right under altitude
+
+    // Floors climbed/descended today, flanking the pressure label
+    floors_up_label = lv_label_create(root_page);
+    lv_obj_set_style_text_color(floors_up_label, zsw_color_gray(), LV_PART_MAIN);
+    lv_label_set_text(floors_up_label, LV_SYMBOL_UP " 0");
+    lv_obj_align(floors_up_label, LV_ALIGN_TOP_LEFT, 15, 58);
+
+    floors_down_label = lv_label_create(root_page);
+    lv_obj_set_style_text_color(floors_down_label, zsw_color_gray(), LV_PART_MAIN);
+    lv_label_set_text(floors_down_label, LV_SYMBOL_DOWN " 0");
+    lv_obj_align(floors_down_label, LV_ALIGN_TOP_RIGHT, -15, 58);
 
     // Network Calibration Status
     status_label = lv_label_create(root_page);
@@ -52,6 +65,8 @@ void altimeter_ui_remove(void)
     if (root_page != NULL) {
         lv_obj_del(root_page); // Deletes all children (labels) automatically
         root_page = NULL;
+        floors_up_label = NULL;
+        floors_down_label = NULL;
     }
 }
 
@@ -63,6 +78,8 @@ void altimeter_ui_update(altimeter_ui_data_t *data)
 
     lv_label_set_text_fmt(alt_label, "%.2f m", data->altitude);
     lv_label_set_text_fmt(pressure_label, "%.2f hPa", data->raw_pressure);
+    lv_label_set_text_fmt(floors_up_label, LV_SYMBOL_UP " %u", data->floors_up);
+    lv_label_set_text_fmt(floors_down_label, LV_SYMBOL_DOWN " %u", data->floors_down);
 
     if (data->is_calibrated) {
         lv_label_set_text(status_label, "Calibrated");

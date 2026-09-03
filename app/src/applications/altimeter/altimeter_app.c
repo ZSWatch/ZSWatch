@@ -43,6 +43,10 @@ LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 #define CONST_44330 44330.0f
 #define EMA_ALPHA   0.2f
 
+// Floor climb/descend detection (Apple/Fitbit-style: 3m per floor, hysteresis rejects sensor noise)
+#define FLOOR_HEIGHT_M      3.0f
+#define FLOOR_HYSTERESIS_M  0.5f
+
 // Functions needed for all applications
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group);
 static void altimeter_app_stop(void);
@@ -52,14 +56,27 @@ static void periodic_calibration_handler(struct k_work *work);
 static void http_rsp_cb(ble_http_status_code_t status, char *response);
 static void update_altimeter_ui(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
+static void check_daily_floor_reset(void);
+static void update_floor_count(float altitude);
 
 typedef struct {
     float ref_slp;            // Reference mean sea-level pressure (hPa)
     float filtered_pressure;  // EMA-smoothed pressure (hPa)
 } altimeter_state_t;
 
+typedef struct {
+    float last_altitude;      // Previous sample, for delta computation
+    bool has_last_altitude;
+    float climb_accum;        // Accumulated gain (m) toward next floor up
+    float descend_accum;      // Accumulated loss (m) toward next floor down
+    uint16_t floors_up;       // Floors climbed today
+    uint16_t floors_down;     // Floors descended today
+    int last_reset_yday;      // tm_yday of last daily reset, -1 = not yet initialized
+} floor_count_state_t;
+
 // Static variables
 static altimeter_state_t alt_state = { .ref_slp = 1013.25f, .filtered_pressure = 0.0f };
+static floor_count_state_t floor_state = { .last_reset_yday = -1 };
 static float altitude_history[HISTORY_SAMPLES];
 static altimeter_ui_data_t ui_data = {
     .altitude = 0.0f,
@@ -122,9 +139,7 @@ static int altimeter_app_add(void)
 {
     zsw_app_manager_add_application(&app);
     return 0;
-}
-
-static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
+}static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 {
     LOG_INF("Altimeter app started!");
     altimeter_ui_show(root);
@@ -226,9 +241,59 @@ static void update_altimeter_ui(struct k_work *work)
     }
 }
 
+static void check_daily_floor_reset(void)
+{
+    zsw_timeval_t time;
+
+    zsw_clock_get_time(&time);
+
+    if (floor_state.last_reset_yday != time.tm.tm_yday) {
+        floor_state.floors_up = 0;
+        floor_state.floors_down = 0;
+        floor_state.climb_accum = 0.0f;
+        floor_state.descend_accum = 0.0f;
+        floor_state.last_reset_yday = time.tm.tm_yday;
+    }
+}
+
+static void update_floor_count(float altitude)
+{
+    if (!floor_state.has_last_altitude) {
+        floor_state.last_altitude = altitude;
+        floor_state.has_last_altitude = true;
+        return;
+    }
+
+    float delta = altitude - floor_state.last_altitude;
+
+    if (delta > 0.0f) {
+        // Reversal beyond hysteresis discards opposite progress, otherwise noise is ignored
+        floor_state.descend_accum = (delta > FLOOR_HYSTERESIS_M) ? 0.0f :
+                                     MAX(0.0f, floor_state.descend_accum - delta);
+        floor_state.climb_accum += delta;
+    } else if (delta < 0.0f) {
+        floor_state.climb_accum = (-delta > FLOOR_HYSTERESIS_M) ? 0.0f :
+                                   MAX(0.0f, floor_state.climb_accum + delta);
+        floor_state.descend_accum -= delta;
+    }
+
+    while (floor_state.climb_accum >= FLOOR_HEIGHT_M) {
+        floor_state.floors_up++;
+        floor_state.climb_accum -= FLOOR_HEIGHT_M;
+    }
+    while (floor_state.descend_accum >= FLOOR_HEIGHT_M) {
+        floor_state.floors_down++;
+        floor_state.descend_accum -= FLOOR_HEIGHT_M;
+    }
+
+    floor_state.last_altitude = altitude;
+}
+
 static void on_zbus_pressure_callback(const struct zbus_channel *chan)
 {
     const struct pressure_event *event = zbus_chan_const_msg(chan);
+
+    check_daily_floor_reset();
 
     float current_raw_pressure = event->pressure / 100.0f; // Convert Pa to hPa
     ui_data.altitude = get_current_altitude(current_raw_pressure);
@@ -240,9 +305,15 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
         ui_data.has_data = true;
     }
 
+    update_floor_count(ui_data.altitude);
+    ui_data.floors_up = floor_state.floors_up;
+    ui_data.floors_down = floor_state.floors_down;
+
     struct altitude_event alt_evt = {
         .altitude_m = ui_data.altitude,
         .is_calibrated = ui_data.is_calibrated,
+        .floors_up = floor_state.floors_up,
+        .floors_down = floor_state.floors_down,
     };
     zbus_chan_pub(&altitude_data_chan, &alt_evt, K_MSEC(250));
 
