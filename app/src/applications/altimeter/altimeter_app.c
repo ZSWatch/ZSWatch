@@ -29,19 +29,23 @@
 #include "events/pressure_event.h"
 #include "events/altitude_event.h"
 #include "altimeter_ui.h"
+#include "history/zsw_history.h"
 #include <zsw_clock.h>
 #include <stdio.h>
 #include <math.h>
 
 LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 
-#define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,pressure_msl&models=dmi_seamless"
+#define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,pressure_msl&models=best_match"
 #define ALTIMETER_CALIBRATION_INTERVAL_S (30 * 60)
+#define ALTIMETER_CALIBRATION_RETRY_INTERVAL_S (60)
 
-// Standard Atmosphere model constants (float32 to leverage the FPU)
-#define LAPSE_EXP   5.255f
-#define CONST_44330 44330.0f
-#define EMA_ALPHA   0.2f
+// Hypsometric formula constants (float32 to leverage the FPU)
+#define LAPSE_RATE     0.0065f  // ISA temperature lapse rate, K/m
+#define INV_LAPSE_EXP  0.19022f // Precalculated 1/5.255 to save FPU cycles
+#define STANDARD_TEMP_K 288.15f // 15 C fallback until first calibration
+#define EMA_ALPHA      0.6f
+#define REF_SLP_SLEW_STEP_HPA 0.01f // Max ref_slp change per 10s pressure tick
 
 // Floor climb/descend detection (Apple/Fitbit-style: 3m per floor, hysteresis rejects sensor noise)
 #define FLOOR_HEIGHT_M      3.0f
@@ -49,8 +53,10 @@ LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 
 // type definitions for altimeter state, floor count state, and work items
 typedef struct {
-    float ref_slp;            // Reference mean sea-level pressure (hPa)
+    float ref_slp;            // Reference mean sea-level pressure (hPa), slews toward target_ref_slp
+    float target_ref_slp;     // Latest calibrated reference, applied gradually to avoid altitude jumps
     float filtered_pressure;  // EMA-smoothed pressure (hPa)
+    float temperature_k;      // Latest calibrated temperature (K), used in the hypsometric formula
 } altimeter_state_t;
 
 typedef struct {
@@ -70,7 +76,9 @@ typedef enum {
 
 typedef struct {
     altimeter_work_type_t type;
-    float value;
+    float pressure_pa;       // ALTIMETER_WORK_PRESSURE
+    float pressure_msl_hpa;  // ALTIMETER_WORK_CALIBRATION
+    float temperature_2m_c;  // ALTIMETER_WORK_CALIBRATION
 } altimeter_work_item_t;
 
 // Functions needed for all applications
@@ -85,15 +93,22 @@ static void process_altimeter_work(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
 static void check_daily_floor_reset(void);
 static void update_floor_count(float altitude);
+static void reschedule_calibration_work(bool success);
 
 // Static variables
-static altimeter_state_t alt_state = { .ref_slp = 1013.25f, .filtered_pressure = 0.0f };
+static altimeter_state_t alt_state = {
+    .ref_slp = 1013.25f,
+    .target_ref_slp = 1013.25f,
+    .filtered_pressure = 0.0f,
+    .temperature_k = STANDARD_TEMP_K,
+};
 static floor_count_state_t floor_state = { .last_reset_yday = -1 };
-static float altitude_history[HISTORY_SAMPLES];
+static float chart_samples[HISTORY_SAMPLES];
+static zsw_history_t chart_history;
 static altimeter_ui_data_t ui_data = {
     .altitude = 0.0f,
     .raw_pressure = 0.0f,
-    .history_data = altitude_history,
+    .history_data = chart_samples,
     .start_idx = 0,
     .valid_count = 0,
     .is_calibrated = false,
@@ -123,7 +138,7 @@ ZBUS_CHAN_DECLARE(altitude_data_chan);
 K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler);
 K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 K_WORK_DEFINE(altimeter_work, process_altimeter_work);
-K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), 8, 4);
+K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), 2, 4);
 
 ZSW_LV_IMG_DECLARE(altimeter_icon);
 
@@ -142,9 +157,16 @@ static float get_current_altitude(float pressure_sensor)
     }
 
     float ratio = alt_state.filtered_pressure / alt_state.ref_slp;
-    float power_term = powf(ratio, 1.0f / LAPSE_EXP);
+    float power_term = powf(ratio, INV_LAPSE_EXP);
 
-    return CONST_44330 * (1.0f - power_term);
+    return (alt_state.temperature_k / LAPSE_RATE) * (1.0f - power_term);
+}
+
+static void reschedule_calibration_work(bool success)
+{
+    uint32_t delay_s = success ? ALTIMETER_CALIBRATION_INTERVAL_S : ALTIMETER_CALIBRATION_RETRY_INTERVAL_S;
+
+    k_work_reschedule(&altimeter_calibration_work, K_SECONDS(delay_s));
 }
 
 static void periodic_calibration_handler(struct k_work *work)
@@ -155,23 +177,21 @@ static void periodic_calibration_handler(struct k_work *work)
 
     if (ret != 0) {
         LOG_ERR("Failed to request GPS for calibration: %d", ret);
+        // No async continuation will occur for this cycle, retry sooner
+        reschedule_calibration_work(false);
     }
-
-    // Always reschedule so recalibration keeps recurring even if this cycle failed
-    k_work_reschedule(&altimeter_calibration_work, K_SECONDS(ALTIMETER_CALIBRATION_INTERVAL_S));
+    // On success, the GPS/HTTP callback chain decides the next reschedule interval
 }
 
 static void http_rsp_cb(ble_http_status_code_t status, char *response)
 {
-    if (app.current_state != ZSW_APP_STATE_UI_VISIBLE) {
-        // App was closed before this late response arrived, avoid mutating stopped app's state
-        return;
-    }
+    bool success = false;
 
     if (status == BLE_HTTP_STATUS_OK) {
         cJSON *parsed_response = cJSON_Parse(response);
         if (parsed_response == NULL) {
             LOG_ERR("Failed to parse JSON");
+            reschedule_calibration_work(false);
             return;
         }
 
@@ -180,26 +200,24 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             cJSON *pressure_msl_node = cJSON_GetObjectItem(current, "pressure_msl");
             cJSON *temperature_2m_node = cJSON_GetObjectItem(current, "temperature_2m");
 
-            if (pressure_msl_node && cJSON_IsNumber(pressure_msl_node)) {
+            if (pressure_msl_node && cJSON_IsNumber(pressure_msl_node) &&
+                temperature_2m_node && cJSON_IsNumber(temperature_2m_node)) {
                 altimeter_work_item_t work_item = {
                     .type = ALTIMETER_WORK_CALIBRATION,
-                    .value = (float)pressure_msl_node->valuedouble,
+                    .pressure_msl_hpa = (float)pressure_msl_node->valuedouble,
+                    .temperature_2m_c = (float)temperature_2m_node->valuedouble,
                 };
 
                 if (k_msgq_put(&altimeter_work_queue, &work_item, K_NO_WAIT) != 0) {
                     LOG_WRN("Altimeter work queue full; calibration discarded");
                 } else {
                     k_work_submit(&altimeter_work);
+                    success = true;
+                    LOG_INF("Calibrated! New MSL Reference: %.2f hPa (Temp 2m: %.1f C)",
+                            work_item.pressure_msl_hpa, work_item.temperature_2m_c);
                 }
-
-                float temp = 0.0f;
-                if (temperature_2m_node && cJSON_IsNumber(temperature_2m_node)) {
-                    temp = (float)temperature_2m_node->valuedouble;
-                }
-                LOG_INF("Calibrated! New MSL Reference: %.2f hPa (Temp 2m: %.1f C)",
-                        work_item.value, temp);
             } else {
-                LOG_WRN("Missing or invalid pressure_msl in JSON response.");
+                LOG_WRN("Missing or invalid pressure_msl/temperature_2m in JSON response.");
             }
         } else {
             LOG_WRN("Missing current object in JSON response.");
@@ -209,6 +227,8 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     } else {
         LOG_ERR("HTTP request failed with status: %d", status);
     }
+
+    reschedule_calibration_work(success);
 }
 
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
@@ -216,11 +236,6 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
 
     if (event->data.type != BLE_COMM_DATA_TYPE_GPS) {
-        return;
-    }
-
-    if (app.current_state != ZSW_APP_STATE_UI_VISIBLE) {
-        // App was closed before this late GPS event arrived, ignore to avoid starting calibration work
         return;
     }
 
@@ -237,6 +252,8 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     int ret = zsw_ble_http_get(http_url, http_rsp_cb);
     if (ret != 0 && ret != -EBUSY) {
         LOG_ERR("Failed to proxy HTTP request: %d", ret);
+        // No async continuation will occur for this cycle, retry sooner
+        reschedule_calibration_work(false);
     }
 }
 
@@ -246,9 +263,9 @@ static void update_altimeter_ui(struct k_work *work)
 
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         zsw_power_manager_reset_idle_timout();
-        altimeter_ui_update(&ui_data);
-        altimeter_ui_notify_data_ready();
     }
+    altimeter_ui_update(&ui_data);
+    altimeter_ui_notify_data_ready();
 }
 
 static void process_altimeter_work(struct k_work *work)
@@ -259,29 +276,31 @@ static void process_altimeter_work(struct k_work *work)
 
     while (k_msgq_get(&altimeter_work_queue, &work_item, K_NO_WAIT) == 0) {
         if (work_item.type == ALTIMETER_WORK_CALIBRATION) {
-            alt_state.ref_slp = work_item.value;
+            alt_state.target_ref_slp = work_item.pressure_msl_hpa;
+            alt_state.temperature_k = work_item.temperature_2m_c + 273.15f;
             ui_data.is_calibrated = true;
-            ui_data.has_data = false;
-            ui_data.start_idx = 0;
-            ui_data.valid_count = 0;
-            floor_state.has_last_altitude = false;
             k_work_submit(&ui_update_work);
             continue;
         }
 
         check_daily_floor_reset();
 
-        float current_raw_pressure = work_item.value / 100.0f;
+        // Glide toward the latest calibration instead of jumping, keeps the chart continuous
+        if (alt_state.ref_slp < alt_state.target_ref_slp) {
+            alt_state.ref_slp = MIN(alt_state.ref_slp + REF_SLP_SLEW_STEP_HPA, alt_state.target_ref_slp);
+        } else if (alt_state.ref_slp > alt_state.target_ref_slp) {
+            alt_state.ref_slp = MAX(alt_state.ref_slp - REF_SLP_SLEW_STEP_HPA, alt_state.target_ref_slp);
+        }
+
+        float current_raw_pressure = work_item.pressure_pa / 100.0f;
         ui_data.altitude = get_current_altitude(current_raw_pressure);
         ui_data.raw_pressure = current_raw_pressure;
 
         if (current_raw_pressure > 0.0f) {
-            altitude_history[ui_data.start_idx] = ui_data.altitude;
-            ui_data.start_idx = (ui_data.start_idx + 1) % HISTORY_SAMPLES;
-            if (ui_data.valid_count < HISTORY_SAMPLES) {
-                ui_data.valid_count++;
-            }
-            ui_data.has_data = true;
+            zsw_history_add(&chart_history, &ui_data.altitude);
+            ui_data.start_idx = (uint8_t)chart_history.write_index;
+            ui_data.valid_count = (uint8_t)chart_history.num_samples;
+            ui_data.has_data = zsw_history_samples(&chart_history) > 0;
         }
 
         update_floor_count(ui_data.altitude);
@@ -352,7 +371,7 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
     const struct pressure_event *event = zbus_chan_const_msg(chan);
     altimeter_work_item_t work_item = {
         .type = ALTIMETER_WORK_PRESSURE,
-        .value = event->pressure,
+        .pressure_pa = event->pressure,
     };
 
     if (k_msgq_put(&altimeter_work_queue, &work_item, K_NO_WAIT) != 0) {
@@ -379,13 +398,11 @@ static void altimeter_app_stop(void)
 {
     LOG_INF("Altimeter app stopped!");
     altimeter_ui_remove();
-    k_work_cancel_delayable(&altimeter_calibration_work);
-    k_work_cancel(&ui_update_work);
-    ble_comm_request_gps_status(false);
 }
 
 static int altimeter_app_add(void)
 {
+    zsw_history_init(&chart_history, HISTORY_SAMPLES, sizeof(float), chart_samples, "altimeter_hist");
     zsw_app_manager_add_application(&app);
     return 0;
 }
