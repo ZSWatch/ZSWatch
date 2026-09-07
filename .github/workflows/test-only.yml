@@ -15,6 +15,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        allow-unsafe-pr-checkout: true
 
       - name: Setup Python environment
         run: |
