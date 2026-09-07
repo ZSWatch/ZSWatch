@@ -33,6 +33,7 @@ jobs:
         with:
           ref: ${{ inputs.is-external-pr && inputs.pr-head-sha || github.sha }}
           repository: ${{ inputs.is-external-pr && inputs.pr-head-repo || github.repository }}
+          allow-unsafe-pr-checkout: true
 
       - name: PR Type Notice
         run: |
