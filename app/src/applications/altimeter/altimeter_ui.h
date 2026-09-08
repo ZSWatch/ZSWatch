@@ -1,0 +1,24 @@
+#pragma once
+
+#include <lvgl.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef struct {
+    float altitude;          // Current altitude in meters
+    float raw_pressure;      // Current raw pressure in hPa
+    float *history_data;     // Pointer to historical altitude data (24 samples)
+    uint8_t start_idx;       // Starting index for the circular buffer of history data
+    uint8_t valid_count;     // Number of valid samples currently in history_data (0..HISTORY_SAMPLES)
+    bool is_calibrated;      // Calibration status
+    bool has_data;           // Flag indicating if historical data is available
+    uint16_t floors_up;      // Floors climbed today
+    uint16_t floors_down;    // Floors descended today
+} altimeter_ui_data_t;
+
+#define HISTORY_SAMPLES 24
+
+void altimeter_ui_show(lv_obj_t *root);
+void altimeter_ui_remove(void);
+void altimeter_ui_update(altimeter_ui_data_t *data);
+void altimeter_ui_notify_data_ready(void);

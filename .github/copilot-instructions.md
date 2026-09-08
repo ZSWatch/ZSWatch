@@ -270,6 +270,7 @@ Available: `periodic_event_100ms_chan`, `periodic_event_1s_chan`, `periodic_even
 ### Existing Event Channels
 - `accel_data_chan` — Accelerometer/IMU data
 - `activity_state_data_chan` — Activity state changes (active/inactive/not-worn)
+- `altitude_data_chan` — Altitude in meters plus `is_calibrated` flag and `floors_up`/`floors_down` counters (derived from pressure, published by Altimeter app; not every published altitude is calibrated)
 - `battery_sample_data_chan` — Battery status
 - `ble_comm_data_chan` — BLE communication data
 - `environment_data_chan` — Environmental sensor data
