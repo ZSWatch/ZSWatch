@@ -115,6 +115,8 @@ static altimeter_ui_data_t ui_data = {
     .has_data = false
 };
 
+ZSW_LV_IMG_DECLARE(altimeter_icon);
+
 static application_t app = {
     .name = "Altimeter",
     .icon = ZSW_LV_IMG_USE(altimeter_icon),
@@ -140,7 +142,6 @@ K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 K_WORK_DEFINE(altimeter_work, process_altimeter_work);
 K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), 2, 4);
 
-ZSW_LV_IMG_DECLARE(altimeter_icon);
 
 static float get_current_altitude(float pressure_sensor)
 {
@@ -250,9 +251,9 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     snprintf(http_url, sizeof(http_url), HTTP_REQUEST_URL_ALTIMETER_FMT, lat, lon);
 
     int ret = zsw_ble_http_get(http_url, http_rsp_cb);
-    if (ret != 0 && ret != -EBUSY) {
+    // On failure, reschedule calibration work (short timeout).
+    if (ret != 0) {
         LOG_ERR("Failed to proxy HTTP request: %d", ret);
-        // No async continuation will occur for this cycle, retry sooner
         reschedule_calibration_work(false);
     }
 }
