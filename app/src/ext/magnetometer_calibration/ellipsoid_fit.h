@@ -17,19 +17,12 @@
 
 #pragma once
 
-#include <inttypes.h>
-#include <lvgl.h>
+#include "vector.h"
 
-typedef void(*on_start_calibration_cb_t)(void);
+typedef struct {
+    Vector coefA;
+    Vector coefB;
+} Ellipsoid_t;
 
-void compass_ui_show(lv_obj_t *root, on_start_calibration_cb_t start_cal_cb);
-
-void compass_ui_remove(void);
-
-void compass_ui_set_heading(double heading);
-
-void compass_ui_show_calibration(void);
-
-void compass_ui_hide_calibration(void);
-
-void compass_ui_set_calibration_progress(int px, int py, int pz);
+Ellipsoid_t ellipsoid_fit(Vector x, Vector y, Vector z);
+void ellipsoid_free(Ellipsoid_t elip);
