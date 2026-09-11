@@ -142,7 +142,6 @@ K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 K_WORK_DEFINE(altimeter_work, process_altimeter_work);
 K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), 2, 4);
 
-
 static float get_current_altitude(float pressure_sensor)
 {
     if (alt_state.filtered_pressure <= 0.0f) {
