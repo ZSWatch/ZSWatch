@@ -20,6 +20,7 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -96,7 +97,7 @@ ZBUS_CHAN_DECLARE(music_control_data_chan);
 static struct bt_conn *current_conn;
 static uint32_t max_send_len;
 
-static int pairing_enabled;
+static atomic_t pairing_enabled;
 
 static struct ble_transport_cb ble_transport_callbacks = {
     .data_receive = bt_receive_cb,
@@ -132,29 +133,39 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
     }
 
     bt_addr_le_to_str(info.le.remote, addr, sizeof(addr));
-    if (pairing_enabled) {
+    if (atomic_get(&pairing_enabled)) {
         zsw_popup_show("Pairing Failed", "Address:", NULL, 5, false);
     }
     LOG_WRN("Pairing Failed (%d). Disconnecting.", reason);
     bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
 }
 
-static void pairing_deny(struct bt_conn *conn)
+static enum bt_security_err pairing_accept(struct bt_conn *conn,
+                                          const struct bt_conn_pairing_feat *const feat)
 {
-    LOG_ERR("Pairing deny");
-    bt_conn_auth_cancel(conn);
+    if (!atomic_get(&pairing_enabled)) {
+        LOG_WRN("Pairing rejected: pairing window closed");
+        return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+    }
+
+    LOG_INF("Pairing accepted: pairing window open");
+    return BT_SECURITY_ERR_SUCCESS;
 }
 
-static void pairing_accept(struct bt_conn *conn)
+static void pairing_confirm(struct bt_conn *conn)
 {
-    LOG_WRN("Pairing accept");
-    bt_conn_auth_pairing_confirm(conn);
+    if (atomic_get(&pairing_enabled)) {
+        bt_conn_auth_pairing_confirm(conn);
+    } else {
+        bt_conn_auth_cancel(conn);
+    }
 }
 
-static struct bt_conn_auth_cb auth_cb_display = {
+static const struct bt_conn_auth_cb auth_cb_display = {
     .passkey_display = NULL,
     .passkey_entry = NULL,
-    .pairing_confirm = pairing_deny,
+    .pairing_accept = pairing_accept,
+    .pairing_confirm = pairing_confirm,
     .cancel = auth_cancel,
 };
 
@@ -165,12 +176,21 @@ static struct bt_conn_auth_info_cb auth_cb_info = {
 
 int ble_comm_init(void)
 {
-    bt_conn_auth_cb_register(&auth_cb_display);
-    bt_conn_auth_info_cb_register(&auth_cb_info);
-
     ble_comm_set_pairable(false);
 
-    int err = ble_transport_init(&ble_transport_callbacks);
+    int err = bt_conn_auth_cb_register(&auth_cb_display);
+    if (err) {
+        LOG_ERR("Failed to register pairing callbacks (err: %d)", err);
+        return err;
+    }
+
+    err = bt_conn_auth_info_cb_register(&auth_cb_info);
+    if (err) {
+        LOG_ERR("Failed to register pairing info callbacks (err: %d)", err);
+        return err;
+    }
+
+    err = ble_transport_init(&ble_transport_callbacks);
     if (err) {
         LOG_ERR("Failed to initialize UART service (err: %d)", err);
         return err;
@@ -208,16 +228,12 @@ int ble_comm_send(const uint8_t *data, uint16_t len)
 
 void ble_comm_set_pairable(bool pairable)
 {
+    atomic_set(&pairing_enabled, pairable);
     if (pairable) {
         LOG_WRN("Enable Pairable");
-        auth_cb_display.pairing_confirm = pairing_accept;
-        bt_conn_auth_cb_register(&auth_cb_display);
     } else {
         LOG_WRN("Disable Pairable");
-        auth_cb_display.pairing_confirm = pairing_deny;
-        bt_conn_auth_cb_register(&auth_cb_display);
     }
-    pairing_enabled = pairable;
 }
 
 int ble_comm_set_short_connection_interval(void)
@@ -396,7 +412,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     // to save power.
     k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
 
-    if (pairing_enabled) {
+    if (atomic_get(&pairing_enabled)) {
         int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
         if (rc != 0) {
             LOG_ERR("Failed to set security: %d", rc);
