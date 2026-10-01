@@ -127,6 +127,11 @@ const config = {
             position: 'left'
           },
           {
+            to: '/tools',
+            label: 'Watch Tools',
+            position: 'left'
+          },
+          {
             position: 'right',
             type: 'custom-githubStarsLink', 
             repoOrg: 'ZSWatch',
