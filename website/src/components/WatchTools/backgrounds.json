@@ -1,0 +1,197 @@
+[
+  {
+    "name": "Round-Display Combos",
+    "backgrounds": [
+      {
+        "name": "Fume Guilloche",
+        "image": "bg_fume_guilloche.png",
+        "binary": "bg_fume_guilloche.bin"
+      },
+      {
+        "name": "Topo Metal Arc",
+        "image": "bg_topo_metal_arc.png",
+        "binary": "bg_topo_metal_arc.bin"
+      },
+      {
+        "name": "CRT Neon Grid",
+        "image": "bg_crt_neon_grid.png",
+        "binary": "bg_crt_neon_grid.bin"
+      },
+      {
+        "name": "Flow Ink Parchment",
+        "image": "bg_flow_ink_parchment.png",
+        "binary": "bg_flow_ink_parchment.bin"
+      },
+      {
+        "name": "Reaction Coral",
+        "image": "bg_reaction_coral.png",
+        "binary": "bg_reaction_coral.bin"
+      }
+    ]
+  },
+  {
+    "name": "Gradient & Atmosphere",
+    "backgrounds": [
+      {
+        "name": "Deep Space",
+        "image": "bg_deep_space.png",
+        "binary": "bg_deep_space.bin"
+      },
+      {
+        "name": "Ocean",
+        "image": "bg_ocean.png",
+        "binary": "bg_ocean.bin"
+      },
+      {
+        "name": "Ember",
+        "image": "bg_ember.png",
+        "binary": "bg_ember.bin"
+      },
+      {
+        "name": "Aurora",
+        "image": "bg_aurora.png",
+        "binary": "bg_aurora.bin"
+      },
+      {
+        "name": "Vortex",
+        "image": "bg_vortex.png",
+        "binary": "bg_vortex.bin"
+      },
+      {
+        "name": "Midnight Frost",
+        "image": "bg_midnight_frost.png",
+        "binary": "bg_midnight_frost.bin"
+      },
+      {
+        "name": "Solar Flare",
+        "image": "bg_solar_flare.png",
+        "binary": "bg_solar_flare.bin"
+      },
+      {
+        "name": "Starfield",
+        "image": "bg_starfield.png",
+        "binary": "bg_starfield.bin"
+      },
+      {
+        "name": "Lava Flow",
+        "image": "bg_lava_flow.png",
+        "binary": "bg_lava_flow.bin"
+      },
+      {
+        "name": "Forest Canopy",
+        "image": "bg_forest_canopy.png",
+        "binary": "bg_forest_canopy.bin"
+      },
+      {
+        "name": "Horizon Sunset",
+        "image": "bg_horizon_sunset.png",
+        "binary": "bg_horizon_sunset.bin"
+      }
+    ]
+  },
+  {
+    "name": "Structured Patterns",
+    "backgrounds": [
+      {
+        "name": "Matrix Rain",
+        "image": "bg_matrix_rain.png",
+        "binary": "bg_matrix_rain.bin"
+      },
+      {
+        "name": "Copper Mesh",
+        "image": "bg_copper_mesh.png",
+        "binary": "bg_copper_mesh.bin"
+      },
+      {
+        "name": "Topographic",
+        "image": "bg_topographic.png",
+        "binary": "bg_topographic.bin"
+      },
+      {
+        "name": "Brushed Titanium",
+        "image": "bg_brushed_titanium.png",
+        "binary": "bg_brushed_titanium.bin"
+      },
+      {
+        "name": "Pixel Neon",
+        "image": "bg_pixel_neon.png",
+        "binary": "bg_pixel_neon.bin"
+      },
+      {
+        "name": "Retro Sunburst",
+        "image": "bg_retro_sunburst.png",
+        "binary": "bg_retro_sunburst.bin"
+      },
+      {
+        "name": "SDF Rings",
+        "image": "bg_sdf_rings.png",
+        "binary": "bg_sdf_rings.bin"
+      }
+    ]
+  },
+  {
+    "name": "Material & Editorial",
+    "backgrounds": [
+      {
+        "name": "Ink Wash",
+        "image": "bg_ink_wash.png",
+        "binary": "bg_ink_wash.bin"
+      },
+      {
+        "name": "Paper Cut",
+        "image": "bg_paper_cut.png",
+        "binary": "bg_paper_cut.bin"
+      },
+      {
+        "name": "Halftone Poster",
+        "image": "bg_halftone_poster.png",
+        "binary": "bg_halftone_poster.bin"
+      },
+      {
+        "name": "Warp Marble",
+        "image": "bg_warp_marble.png",
+        "binary": "bg_warp_marble.bin"
+      },
+      {
+        "name": "Guilloche Dial",
+        "image": "bg_guilloche_dial.png",
+        "binary": "bg_guilloche_dial.bin"
+      }
+    ]
+  },
+  {
+    "name": "Cellular & Faceted",
+    "backgrounds": [
+      {
+        "name": "Mosaic Gem",
+        "image": "bg_mosaic_gem.png",
+        "binary": "bg_mosaic_gem.bin"
+      },
+      {
+        "name": "Voronoi Glass",
+        "image": "bg_voronoi_glass.png",
+        "binary": "bg_voronoi_glass.bin"
+      },
+      {
+        "name": "Low Poly Shards",
+        "image": "bg_low_poly_shards.png",
+        "binary": "bg_low_poly_shards.bin"
+      }
+    ]
+  },
+  {
+    "name": "Experimental",
+    "backgrounds": [
+      {
+        "name": "Flow Field Silk",
+        "image": "bg_flow_field_silk.png",
+        "binary": "bg_flow_field_silk.bin"
+      },
+      {
+        "name": "Moire Interference",
+        "image": "bg_moire_interference.png",
+        "binary": "bg_moire_interference.bin"
+      }
+    ]
+  }
+]
