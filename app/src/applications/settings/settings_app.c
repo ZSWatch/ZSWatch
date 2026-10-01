@@ -443,14 +443,25 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final)
     }
 }
 
+static void on_clear_bonded_confirm(bool confirmed)
+{
+    if (!confirmed) {
+        return;
+    }
+
+    LOG_INF("Removing all paired devices");
+    int err = bt_unpair(BT_ID_DEFAULT, NULL);
+    if (err) {
+        LOG_ERR("Cannot unpair for default ID");
+    }
+}
+
 static void on_clear_bonded_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
-        int err = bt_unpair(BT_ID_DEFAULT, NULL);
-        if (err) {
-            LOG_ERR("Cannot unpair for default ID");
-            return;
-        }
+        zsw_popup_show("Forget all devices?",
+                       "All paired devices will be removed.\nPair again to reconnect.",
+                       on_clear_bonded_confirm, 0, true);
     }
 }
 
