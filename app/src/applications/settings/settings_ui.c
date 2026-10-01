@@ -31,6 +31,7 @@ static on_close_cb_t close_callback;
 
 static lv_obj_t *_menu = NULL;
 static lv_obj_t *_mainPage;
+static lv_obj_t *active_sub_page;
 
 static void close_button_pressed(lv_event_t *e)
 {
@@ -171,14 +172,64 @@ static void btn_event_cb(lv_event_t *e)
     }
 }
 
+static void populate_page(lv_obj_t *page, lv_settings_page_t *settings_page)
+{
+    for (int i = 0; i < settings_page->num_items; i++) {
+        lv_settings_item_t *item = &settings_page->items[i];
+        lv_obj_t *obj;
+
+        switch (item->type) {
+            case LV_SETTINGS_TYPE_LABEL:
+                obj = create_text(page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
+                lv_obj_t *label = lv_obj_get_child(obj, -1);
+                lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+                lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+                lv_obj_set_style_text_line_space(label, 5, 0);
+                break;
+            case LV_SETTINGS_TYPE_SWITCH:
+                obj = create_switch(page, item->icon, item->item.sw.name, *item->item.sw.inital_val);
+                lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item->change_callback);
+                break;
+            case LV_SETTINGS_TYPE_SLIDER:
+                obj = create_slider(page, item->icon, item->item.slider.name,
+                                    item->item.slider.min_val, item->item.slider.max_val,
+                                    *item->item.slider.inital_val);
+                lv_obj_add_event_cb(obj, slider_event_cb, LV_EVENT_ALL, item->change_callback);
+                break;
+            case LV_SETTINGS_TYPE_BTN:
+                obj = create_button(page, item->icon, item->item.btn.name, item->item.btn.text);
+                lv_obj_add_event_cb(obj, btn_event_cb, LV_EVENT_CLICKED, item->change_callback);
+                break;
+            default:
+                printf("Unsupported settings type %d\n", item->type);
+        }
+    }
+}
+
+static void menu_page_changed(lv_event_t *e)
+{
+    lv_obj_t *page = lv_menu_get_cur_main_page(_menu);
+    if (page == active_sub_page) {
+        return;
+    }
+
+    // Keep only the visible page's controls in memory, leaving room for popups.
+    if (active_sub_page != NULL) {
+        lv_obj_clean(active_sub_page);
+        active_sub_page = NULL;
+    }
+    if (page != NULL && page != _mainPage) {
+        populate_page(page, lv_obj_get_user_data(page));
+        active_sub_page = page;
+    }
+}
+
 void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_pages, const char *title,
                         lv_group_t *input_group,
                         on_close_cb_t close_cb)
 {
     lv_obj_t *label;
     lv_obj_t *cont;
-    lv_settings_item_t *item;
-    lv_obj_t *obj;
     lv_obj_t *sub_page = NULL;
     static lv_style_t outline_primary;
 
@@ -194,8 +245,10 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     close_callback = close_cb;
 
     // Draw menu screen
+    active_sub_page = NULL;
     _menu = lv_menu_create(root);
     lv_obj_add_event_cb(_menu, close_button_pressed, LV_EVENT_CLICKED, _menu);
+    lv_obj_add_event_cb(_menu, menu_page_changed, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(100));
     lv_obj_set_pos(_menu, 0, 0);
     lv_obj_set_style_pad_top(_menu, 25, LV_PART_MAIN);
@@ -223,35 +276,8 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
 
     for (int i = 0; i < num_pages; i++) {
         sub_page = lv_menu_page_create(_menu, pages[i].name);
+        lv_obj_set_user_data(sub_page, &pages[i]);
         lv_obj_set_scrollbar_mode(sub_page, LV_SCROLLBAR_MODE_OFF);
-
-        for (int j = 0; j < pages[i].num_items; j++) {
-            item = &pages[i].items[j];
-            switch (item->type) {
-                case LV_SETTINGS_TYPE_LABEL:
-                    obj = create_text(sub_page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
-                    label = lv_obj_get_child(obj, -1);
-                    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-                    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
-                    lv_obj_set_style_text_line_space(label, 5, 0);
-                    break;
-                case LV_SETTINGS_TYPE_SWITCH:
-                    obj = create_switch(sub_page, item->icon, item->item.sw.name, *item->item.sw.inital_val);
-                    lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item->change_callback);
-                    break;
-                case LV_SETTINGS_TYPE_SLIDER:
-                    obj = create_slider(sub_page, item->icon, item->item.slider.name, item->item.slider.min_val, item->item.slider.max_val,
-                                        *item->item.slider.inital_val);
-                    lv_obj_add_event_cb(obj, slider_event_cb, LV_EVENT_ALL, item->change_callback);
-                    break;
-                case LV_SETTINGS_TYPE_BTN:
-                    obj = create_button(sub_page, item->icon, item->item.btn.name, item->item.btn.text);
-                    lv_obj_add_event_cb(obj, btn_event_cb, LV_EVENT_CLICKED, item->change_callback);
-                    break;
-                default:
-                    printf("Unsupported settings type %d\n", item->type);
-            }
-        }
         // Create a main page item
         cont = lv_menu_cont_create(_mainPage);
         lv_obj_add_style(cont, &outline_primary, LV_STATE_FOCUS_KEY);
@@ -274,6 +300,7 @@ void settings_ui_remove(void)
     if (_menu != NULL) {
         lv_obj_del(_menu);
         _menu = NULL;
+        active_sub_page = NULL;
     }
 }
 
