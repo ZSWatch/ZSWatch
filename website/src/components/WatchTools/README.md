@@ -21,6 +21,9 @@ No firmware images are uploaded and no reboot command is sent.
 
 SMP is released while editing and after transfer. Cleanup checks the connection
 generation so a stale operation cannot disable a new connection's SMP service.
+Before each transfer, reconnect after enabling SMP: unregistering and recreating
+the service invalidates the watch's notification subscription even when the
+client still exposes a cached characteristic.
 
 Run `npm run test:watch-tools` and `npm run build` from `website/`.
 The tests validate every imported binary, image encoding/crop geometry and
@@ -30,3 +33,12 @@ watch rejection, timeouts and disconnect cleanup.
 BLE requires a compatible browser and first-time pairing. In browsers without
 Web Bluetooth, background previews, cropping and downloads remain usable.
 Browser UI tests do not substitute for testing an actual upload on a watch.
+
+On 2026-10-01, the production manager was tested against a real WatchDK running
+0.8.1 through a Web Bluetooth API adapter backed by Bleak/BlueZ. Hardware and
+battery detection, automatic SMP enable, acknowledged upload of all 115,212
+bytes, `apply_result`, byte-for-byte file readback, and `reset_result` passed.
+The default background was restored, its custom file was confirmed absent, and
+SMP was disabled before disconnecting. UART logs were captured throughout the
+upload and restore. This validates the manager and BLE protocol; rendered browser
+interaction and screenshot review remain separate checks.
