@@ -81,6 +81,7 @@ function realProtocolMock({ uploadError = false, applyError = false, resetError 
   manager.sleep = async () => {};
   const listeners = new Set(), commands = [], uploads = [];
   let connectedWithSmp = false, smp = false, connects = 0, nusBuffer = "", packetBuffer = [];
+  let registration = 0, notificationRegistration = -1, notificationConnection = -1;
   const makeChar = (extra = {}) => {
     const callbacks = new Set();
     return { properties: { notify: true, writeWithoutResponse: true },
@@ -93,7 +94,10 @@ function realProtocolMock({ uploadError = false, applyError = false, resetError 
     nusBuffer += new TextDecoder().decode(bytes);
     if (!nusBuffer.endsWith(")")) return;
     const command = JSON.parse(nusBuffer.slice(3, -1)); nusBuffer = ""; commands.push(command);
-    if (command.t === "smp") smp = command.status;
+    if (command.t === "smp") {
+      if (command.status && !smp) registration++;
+      smp = command.status;
+    }
     else if (command.t === "ver") notify.emit(new TextEncoder().encode('{"t":"ver","hw":"watchdk@1/nrf5340/cpuapp","fw":"0.8.1"}'));
     else if (command.t === "watchface_bg" && !noReply) {
       const error = command.action === "apply" ? applyError : resetError;
@@ -103,13 +107,23 @@ function realProtocolMock({ uploadError = false, applyError = false, resetError 
       notify.emit(response.slice(0, 18)); notify.emit(response.slice(18));
     }
   } });
-  const smpChar = makeChar({ async writeValueWithoutResponse(bytes) {
+  const smpChar = makeChar({
+    async startNotifications() {
+      // Cached startNotifications is idempotent on this connection, even when
+      // the watch has unregistered and recreated the service underneath it.
+      if (notificationConnection !== connects) {
+        notificationConnection = connects;
+        notificationRegistration = registration;
+      }
+    },
+    async writeValueWithoutResponse(bytes) {
     assert.equal(smp, true); packetBuffer.push(...bytes);
     if (packetBuffer.length < 8 || packetBuffer.length < 8 + packetBuffer[2] * 256 + packetBuffer[3]) return;
     const packet = Uint8Array.from(packetBuffer); packetBuffer = [];
     assert.equal(packet[0], 2); assert.equal(packet[5], 8); assert.equal(packet[7], 0);
     const body = CBOR.decode(packet.slice(8).buffer); uploads.push(body);
     const response = new Uint8Array(CBOR.encode(uploadError ? { rc: 9 } : { off: body.off + body.data.length }));
+    if (notificationRegistration !== registration) return;
     smpChar.emit([3, 0, response.length >> 8, response.length & 255, 0, 8, packet[6], 0, ...response]);
   } });
   const battery = makeChar({ readValue: async () => new DataView(Uint8Array.of(88).buffer) });
@@ -222,4 +236,18 @@ test("invalid images and an already-cancelled operation never touch the watch", 
   await assert.rejects(mock.manager.applyBackground(new Uint8Array(1)), /size/);
   await assert.rejects(mock.manager.applyBackground(sampleBackground(), { signal: controller.signal }), /cancelled/);
   assert.equal(mock.commands.length, 0);
+});
+
+
+test("consecutive background uploads renew notifications after dynamic SMP re-registration", async () => {
+  const mock = realProtocolMock(), bytes = sampleBackground();
+  try {
+    await mock.manager.connect({ transport: "ble" });
+    const connected = mock.connects;
+    await mock.manager.applyBackground(bytes);
+    await mock.manager.applyBackground(bytes);
+    assert.equal(mock.connects, connected + 2);
+    assert.equal(mock.commands.filter(command => command.t === "watchface_bg" && command.action === "apply").length, 2);
+    assert.equal(mock.smp, false);
+  } finally { await mock.manager.disconnect(); }
 });
