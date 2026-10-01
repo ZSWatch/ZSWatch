@@ -298,6 +298,17 @@ static lv_settings_item_t ui_page_items[] = {
     },
 };
 
+static lv_settings_item_t controls_page_items[] = {
+    {
+        .type = LV_SETTINGS_TYPE_LABEL,
+        .item.label.name = "From the watch face:\n"
+                           LV_SYMBOL_UP " Swipe up: Apps\n"
+                           LV_SYMBOL_DOWN " Swipe down: Quick panel\n"
+                           LV_SYMBOL_LEFT " Swipe left: Notifications\n"
+                           LV_SYMBOL_RIGHT " Swipe right: Watch faces",
+    },
+};
+
 static lv_settings_page_t settings_menu[] = {
     {
         .name = "Display",
@@ -318,6 +329,11 @@ static lv_settings_page_t settings_menu[] = {
         .name = "General",
         .num_items = ARRAY_SIZE(general_page_items),
         .items = general_page_items
+    },
+    {
+        .name = "Controls",
+        .num_items = ARRAY_SIZE(controls_page_items),
+        .items = controls_page_items
     },
     {
         .name = "Developer",

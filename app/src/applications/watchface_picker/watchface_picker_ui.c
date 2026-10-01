@@ -21,6 +21,7 @@
 #include "watchface_picker_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 
+static lv_obj_t *ui_root;
 static lv_obj_t *ui_faceSelect;
 static on_watchface_selected_cb_t watchface_selected_cb;
 
@@ -85,7 +86,13 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
 void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_cb)
 {
     watchface_selected_cb = select_cb;
-    ui_faceSelect = lv_obj_create(root);
+    ui_root = lv_obj_create(root);
+    lv_obj_remove_style_all(ui_root);
+    lv_obj_set_size(ui_root, 240, 240);
+    lv_obj_center(ui_root);
+    lv_obj_clear_flag(ui_root, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+    ui_faceSelect = lv_obj_create(ui_root);
     lv_obj_set_width( ui_faceSelect, 240);
     lv_obj_set_height( ui_faceSelect, 240);
     lv_obj_set_align( ui_faceSelect, LV_ALIGN_CENTER );
@@ -103,6 +110,17 @@ void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_
     lv_obj_set_style_pad_bottom(ui_faceSelect, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_row(ui_faceSelect, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(ui_faceSelect, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_t *title = lv_label_create(ui_root);
+    lv_label_set_text(title, "Watch faces");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 7);
+
+    lv_obj_t *hint = lv_label_create(ui_root);
+    lv_label_set_text(hint, "Swipe for more\nTap to select");
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 }
 
 void watchface_picker_ui_set_selected(int index)
@@ -114,5 +132,7 @@ void watchface_picker_ui_set_selected(int index)
 
 void watchface_picker_ui_remove(void)
 {
-    lv_obj_del(ui_faceSelect);
+    lv_obj_del(ui_root);
+    ui_root = NULL;
+    ui_faceSelect = NULL;
 }

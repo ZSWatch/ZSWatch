@@ -196,29 +196,44 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     // Draw menu screen
     _menu = lv_menu_create(root);
     lv_obj_add_event_cb(_menu, close_button_pressed, LV_EVENT_CLICKED, _menu);
-    lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(90));
+    lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(100));
     lv_obj_set_pos(_menu, 0, 0);
     lv_obj_set_style_pad_top(_menu, 25, LV_PART_MAIN);
     lv_obj_set_style_pad_left(_menu, 20, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(_menu, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(_menu, 20, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(_menu, 25, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(_menu, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(_menu, LV_OPA_COVER, LV_PART_MAIN);
 
     // Disable the back button
     lv_menu_set_mode_root_back_button(_menu, LV_MENU_ROOT_BACK_BUTTON_DISABLED);
     lv_obj_t *header = lv_menu_get_main_header(_menu);
-    lv_obj_set_size(header, 0, 0);
+    lv_obj_set_flex_align(header, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_text_font(header, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(header, lv_color_hex(0xF99B7D), 0);
+    lv_obj_t *header_title = lv_obj_get_child(header, 1);
+    lv_obj_set_width(header_title, 140);
+    lv_obj_set_style_text_align(header_title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_t *back_btn = lv_menu_get_main_header_back_button(_menu);
+    lv_obj_add_flag(back_btn, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 12, 0);
 
     // Main page
-    _mainPage = lv_menu_page_create(_menu, NULL);
+    _mainPage = lv_menu_page_create(_menu, "Settings");
 
     for (int i = 0; i < num_pages; i++) {
-        sub_page = lv_menu_page_create(_menu, NULL);
+        sub_page = lv_menu_page_create(_menu, pages[i].name);
         lv_obj_set_scrollbar_mode(sub_page, LV_SCROLLBAR_MODE_OFF);
 
         for (int j = 0; j < pages[i].num_items; j++) {
             item = &pages[i].items[j];
             switch (item->type) {
                 case LV_SETTINGS_TYPE_LABEL:
-                    create_text(sub_page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
+                    obj = create_text(sub_page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
+                    label = lv_obj_get_child(obj, -1);
+                    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+                    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+                    lv_obj_set_style_text_line_space(label, 5, 0);
                     break;
                 case LV_SETTINGS_TYPE_SWITCH:
                     obj = create_switch(sub_page, item->icon, item->item.sw.name, *item->item.sw.inital_val);
