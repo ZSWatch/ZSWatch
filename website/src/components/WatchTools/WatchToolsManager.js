@@ -22,20 +22,19 @@ export default class WatchToolsManager extends UpdateMCUManager {
     try {
       await this._watch.prepare(device.gatt);
       await this._watch.enableSmp();
-      try { await this._discoverSmp(device.gatt); }
-      catch {
-        // SMP is registered dynamically; browsers may still have a stale GATT list.
-        this._rediscovering = true;
-        try {
-          device.gatt.disconnect();
-          await this.sleep(500);
-          const server = await device.gatt.connect();
-          this.connectionGeneration++;
-          await this._watch.prepare(server);
-          await this._watch.enableSmp();
-          await this._discoverSmp(server);
-        } finally { this._rediscovering = false; }
-      }
+      // Disabling SMP unregisters its GATT service. A cached characteristic can
+      // still be discoverable while its notification subscription no longer
+      // exists on the watch. Reconnect before subscribing to the new service.
+      this._rediscovering = true;
+      try {
+        device.gatt.disconnect();
+        await this.sleep(500);
+        const server = await device.gatt.connect();
+        this.connectionGeneration++;
+        await this._watch.prepare(server);
+        await this._watch.enableSmp();
+        await this._discoverSmp(server);
+      } finally { this._rediscovering = false; }
     } catch (error) {
       if (this.isConnected()) {
         try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
