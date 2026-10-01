@@ -43,7 +43,7 @@ export default class UpdateMCUManager extends MCUManager {
     this._watch = new WatchBluetooth((info) => {
       this.deviceInfo = info;
       this._deviceInfoCallback?.(info);
-    }, (ms) => this.sleep(ms));
+    }, (ms) => this.sleep(ms), this._watchOptions);
     this._bleDisconnectListener = () => {
       if (!this._rediscovering) this._disconnected();
     };
@@ -251,7 +251,7 @@ export default class UpdateMCUManager extends MCUManager {
   request(op, group, id, data, timeout = 10000) {
     if (this._transfer || this._request) return Promise.reject(new Error("Another device operation is in progress."));
     return new Promise((resolve, reject) => {
-      const request = { sequence: this._seq, group, id, resolve, reject };
+      const request = { sequence: this._seq, op: op + 1, group, id, resolve, reject };
       this._request = request;
       request.timer = setTimeout(() => this._finishRequest(new Error("The watch did not acknowledge the command.")), timeout);
       this._sendMessage(op, group, id, data).catch((error) => {
@@ -276,7 +276,7 @@ export default class UpdateMCUManager extends MCUManager {
     const data = CBOR.decode(message.slice(8).buffer);
     const error = data.err || (data.rc ? { rc: data.rc } : null);
     const transfer = this._transfer;
-    if ((group === 1 && id === 1) || (group === 8 && id === 0)) {
+    if (message[0] === 3 && ((group === 1 && id === 1) || (group === 8 && id === 0))) {
       if (!transfer || sequence !== transfer.sequence || group !== (transfer.filesystem ? 8 : 1)) return;
       clearTimeout(transfer.timer);
       if (error) return this._finishTransfer(new Error(`Upload rejected by watch: ${JSON.stringify(error)}`));
@@ -294,9 +294,13 @@ export default class UpdateMCUManager extends MCUManager {
       return;
     }
     const request = this._request;
-    if (request && sequence === request.sequence && group === request.group && id === request.id) {
-      this._finishRequest(error ? new Error(`Command rejected by watch: ${JSON.stringify(error)}`) : null, data);
+    if (request && message[0] === request.op && sequence === request.sequence && group === request.group && id === request.id) {
+      const failure = error ? Object.assign(new Error(`Command rejected by watch: ${JSON.stringify(error)}`), { smpError: error }) : null;
+      this._finishRequest(failure, data);
+      return;
     }
+    // Ignore late file replies instead of passing them into the legacy upload loop.
+    if (group === 8 && id === 0) return;
     super._processMessage(message);
   }
 

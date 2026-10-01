@@ -66,6 +66,28 @@
 .selectedTile { border-color: var(--tools-accent); box-shadow: 0 0 0 1px var(--tools-accent); }
 .selectedMark { position: absolute; top: 7px; right: 7px; width: 19px; height: 19px; border-radius: 50%; background: var(--tools-accent); color: #22262f; font-size: .7rem; font-weight: 750; }
 .footerNote { font-size: .8rem; color: var(--tools-muted); margin-top: 34px; }
+.diagnosticPanel { min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
+.toolbar .field { margin-bottom: 0; flex: 1; min-width: 120px; }
+.field select { background: var(--ifm-background-color); color: var(--ifm-font-color-base); border: 1px solid var(--tools-line); border-radius: 8px; padding: 10px 12px; font: inherit; }
+.logViewport { height: 440px; overflow: auto; border: 1px solid var(--tools-line); border-radius: 12px; background: var(--ifm-background-surface-color); padding: 14px; margin-top: 14px; }
+.logViewport pre { margin: 0; padding: 4px 0; background: transparent; border-radius: 0; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.errorLine { color: var(--ifm-color-danger); }
+.warningLine { color: var(--ifm-color-warning-darkest); }
+.emptyState { padding: 28px 8px; font-size: .85rem; color: var(--tools-muted); }
+.reportCard { border: 1px solid var(--tools-line); border-radius: 14px; padding: 22px; margin-top: 20px; }
+.reportCard h3 { font-size: 1rem; margin: 0 0 16px; }
+.dumpText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .7rem; max-height: 320px; overflow: auto; margin-top: 12px; }
+.dangerButton { background: transparent; border: 1px solid var(--ifm-color-danger); border-radius: 9px; color: var(--ifm-color-danger); font: inherit; font-size: .8rem; padding: 11px 16px; cursor: pointer; }
+.historyList { list-style: none; padding: 0; margin: 16px 0 0; }
+.historyList li { border-bottom: 1px solid var(--tools-line); padding: 10px 0; }
+.reportButton, .selectedReport { width: 100%; text-align: left; padding: 12px; border: 1px solid transparent; border-radius: 9px; color: var(--ifm-font-color-base); background: transparent; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.selectedReport { border-color: var(--tools-blue); background: #9ec8f612; }
+.reportButton strong, .selectedReport strong { display: block; font-size: .8rem; }
+.reportButton span, .selectedReport span { display: block; font-size: .7rem; color: var(--tools-muted); margin-top: 6px; }
+.frequencyTitle { font-size: .85rem; margin-top: 24px; }
+.frequencyList { list-style: none; padding: 0; font-size: .75rem; }
+.frequencyList li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 800px) { .page { padding: 32px 20px 48px; } .workspace { grid-template-columns: 1fr; gap: 28px; } .sidebar { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } .previewCard { grid-row: span 2; } .gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .sidebar { display: flex; } .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .uploadCard { padding: 22px; } .tile { padding: 10px 7px; } }
