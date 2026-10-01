@@ -42,7 +42,7 @@ typedef enum parse_state {
 static uint8_t num_parsed_brackets;
 static parse_state_t parse_state = WAIT_GB;
 static uint16_t parsed_data_index = 0;
-static uint8_t receive_buf[MAX_GB_PACKET_LENGTH];
+static uint8_t receive_buf[MAX_GB_PACKET_LENGTH + 1];
 
 static void music_control_event_callback(const struct zbus_channel *chan);
 static void parse_time_zone(char *offset);
@@ -259,12 +259,46 @@ static int32_t extract_value_int32(char *key, char *data)
     return id;
 }
 
+// Return the length of a complete UTF-8 character, or zero for a raw Latin-1 byte.
+static size_t utf8_character_length(const uint8_t *data, size_t len)
+{
+    uint8_t first = data[0];
+    size_t count;
+    if (first < 0x80) {
+        return 1;
+    } else if (first >= 0xC2 && first <= 0xDF) {
+        count = 2;
+    } else if (first >= 0xE0 && first <= 0xEF) {
+        count = 3;
+    } else if (first >= 0xF0 && first <= 0xF4) {
+        count = 4;
+    } else {
+        return 0;
+    }
+    if (len < count) {
+        return 0;
+    }
+    for (size_t i = 1; i < count; i++) {
+        if ((data[i] & 0xC0) != 0x80) {
+            return 0;
+        }
+    }
+    if ((first == 0xE0 && data[1] < 0xA0) || (first == 0xED && data[1] >= 0xA0) ||
+        (first == 0xF0 && data[1] < 0x90) || (first == 0xF4 && data[1] >= 0x90)) {
+        return 0;
+    }
+    return count;
+}
+
 static bool is_valid_utf8(const char *data, int len)
 {
     int i = 0;
-    while (i < len && data[i] != '\0') {
+    while (i < len) {
+        if (data[i] == '\0') {
+            return false;
+        }
         // Check for Gadgetbridge's "\xNN" string escape pattern
-        if (data[i] == '\\' && i + 3 < len && data[i + 1] == 'x') {
+        if (data[i] == '\\' && i + 1 < len && data[i + 1] == 'x') {
             return false; // Contains Gadgetbridge-style escape sequences
         }
 
@@ -304,9 +338,9 @@ static bool is_valid_utf8(const char *data, int len)
     return true;
 }
 
-static void convert_to_encoded_text(char *data, int len, char *out_data, int out_buf_len)
+static int convert_to_encoded_text(const char *data, size_t len, char *out_data, size_t out_buf_len)
 {
-    int i = 0, j = 0;
+    size_t i = 0, j = 0;
     // https://www.utf8-chartable.de/
     uint8_t basic_latin_utf16_to_utf8_table[0x80][3] = {
         // utf-16 => 2 byte utf-8
@@ -440,46 +474,48 @@ static void convert_to_encoded_text(char *data, int len, char *out_data, int out
         {0xFF, 0xc3, 0xbf},
     };
 
-    // For none ascii characters Gadgetbridge encodes them in a strange utf-16 way.
-    // For example Gadgetbridge sends ö as just 0xF6 byte, but then it sends ä as "\xe4" (4 bytes) string.
-    // Which is very strange.
-    // LVGL works with ascii, and properly formatted utf-8.
-    while (data[i] != '\0' && i < len - 3 && j < out_buf_len - 3) {
-        if (data[i] == '\\' && data[i + 1] == 'x') {
-            // Parse string "\xe4" as 0xe4
-            char hex[3] = {data[i + 2], data[i + 3], '\0'};
-            int value = strtol(hex, NULL, 16);
-            if (value < 0x80) {
-                // Character encoded in a string, but it's an normal ascii, just copy it.
-                out_data[j] = value;
-            } else {
-                // Character encoded as "\xe4" (4 bytes)
-                out_data[j] = basic_latin_utf16_to_utf8_table[value - 0x80][1];
-                j++;
-                out_data[j] = basic_latin_utf16_to_utf8_table[value - 0x80][2];
-                j++;
-            }
-            i += 4;
-        } else if (data[i] >= 0x80) {
-            // Character encoded as utf-16, but in a single byte and the value is not ascii.
-            out_data[j] = basic_latin_utf16_to_utf8_table[data[i] - 0x80][1];
-            j++;
-            out_data[j] = basic_latin_utf16_to_utf8_table[data[i] - 0x80][2];
-            j++;
-            i++;
-        } else {
-            // Ascii character, just copy it.
-            out_data[j] = data[i];
-            i++;
-            j++;
-        }
+    if (out_buf_len == 0) {
+        return -ENOSPC;
     }
-    // Copy the rest of the data
-    for (; i < len; i++) {
-        out_data[j] = data[i];
-        j++;
+    while (i < len) {
+        uint8_t value = (uint8_t)data[i];
+        size_t consumed = 1, written = 1;
+        const uint8_t *bytes = (const uint8_t *)data + i;
+        if (value == '\\' && len - i >= 2 && data[i + 1] == 'x') {
+            if (len - i < 4 || !isxdigit((unsigned char)data[i + 2]) ||
+                !isxdigit((unsigned char)data[i + 3])) {
+                return -EINVAL;
+            }
+            char hex[3] = {data[i + 2], data[i + 3], '\0'};
+            value = strtoul(hex, NULL, 16);
+            consumed = 4;
+            if (value >= 0x80) {
+                bytes = &basic_latin_utf16_to_utf8_table[value - 0x80][1];
+                written = 2;
+            } else {
+                bytes = &value;
+            }
+        } else if (value >= 0x80) {
+            written = utf8_character_length(bytes, len - i);
+            if (written != 0) {
+                consumed = written;
+            } else {
+                bytes = &basic_latin_utf16_to_utf8_table[value - 0x80][1];
+                written = 2;
+            }
+        }
+        if (value == 0) {
+            return -EINVAL;
+        }
+        if (written > out_buf_len - 1 - j) {
+            return -ENOSPC;
+        }
+        memcpy(out_data + j, bytes, written);
+        i += consumed;
+        j += written;
     }
     out_data[j] = '\0';
+    return j;
 }
 
 static int parse_notify(char *data, int len)
@@ -1015,15 +1051,16 @@ static int parse_data(char *data, int len)
 {
     int type_len;
     char *type;
-    uint8_t input_data_utf8[MAX_GB_PACKET_LENGTH];
+    char input_data_utf8[MAX_GB_PACKET_LENGTH + 1];
 
-    // Only convert if data contains Gadgetbridge's non-standard encoding.
-    // Properly UTF-8 encoded data should pass through unchanged.
     if (!is_valid_utf8(data, len)) {
-        memset(input_data_utf8, 0, sizeof(input_data_utf8));
-        // Convert data from Gadgetbridge into properly encoded text.
-        convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
+        int converted_len = convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
+        if (converted_len < 0) {
+            LOG_WRN("Invalid or oversized Gadgetbridge text (%d)", converted_len);
+            return converted_len;
+        }
         data = input_data_utf8;
+        len = converted_len;
     }
 
     type = extract_value_str("\"t\":", data, &type_len);
@@ -1125,7 +1162,7 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
         goto done;
     }
 
-    size_t receive_buf_capacity = sizeof(receive_buf);
+    size_t receive_buf_capacity = MAX_GB_PACKET_LENGTH;
 
     switch (parse_state) {
         case WAIT_GB: {
@@ -1188,8 +1225,9 @@ void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
     }
     if (parse_state == PARSE_STATE_DONE) {
         parse_state = WAIT_GB;
+        receive_buf[parsed_data_index] = '\0';
         LOG_DBG("%s", receive_buf);
-        parse_data(receive_buf, parsed_data_index);
+        parse_data((char *)receive_buf, parsed_data_index);
     }
 
 done:

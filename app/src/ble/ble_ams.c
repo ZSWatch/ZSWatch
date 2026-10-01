@@ -14,6 +14,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
+#include <string.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/bluetooth.h>
@@ -135,6 +139,35 @@ static void notify_rc_cb(struct bt_ams_client *ams_c,
     }
 }
 
+static bool parse_playback_info(const char *data, ble_comm_music_state_t *state)
+{
+    const char *first = strchr(data, ',');
+    if (first == NULL || first != data + 1 || data[0] < '0' || data[0] > '3') {
+        return false;
+    }
+    const char *second = strchr(first + 1, ',');
+    if (second == NULL) {
+        return false;
+    }
+
+    int position = 0;
+    const char *elapsed = second + 1;
+    // AMS sends empty playback fields when the phone player closes.
+    if (*elapsed != '\0') {
+        char *end;
+        errno = 0;
+        double seconds = strtod(elapsed, &end);
+        if (end == elapsed || *end != '\0' || errno != 0 || !isfinite(seconds) ||
+            seconds < 0 || seconds > INT_MAX) {
+            return false;
+        }
+        position = (int)seconds;
+    }
+    state->playing = data[0] == '1';
+    state->position = position;
+    return true;
+}
+
 static void notify_eu_cb(struct bt_ams_client *ams_c,
                          const struct bt_ams_entity_update_notif *notif,
                          int err)
@@ -202,15 +235,10 @@ static void notify_eu_cb(struct bt_ams_client *ams_c,
 
             evt_music_state.data.type = BLE_COMM_DATA_TYPE_MUSIC_STATE;
 
-            // A concatenation of three comma-separated values, i.e 0,0.0,0.000
-            // where first value is status
-            evt_music_state.data.data.music_state.playing = ((msg_buff[0] - '0') == 1) ? true : false;
-
-            // the last is the elapsed time in seconds as double, it sends empty when the phone player is closed
-            if (notif->len > sizeof("0,,")) {
-                char elapsed_time[sizeof("9999.999")] = {'\0'};
-                memcpy(elapsed_time, &msg_buff[6], notif->len - 6);
-                evt_music_state.data.data.music_state.position = (int)atof(elapsed_time);
+            if (strlen(msg_buff) != notif->len ||
+                !parse_playback_info(msg_buff, &evt_music_state.data.data.music_state)) {
+                LOG_WRN("Invalid AMS playback info");
+                return;
             }
 
             zbus_chan_pub(&ble_comm_data_chan, &evt_music_state, K_MSEC(250));
