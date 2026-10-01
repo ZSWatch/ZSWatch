@@ -28,6 +28,8 @@ ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(android_music_control_lis_chronos, music_control_event_callback);
 
 static chronos_data_t incoming; // variable to store incoming data
+static size_t incoming_received;
+static uint8_t incoming_sequence;
 
 static chronos_notification_t notifications[CH_NOTIF_SIZE];
 static int notificationIndex = -1;
@@ -421,66 +423,73 @@ const char *ble_chronos_get_app_name(int id)
 // this function assembles data packets that are split over multiple transmissions
 void ble_chronos_on_receive_data(const uint8_t *data, uint16_t len)
 {
-    // LOG_HEXDUMP_DBG(data, len, "Chronos RX");
-    if (len > 0) {
-
-        // Chronos app sends data starting with either AB or EA for the first packet and FE or FF at index 3
-        if ((data[0] == 0xAB || data[0] == 0xEA) && (data[3] == 0xFE || data[3] == 0xFF)) {
-            // start of data, assign length from packet
-            incoming.length = data[1] * 256 + data[2] + 3;
-            // copy data to incomingBuffer
-            for (int i = 0; i < len; i++) {
-                incoming.data[i] = data[i];
-            }
-
-            if (incoming.length <= len) {
-                // complete packet assembled
-                ble_chronos_data_received();
-                // Reset state after processing complete packet
-                incoming.length = 0;
-            } else {
-                // data is still being assembled
-                // LOG_INF("Incomplete");
-            }
-        } else if (data[0] < 0x19 && incoming.length > 0) {
-            // Only process subsequent packets if we have a valid ongoing Chronos data stream
-            // subsequent packets start with 0 (max anticipated is 25 -> 0x19)
-            int j = 20 + (data[0] * 19); // data packet position
-
-            // Bounds check to prevent buffer overflow
-            if (j + len - 1 <= sizeof(incoming.data) && j + len <= incoming.length) {
-                // copy data to incomingBuffer
-                for (int i = 0; i < len; i++) {
-                    incoming.data[j + i] = data[i + 1];
-                }
-
-                if (incoming.length <= len + j - 1) {
-                    // complete packet assembled
-                    ble_chronos_data_received();
-                    // Reset state after processing complete packet
-                    incoming.length = 0;
-                } else {
-                    // data is still being assembled
-                    // LOG_INF("Incomplete");
-                }
-            } else {
-                LOG_WRN("Buffer bounds check failed or invalid packet sequence, resetting");
-                incoming.length = 0;  // Reset to prevent further issues
-            }
-        } else {
-            // Not Chronos data or no active session
-            if (data[0] < 0x19 && incoming.length == 0) {
-                LOG_DBG("Ignoring packet - no active Chronos session");
-            } else {
-                LOG_DBG("Not Chronos data");
-            }
-        }
+    if (len == 0 || data == NULL) {
+        goto invalid;
     }
+
+    if (data[0] == 0xAB || data[0] == 0xEA) {
+        // A new start always replaces any unfinished assembly.
+        incoming.length = 0;
+        incoming_received = 0;
+        incoming_sequence = 0;
+        if (len < 6 || len > sizeof(incoming.data) ||
+            (data[3] != 0xFE && data[3] != 0xFF)) {
+            goto invalid;
+        }
+
+        size_t total = ((size_t)data[1] << 8) + data[2] + 3;
+        if (total < 6 || total > sizeof(incoming.data)) {
+            goto invalid;
+        }
+        // Fragmented Chronos messages start with 20 bytes, then use
+        // sequence-prefixed blocks of 19 bytes. Complete writes may be padded.
+        if (len < total && len != 20) {
+            goto invalid;
+        }
+        incoming.length = total;
+        incoming_received = MIN(len, total);
+        memcpy(incoming.data, data, incoming_received);
+    } else {
+        if (incoming.length == 0 || len < 2 || len > 20 || data[0] != incoming_sequence) {
+            goto invalid;
+        }
+
+        size_t payload_len = len - 1;
+        size_t offset = 20 + (size_t)data[0] * 19;
+        if (offset != incoming_received || offset > (size_t)incoming.length ||
+            offset > sizeof(incoming.data) ||
+            payload_len > (size_t)incoming.length - offset ||
+            payload_len > sizeof(incoming.data) - offset ||
+            (payload_len < (size_t)incoming.length - offset && payload_len != 19)) {
+            goto invalid;
+        }
+        memcpy(incoming.data + offset, data + 1, payload_len);
+        incoming_received += payload_len;
+        incoming_sequence++;
+    }
+
+    if (incoming_received == (size_t)incoming.length) {
+        ble_chronos_data_received();
+        incoming.length = 0;
+        incoming_received = 0;
+        incoming_sequence = 0;
+    }
+    return;
+
+invalid:
+    LOG_DBG("Invalid Chronos fragment, resetting assembly");
+    incoming.length = 0;
+    incoming_received = 0;
+    incoming_sequence = 0;
 }
 
 void ble_chronos_data_received()
 {
     int len = incoming.length;
+
+    if (len < 6 || len > sizeof(incoming.data)) {
+        return;
+    }
 
     // LOG_INF("Complete data length %d", len);
     // LOG_HEXDUMP_DBG(incoming.data, len, "Chronos RX");
@@ -641,6 +650,9 @@ void ble_chronos_data_received()
                 // weather data received
                 // contains daily forecast
             {
+                if (len < 6 || (len - 6) % 2 != 0 || (len - 6) / 2 > ARRAY_SIZE(weather)) {
+                    break;
+                }
                 struct tm tm_info = ble_chronos_get_time_struct();
                 chronos_time_t time = {
                     .hour = tm_info.tm_hour,
@@ -676,6 +688,9 @@ void ble_chronos_data_received()
             case 0x88:
                 // weather data received
                 // contains high and low temperature forecast
+                if (len < 6 || (len - 6) % 2 != 0 || (len - 6) / 2 > ARRAY_SIZE(weather)) {
+                    break;
+                }
                 for (int k = 0; k < (len - 6) / 2; k++) {
                     int signH = (incoming.data[(k * 2) + 6] >> 7 & 1) ? -1 : 1;
                     int tempH = ((int)incoming.data[(k * 2) + 6] & 0x7F) * signH;
@@ -755,16 +770,19 @@ void ble_chronos_data_received()
                 break;
             case 0xCA:
                 if (incoming.data[3] == 0xFE) {
+                    char version[50];
+                    if (len < 8 || len - 8 >= sizeof(version)) {
+                        break;
+                    }
+                    memcpy(version, incoming.data + 8, len - 8);
+                    version[len - 8] = '\0';
+                    char *new_version = strdup(version);
+                    if (new_version == NULL) {
+                        break;
+                    }
+                    free(app_info.version);
+                    app_info.version = new_version;
                     app_info.code = (incoming.data[6] * 256) + incoming.data[7];
-
-                    char version[50] = {0};
-                    for (int i = 8; i < len; i++) {
-                        strncat(version, (char *)&incoming.data[i], 1);
-                    }
-                    if (app_info.version) {
-                        free(app_info.version);
-                    }
-                    app_info.version = strdup(version);
 
                     if (configuration_callback != NULL) {
                         configuration_callback(CH_CONFIG_APP, app_info.code, 0);
@@ -779,12 +797,16 @@ void ble_chronos_data_received()
             case 0xEE:
                 if (incoming.data[3] == 0xFE) {
                     // navigation icon data received
-                    uint8_t pos = incoming.data[6];
-                    uint32_t crc = (uint32_t)(incoming.data[7] << 24) | (uint32_t)(incoming.data[8] << 16) | (uint32_t)(
-                                       incoming.data[9] << 8) | (uint32_t)(incoming.data[10]);
-                    for (int i = 0; i < 96; i++) {
-                        navigation.icon[i + (96 * pos)] = incoming.data[11 + i];
+                    if (len < 107) {
+                        break;
                     }
+                    uint8_t pos = incoming.data[6];
+                    if (pos >= sizeof(navigation.icon) / 96) {
+                        break;
+                    }
+                    uint32_t crc = ((uint32_t)incoming.data[7] << 24) | ((uint32_t)incoming.data[8] << 16) |
+                                   ((uint32_t)incoming.data[9] << 8) | incoming.data[10];
+                    memcpy(navigation.icon + 96 * pos, incoming.data + 11, 96);
 
                     if (configuration_callback != NULL) {
                         configuration_callback(CH_CONFIG_NAV_ICON, pos, crc);
@@ -879,8 +901,15 @@ void ble_chronos_data_received()
                 case 0x02:
                     // hourly weather forecsat
                 {
+                    if (len < 8) {
+                        break;
+                    }
                     int size = incoming.data[6]; // data size
                     int hour = incoming.data[7]; // current hour
+                    if (hour >= ARRAY_SIZE(hourly_forecast) ||
+                        size > ARRAY_SIZE(hourly_forecast) - hour || size > (len - 8) / 6) {
+                        break;
+                    }
                     struct tm tm_info = ble_chronos_get_time_struct();
                     for (int z = 0; z < size; z++) {
 

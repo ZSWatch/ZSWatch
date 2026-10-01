@@ -141,7 +141,7 @@ static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
 }
 
 static enum bt_security_err pairing_accept(struct bt_conn *conn,
-                                          const struct bt_conn_pairing_feat *const feat)
+                                           const struct bt_conn_pairing_feat *const feat)
 {
     if (!atomic_get(&pairing_enabled)) {
         LOG_WRN("Pairing rejected: pairing window closed");
