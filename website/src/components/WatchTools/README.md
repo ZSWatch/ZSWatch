@@ -1,6 +1,7 @@
 # Watch Tools
 
-The `/tools` page implements the companion app's watchface background flow:
+The `/tools` page includes watchface backgrounds, live logs, Bluetooth traffic,
+and locally stored crash reports. The watchface flow provides:
 33 built-in backgrounds, custom image crop/zoom/position, clock preview, local
 LVGL download, BLE upload, cancellation and restore-default commands.
 
@@ -42,3 +43,44 @@ The default background was restored, its custom file was confirmed absent, and
 SMP was disabled before disconnecting. UART logs were captured throughout the
 upload and restore. This validates the manager and BLE protocol; rendered browser
 interaction and screenshot review remain separate checks.
+
+## Local diagnostics
+
+NUS firmware logging uses `GB({"t":"log","status":true/false})`. There is no
+acknowledgement on main, so capture stays pending until a complete
+`<BLELOG>…</BLELOG>` frame arrives. The stream reader separates framed logs from
+JSON messages and handles fragmented tags and UTF-8. Firmware logs cannot resolve
+watchface command promises. Log buffers retain 2,000 lines, traffic retains 1,000
+packets, and the UI renders the latest 500 filtered matches. Transfers stop live
+capture before reconnecting to SMP.
+
+Crash download probes `/user/coredump.txt` and `/lvgl_lfs/coredump.txt` via MCUmgr
+filesystem stat/read, checking offsets, lengths and BEGIN/END markers. SMP v1
+ENOENT and v2 filesystem FILE_NOT_FOUND mean an absent dump; unsupported commands,
+timeouts, invalid replies and disconnects remain errors. File READ responses must
+not enter the shared transport's legacy upload loop.
+
+Legacy crash files have a 72-byte binary summary followed by Zephyr dump text.
+Plain text dumps also import. Missing filenames and line 0 remain unavailable.
+Browser history uses localStorage, retains up to 20 reports within 3 MB of
+serialized storage, and deduplicates normalized text with SHA-256. Raw exports
+preserve every byte. Firmware metadata describes the device at download time,
+which may differ from the firmware at crash time.
+
+Erase requires UI confirmation, re-downloads and compares the current dump with
+the selected download, then invokes the supported `coredump erase 0` SMP shell
+command and verifies file absence. Do not invoke firmware's coredump verification
+command: main has a fallthrough from verify to erase. The website does not use it.
+
+There is no analysis backend, ELF download, remote upload or backtrace decoding.
+The companion app's server flow was an unsupported experiment. Saved filesystem
+logs are excluded because tracked main firmware does not enable that backend.
+
+On 2026-10-01, the production diagnostics manager captured a framed firmware log
+from the attached WatchDK on 0.8.1, automatically stopped logging for transfer,
+and downloaded the existing 1,036-byte legacy crash. Every byte matched the
+earlier read-only capture; binary/text import and export matched too. SMP RX/TX
+traffic was captured. Logging and SMP were disabled before disconnecting. No dump
+was erased, no crash triggered, and no firmware flashed. Erase is covered by
+protocol tests, including refusal when the dump has changed; real erase was not
+tested because the stored crash was preserved.

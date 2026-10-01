@@ -16,7 +16,11 @@ export class WatchMessageReader {
   }
 
   push(value) {
-    this.buffer += this.decoder.decode(value, { stream: true });
+    this.pushText(this.decoder.decode(value, { stream: true }));
+  }
+
+  pushText(text) {
+    this.buffer += text;
     for (;;) {
       const start = this.buffer.indexOf("{");
       if (start === -1) { this.buffer = ""; return; }
@@ -43,21 +47,73 @@ export class WatchMessageReader {
   }
 }
 
+// Logs and protocol messages share NUS. Keep framed log content out of the JSON
+// parser, including when a tag or a UTF-8 character spans BLE notifications.
+export class WatchStreamReader {
+  constructor(onMessage, onLog) {
+    this.messages = new WatchMessageReader(onMessage);
+    this.onLog = onLog;
+    this.reset();
+  }
+
+  reset() {
+    this.decoder = new TextDecoder();
+    this.buffer = "";
+    this.inLog = false;
+    this.messages.buffer = "";
+  }
+
+  push(value) {
+    this.buffer += this.decoder.decode(value, { stream: true });
+    for (;;) {
+      const tag = this.inLog ? "</BLELOG>" : "<BLELOG>";
+      const index = this.buffer.indexOf(tag);
+      if (index >= 0) {
+        const text = this.buffer.slice(0, index);
+        if (this.inLog) { if (text.length <= 65536) this.onLog?.(text); }
+        else this.messages.pushText(text);
+        this.buffer = this.buffer.slice(index + tag.length);
+        this.inLog = !this.inLog;
+      } else if (this.inLog) {
+        if (this.buffer.length > 65536) {
+          this.buffer = "";
+          this.inLog = false;
+        }
+        return;
+      } else {
+        let tail = 0;
+        for (let length = 1; length < tag.length; length++) {
+          if (this.buffer.endsWith(tag.slice(0, length))) tail = length;
+        }
+        this.messages.pushText(this.buffer.slice(0, this.buffer.length - tail));
+        this.buffer = tail ? this.buffer.slice(-tail) : "";
+        return;
+      }
+    }
+  }
+}
+
 export default class WatchBluetooth {
-  constructor(onInfo, delay) {
+  constructor(onInfo, delay, options = {}) {
     this.onInfo = onInfo;
     this.delay = delay;
+    this.options = options;
     this.info = {};
-    this.reader = new WatchMessageReader((message) => {
+    this.reader = new WatchStreamReader((message) => {
       if (this.pendingMessage?.match(message)) this.finishMessage(null, message);
+      options.onMessage?.(message);
       if (message.t === "ver") {
-        this.updateInfo({ hardwareVersion: message.hw, firmwareVersion: message.fw });
+        this.updateInfo({ hardwareVersion: message.hw, firmwareVersion: message.fw, firmwareSha: message.sha, debugBuild: message.dbg });
         this.versionReceived?.();
       } else if (message.t === "status" && Number.isFinite(message.bat)) {
         this.updateInfo({ batteryLevel: message.bat });
       }
-    });
-    this.onNotification = (event) => this.reader.push(event.target.value);
+    }, options.onLog);
+    this.onNotification = (event) => {
+      const value = event.target.value;
+      options.onTraffic?.({ direction: "RX", channel: "NUS", bytes: new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice() });
+      this.reader.push(value);
+    };
     this.onBattery = (event) => this.updateInfo({ batteryLevel: event.target.value.getUint8(0) });
   }
 
@@ -71,8 +127,7 @@ export default class WatchBluetooth {
     this.notify?.removeEventListener("characteristicvaluechanged", this.onNotification);
     this.battery?.removeEventListener("characteristicvaluechanged", this.onBattery);
     this.notify = this.battery = this.write = null;
-    this.reader.buffer = "";
-    this.reader.decoder = new TextDecoder();
+    this.reader.reset();
   }
 
   async prepare(server) {
@@ -134,6 +189,7 @@ export default class WatchBluetooth {
       const chunk = bytes.slice(offset, offset + 20);
       if (this.write.properties?.writeWithoutResponse) await this.write.writeValueWithoutResponse(chunk);
       else await this.write.writeValueWithResponse(chunk);
+      this.options.onTraffic?.({ direction: "TX", channel: "NUS", bytes: chunk });
     }
   }
 

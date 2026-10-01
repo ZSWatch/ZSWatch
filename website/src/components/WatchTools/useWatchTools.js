@@ -12,7 +12,7 @@ export default function useWatchTools() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(null);
-  const busy = ["connecting", "uploading", "applying", "restoring"].includes(phase);
+  const busy = ["connecting", "uploading", "applying", "restoring", "reading", "erasing", "log-control"].includes(phase);
 
   useEffect(() => {
     alive.current = true;
@@ -45,7 +45,7 @@ export default function useWatchTools() {
     setError(""); setStatus("Choose your watch in the Bluetooth device list."); setPhase("connecting");
     try {
       await connection.connect({ transport: "ble", filters: deviceName.trim() ? [{ namePrefix: deviceName.trim() }] : null });
-      if (alive.current && manager.current === connection) { setConnected(true); setPhase("idle"); setStatus("Connected. Choose a background to get started."); }
+      if (alive.current && manager.current === connection) { setConnected(true); setPhase("idle"); setStatus("Connected. Watch tools are ready."); }
       else await connection.disconnect();
     } catch (failure) {
       if (alive.current && manager.current === connection) { setError(failure.name === "NotFoundError" ? "No watch selected. Connect again when ready." : failure.message); setStatus(""); setPhase("idle"); }
@@ -86,6 +86,23 @@ export default function useWatchTools() {
 
   function clearMessages() { if (!operation.current) { setError(""); setStatus(""); setProgress(null); setPhase("idle"); } }
 
+  async function perform(kind, message, action) {
+    const connection = manager.current;
+    if (operation.current || !connection?.isConnected()) return { ok: false };
+    const controller = new AbortController();
+    operation.current = controller;
+    setError(""); setProgress(null); setPhase(kind); setStatus(message);
+    try {
+      const value = await action(connection, { signal: controller.signal, onProgress: (value) => { if (alive.current) setProgress(value); } });
+      if (alive.current) { setPhase("success"); setStatus(""); }
+      return { ok: true, value };
+    } catch (failure) {
+      if (alive.current) { setError(failure.message); setStatus(""); setPhase("idle"); setConnected(connection.isConnected()); }
+      return { ok: false };
+    } finally { if (operation.current === controller) operation.current = null; }
+  }
+
   return { available, connected, deviceInfo, phase, busy, status, error, progress, connect, disconnect, clearMessages,
+    manager, perform,
     apply: (getBytes) => run("apply", getBytes), restore: () => run("reset"), cancel: () => operation.current?.abort() };
 }

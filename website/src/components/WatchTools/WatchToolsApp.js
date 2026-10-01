@@ -4,6 +4,8 @@ import Link from "@docusaurus/Link";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 import backgrounds from "./backgrounds.json";
 import useWatchTools from "./useWatchTools";
+import useDiagnostics from "./useDiagnostics";
+import { LogsPanel, CrashesPanel } from "./DiagnosticsPanels";
 import { cropRectangle, drawBackground, loadImage, validateBackground } from "./imageProcessing";
 import styles from "./styles.module.css";
 
@@ -12,6 +14,8 @@ const fileTypes = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/
 
 export default function WatchToolsApp() {
   const tools = useWatchTools();
+  const diagnostics = useDiagnostics(tools);
+  const [panel, setPanel] = useState("watchface");
   const assets = useBaseUrl("/watchface-backgrounds/");
   const [deviceName, setDeviceName] = useState("ZSWatch");
   const [group, setGroup] = useState("All");
@@ -31,7 +35,7 @@ export default function WatchToolsApp() {
       try { drawBackground(canvas.current, selection.image, selection.kind === "custom" ? crop : centeredCrop); }
       catch (failure) { setImageError(failure.message); }
     }
-  }, [selection, crop]);
+  }, [selection, crop, panel]);
   useEffect(() => () => { imageVersion.current++; }, []);
 
   async function chooseBuiltin(background) {
@@ -91,13 +95,17 @@ export default function WatchToolsApp() {
     setCrop({ ...start.crop, x: adjust(start.crop.x, event.clientX - start.startX, selection.image.naturalWidth), y: adjust(start.crop.y, event.clientY - start.startY, selection.image.naturalHeight) });
   }
 
-  return <Layout title="Watch Tools" description="Choose and upload a watchface background to your ZSWatch.">
+  return <Layout title="Watch Tools" description="Customize your ZSWatch and view logs and crash reports over Bluetooth.">
     <main className={styles.page}>
       <header className={styles.hero}>
         <p className={styles.eyebrow}>MAKE IT YOURS</p>
         <h1>Watch Tools</h1>
-        <p>Give your watch a new look. Choose a background or make one from your own photo.</p>
+        <p>Customize your watch, capture live logs, and download crash reports.</p>
       </header>
+
+      <div className={styles.filters} role="group" aria-label="Watch tools">
+        {[["watchface", "Watchface"], ["logs", "Logs"], ["crashes", "Crash reports"]].map(([key, label]) => <button key={key} className={panel === key ? styles.activeFilter : styles.filter} aria-pressed={panel === key} onClick={() => setPanel(key)}>{label}</button>)}
+      </div>
 
       <div className={styles.workspace}>
         <aside className={styles.sidebar}>
@@ -114,11 +122,11 @@ export default function WatchToolsApp() {
               <label className={styles.field} htmlFor="watch-name">Device name<input id="watch-name" value={deviceName} onChange={(event) => setDeviceName(event.target.value)} placeholder="ZSWatch" disabled={tools.busy} /></label>
               <button className={styles.primaryButton} disabled={!tools.available || tools.busy} onClick={() => tools.connect(deviceName)}>{tools.phase === "connecting" ? "Connecting…" : "Connect watch"}</button>
               <p className={styles.help}>For your first connection, enable <strong>Pairable</strong> in <strong>Settings → Bluetooth</strong> on your watch and accept pairing on your computer.</p>
-              {!tools.available && <p className={styles.notice}>Bluetooth is unavailable in this browser. You can still preview backgrounds and download your image. Use a browser with Web Bluetooth support to connect.</p>}
+              {!tools.available && <p className={styles.notice}>Bluetooth is unavailable in this browser. Background previews and crash file import still work. Use a browser with Web Bluetooth support to connect.</p>}
             </>}
           </section>
 
-          <section className={`${styles.card} ${styles.previewCard}`} aria-labelledby="preview-title">
+          {panel === "watchface" && <section className={`${styles.card} ${styles.previewCard}`} aria-labelledby="preview-title">
             <div className={styles.cardHeading}><h2 id="preview-title">Preview</h2><label className={styles.check}><input type="checkbox" checked={showTime} onChange={(event) => setShowTime(event.target.checked)} />Show time</label></div>
             <div className={`${styles.watch} ${selection?.kind === "custom" ? styles.draggable : ""}`} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
               <canvas ref={canvas} width="240" height="240" aria-label="Watchface background preview" className={selection ? styles.canvas : styles.emptyCanvas} />
@@ -137,19 +145,19 @@ export default function WatchToolsApp() {
               <button className={styles.textButton} disabled={!selection || disabled} onClick={download}>Download background file</button>
               <p className={styles.help}>Backgrounds are fitted to the 240×240 round display. The watch updates without restarting.</p>
             </div>
-          </section>
+          </section>}
 
           <section className={styles.card}>
             {tools.status && <p role="status" aria-live="polite" className={tools.phase === "success" ? styles.success : styles.help}>{tools.status}</p>}
-            {tools.progress && <><progress className={styles.progress} aria-label="Background upload progress" max="100" value={tools.progress.percentage} /><p className={styles.help}>{tools.progress.percentage}% · {(tools.progress.bytes / 1024).toFixed(0)} / {(tools.progress.total / 1024).toFixed(0)} KB</p></>}
-            {tools.phase === "uploading" && <button className={styles.secondaryButton} onClick={tools.cancel}>Cancel upload</button>}
-            {(tools.error || imageError) && <p role="alert" className={styles.error}>{imageError || tools.error}</p>}
-            <button className={styles.secondaryButton} disabled={!tools.connected || tools.busy} onClick={tools.restore}>{tools.phase === "restoring" ? "Restoring…" : "Restore default background"}</button>
-            <p className={styles.help}>Switch back to the background included with your firmware.</p>
+            {tools.progress && <><progress className={styles.progress} aria-label="Transfer progress" max="100" value={tools.progress.percentage} /><p className={styles.help}>{tools.progress.percentage}% · {(tools.progress.bytes / 1024).toFixed(1)} / {(tools.progress.total / 1024).toFixed(1)} KB</p></>}
+            {["uploading", "reading"].includes(tools.phase) && <button className={styles.secondaryButton} onClick={tools.cancel}>Cancel transfer</button>}
+            {(tools.error || panel === "watchface" && imageError) && <p role="alert" className={styles.error}>{panel === "watchface" && imageError || tools.error}</p>}
+            {panel === "watchface" ? <><button className={styles.secondaryButton} disabled={!tools.connected || tools.busy} onClick={tools.restore}>{tools.phase === "restoring" ? "Restoring…" : "Restore default background"}</button>
+            <p className={styles.help}>Switch back to the background included with your firmware.</p></> : <p className={styles.help}>Logs and crash reports are processed locally in your browser.</p>}
           </section>
         </aside>
 
-        <section className={styles.library} aria-labelledby="background-title">
+        {panel === "logs" ? <LogsPanel tools={tools} diagnostics={diagnostics} /> : panel === "crashes" ? <CrashesPanel tools={tools} diagnostics={diagnostics} /> : <section className={styles.library} aria-labelledby="background-title">
           <div className={styles.uploadCard} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (!disabled) chooseFile(event.dataTransfer.files[0]); }}>
             <div><span className={styles.uploadIcon} aria-hidden="true">＋</span><h2>Your own image</h2><p>Drop a photo here, then crop it to make it yours.</p></div>
             <button className={styles.secondaryButton} disabled={disabled} onClick={() => fileInput.current.click()}>Choose image</button>
@@ -169,7 +177,7 @@ export default function WatchToolsApp() {
             </div>
           </section>)}
           <p className={styles.footerNote}>Looking for firmware updates? <Link to="/update">Open the firmware updater →</Link></p>
-        </section>
+        </section>}
       </div>
     </main>
   </Layout>;
