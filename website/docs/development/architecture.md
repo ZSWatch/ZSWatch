@@ -101,6 +101,7 @@ Key rules:
 |---------|------|-----------|-------------|
 | `accel_data_chan` | Gesture/accel events | Sensor → Apps | IMU interrupt-driven events (tap, tilt, step) |
 | `activity_state_data_chan` | Power state enum | Power Mgr → App Mgr | ACTIVE / INACTIVE / NOT_WORN_STATIONARY |
+| `altitude_data_chan` | Altitude (m), calibration flag, floors up/down | Altimeter App → Apps | Barometric altitude derived from pressure_data_chan; calibration flag indicates whether altitude uses a network-calibrated reference |
 | `battery_sample_data_chan` | mV, %, temp, charging | Sensor → Apps | Battery status updates |
 | `ble_comm_data_chan` | Typed BLE payload | BLE → Apps | Notifications, music info, weather, time, etc. |
 | `environment_data_chan` | Temp, humidity, pressure, IAQ | Sensor → Apps | Environmental sensor readings |
