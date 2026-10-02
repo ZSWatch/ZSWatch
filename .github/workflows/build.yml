@@ -135,6 +135,27 @@ jobs:
             -DSB_CONF_FILE="$SB_CONF_FILE" \
             -DBOARD_ROOT="${PWD}/app"
 
+          # All firmware variants share dependencies. Generate once per workflow run
+          # from the normal WatchDK release build, before moving its ELF or cleaning up.
+          if [ "${{ matrix.board }}" = "watchdk@1/nrf5340/cpuapp" ] && [ "${{ matrix.build_type }}" = "release" ]; then
+            # The selected detectors need Jinja2 and the existing build dependencies.
+            # Skip the slow ScanCode fallback; unresolved licenses remain NOASSERTION.
+            python -m pip install 'jinja2>=3.1.6'
+            mkdir -p sbom
+            west ncs-sbom -d "${{ env.BUILD_DIR }}" \
+              --license-detectors spdx-tag,full-text,external-file,git-info \
+              --output-spdx sbom/zswatch.spdx \
+              --output-html sbom/zswatch.html
+            # west update only clones active projects; exclude inactive SDK groups.
+            west manifest --freeze --active-only > sbom/west-manifest.yml
+            git submodule status --recursive > sbom/submodule-revisions.txt
+            {
+              echo "Representative build: ${{ matrix.board }} (${{ matrix.build_type }}, normal orientation)"
+              echo "ZSWatch revision: $(git rev-parse HEAD)"
+              echo "License detectors: spdx-tag,full-text,external-file,git-info (ScanCode skipped)"
+            } > sbom/build-info.txt
+          fi
+
           mv ${{ env.BUILD_DIR }}/merged.hex fw_images/${{ env.BUILD_DIR }}.hex
           mv ${{ env.BUILD_DIR }}/app/zephyr/zephyr.elf fw_images/${{ env.BUILD_DIR }}.elf
           if [ -f "${{ env.BUILD_DIR }}/dfu_application.zip" ]; then
@@ -202,6 +223,14 @@ jobs:
             -o fw_images/${OUTPUT_NAME}.hex \
             fw_images/mcuboot.hex \
             production_test/${{ env.BUILD_DIR }}_production/production_test/zephyr/zephyr.signed.hex
+
+      - name: Upload shared SBOM
+        if: ${{ matrix.board == 'watchdk@1/nrf5340/cpuapp' && matrix.build_type == 'release' }}
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: sbom
+          path: ZSWatch/sbom
+          if-no-files-found: error
 
       - name: Remove build directories to free space
         working-directory: ZSWatch
