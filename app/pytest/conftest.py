@@ -11,22 +11,55 @@ logging.basicConfig(level=logging.INFO)
 
 
 @pytest.fixture(scope="function")
-def ppk2_instance(device_config, prepare_device):
+def ppk2_instance(device_config, prepare_device, request):
     """Fixture to provide PPK2 instance for power measurement tests"""
+    if request.config.getoption("--preserve-session"):
+        pytest.fail("PPK2 power setup is forbidden in --preserve-session mode")
     if "ppk2" not in device_config:
         pytest.skip("PPK2 not available for this device")
 
     return device_config["ppk2"]
 
 
-def get_all_devices():
+def get_all_devices(config_path=None):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     local_path = os.path.join(base_dir, "devices_local.yaml")
     default_path = os.path.join(base_dir, "devices.yaml")
-    path = local_path if os.path.exists(local_path) else default_path
+    path = config_path or (local_path if os.path.exists(local_path) else default_path)
     with open(path) as f:
         config = yaml.safe_load(f)
     return config["devices"]
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--preserve-session"):
+        if any(item.get_closest_marker("companion_session") for item in items):
+            raise pytest.UsageError("Companion session tests require --preserve-session")
+        return
+    if not config.getoption("--board"):
+        raise pytest.UsageError("--preserve-session requires an explicit --board")
+    if config.getoption("--board") == "native_sim":
+        raise pytest.UsageError("--preserve-session requires a physical board")
+    if not config.getoption("--device-config") and not os.path.exists(
+        os.path.join(os.path.dirname(__file__), "devices_local.yaml")
+    ):
+        raise pytest.UsageError("--preserve-session requires --device-config or devices_local.yaml")
+    # Existing tests can reset, update firmware, or connect over PC BLE in their
+    # body. Only audited companion tests may run against the phone's session.
+    unsafe = [
+        item.nodeid
+        for item in items
+        if item.get_closest_marker("companion_session") is None
+        or "restore_firmware" in item.fixturenames
+        or "ppk2_instance" in item.fixturenames
+        or item.get_closest_marker("ppk2") is not None
+    ]
+    if unsafe:
+        raise pytest.UsageError(
+            "--preserve-session refuses tests without companion_session approval "
+            "or with firmware/power fixtures: " + ", ".join(unsafe)
+        )
 
 
 def pytest_generate_tests(metafunc):
@@ -50,7 +83,7 @@ def pytest_generate_tests(metafunc):
         return  # Only handle tests requesting device_param or device_config
 
     board_option = metafunc.config.getoption("--board")
-    devices = get_all_devices()
+    devices = get_all_devices(metafunc.config.getoption("--device-config"))
 
     # Detect if running with '-m "not linux_only"'
     skip_native_sim = (
@@ -81,11 +114,12 @@ def pytest_generate_tests(metafunc):
             continue
 
         device = dict(device_cfg)
+        device["board"] = board_name
         param_devices.append(device)
         ids.append(board_name)
 
     if not param_devices:
-        return
+        raise pytest.UsageError("No matching device configuration; check --board/devices_local.yaml")
 
     metafunc.parametrize("device_param", param_devices, ids=ids)
 
@@ -139,6 +173,13 @@ def ppk2_session_cleanup():
 
 def pytest_addoption(parser):
     parser.addoption("--board", action="store", help="Board name from devices.yaml")
+    parser.addoption("--device-config", action="store", help="Explicit local device YAML path")
+    parser.addoption(
+        "--preserve-session",
+        action="store_true",
+        default=False,
+        help="Companion tests only: no fixture flash, recover, reset or PPK2 power setup",
+    )
     parser.addoption(
         "--show-uart",
         action="store_true",
@@ -183,6 +224,9 @@ _flashed_boards = set()
 
 @pytest.fixture(autouse=True)
 def prepare_device(device_config, request):
+    if request.config.getoption("--preserve-session"):
+        logging.info("Preserving the running companion session; no deployment/power setup.")
+        return
     board = device_config["board"]
     skip_flash = request.config.getoption("--skip-flash")
 
@@ -208,17 +252,16 @@ def prepare_device(device_config, request):
             logging.error(f"Error preparing device {board}: {e}")
             if "ppk2" in device_config:
                 device_config["ppk2"].cleanup()
-            pytest.skip(
-                "Skipping tests: flashing failed (device not ready or connected?)"
-            )
-            raise
+            pytest.fail(f"Device deployment failed for {board}: {e}")
     elif skip_flash and "jlink_serial" in device_config:
         logging.info(f"--skip-flash for {board}, only resetting device.")
         utils.reset(device_config)
 
 @pytest.fixture
-def restore_firmware(device_config):
+def restore_firmware(device_config, request):
     """Restore firmware after tests that modify it."""
+    if request.config.getoption("--preserve-session"):
+        pytest.fail("Firmware restoration is forbidden in --preserve-session mode")
     yield
     if "jlink_serial" in device_config:
         utils.recover(device_config)
@@ -226,7 +269,9 @@ def restore_firmware(device_config):
 
 # Reset before each test
 @pytest.fixture(autouse=True)
-def reset_device(device_config):
+def reset_device(device_config, request):
+    if request.config.getoption("--preserve-session"):
+        return
     if "jlink_serial" in device_config:
         utils.reset(device_config)
         time.sleep(1)
