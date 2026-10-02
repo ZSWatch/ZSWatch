@@ -86,6 +86,37 @@ def test_unknown_board_cannot_look_like_success(lab):
     assert calls == []
 
 
+MIXED = (
+    "@pytest.mark.linux_only\ndef test_native(device_config): pass\n"
+    "@pytest.mark.ppk2\ndef test_power(device_config): raise AssertionError('must never run')\n"
+)
+
+
+def test_linux_only_collection_allows_tests_without_compatible_devices(lab, tmp_path):
+    (tmp_path / "devices.yaml").write_text("devices:\n  native_sim: {}\n")
+    result, calls = lab(MIXED, "--board", "native_sim", "--collect-only", "-m", "linux_only")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "test_native[native_sim]" in result.stdout
+    assert "1/2 tests collected (1 deselected)" in result.stdout
+    assert calls == []
+
+
+def test_missing_optional_ppk2_skips_only_incompatible_test(lab, tmp_path):
+    (tmp_path / "devices.yaml").write_text("devices:\n  native_sim: {}\n")
+    result, calls = lab(MIXED, "--board", "native_sim")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed, 1 skipped" in result.stdout
+    assert calls == ["collector_start", "collector_stop"]
+
+
+def test_unknown_board_rejected_before_capability_filtering(lab):
+    result, calls = lab("@pytest.mark.ppk2\ndef test_power(device_config): pass\n",
+                        "--board", "missing", "--collect-only")
+    assert result.returncode != 0
+    assert "No matching device configuration" in result.stdout + result.stderr
+    assert calls == []
+
+
 def test_dynamic_firmware_fixture_also_guarded(lab):
     result, calls = lab(
         "@pytest.mark.companion_session\ndef test_status(device_config, request):\n"

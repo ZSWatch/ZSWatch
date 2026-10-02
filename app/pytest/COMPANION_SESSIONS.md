@@ -35,6 +35,10 @@ This is a fixture safety policy, not a sandbox for arbitrary test code.
 Separate deployment from observation. Failed ordinary deployment now produces
 an error instead of a skip. Existing unrelated HIL tests retain their normal
 deployment/reset behavior.
+Unknown selected boards and empty device catalogs fail collection. A known board
+without an optional capability (such as PPK2) instead produces an empty parameter
+set for that test, which pytest skips or deselects. This preserves full-suite
+`--board=native_sim -m linux_only` collection in CI.
 
 Run fixture safety tests outside the hardware conftest tree:
 

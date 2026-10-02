@@ -84,6 +84,8 @@ def pytest_generate_tests(metafunc):
 
     board_option = metafunc.config.getoption("--board")
     devices = get_all_devices(metafunc.config.getoption("--device-config"))
+    if not devices or (board_option and board_option not in devices):
+        raise pytest.UsageError("No matching device configuration; check --board/devices_local.yaml")
 
     # Detect if running with '-m "not linux_only"'
     skip_native_sim = (
@@ -118,9 +120,8 @@ def pytest_generate_tests(metafunc):
         param_devices.append(device)
         ids.append(board_name)
 
-    if not param_devices:
-        raise pytest.UsageError("No matching device configuration; check --board/devices_local.yaml")
-
+    # A valid board may lack a capability required by this test. Let pytest
+    # skip the empty parameter set (or deselect it with -m), not abort collection.
     metafunc.parametrize("device_param", param_devices, ids=ids)
 
 
