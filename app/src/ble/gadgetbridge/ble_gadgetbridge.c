@@ -164,9 +164,11 @@ static void parse_time_zone(char *offset)
 
     end_timezone = strstr(offset, ")");
     if (end_timezone) {
+        errno = 0;
         cb.data.data.time.tz_offset = strtof(offset, &end_timezone);
 
-        if (offset != end_timezone) {
+        if (offset != end_timezone && *end_timezone == ')' && errno == 0) {
+            cb.data.data.time.tz_offset_valid = true;
             cb.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
             LOG_DBG("set time offset: %.1f", cb.data.data.time.tz_offset);
             send_ble_data_event(&cb);
