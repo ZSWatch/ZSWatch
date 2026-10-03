@@ -17,19 +17,15 @@
 
 #pragma once
 
-#include <inttypes.h>
-#include <lvgl.h>
+#include "matrix.h"
+#include "vector.h"
 
-typedef void(*on_start_calibration_cb_t)(void);
+typedef struct {
+    Matrix Q;
+    Matrix R;
+} QR_t;
 
-void compass_ui_show(lv_obj_t *root, on_start_calibration_cb_t start_cal_cb);
+QR_t qr_decomposition(Matrix M);
+void qr_free(QR_t qr);
 
-void compass_ui_remove(void);
 
-void compass_ui_set_heading(double heading);
-
-void compass_ui_show_calibration(void);
-
-void compass_ui_hide_calibration(void);
-
-void compass_ui_set_calibration_progress(int px, int py, int pz);

@@ -28,11 +28,9 @@
 
 LOG_MODULE_REGISTER(compass_app, LOG_LEVEL_DBG);
 
-// Functions needed for all applications
 static void compass_app_start(lv_obj_t *root, lv_group_t *group);
 static void compass_app_stop(void);
 
-// Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
 static void on_start_calibration(void);
 
@@ -47,13 +45,24 @@ static application_t app = {
 };
 
 static lv_timer_t *refresh_timer;
-static bool is_calibrating;
+static bool getting_data;
 static uint32_t cal_start_ms;
 
 static void compass_app_start(lv_obj_t *root, lv_group_t *group)
 {
     compass_ui_show(root, on_start_calibration);
-    refresh_timer = lv_timer_create(timer_callback, CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,  NULL);
+
+    if (zsw_magnetometer_recalibration_required()) {
+        zsw_popup_show("Calibration",
+                       "Compass calibration format changed. Please recalibrate.",
+                       NULL,
+                       5,
+                       false);
+    }
+
+    refresh_timer = lv_timer_create(timer_callback,
+                                    CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_REFRESH_INTERVAL_MS,
+                                    NULL);
     zsw_sensor_fusion_init();
 }
 
@@ -61,35 +70,90 @@ static void compass_app_stop(void)
 {
     if (refresh_timer) {
         lv_timer_del(refresh_timer);
+        refresh_timer = NULL;
     }
+
+    if (getting_data) {
+        getting_data = false;
+        zsw_magnetometer_cancel_calibration();
+
+    }
+    zsw_popup_remove();
     compass_ui_remove();
-    zsw_magnetometer_stop_calibration();
     zsw_sensor_fusion_deinit();
-    if (is_calibrating) {
-        zsw_popup_remove();
-    }
 }
 
 static void on_start_calibration(void)
 {
-    zsw_magnetometer_start_calibration();
-    is_calibrating = true;
+    if (getting_data) {
+        return;
+    }
+
+    zsw_popup_remove();
+
+    int ret = zsw_magnetometer_gather_data();
+    if (ret != 0) {
+        zsw_popup_show("Calibration",
+                       "Failed to start calibration",
+                       NULL,
+                       3,
+                       false);
+        return;
+    }
+
+    getting_data = true;
     cal_start_ms = lv_tick_get();
-    zsw_popup_show("Calibration",
-                   "Rotate the watch 360 degrees\naround each x,y,z.\n a few times.", NULL,
-                   CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S, false);
+    compass_ui_show_calibration();
 }
 
 static void timer_callback(lv_timer_t *timer)
 {
     float heading;
-    if (is_calibrating &&
-        (lv_tick_elaps(cal_start_ms) >= (CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S * 1000UL))) {
-        zsw_magnetometer_stop_calibration();
-        is_calibrating = false;
-        zsw_popup_remove();
+    bool app_visible = app.current_state == ZSW_APP_STATE_UI_VISIBLE;
+
+    if (getting_data && app_visible) {
+        int px;
+        int py;
+        int pz;
+
+        if (zsw_magnetometer_get_calibration_progress(&px, &py, &pz) == 0) {
+            compass_ui_set_calibration_progress(px, py, pz);
+        }
     }
-    if (!is_calibrating) {
+
+    if (getting_data && zsw_magnetometer_calibration_ready()) {
+        int ret = zsw_magnetometer_compute_compensation();
+
+        getting_data = false;
+
+        if (app_visible) {
+            compass_ui_hide_calibration();
+
+            if (ret == 0) {
+                zsw_popup_show("Calibration", "Calibration successful", NULL, 3, false);
+            } else {
+                zsw_popup_show("Calibration", "Calibration failed", NULL, 3, false);
+            }
+        }
+
+        return;
+    }
+
+    if (getting_data &&
+        lv_tick_elaps(cal_start_ms) >=
+        (CONFIG_APPLICATIONS_CONFIGURATION_COMPASS_CALIBRATION_TIME_S * 1000UL)) {
+        getting_data = false;
+        zsw_magnetometer_cancel_calibration();
+
+        if (app_visible) {
+            compass_ui_hide_calibration();
+            zsw_popup_show("Calibration", "Calibration time out", NULL, 3, false);
+        }
+
+        return;
+    }
+
+    if (!getting_data && app_visible) {
         zsw_sensor_fusion_get_heading(&heading);
         compass_ui_set_heading(heading);
     }

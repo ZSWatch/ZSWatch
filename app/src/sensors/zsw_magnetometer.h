@@ -21,11 +21,10 @@
 
 int zsw_magnetometer_init(void);
 int zsw_magnetometer_set_enable(bool enabled);
-double zsw_magnetometer_get_heading(void);
-
+bool zsw_magnetometer_calibration_ready(void);
 /*
 * Get the magnetometer data in micro Tesla.
-* Divide with 10 to get it in Guass.
+* Divide with 10 to get it in Gauss.
 *
 * @param x Pointer to the x-axis data.
 * @param y Pointer to the y-axis data.
@@ -35,5 +34,8 @@ double zsw_magnetometer_get_heading(void);
 
 */
 int zsw_magnetometer_get_all(float *x, float *y, float *z);
-int zsw_magnetometer_start_calibration(void);
-int zsw_magnetometer_stop_calibration(void);
+int zsw_magnetometer_gather_data(void);
+int zsw_magnetometer_compute_compensation(void);
+bool zsw_magnetometer_recalibration_required(void);
+int zsw_magnetometer_cancel_calibration(void);
+int zsw_magnetometer_get_calibration_progress(int *px, int *py, int *pz);
