@@ -69,3 +69,6 @@ void zsw_vibration_stop(void);
 * @param enable true to enable, false to disable
 */
 int zsw_vibration_set_enabled(bool enable);
+
+/* Stop only a currently running Find pattern; leave alarms/notifications alone. */
+bool zsw_vibration_stop_find(void);

@@ -29,6 +29,7 @@
 
 #include "ui/zsw_ui.h"
 #include "gadgetbridge/ble_gadgetbridge.h"
+#include "gadgetbridge/ble_find_device.h"
 #include "chronos/ble_chronos.h"
 
 #ifdef CONFIG_BT_AMS_CLIENT
@@ -413,6 +414,10 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
     LOG_INF("Disconnected: %s (reason %u)", addr, reason);
+
+    if (current_conn == conn) {
+        ble_find_device_disconnected();
+    }
 
     if (current_conn) {
         k_work_cancel_delayable(&conn_interval_slow_work);

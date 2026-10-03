@@ -17,6 +17,7 @@
 
 #include "drivers/zsw_vibration_motor.h"
 #include <zephyr/kernel.h>
+#include <zephyr/irq.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/drivers/gpio.h>
@@ -206,6 +207,17 @@ void zsw_vibration_stop(void)
     vibration_motor_set_on(false);
     vib_motor_busy = false;
     repeat_pattern = false;
+}
+
+bool zsw_vibration_stop_find(void)
+{
+    unsigned int key = irq_lock();
+    bool stopped = vib_motor_busy && active_pattern == find_pattern;
+    if (stopped) {
+        zsw_vibration_stop();
+    }
+    irq_unlock(key);
+    return stopped;
 }
 
 static void run_next_motor_state(vib_motor_state_t *state)
