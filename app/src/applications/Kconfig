@@ -54,4 +54,22 @@ menu "Applications"
     rsource "compass/Kconfig"
     rsource "sensors_summary/Kconfig"
     rsource "voice_memo/Kconfig"
+    rsource "lea_assistant/Kconfig"
+
+    config APPLICATIONS_USE_LEA_ASSISTANT
+        bool
+        prompt "Activate the application 'LE Audio Assistant'"
+        select BT_CENTRAL
+        select UTF8
+        select BT_EXT_ADV
+        select BT_PER_ADV_SYNC
+        select BT_ISO_SYNC_RECEIVER
+        select BT_GATT_CLIENT
+        select BT_GATT_AUTO_DISCOVER_CCC
+        select BT_GATT_AUTO_UPDATE_MTU
+        select BT_OBSERVER
+        select BT_BONDABLE
+        select BT_AUDIO
+        select BT_BAP_BROADCAST_ASSISTANT
+        default n
 endmenu
