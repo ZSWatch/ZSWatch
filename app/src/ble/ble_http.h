@@ -1,10 +1,12 @@
+#pragma once
+
 #include <stdint.h>
-#include "cJSON.h"
 
 typedef enum {
     BLE_HTTP_STATUS_OK,
     BLE_HTTP_STATUS_TIMEOUT,
     BLE_HTTP_STATUS_BUSY,
+    BLE_HTTP_STATUS_ERROR,
 } ble_http_status_code_t;
 
 /**
@@ -22,8 +24,9 @@ typedef void (*ble_http_callback)(ble_http_status_code_t status, char *response)
  *
  * This function sends an HTTP GET request to the specified URL and invokes the provided callback function
  * when the response is received. The callback function is passed the status code and the response data in
- * JSON format. The cJSON object parameter will be deleted automatically after the callback function returns.
- * Hence it shall not attempt to deleted in the callback.
+ * JSON format. The response string is borrowed for the duration of the callback.
+ * Do not free it or retain its pointer. Error/timeout callbacks receive NULL.
+ * Each admitted request completes once; rejected sends return an error without a callback.
  *
  * @param url The URL to send the GET request to.
  * @param cb The callback function to invoke when the response is received.

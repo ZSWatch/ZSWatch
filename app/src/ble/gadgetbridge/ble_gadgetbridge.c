@@ -600,44 +600,44 @@ static int parse_musicstate(char *data, int len)
 
 static int parse_httpstate(char *data, int len)
 {
-    // {"t":"http","resp":"{\"response_code\":0,\"results\":[{\"type\":\"boolean\",\"difficulty\":\"easy\",\"category\":\"Geography\",\"question\":\"Hungary is the only country in the world beginning with H.\",\"correct_answer\":\"False\",\"incorrect_answers\":[\"True\"]}]}"}
-    char *temp_value;
-    int temp_len;
-    struct ble_data_event cb;
-    memset(&cb, 0, sizeof(cb));
-
-    cb.data.type = BLE_COMM_DATA_TYPE_HTTP;
-
-    temp_value = extract_value_str("\"id\":", data, &temp_len);
-    if (temp_value) {
+    ARG_UNUSED(len);
+    cJSON *root = cJSON_Parse(data);
+    if (!root) {
+        return -EINVAL;
+    }
+    const cJSON *id = cJSON_GetObjectItemCaseSensitive(root, "id");
+    long request_id = -1;
+    if (cJSON_IsNumber(id) && id->valuedouble >= 0 && id->valuedouble <= UINT16_MAX &&
+        id->valuedouble == (double)id->valueint) {
+        request_id = id->valueint;
+    } else if (cJSON_IsString(id) && id->valuestring[0]) {
+        char *end;
         errno = 0;
-        char *end_data;
-        cb.data.data.http_response.id  = strtol(temp_value, &end_data, 10);
-        if (temp_value == end_data || errno != 0) {
-            LOG_WRN("Failed parsing http request id");
-            cb.data.data.http_response.id = -1;
-        }
-    } else {
-        cb.data.data.http_response.id = -1;
-    }
-
-    // {"t":"http","err":"Internet access not enabled in this Gadgetbridge build"}
-    temp_value = extract_value_str("\"err\":", data, &temp_len);
-
-    if (temp_value != NULL) {
-        LOG_ERR("HTTP err: %s", temp_value);
-        memcpy(cb.data.data.http_response.err, temp_value, temp_len);
-        send_ble_data_event(&cb);
-    } else {
-        temp_value = extract_value_str("\"resp\":", data, &temp_len);
-        if (temp_value) {
-            LOG_DBG("HTTP response: %s", temp_value);
-            memcpy(cb.data.data.http_response.response, temp_value,
-                   (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
-            send_ble_data_event(&cb);
+        request_id = strtol(id->valuestring, &end, 10);
+        if (errno || *end || request_id < 0 || request_id > UINT16_MAX) {
+            request_id = -1;
         }
     }
+    if (request_id < 0) {
+        cJSON_Delete(root);
+        return -EINVAL;
+    }
 
+    struct ble_data_event cb = {0};
+    cb.data.type = BLE_COMM_DATA_TYPE_HTTP;
+    cb.data.data.http_response.id = request_id;
+    const cJSON *err = cJSON_GetObjectItemCaseSensitive(root, "err");
+    const cJSON *response = cJSON_GetObjectItemCaseSensitive(root, "resp");
+    if (err || !cJSON_IsString(response) || !response->valuestring[0] ||
+        strlen(response->valuestring) > MAX_HTTP_FIELD_LENGTH) {
+        /* Even an empty/malformed relay result must finish the matching request. */
+        snprintf(cb.data.data.http_response.err, sizeof(cb.data.data.http_response.err), "HTTP relay error");
+    } else {
+        /* cJSON decodes the JSON string once, including escaped quotes/newlines/backslashes. */
+        memcpy(cb.data.data.http_response.response, response->valuestring, strlen(response->valuestring) + 1);
+    }
+    send_ble_data_event(&cb);
+    cJSON_Delete(root);
     return 0;
 }
 
