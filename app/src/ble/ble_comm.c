@@ -31,6 +31,7 @@
 #include "gadgetbridge/ble_gadgetbridge.h"
 #include "gadgetbridge/ble_find_device.h"
 #include "chronos/ble_chronos.h"
+#include "managers/zsw_smp_manager.h"
 
 #ifdef CONFIG_BT_AMS_CLIENT
 #include <bluetooth/services/ams_client.h>
@@ -235,6 +236,12 @@ int ble_comm_set_short_connection_interval(void)
     // don't change it back.
     k_work_cancel_delayable(&conn_interval_slow_work);
 
+    // Zephyr's SMP transport owns the faster 7.5-11.25 ms request while
+    // enabled. Do not overwrite it with the ordinary 30-50 ms preference.
+    if (IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) && zsw_smp_manager_is_enabled()) {
+        return 0;
+    }
+
     if (current_conn == NULL) {
         // Need context switch as this function can get called before
         // the connection is propogated to this file.
@@ -255,6 +262,17 @@ int ble_comm_set_short_connection_interval(void)
 
 int ble_comm_set_default_connection_interval(void)
 {
+    // SMP can stay registered across the service-change reconnect. Its own
+    // parameter controller assumes its last request remains in force, so a
+    // later idle/sensor callback must not replace it with 400-500 ms.
+    if (IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) && zsw_smp_manager_is_enabled()) {
+        k_work_cancel_delayable(&conn_interval_slow_work);
+        return 0;
+    }
+    if (current_conn == NULL) {
+        return -ENOTCONN;
+    }
+
     int err;
     struct bt_le_conn_param param = {
         .interval_min = BLE_COMM_LONG_INT_MIN_MS,
@@ -395,7 +413,9 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     // to let the peer discover services etc. quickly.
     // After some time assume the peer is done and change to longer intervals
     // to save power.
-    k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
+    if (!IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) || !zsw_smp_manager_is_enabled()) {
+        k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
+    }
 
     if (pairing_enabled) {
         int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -421,6 +441,7 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 
     if (current_conn) {
         k_work_cancel_delayable(&conn_interval_slow_work);
+        k_work_cancel_delayable(&conn_interval_fast_work);
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }
