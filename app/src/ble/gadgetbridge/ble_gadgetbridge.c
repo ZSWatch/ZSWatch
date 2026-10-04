@@ -636,8 +636,11 @@ static int parse_httpstate(char *data, int len)
         /* cJSON decodes the JSON string once, including escaped quotes/newlines/backslashes. */
         memcpy(cb.data.data.http_response.response, response->valuestring, strlen(response->valuestring) + 1);
     }
-    send_ble_data_event(&cb);
+    /* The decoded body is already copied into cb. Release the outer JSON tree
+     * before synchronous zbus listeners parse that body (for example Weather),
+     * so both trees do not compete for the small libc malloc arena. */
     cJSON_Delete(root);
+    send_ble_data_event(&cb);
     return 0;
 }
 

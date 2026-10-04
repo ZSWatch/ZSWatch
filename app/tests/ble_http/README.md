@@ -14,5 +14,10 @@ Callbacks run outside the request spinlock. A shared deadline guard makes old
 queued work harmless without synchronously waiting for the timeout worker.
 
 This verifies deterministic event orderings, not real Zephyr scheduling or BLE.
+The synthetic four-day weather fixture also runs a real cJSON consumer with a
+bounded allocation budget that fits one weather tree. The outer HTTP tree must
+be released before synchronous dispatch, allowing the weather consumer to parse
+without allocating both trees simultaneously.
+
 Build the pairing-enforced WatchDK target and separately check the native phone
 relay and watch consumer before claiming hardware acceptance.

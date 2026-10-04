@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include "weather_fixture.h"
 #include "cJSON.h"
 #include "ble/ble_http.c"
 
@@ -12,6 +15,25 @@ static bool fast_reply, start_next, fail_allocation;
 static ble_http_status_code_t last_status;
 static char last_body[2048], last_request[4096];
 static unsigned int sent_id;
+static bool parse_weather_consumer;
+static size_t arena_used, arena_peak, arena_limit;
+typedef union { max_align_t alignment; size_t size; } ArenaHeader;
+static void *arena_malloc(size_t size)
+{
+    if (size > arena_limit - arena_used) return NULL;
+    ArenaHeader *header = malloc(sizeof(*header) + size);
+    if (!header) return NULL;
+    header->size = size; arena_used += size;
+    if (arena_used > arena_peak) arena_peak = arena_used;
+    return header + 1;
+}
+static void arena_free(void *pointer)
+{
+    if (!pointer) return;
+    ArenaHeader *header = (ArenaHeader *)pointer - 1;
+    assert(arena_used >= header->size);
+    arena_used -= header->size; free(header);
+}
 
 int64_t k_uptime_get(void) { return now_ms; }
 k_spinlock_key_t k_spin_lock(struct k_spinlock *lock)
@@ -37,6 +59,13 @@ static void callback(ble_http_status_code_t status, char *response)
     callback_count++;
     last_status = status;
     snprintf(last_body, sizeof(last_body), "%s", response ? response : "");
+    if (parse_weather_consumer) {
+        cJSON *weather = cJSON_Parse(response);
+        assert(weather != NULL);
+        assert(cJSON_IsObject(cJSON_GetObjectItem(weather, "current")));
+        assert(cJSON_GetArraySize(cJSON_GetObjectItem(cJSON_GetObjectItem(weather, "daily"), "weather_code")) == 4);
+        cJSON_Delete(weather);
+    }
     if (start_next) {
         start_next = false;
         assert(zsw_ble_http_get("http://fixture/next", callback) == 0);
@@ -139,5 +168,23 @@ int main(void)
     oversized[sizeof(oversized) - 2] = '"'; oversized[sizeof(oversized) - 1] = 0;
     assert(reply(sent_id, oversized) == 0);
     assert(callback_count == 1 && last_status == BLE_HTTP_STATUS_ERROR);
+    /* A consumer must be able to parse the body with an arena that fits one
+     * weather tree. Holding the outer wire tree during dispatch wastes that
+     * headroom and reproduces the physical watch's weather allocation failure. */
+    reset(); assert(zsw_ble_http_get("http://fixture/weather", callback) == 0);
+    cJSON *wire = cJSON_CreateObject();
+    cJSON_AddStringToObject(wire, "t", "http");
+    cJSON_AddNumberToObject(wire, "id", sent_id);
+    cJSON_AddStringToObject(wire, "resp", weather_fixture);
+    char *packet = cJSON_PrintUnformatted(wire); assert(packet);
+    cJSON_Delete(wire);
+    cJSON_Hooks hooks = { .malloc_fn = arena_malloc, .free_fn = arena_free };
+    arena_limit = SIZE_MAX; cJSON_InitHooks(&hooks);
+    cJSON *weather = cJSON_Parse(weather_fixture); assert(weather);
+    cJSON_Delete(weather); assert(arena_used == 0 && arena_peak > 1000);
+    arena_limit = arena_peak + 64; arena_peak = 0; parse_weather_consumer = true;
+    assert(parse_httpstate(packet, strlen(packet)) == 0);
+    assert(callback_count == 1 && last_status == BLE_HTTP_STATUS_OK && arena_used == 0);
+    parse_weather_consumer = false; cJSON_InitHooks(NULL); free(packet);
     return 0;
 }
