@@ -137,6 +137,15 @@ menu "ZSWatch"
     endmenu
 
     menu "Testing"
+        config ZSW_COMPANION_HTTP_PROBE
+            bool "Enable fixed companion HTTP lab probes"
+            depends on SHELL && BT
+            default n
+            help
+              Adds an explicit http_probe shell command for a fixed Android
+              loopback fixture and the existing Trivia endpoint. Uses the
+              normal BLE HTTP client; does not change product app behavior.
+
         config ZSW_TEST_SKIP_ONBOARDING
             bool "Skip onboarding wizard on first boot"
             default n

@@ -7,6 +7,7 @@ target_sources(app PRIVATE ble_cts.c)
 target_sources(app PRIVATE gadgetbridge/ble_gadgetbridge.c gadgetbridge/ble_find_device.c)
 target_sources_ifdef(CONFIG_LOG app PRIVATE ble_log_backend.c)
 target_sources(app PRIVATE ble_http.c)
+target_sources_ifdef(CONFIG_ZSW_COMPANION_HTTP_PROBE app PRIVATE ble_http_probe.c)
 target_sources(app PRIVATE zsw_gatt_sensor_server.c)
 target_sources(app PRIVATE chronos/ble_chronos.c)
 
