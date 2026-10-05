@@ -11,7 +11,7 @@
 #include <zephyr/sys/crc.h>
 #include "ble/gadgetbridge/ble_voice_result_receipt.h"
 
-static int write_fault, rename_fault;
+static int write_fault, rename_fault, stat_fault, unlink_fault;
 static const char *mapped(const char *path) { return path + strlen("/user/"); }
 static int checked(int rc) { return rc < 0 ? -errno : rc; }
 void fs_file_t_init(struct fs_file_t *file) { file->fd = -1; }
@@ -37,7 +37,11 @@ int fs_rename(const char *from, const char *to)
     if (rename_fault) { rename_fault = 0; return -EIO; }
     return checked(rename(mapped(from), mapped(to)));
 }
-int fs_unlink(const char *path) { return checked(unlink(mapped(path))); }
+int fs_unlink(const char *path)
+{
+    if (unlink_fault) { unlink_fault = 0; return -EIO; }
+    return checked(unlink(mapped(path)));
+}
 int fs_mkdir(const char *path) { return checked(mkdir(mapped(path), 0700)); }
 int fs_opendir(struct fs_dir_t *dir, const char *path)
 {
@@ -54,6 +58,15 @@ int fs_readdir(struct fs_dir_t *dir, struct fs_dirent *entry)
     return 0;
 }
 int fs_closedir(struct fs_dir_t *dir) { return checked(closedir(dir->dir)); }
+int fs_stat(const char *path, struct fs_dirent *entry)
+{
+    if (stat_fault) { return -EIO; }
+    struct stat info;
+    int rc = stat(mapped(path), &info);
+    if (rc < 0) { return -errno; }
+    entry->type = S_ISREG(info.st_mode) ? FS_DIR_ENTRY_FILE : 0;
+    return 0;
+}
 
 int main(void)
 {
@@ -61,6 +74,11 @@ int main(void)
     const char *id = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     const char *sha = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
     struct zsw_voice_memo_result_event event = {.title = "Owned reminder", .filename = "owned", .is_draft = true};
+    assert(mkdir("recordings", 0700) == 0);
+    int audio = open("recordings/owned.zsw_opus", O_CREAT | O_WRONLY, 0600);
+    assert(audio >= 0 && close(audio) == 0);
+    audio = open("recordings/retained.zsw_opus", O_CREAT | O_WRONLY, 0600);
+    assert(audio >= 0 && close(audio) == 0);
     assert(crc32_ieee((const uint8_t *)"123456789", 9) == 0xcbf43926U);
     assert(ble_voice_result_accept("../bad", id, sha, 1, &event) == -EINVAL);
     write_fault = 1;
@@ -89,9 +107,29 @@ int main(void)
     for (unsigned i = 0; i < 50; i++) {
         char other[65];
         snprintf(other, sizeof(other), "%064x", i);
+        strcpy(event.filename, i == 49 ? "retained" : "owned");
         assert(ble_voice_result_accept(other, id, sha, 1, &event) == 1);
     }
+    strcpy(event.filename, "owned");
     assert(ble_voice_result_accept(key, id, sha, 1, &event) == -ENOSPC);
-    puts("Receipt recovery, duplicate, conflict, corruption and capacity checks passed");
+    assert(unlink("recordings/owned.zsw_opus") == 0);
+    stat_fault = 1;
+    assert(ble_voice_result_accept(key, id, sha, 1, &event) == -ENOSPC);
+    stat_fault = 0;
+    unlink_fault = 1;
+    assert(ble_voice_result_accept(key, id, sha, 1, &event) == -EIO);
+    // Corruption cannot turn an orphan into permission to erase a receipt.
+    snprintf(path, sizeof(path), "voice_results/%064x.bin", 0);
+    fd = open(path, O_WRONLY);
+    assert(fd >= 0 && write(fd, "corrupt", 7) == 7 && close(fd) == 0);
+    assert(ble_voice_result_accept(key, id, sha, 1, &event) == 1);
+    assert(access("recordings/retained.zsw_opus", F_OK) == 0);
+    char retained_key[65];
+    snprintf(retained_key, sizeof(retained_key), "%064x", 49);
+    strcpy(event.filename, "retained");
+    assert(ble_voice_result_accept(retained_key, id, sha, 1, &event) == 0);
+    snprintf(retained_key, sizeof(retained_key), "%064x", 0);
+    assert(ble_voice_result_accept(retained_key, id, sha, 1, &event) == -EIO);
+    puts("Receipt recovery, deduplication, corruption, capacity and deleted-audio cleanup checks passed");
     return 0;
 }

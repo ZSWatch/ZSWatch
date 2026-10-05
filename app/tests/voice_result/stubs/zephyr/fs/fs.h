@@ -23,3 +23,4 @@ int fs_mkdir(const char *path);
 int fs_opendir(struct fs_dir_t *dir, const char *path);
 int fs_readdir(struct fs_dir_t *dir, struct fs_dirent *entry);
 int fs_closedir(struct fs_dir_t *dir);
+int fs_stat(const char *path, struct fs_dirent *entry);

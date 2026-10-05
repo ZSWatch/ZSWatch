@@ -6,6 +6,8 @@
 
 /* 1: new durable receipt; 0: identical accepted duplicate; negative: rejected.
  * Acceptance stores a result draft, never creates a calendar/alarm action.
+ * At capacity, receipts for deleted watch audio may be reclaimed. Receipts for
+ * retained audio are never evicted; the phone owns external-action deduplication.
  */
 int ble_voice_result_accept(const char *recording_key, const char *result_id,
                            const char *result_sha256, uint32_t generation,

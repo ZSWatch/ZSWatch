@@ -28,7 +28,60 @@ static bool valid_hash(const char *value)
     return strspn(value, "0123456789abcdef") == 64;
 }
 
-static int capacity(void)
+static int read_receipt(const char *path, struct voice_receipt *receipt)
+{
+    struct fs_file_t file;
+    fs_file_t_init(&file);
+    int rc = fs_open(&file, path, FS_O_READ);
+    if (rc < 0) {
+        return rc;
+    }
+    int bytes = fs_read(&file, receipt, sizeof(*receipt));
+    unsigned char trailing;
+    int tail = bytes == sizeof(*receipt) ? fs_read(&file, &trailing, 1) : -EIO;
+    int closed = fs_close(&file);
+    return bytes == sizeof(*receipt) && tail == 0 && closed == 0 && receipt->magic == RECEIPT_MAGIC &&
+           receipt->checksum == crc32_ieee((const uint8_t *)receipt, offsetof(struct voice_receipt, checksum)) ? 0 : -EIO;
+}
+
+/* Explicitly deleting watch audio ends retention of its draft receipt. Never
+ * evict a receipt for retained audio, or infer deletion from an I/O error.
+ * External calendar/Clock actions are owned and deduplicated by the phone.
+ */
+static int prune_deleted_recordings(void)
+{
+    struct fs_dir_t dir;
+    struct fs_dirent entry;
+    fs_dir_t_init(&dir);
+    int rc = fs_opendir(&dir, RECEIPT_DIR);
+    if (rc < 0) {
+        return rc;
+    }
+    while ((rc = fs_readdir(&dir, &entry)) == 0 && entry.name[0]) {
+        if (entry.type != FS_DIR_ENTRY_FILE || strlen(entry.name) != 68 || strcmp(entry.name + 64, ".bin")) {
+            continue;
+        }
+        char path[100], audio[80];
+        struct voice_receipt receipt;
+        snprintf(path, sizeof(path), RECEIPT_DIR "/%.68s", entry.name);
+        if (read_receipt(path, &receipt) < 0 ||
+            !memchr(receipt.event.filename, '\0', sizeof(receipt.event.filename)) ||
+            !receipt.event.filename[0] ||
+            strspn(receipt.event.filename, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") !=
+            strlen(receipt.event.filename)) {
+            continue; /* Keep corrupt/unknown receipts rather than resetting deduplication. */
+        }
+        snprintf(audio, sizeof(audio), "/user/recordings/%s.zsw_opus", receipt.event.filename);
+        struct fs_dirent source;
+        if (fs_stat(audio, &source) == -ENOENT && (rc = fs_unlink(path)) < 0) {
+            break;
+        }
+    }
+    int closed = fs_closedir(&dir);
+    return rc < 0 ? rc : closed;
+}
+
+static int capacity(bool prune)
 {
     struct fs_dir_t dir;
     struct fs_dirent entry;
@@ -45,7 +98,17 @@ static int capacity(void)
         }
     }
     int close_rc = fs_closedir(&dir);
-    return rc < 0 ? rc : close_rc < 0 ? close_rc : count < RECEIPT_LIMIT ? 0 : -ENOSPC;
+    if (rc < 0 || close_rc < 0) {
+        return rc < 0 ? rc : close_rc;
+    }
+    if (count < RECEIPT_LIMIT) {
+        return 0;
+    }
+    if (prune) {
+        rc = prune_deleted_recordings();
+        return rc < 0 ? rc : capacity(false);
+    }
+    return -ENOSPC;
 }
 
 int ble_voice_result_accept(const char *recording_key, const char *result_id,
@@ -62,17 +125,9 @@ int ble_voice_result_accept(const char *recording_key, const char *result_id,
     struct voice_receipt previous = {0};
     struct fs_file_t file;
     fs_file_t_init(&file);
-    int rc = fs_open(&file, path, FS_O_READ);
+    int rc = read_receipt(path, &previous);
     bool exists = rc == 0;
     if (exists) {
-        int bytes = fs_read(&file, &previous, sizeof(previous));
-        unsigned char trailing;
-        int tail = bytes == sizeof(previous) ? fs_read(&file, &trailing, 1) : -EIO;
-        int closed = fs_close(&file);
-        if (bytes != sizeof(previous) || tail != 0 || closed < 0 || previous.magic != RECEIPT_MAGIC ||
-            previous.checksum != crc32_ieee((const uint8_t *)&previous, offsetof(struct voice_receipt, checksum))) {
-            return -EIO; /* Never silently reset a corrupt deduplication receipt. */
-        }
         if (generation < previous.generation) {
             return -ESTALE;
         }
@@ -88,7 +143,7 @@ int ble_voice_result_accept(const char *recording_key, const char *result_id,
     if (rc < 0 && rc != -EEXIST) {
         return rc;
     }
-    if (!exists && (rc = capacity()) < 0) {
+    if (!exists && (rc = capacity(true)) < 0) {
         return rc;
     }
     struct voice_receipt receipt = {.magic = RECEIPT_MAGIC, .generation = generation};
