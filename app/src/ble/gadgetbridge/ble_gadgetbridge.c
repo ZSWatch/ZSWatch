@@ -30,6 +30,7 @@
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
 #include "events/zsw_voice_memo_event.h"
+#include "ble_voice_result_receipt.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
@@ -797,6 +798,7 @@ static int parse_voice_memo_command(char *data, int len)
 
         cJSON_AddStringToObject(resp, "t", "voice_memo");
         cJSON_AddStringToObject(resp, "action", "list_result");
+        cJSON_AddNumberToObject(resp, "result_ack_version", 1);
 
         cJSON *arr = cJSON_AddArrayToObject(resp, "recordings");
         for (int i = 0; i < count; i++) {
@@ -869,6 +871,46 @@ static int parse_voice_memo_command(char *data, int len)
         }
         if (cJSON_IsString(dt_obj)) {
             strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
+        }
+        if (cJSON_HasObjectItem(root, "version")) {
+            cJSON *version = cJSON_GetObjectItem(root, "version");
+            cJSON *generation = cJSON_GetObjectItem(root, "generation");
+            cJSON *key = cJSON_GetObjectItem(root, "recording_key");
+            cJSON *id = cJSON_GetObjectItem(root, "result_id");
+            cJSON *sha = cJSON_GetObjectItem(root, "result_sha256");
+            result_evt.is_draft = cJSON_IsTrue(cJSON_GetObjectItem(root, "draft"));
+            if (!cJSON_IsNumber(version) || version->valuedouble != 1 ||
+                !cJSON_IsNumber(generation) || generation->valuedouble < 1 || generation->valuedouble > UINT32_MAX ||
+                floor(generation->valuedouble) != generation->valuedouble ||
+                !cJSON_IsString(key) || !cJSON_IsString(id) || !cJSON_IsString(sha) ||
+                !cJSON_IsString(fn_obj) || strlen(fn_obj->valuestring) >= sizeof(result_evt.filename) ||
+                strlen(title_obj->valuestring) >= sizeof(result_evt.title) ||
+                !cJSON_IsString(atype_obj) || strlen(atype_obj->valuestring) >= sizeof(result_evt.action_type) ||
+                !cJSON_IsString(dt_obj) || strlen(dt_obj->valuestring) >= sizeof(result_evt.datetime)) {
+                cJSON_Delete(root);
+                return -EINVAL;
+            }
+            int accepted = ble_voice_result_accept(key->valuestring, id->valuestring, sha->valuestring,
+                                                  (uint32_t)generation->valuedouble, &result_evt);
+            if (accepted < 0) {
+                LOG_WRN("voice_memo: result receipt rejected: %d", accepted);
+                cJSON_Delete(root);
+                return accepted;
+            }
+            if (accepted == 1) {
+                zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
+            }
+            /* ACK durable acceptance; it does not claim external action creation. */
+            char ack[360];
+            int length = snprintf(ack, sizeof(ack),
+                                  "{\"t\":\"voice_memo\",\"action\":\"result_ack\",\"version\":1,"
+                                  "\"result_id\":\"%s\",\"recording_key\":\"%s\",\"result_sha256\":\"%s\","
+                                  "\"generation\":%u,\"status\":\"accepted\"}",
+                                  id->valuestring, key->valuestring, sha->valuestring, (uint32_t)generation->valuedouble);
+            int rc = length > 0 && length < sizeof(ack) ? ble_comm_send(ack, length) : -ENOSPC;
+            LOG_INF("voice_memo: durable result %s, ACK=%d", accepted ? "new" : "duplicate", rc);
+            cJSON_Delete(root);
+            return rc;
         }
         zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
 

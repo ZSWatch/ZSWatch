@@ -48,6 +48,7 @@ static char pending_title[128];
 static char pending_filename[32];
 static char pending_action_type[20];
 static char pending_datetime[32];
+static bool pending_draft;
 
 bool zsw_voice_memo_popup_is_shown(void)
 {
@@ -79,6 +80,12 @@ static void undo_btn_cb(lv_event_t *e)
     LOG_INF("Undo requested for: %s", popup_filename);
     zsw_recording_manager_delete(popup_filename);
     ble_gadgetbridge_send_voice_memo_undo(popup_filename);
+    dismiss_popup();
+}
+
+static void close_btn_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
     dismiss_popup();
 }
 
@@ -117,6 +124,9 @@ static void show_popup_async(void *data)
         type_icon = LV_SYMBOL_BELL;
         type_label = "Reminder";
         type_color = lv_color_make(0xab, 0x47, 0xbc); /* purple */
+    }
+    if (pending_draft) {
+        type_label = "Review on phone";
     }
 
     /* Type icon */
@@ -169,7 +179,7 @@ static void show_popup_async(void *data)
     lv_obj_set_style_bg_color(undo_btn, zsw_color_red(), 0);
     lv_obj_set_style_radius(undo_btn, 22, 0);
     lv_obj_align(undo_btn, LV_ALIGN_BOTTOM_MID, 0, -30);
-    lv_obj_add_event_cb(undo_btn, undo_btn_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(undo_btn, pending_draft ? close_btn_cb : undo_btn_cb, LV_EVENT_CLICKED, NULL);
 
     /* Enable notification mode so buttons can reach the Undo button */
     zsw_ui_controller_set_notification_mode();
@@ -177,7 +187,7 @@ static void show_popup_async(void *data)
     lv_group_focus_obj(undo_btn);
 
     lv_obj_t *undo_label = lv_label_create(undo_btn);
-    lv_label_set_text(undo_label, "Undo");
+    lv_label_set_text(undo_label, pending_draft ? "Close" : "Undo");
     lv_obj_set_style_text_font(undo_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(undo_label, lv_color_white(), 0);
     lv_obj_center(undo_label);
@@ -196,6 +206,7 @@ static void show_popup_work_fn(struct k_work *work)
 static void on_voice_memo_result(const struct zbus_channel *chan)
 {
     const struct zsw_voice_memo_result_event *evt = zbus_chan_const_msg(chan);
+    pending_draft = evt->is_draft;
 
     strncpy(pending_title, evt->title, sizeof(pending_title) - 1);
     pending_title[sizeof(pending_title) - 1] = '\0';
