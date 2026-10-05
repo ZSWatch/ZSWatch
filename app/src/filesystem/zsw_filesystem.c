@@ -31,6 +31,12 @@ LOG_MODULE_REGISTER(zsw_filesystem, LOG_LEVEL_DBG);
 #define PARTITION_NODE DT_NODELABEL(lvgl_lfs)
 FS_FSTAB_DECLARE_ENTRY(PARTITION_NODE);
 
+/* A 24-bit QSPI address wraps above 16 MiB into other partitions. */
+BUILD_ASSERT(DT_REG_ADDR(DT_NODELABEL(user_storage)) +
+             DT_REG_SIZE(DT_NODELABEL(user_storage)) <= 0x1000000 ||
+             DT_PROP_OR(DT_PARENT(DT_PARENT(DT_NODELABEL(user_storage))), address_size_32, 0),
+             "User storage above 16 MiB requires 32-bit flash addressing");
+
 struct fs_mount_t *mountpoint = &FS_FSTAB_ENTRY(PARTITION_NODE);
 
 /* Second LittleFS partition for user data (settings, recordings, etc.)
