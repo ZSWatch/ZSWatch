@@ -31,6 +31,7 @@
 #include "managers/zsw_recording_manager.h"
 #include "events/zsw_voice_memo_event.h"
 #include "ble_voice_result_receipt.h"
+#include "ble_voice_recording_list.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
@@ -783,46 +784,30 @@ static int parse_voice_memo_command(char *data, int len)
     if (strcmp(action, "list") == 0) {
         cJSON_Delete(root);
 
-        /* Build JSON response with recording list */
-        zsw_recording_entry_t entries[50];
+        /* Do not retain a cJSON node tree for every file on the libc heap.
+         * Use one bounded transient buffer from the kernel heap instead. */
+        zsw_recording_entry_t entries[ZSW_RECORDING_MAX_FILES];
         int count = zsw_recording_manager_list(entries, ARRAY_SIZE(entries));
         if (count < 0) {
             LOG_ERR("voice_memo: list failed: %d", count);
-            count = 0;
+            return count;
         }
 
-        cJSON *resp = cJSON_CreateObject();
-        if (resp == NULL) {
+        char *response = k_malloc(BLE_VOICE_RECORDING_LIST_CAPACITY);
+        if (!response) {
             return -ENOMEM;
         }
-
-        cJSON_AddStringToObject(resp, "t", "voice_memo");
-        cJSON_AddStringToObject(resp, "action", "list_result");
-        cJSON_AddNumberToObject(resp, "result_ack_version", 1);
-
-        cJSON *arr = cJSON_AddArrayToObject(resp, "recordings");
-        for (int i = 0; i < count; i++) {
-            cJSON *entry = cJSON_CreateObject();
-            cJSON_AddStringToObject(entry, "filename", entries[i].filename);
-            cJSON_AddNumberToObject(entry, "duration_ms", entries[i].duration_ms);
-            cJSON_AddNumberToObject(entry, "size_bytes", entries[i].size_bytes);
-            cJSON_AddNumberToObject(entry, "timestamp", entries[i].timestamp);
-            cJSON_AddItemToArray(arr, entry);
+        int msg_len = ble_voice_recording_list_encode(entries, count, response, BLE_VOICE_RECORDING_LIST_CAPACITY);
+        if (msg_len < 0) {
+            LOG_ERR("voice_memo: list encoding failed: %d", msg_len);
+            k_free(response);
+            return msg_len;
         }
 
-        char *json_str = cJSON_PrintUnformatted(resp);
-        cJSON_Delete(resp);
-
-        if (json_str == NULL) {
-            LOG_ERR("voice_memo: JSON print failed");
-            return -ENOMEM;
-        }
-
-        int msg_len = strlen(json_str);
         LOG_INF("voice_memo: sending list_result (%d recordings, %d bytes)", count, msg_len);
-        ble_comm_send(json_str, msg_len);
-        cJSON_free(json_str);
-        return 0;
+        int sent = ble_comm_send(response, msg_len);
+        k_free(response);
+        return sent;
     }
 
     if (strcmp(action, "delete") == 0) {
