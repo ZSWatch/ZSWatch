@@ -1022,20 +1022,10 @@ static int parse_find_command(char *data, int len)
     return 0;
 }
 
-static int parse_data(char *data, int len)
+static int parse_data_utf8(char *data, int len)
 {
     int type_len;
     char *type;
-    uint8_t input_data_utf8[MAX_GB_PACKET_LENGTH];
-
-    // Only convert if data contains Gadgetbridge's non-standard encoding.
-    // Properly UTF-8 encoded data should pass through unchanged.
-    if (!is_valid_utf8(data, len)) {
-        memset(input_data_utf8, 0, sizeof(input_data_utf8));
-        // Convert data from Gadgetbridge into properly encoded text.
-        convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
-        data = input_data_utf8;
-    }
 
     type = extract_value_str("\"t\":", data, &type_len);
     if (type == NULL) {
@@ -1100,6 +1090,25 @@ static int parse_data(char *data, int len)
     }
 
     return 0;
+}
+
+static int parse_data(char *data, int len)
+{
+    if (is_valid_utf8(data, len)) {
+        return parse_data_utf8(data, len);
+    }
+
+    /* Receipt filesystem calls share sysworkq's stack with NUS parsing. Keep
+     * this large, rarely used conversion buffer off that stack. */
+    char *converted = k_calloc(MAX_GB_PACKET_LENGTH, 1);
+    if (converted == NULL) {
+        LOG_ERR("Failed to allocate Gadgetbridge UTF-8 conversion buffer");
+        return -ENOMEM;
+    }
+    convert_to_encoded_text(data, len, converted, MAX_GB_PACKET_LENGTH);
+    int rc = parse_data_utf8(converted, len);
+    k_free(converted);
+    return rc;
 }
 
 void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
