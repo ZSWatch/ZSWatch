@@ -246,11 +246,15 @@ static ssize_t on_read(struct bt_conn *conn, const struct bt_gatt_attr *attr, vo
 static ssize_t on_ccc_cfg_write(struct bt_conn *conn, const struct bt_gatt_attr *attr, uint16_t value)
 {
     ARG_UNUSED(conn);
-    ARG_UNUSED(attr);
-    ARG_UNUSED(value);
 
     // This callback is called when the peer actually writes to the CCCD.
     ignore_restored_ccc = false;
+
+    // A bonded peer may rewrite an already-restored enabled value. Zephyr
+    // does not call cfg_changed for that write, so restart notifications here.
+    if ((value & BT_GATT_CCC_NOTIFY) != 0U && !notif_enabled) {
+        on_ccc_cfg_changed(attr, value);
+    }
 
     return sizeof(value);
 }
