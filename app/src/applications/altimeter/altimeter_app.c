@@ -23,7 +23,6 @@
 
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
-#include "managers/zsw_power_manager.h"
 #include <ble/ble_http.h>
 #include "events/ble_event.h"
 #include "events/pressure_event.h"
@@ -32,6 +31,7 @@
 #include "history/zsw_history.h"
 #include <zsw_clock.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 
 LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 #define HTTP_REQUEST_URL_ALTIMETER_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,pressure_msl&models=best_match"
 #define ALTIMETER_CALIBRATION_INTERVAL_S (30 * 60)
 #define ALTIMETER_CALIBRATION_RETRY_INTERVAL_S (60)
+#define ALTIMETER_UI_REFRESH_INTERVAL_MS 250
 
 // Hypsometric formula constants (float32 to leverage the FPU)
 #define LAPSE_RATE     0.0065f  // ISA temperature lapse rate, K/m
@@ -84,11 +85,14 @@ typedef struct {
 // Functions needed for all applications
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group);
 static void altimeter_app_stop(void);
+static void altimeter_app_ui_available(void);
+static void altimeter_app_ui_unavailable(void);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void on_zbus_pressure_callback(const struct zbus_channel *chan);
 static void periodic_calibration_handler(struct k_work *work);
 static void http_rsp_cb(ble_http_status_code_t status, char *response);
-static void update_altimeter_ui(struct k_work *work);
+static void update_altimeter_ui(lv_timer_t *timer);
+static void copy_ui_snapshot(void);
 static void process_altimeter_work(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
 static void check_daily_floor_reset(void);
@@ -105,6 +109,12 @@ static altimeter_state_t alt_state = {
 static floor_count_state_t floor_state = { .last_reset_yday = -1 };
 static float chart_samples[HISTORY_SAMPLES];
 static zsw_history_t chart_history;
+static K_MUTEX_DEFINE(ui_data_mutex);
+static lv_timer_t *refresh_timer;
+static bool ui_data_pending;
+static bool ui_refresh_requested;
+static float snapshot_samples[HISTORY_SAMPLES];
+static altimeter_ui_data_t ui_snapshot;
 static altimeter_ui_data_t ui_data = {
     .altitude = 0.0f,
     .raw_pressure = 0.0f,
@@ -122,6 +132,8 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(altimeter_icon),
     .start_func = altimeter_app_start,
     .stop_func = altimeter_app_stop,
+    .ui_available_func = altimeter_app_ui_available,
+    .ui_unavailable_func = altimeter_app_ui_unavailable,
     .category = ZSW_APP_CATEGORY_SENSORS,
 };
 
@@ -138,7 +150,6 @@ ZBUS_CHAN_ADD_OBS(pressure_data_chan, altimeter_pressure_lis, 1);
 // ZBUS channel this app publishes calibrated altitude to
 ZBUS_CHAN_DECLARE(altitude_data_chan);
 K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler);
-K_WORK_DEFINE(ui_update_work, update_altimeter_ui);
 K_WORK_DEFINE(altimeter_work, process_altimeter_work);
 K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), 2, 4);
 
@@ -256,15 +267,36 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
     }
 }
 
-static void update_altimeter_ui(struct k_work *work)
+static void copy_ui_snapshot(void)
 {
-    ARG_UNUSED(work);
+    ui_snapshot = ui_data;
+    memcpy(snapshot_samples, chart_samples, sizeof(snapshot_samples));
+    ui_snapshot.history_data = snapshot_samples;
+}
 
-    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-        zsw_power_manager_reset_idle_timout();
+static void update_altimeter_ui(lv_timer_t *timer)
+{
+    ARG_UNUSED(timer);
+
+    if (app.current_state != ZSW_APP_STATE_UI_VISIBLE) {
+        return;
     }
-    altimeter_ui_update(&ui_data);
-    altimeter_ui_notify_data_ready();
+
+    k_mutex_lock(&ui_data_mutex, K_FOREVER);
+    if (!ui_data_pending && !ui_refresh_requested) {
+        k_mutex_unlock(&ui_data_mutex);
+        return;
+    }
+    bool fresh_data = ui_data_pending;
+    copy_ui_snapshot();
+    ui_data_pending = false;
+    ui_refresh_requested = false;
+    k_mutex_unlock(&ui_data_mutex);
+
+    altimeter_ui_update(&ui_snapshot);
+    if (fresh_data) {
+        altimeter_ui_notify_data_ready();
+    }
 }
 
 static void process_altimeter_work(struct k_work *work)
@@ -277,8 +309,10 @@ static void process_altimeter_work(struct k_work *work)
         if (work_item.type == ALTIMETER_WORK_CALIBRATION) {
             alt_state.target_ref_slp = work_item.pressure_msl_hpa;
             alt_state.temperature_k = work_item.temperature_2m_c + 273.15f;
+            k_mutex_lock(&ui_data_mutex, K_FOREVER);
             ui_data.is_calibrated = true;
-            k_work_submit(&ui_update_work);
+            ui_data_pending = true;
+            k_mutex_unlock(&ui_data_mutex);
             continue;
         }
 
@@ -292,7 +326,11 @@ static void process_altimeter_work(struct k_work *work)
         }
 
         float current_raw_pressure = work_item.pressure_pa / 100.0f;
-        ui_data.altitude = get_current_altitude(current_raw_pressure);
+        float altitude = get_current_altitude(current_raw_pressure);
+        update_floor_count(altitude);
+
+        k_mutex_lock(&ui_data_mutex, K_FOREVER);
+        ui_data.altitude = altitude;
         ui_data.raw_pressure = current_raw_pressure;
 
         if (current_raw_pressure > 0.0f) {
@@ -302,7 +340,6 @@ static void process_altimeter_work(struct k_work *work)
             ui_data.has_data = zsw_history_samples(&chart_history) > 0;
         }
 
-        update_floor_count(ui_data.altitude);
         ui_data.floors_up = floor_state.floors_up;
         ui_data.floors_down = floor_state.floors_down;
 
@@ -312,8 +349,9 @@ static void process_altimeter_work(struct k_work *work)
             .floors_up = floor_state.floors_up,
             .floors_down = floor_state.floors_down,
         };
+        ui_data_pending = true;
+        k_mutex_unlock(&ui_data_mutex);
         zbus_chan_pub(&altitude_data_chan, &alt_evt, K_MSEC(250));
-        k_work_submit(&ui_update_work);
     }
 }
 
@@ -387,7 +425,13 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 
     LOG_INF("Altimeter app started!");
     altimeter_ui_show(root);
-    altimeter_ui_update(&ui_data); // Show any stale data from a previous session immediately
+    k_mutex_lock(&ui_data_mutex, K_FOREVER);
+    copy_ui_snapshot();
+    ui_data_pending = false;
+    ui_refresh_requested = false;
+    k_mutex_unlock(&ui_data_mutex);
+    altimeter_ui_update(&ui_snapshot);
+    refresh_timer = lv_timer_create(update_altimeter_ui, ALTIMETER_UI_REFRESH_INTERVAL_MS, NULL);
 
     // Run the first calibration now, periodic_calibration_handler takes it from here
     k_work_reschedule(&altimeter_calibration_work, K_NO_WAIT);
@@ -396,7 +440,29 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 static void altimeter_app_stop(void)
 {
     LOG_INF("Altimeter app stopped!");
+    if (refresh_timer != NULL) {
+        lv_timer_del(refresh_timer);
+        refresh_timer = NULL;
+    }
     altimeter_ui_remove();
+}
+
+static void altimeter_app_ui_available(void)
+{
+    if (refresh_timer != NULL) {
+        k_mutex_lock(&ui_data_mutex, K_FOREVER);
+        ui_refresh_requested = true;
+        k_mutex_unlock(&ui_data_mutex);
+        lv_timer_resume(refresh_timer);
+        lv_timer_ready(refresh_timer);
+    }
+}
+
+static void altimeter_app_ui_unavailable(void)
+{
+    if (refresh_timer != NULL) {
+        lv_timer_pause(refresh_timer);
+    }
 }
 
 static int altimeter_app_add(void)
