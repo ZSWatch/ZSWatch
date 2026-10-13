@@ -6,19 +6,7 @@ export const imageNameMapping = {
   2: "App External (XIP)",
 };
 
-export const binaryFileNameToImageId = {
-  "app.internal.bin": 0,
-  "ipc_radio.bin": 1,
-  "app.external.bin": 2,
-};
-
-// Image number mapping for serial recovery mode (MCUBoot)
-// In recovery mode, images are uploaded to different slots
-export const binaryFileNameToImageIdSerialRecovery = {
-  "app.internal.bin": 1,
-  "ipc_radio.bin": 3,
-  "app.external.bin": 5,
-};
+export { binaryFileNameToImageId, binaryFileNameToImageIdSerialRecovery } from "./utils/imageSlots";
 
 // Hook to get GitHub config with token from Docusaurus context
 export const useGithubConfig = () => {

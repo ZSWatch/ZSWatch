@@ -1,103 +1,65 @@
-export const fetchArtifacts = async (githubConfig, numRuns = 5) => {
-  let firmwares = [];
-  try {
-    const { owner, repo, token } = githubConfig;
-    const fetchOptions = token
-      ? {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      : {};
+const headersFor = ({ token }) => ({ Accept: "application/vnd.github+json", ...(token ? { Authorization: `Bearer ${token}` } : {}) });
 
-    // Fetch recent runs plus explicitly grab the latest successful run on main
-    const [runsResponse, mainRunResponse] = await Promise.all([
-      fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=${Math.max(
-          numRuns * 2,
-          10,
-        )}`,
-        fetchOptions,
-      ),
-      fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=main&status=success&per_page=1`,
-        fetchOptions,
-      ),
-    ]);
+async function githubJson(config, path) {
+  const response = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}/${path}`, { headers: headersFor(config) });
+  if (!response.ok) {
+    if (response.status === 403 || response.status === 429) throw new Error("GitHub rate limit reached. Try refreshing later.");
+    throw new Error(`GitHub request failed (${response.status}). Try refreshing again.`);
+  }
+  return response.json();
+}
 
-    const runsData = await runsResponse.json();
-    const mainRunsData = await mainRunResponse.json();
+export const isFirmwareAsset = (name = "") => /(?:watchdk@1|zswatch@1|@5)/i.test(name) && !/\.sha256$/i.test(name);
+export const boardFromAsset = (name = "") => name.match(/(?:watchdk|zswatch(?:_legacy)?)@\d+/i)?.[0] || "";
+export const compatibleAssets = (assets, board) => board ? assets.filter((asset) => boardFromAsset(asset.name) === board) : assets;
 
-    const workflowRuns = runsData.workflow_runs || [];
-    const mainBranchRuns = mainRunsData.workflow_runs || [];
+export async function fetchReleases(config) {
+  const releases = await githubJson(config, "releases?per_page=20");
+  return releases.filter((release) => !release.draft).map((release) => ({
+    ...release,
+    assets: release.assets.filter((asset) => isFirmwareAsset(asset.name) && asset.name.toLowerCase().endsWith(".zip")),
+  })).filter((release) => release.assets.length);
+}
 
-    if (workflowRuns.length === 0 && mainBranchRuns.length === 0) {
-      console.log("No workflow runs found.");
-      return [];
-    }
-
-    console.log("Found", workflowRuns.length, "workflow runs.");
-
-    const successfulRuns = workflowRuns.filter(
-      (run) => run.conclusion === "success" && run.head_branch !== "gh-pages",
-    );
-    const latestMainRun = mainBranchRuns.find((run) => run.conclusion === "success");
-
-    // Ensure main is present by prepending it before trimming to numRuns
-    const runsWithMain = latestMainRun ? [latestMainRun, ...successfulRuns] : successfulRuns;
-    const uniqueRuns = runsWithMain.filter(
-      (run, index, arr) => arr.findIndex((other) => other.id === run.id) === index,
-    );
-    const latestRuns = uniqueRuns.slice(0, numRuns);
-    console.log(`Fetching artifacts from ${latestRuns.length} workflow runs (main prioritized)...`);
-
-    for (const run of latestRuns) {
-      console.log(`Processing workflow run: ${run.id} (${run.name})`, run);
-
-      const commitSha = run.head_sha || run.head_commit?.id || "";
-      const commitMessage = run.head_commit?.message || run.display_title || "";
-
-      // Step 3: Get the artifacts for the current workflow run
-      const artifactsResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/artifacts`,
-        token
-          ? {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          : {},
-      );
-      const artifactsData = await artifactsResponse.json();
-
-      if (!artifactsData.artifacts || artifactsData.artifacts.length === 0) {
-        console.log(`No artifacts found for workflow run: ${run.id}`);
-        continue;
-      }
-
-      const fwRun = {
-        branch: run.head_branch,
-        user: run.actor.login,
-        runId: run.id,
-        sha: commitSha,
-        commitMessage,
-        createdAt: run.created_at,
-        updatedAt: run.updated_at,
-        artifacts: artifactsData.artifacts.filter(
-          (artifact) => artifact.name.includes("watchdk@1") || artifact.name.includes("@5"),
-        ),
-      };
-
-      firmwares.push(fwRun);
-    }
-  } catch (error) {
-    console.error("Error fetching artifacts:", error);
+export async function fetchArtifacts(config, numRuns = 10) {
+  const [recent, main] = await Promise.all([
+    githubJson(config, "actions/runs?per_page=50&status=success"),
+    githubJson(config, "actions/runs?branch=main&status=success&per_page=10"),
+  ]);
+  const seenRuns = new Set();
+  const seenBranches = new Set();
+  const firmwares = [];
+  for (const run of [...(main.workflow_runs || []), ...(recent.workflow_runs || [])]) {
+    if (run.conclusion !== "success" || run.head_branch === "gh-pages" || seenRuns.has(run.id) || seenBranches.has(run.head_branch)) continue;
+    seenRuns.add(run.id);
+    const data = await githubJson(config, `actions/runs/${run.id}/artifacts?per_page=100`);
+    const artifacts = (data.artifacts || []).filter((artifact) => !artifact.expired && isFirmwareAsset(artifact.name));
+    if (!artifacts.length) continue;
+    seenBranches.add(run.head_branch);
+    firmwares.push({ branch: run.head_branch, user: run.actor?.login || "", runId: run.id, sha: run.head_sha || "", commitMessage: run.head_commit?.message || run.display_title || "", createdAt: run.created_at, artifacts });
+    if (firmwares.length >= numRuns) break;
   }
   return firmwares;
-};
+}
 
-export const downloadFirmware = (githubConfig, runId, artifactId) => {
-  const downloadUrl = `https://github.com/${githubConfig.owner}/${githubConfig.repo}/actions/runs/${runId}/artifacts/${artifactId}`;
-  console.log("Download URL:", downloadUrl);
-  window.location.href = downloadUrl;
-};
+export const artifactUrl = (config, runId, artifactId) => `https://github.com/${config.owner}/${config.repo}/actions/runs/${runId}/artifacts/${artifactId}`;
+
+// Release downloads may be blocked by GitHub's CORS policy. Always offer the
+// original link and local package picker as a fallback without leaving /update.
+export async function downloadRelease(asset, signal, onProgress) {
+  const response = await fetch(asset.browser_download_url, { signal });
+  if (!response.ok) throw new Error(`Release download failed (${response.status}).`);
+  const total = Number(response.headers.get("content-length")) || asset.size;
+  if (!response.body) return new File([await response.blob()], asset.name);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    onProgress(total ? Math.min(100, Math.floor(received / total * 100)) : null);
+  }
+  return new File(chunks, asset.name);
+}

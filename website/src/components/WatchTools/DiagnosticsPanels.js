@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { crashFrequencies, downloadFile, reportBytes, trafficText } from "./diagnostics";
 import styles from "./styles.module.css";
 
-const logLabels = { off: "Capture stopped", waiting: "Waiting for the watch’s first log…", streaming: "Receiving firmware logs", "no-data": "No framed logs received yet. The watch may be quiet or this firmware may not support live logging." };
+const logLabels = { off: "Watch logging stopped", waiting: "Waiting for the watch’s first log…", streaming: "Receiving firmware logs", "no-data": "No framed logs received yet. The watch may be quiet or this firmware may not support live logging." };
 
 export function LogsPanel({ tools, diagnostics }) {
   const [view, setView] = useState("logs");
@@ -35,48 +35,52 @@ export function LogsPanel({ tools, diagnostics }) {
   }
 
   return <section className={styles.diagnosticPanel} aria-labelledby="logs-title">
-    <div className={styles.libraryHeading}><div><p className={styles.eyebrow}>DIAGNOSTICS</p><h2 id="logs-title">Logs</h2></div><button className={styles.secondaryButton} disabled={!tools.connected || tools.busy} onClick={diagnostics.toggleLogs}>{active ? "Stop capture" : "Start capture"}</button></div>
-    <p className={styles.help} role="status">{tools.connected ? logLabels[diagnostics.logState] : "Connect your watch to capture live logs."}</p>
-    <p className={styles.help}>Capture continues while you view other tools. File transfers stop firmware log capture; start it again afterward.</p>
-    <div className={styles.toolbar} role="group" aria-label="Log source">
-      {[ ["logs", "Firmware logs"], ["traffic", "Bluetooth traffic"] ].map(([key, label]) => <button key={key} className={view === key ? styles.activeFilter : styles.filter} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
+    <div className={styles.panelHeading}>
+      <div><h2 id="logs-title">Logs</h2><p>Live firmware output and Bluetooth traffic.</p></div>
+      <button className={`${active ? styles.secondaryButton : styles.primaryButton} ${styles.captureButton}`} disabled={!tools.connected || tools.busy} onClick={diagnostics.toggleLogs}>{active ? "Stop logs" : "Start logs"}</button>
     </div>
-    <div className={styles.toolbar}>
-      <label className={styles.field}>Search<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter messages" /></label>
-      {view === "logs" ? <label className={styles.field}>Level<select value={level} onChange={(event) => setLevel(event.target.value)}>{["all", "debug", "info", "warning", "error", "unknown"].map((value) => <option key={value} value={value}>{value === "all" ? "All levels" : value}</option>)}</select></label> : <>
-        <label className={styles.field}>Direction<select value={direction} onChange={(event) => setDirection(event.target.value)}>{["all", "RX", "TX"].map((value) => <option key={value} value={value}>{value === "all" ? "RX + TX" : value}</option>)}</select></label>
-        <label className={styles.field}>Channel<select value={channel} onChange={(event) => setChannel(event.target.value)}>{["all", "NUS", "SMP"].map((value) => <option key={value} value={value}>{value === "all" ? "All channels" : value}</option>)}</select></label>
-        <label className={styles.check}><input type="checkbox" checked={hex} onChange={(event) => setHex(event.target.checked)} />Hex</label>
-      </>}
+    <div className={styles.logConsole}>
+      <div className={styles.consoleTools}>
+        <div className={styles.consoleTopbar}>
+          <div className={styles.sourceSwitch} role="group" aria-label="Log source">
+            {[["logs", "Firmware logs"], ["traffic", "Bluetooth traffic"]].map(([key, label]) => <button key={key} className={view === key ? styles.activeFilter : styles.filter} aria-pressed={view === key} onClick={() => setView(key)}>{label}</button>)}
+          </div>
+          <span role="status" title={tools.connected ? logLabels[diagnostics.logState] : "Connect your watch to capture live logs."} className={`${styles.captureBadge} ${tools.connected && diagnostics.logState === "streaming" ? styles.captureLive : ""}`}>{!tools.connected ? "Disconnected" : ({ off: "Stopped", waiting: "Starting", streaming: "Live", "no-data": "Waiting for logs" })[diagnostics.logState]}</span>
+        </div>
+        <div className={styles.consoleFilters}>
+          <label className={styles.field}>Search<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter messages…" /></label>
+          {view === "logs" ? <label className={styles.field}>Level<select value={level} onChange={(event) => setLevel(event.target.value)}>{["all", "debug", "info", "warning", "error", "unknown"].map((value) => <option key={value} value={value}>{value === "all" ? "All levels" : value}</option>)}</select></label> : <>
+            <label className={styles.field}>Direction<select value={direction} onChange={(event) => setDirection(event.target.value)}>{["all", "RX", "TX"].map((value) => <option key={value} value={value}>{value === "all" ? "RX + TX" : value}</option>)}</select></label>
+            <label className={styles.field}>Channel<select value={channel} onChange={(event) => setChannel(event.target.value)}>{["all", "NUS", "SMP"].map((value) => <option key={value} value={value}>{value === "all" ? "All channels" : value}</option>)}</select></label>
+            <label className={styles.check}><input type="checkbox" checked={hex} onChange={(event) => setHex(event.target.checked)} />Hex</label>
+          </>}
+        </div>
+        <div className={styles.consoleActions}>
+          <div><button className={styles.secondaryButton} onClick={togglePause}>{paused ? "Resume view" : "Pause view"}</button><label className={styles.check}><input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} />Auto-scroll</label></div>
+          <div>
+            <button className={styles.textButton} disabled={!entries.length} onClick={() => { diagnostics.clearBuffer(view); setSnapshot((old) => ({ ...old, [view]: [] })); }}>Clear</button>
+            <button className={styles.textButton} disabled={!visible.length} onClick={copy}>Copy</button>
+            <button className={styles.textButton} disabled={!visible.length} onClick={() => downloadFile(`zswatch-${view}.txt`, text)}>Download</button>
+          </div>
+        </div>
+      </div>
+      <div ref={viewport} className={styles.logViewport} tabIndex="0" aria-label={view === "logs" ? "Firmware log output" : "Bluetooth traffic output"}>
+        {visible.length ? visible.slice(-500).map((entry, i) => <pre key={i} className={entry.level === "error" ? styles.errorLine : entry.level === "warning" ? styles.warningLine : ""}>{view === "logs" ? entry.text : trafficText(entry, hex)}{entry.partial && <span className={styles.partialLine}> [partial line]</span>}</pre>) : <div className={styles.consoleEmpty}><strong>{query || level !== "all" ? "No matching messages" : "Ready for logs"}</strong><span>{query || level !== "all" ? "Change your filters to see more messages." : !tools.connected ? "Connect your watch, then start logs." : active ? "Waiting for messages from your watch…" : "Start logs to view your watch’s logs."}</span></div>}
+      </div>
+      <div className={styles.consoleFooter}>{visible.length} matching · {entries.length} buffered{diagnostics.dropped[view] ? ` · ${diagnostics.dropped[view]} older entries discarded` : ""}{paused ? " · View paused; capture continues" : ""}<span>Latest 500 matches shown</span></div>
     </div>
-    <div className={styles.toolbar}>
-      <button className={styles.secondaryButton} onClick={togglePause}>{paused ? "Resume view" : "Pause view"}</button>
-      <label className={styles.check}><input type="checkbox" checked={autoScroll} onChange={(event) => setAutoScroll(event.target.checked)} />Auto-scroll</label>
-      <button className={styles.textButton} disabled={!entries.length} onClick={() => { diagnostics.clearBuffer(view); setSnapshot((old) => ({ ...old, [view]: [] })); }}>Clear view</button>
-      <button className={styles.textButton} disabled={!visible.length} onClick={copy}>Copy filtered</button>
-      <button className={styles.textButton} disabled={!visible.length} onClick={() => downloadFile(`zswatch-${view}.txt`, text)}>Download text</button>
-    </div>
-    <p className={styles.help}>{visible.length} matching · {entries.length} buffered{diagnostics.dropped[view] ? ` · ${diagnostics.dropped[view]} older entries discarded` : ""}{paused ? " · View paused; capture continues" : ""}. Showing the latest 500 matches.</p>
-    <div ref={viewport} className={styles.logViewport} tabIndex="0" aria-label={view === "logs" ? "Firmware log output" : "Bluetooth traffic output"}>
-      {visible.length ? visible.slice(-500).map((entry, i) => <pre key={i} className={entry.level === "error" ? styles.errorLine : entry.level === "warning" ? styles.warningLine : ""}>{view === "logs" ? entry.text : trafficText(entry, hex)}</pre>) : <p className={styles.emptyState}>{query || level !== "all" ? "No messages match your filters." : "Captured messages will appear here."}</p>}
-    </div>
-    <p className={styles.help}>Filters apply to messages received by this page. Log levels compiled out of the firmware cannot be captured. Bluetooth traffic shows received notifications and successfully written packets.</p>
+    {diagnostics.logState === "no-data" && <p role="status" className={styles.notice}>No firmware logs received. Check Bluetooth traffic for incoming messages; this firmware may be quiet or lack BLE logging. Performance mode does not generate logs.</p>}
+    <details className={styles.captureInfo}><summary>About live logs</summary><p>Start logs enables the watch’s BLE log output. Stop logs disables that output and keeps the watch connected. Logging continues while you navigate between Tools and Firmware Update. File transfers stop firmware log capture; start it again afterward. Filters apply to received messages. Performance mode does not enable additional log levels. Only messages compiled into the firmware can be received. Bluetooth traffic shows received notifications and successfully written packets. Copy and Download include every filtered message in the buffer.</p></details>
     {diagnostics.localError && <p className={styles.error} role="alert">{diagnostics.localError}</p>}
   </section>;
 }
 
 export function CrashesPanel({ tools, diagnostics }) {
-  const fileInput = useRef(null);
   const report = diagnostics.selected;
   const frequencies = crashFrequencies(diagnostics.history);
   return <section className={styles.diagnosticPanel} aria-labelledby="crashes-title">
-    <div className={styles.libraryHeading}><div><p className={styles.eyebrow}>DIAGNOSTICS</p><h2 id="crashes-title">Crash reports</h2></div><button className={styles.secondaryButton} disabled={!tools.connected || tools.busy} onClick={diagnostics.checkCrash}>{tools.phase === "reading" ? "Downloading…" : "Check watch"}</button></div>
-    <p className={styles.help}>Download the crash stored on your watch, or open a saved dump. Reports stay on this computer. Current firmware keeps one crash dump on the watch.</p>
-    <div className={styles.toolbar}>
-      <button className={styles.secondaryButton} disabled={tools.busy} onClick={() => fileInput.current.click()}>Import dump</button>
-      <input ref={fileInput} hidden type="file" accept=".bin,.txt" onChange={(event) => { diagnostics.importCrash(event.target.files[0]); event.target.value = ""; }} />
-      <span className={styles.help}>ZSWatch binary or text dump · up to 1 MB</span>
-    </div>
+    <div className={styles.panelHeading}><div><h2 id="crashes-title">Crash reports</h2><p>Download a crash from your watch or view a report in browser history.</p></div><button className={`${styles.secondaryButton} ${styles.captureButton}`} disabled={!tools.connected || tools.busy} onClick={diagnostics.checkCrash}>{tools.phase === "reading" ? "Downloading…" : "Check watch"}</button></div>
+    <p className={styles.help}>Current firmware keeps one crash dump on the watch.</p>
     {diagnostics.crashStatus && <p className={styles.notice} role="status">{diagnostics.crashStatus}</p>}
     {diagnostics.localError && <p className={styles.error} role="alert">{diagnostics.localError}</p>}
     {report ? <div className={styles.reportCard}>
@@ -97,7 +101,7 @@ export function CrashesPanel({ tools, diagnostics }) {
         {diagnostics.canErase && <button className={styles.dangerButton} disabled={tools.busy} onClick={diagnostics.eraseCrash}>Erase from watch…</button>}
       </div>
       <details><summary>Dump contents</summary><pre className={styles.dumpText}>{report.text}</pre></details>
-    </div> : <p className={styles.emptyState}>Check your watch or import a dump to view a report.</p>}
+    </div> : <p className={styles.emptyState}>Check your watch or select a report from browser history.</p>}
     <div className={styles.reportCard}>
       <h3>Browser history <span className={styles.badge}>{diagnostics.history.length} unique reports</span></h3>
       <p className={styles.help}>Up to 20 reports are kept in this browser, within a storage limit. Repeated downloads of the same dump count once. Download reports you want to keep permanently.</p>

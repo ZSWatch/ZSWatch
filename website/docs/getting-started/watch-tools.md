@@ -72,8 +72,9 @@ and firmware details describe the watch at download time; the firmware may have
 changed since the crash. Some crashes have no filename or line number.
 
 Use **Download original** to preserve the exact downloaded file, or **Download
-text** for its readable dump contents. **Import dump** opens either format locally
-without connecting a watch. A report's raw dump is available under **Dump contents**.
+text** for its readable dump contents. A report's raw dump is available under
+**Dump contents**. Previously downloaded reports can be viewed in browser history
+without connecting a watch.
 
 Browser history keeps up to 20 unique reports within a storage limit. Repeated
 downloads of the same dump count once. Location counts summarize these unique

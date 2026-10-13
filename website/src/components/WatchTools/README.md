@@ -20,8 +20,14 @@ Only after all bytes are acknowledged does it send
 `ok: true`. Restoring uses `action: "reset"` and awaits `reset_result`.
 No firmware images are uploaded and no reboot command is sent.
 
-SMP is released while editing and after transfer. Cleanup checks the connection
-generation so a stale operation cannot disable a new connection's SMP service.
+The standalone manager releases SMP while editing and after transfer. Cleanup
+checks the connection generation so a stale operation cannot disable a new
+connection's SMP service. The website's shared session keeps SMP enabled after
+connecting for firmware operations. An idle visible updater or
+tools page refreshes that enabled session every 60 seconds, ahead of firmware's
+180-second timeout. Hidden pages stop refreshing it, and returning after a long
+gap renews GATT subscriptions. Intentional SMP release after tools operations and
+live log capture are respected; the heartbeat does not re-enable those sessions.
 Before each transfer, reconnect after enabling SMP: unregistering and recreating
 the service invalidates the watch's notification subscription even when the
 client still exposes a cached characteristic.
@@ -49,7 +55,11 @@ interaction and screenshot review remain separate checks.
 NUS firmware logging uses `GB({"t":"log","status":true/false})`. There is no
 acknowledgement on main, so capture stays pending until a complete
 `<BLELOG>…</BLELOG>` frame arrives. The stream reader separates framed logs from
-JSON messages and handles fragmented tags and UTF-8. Firmware logs cannot resolve
+JSON messages and handles fragmented tags and UTF-8. A separate line reader
+joins lines spanning multiple 256-byte firmware output frames, retaining severity
+and removing ANSI colors after reassembly. Stopping flushes the last partial line;
+clearing resets pending text. Unfinished lines are bounded to 16 KB. Capture startup
+waits past main firmware’s three-second connection grace period. Firmware logs cannot resolve
 watchface command promises. Log buffers retain 2,000 lines, traffic retains 1,000
 packets, and the UI renders the latest 500 filtered matches. Transfers stop live
 capture before reconnecting to SMP.
@@ -61,7 +71,10 @@ timeouts, invalid replies and disconnects remain errors. File READ responses mus
 not enter the shared transport's legacy upload loop.
 
 Legacy crash files have a 72-byte binary summary followed by Zephyr dump text.
-Plain text dumps also import. Missing filenames and line 0 remain unavailable.
+Plain text dumps are also supported when downloaded from the watch. Missing
+filenames and line 0 remain unavailable. Crash reports are fetched from the
+watch; there is no local file import. Previously downloaded reports can be viewed
+in browser history without a connected watch.
 Browser history uses localStorage, retains up to 20 reports within 3 MB of
 serialized storage, and deduplicates normalized text with SHA-256. Raw exports
 preserve every byte. Firmware metadata describes the device at download time,
@@ -84,3 +97,46 @@ traffic was captured. Logging and SMP were disabled before disconnecting. No dum
 was erased, no crash triggered, and no firmware flashed. Erase is covered by
 protocol tests, including refusal when the dump has changed; real erase was not
 tested because the stored crash was preserved.
+
+The updated line reader was checked on the attached WatchDK on 2026-10-01:
+starting capture immediately after connect received and assembled two firmware
+log lines with parsed severity, and stopping capture returned to the stopped
+state. This check used the production manager through the BlueZ adapter; it
+did not flash firmware or alter the stored crash dump.
+
+
+The watch session is owned by `src/theme/Root.js`, shared with Firmware Update.
+Leaving Tools keeps the connection and diagnostics buffers alive. Firmware
+operations stop log capture before enabling SMP; navigation is blocked during
+Tools transfers/commands and firmware updates. The UI uses the shared site
+palette and translucent dark surfaces from the firmware page.
+
+Start logs / Stop logs toggle the watch’s BLE logging backend; Pause view only
+freezes the display. Visiting Firmware Update no longer prepares SMP or stops
+logging. File operations still stop logging to avoid concurrent protocol output.
+NUS subscriptions are explicitly renewed on reconnect and before background
+commands. Renewal clears incomplete frames; a new BLELOG opening tag also
+resynchronizes a damaged log stream without trusting JSON within the damaged log.
+Performance mode on the watch does not enable log levels compiled out of firmware.
+
+Latest verification (2026-10-01): 67 firmware/tools/diagnostics tests and the
+production build pass. The revised production manager received four real
+firmware lines through BlueZ. A background upload received `apply_result` with
+`ok: true`; its subsequent readback hit a GATT Database Out Of Sync rejection,
+and cleanup restored the backed-up original background with an acknowledgement.
+The explicit ATT rejection now has a bounded retry and regression coverage.
+A repeat hardware run timed out before connecting. After reset, UART reported
+`Unable to find bootable image` and serial recovery mode. Internal app flash
+matches the earlier 1 MB backup byte for byte, including a valid image SHA-256.
+No firmware was flashed. The final complete hardware rerun remains blocked by
+that boot failure; do not describe it as passed.
+
+Verification on 2026-10-02: 82 firmware/tools/diagnostics tests pass. Discovery
+coverage includes existing grants, chooser fallback, optional advertisements,
+revocation/obsolete responses and blocked storage. SMP tests cover idle refresh,
+expired services, intentional disable, log capture, transfers and queued NUS
+commands across disconnects. A temporary localhost browser harness exercised the
+production connection hook against simulated hardware: page-load prefetch,
+reuse of the saved device, the real 60-second timer, resume after expiry, and
+suppression during logging passed. The harness was removed afterward. These
+checks do not resolve the hardware boot failure or replace a real-watch retest.

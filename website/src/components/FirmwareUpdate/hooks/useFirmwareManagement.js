@@ -1,35 +1,65 @@
-import { useState } from "react";
-import { fetchArtifacts, downloadFirmware } from "../utils/githubApi";
+import { useEffect, useRef, useState } from "react";
+import { fetchArtifacts, fetchReleases, downloadRelease } from "../utils/githubApi";
+import { demoBuilds, demoReleases, githubDemoEnabled } from "../utils/githubDemo";
 
-export const useFirmwareManagement = (githubConfig) => {
+export const useFirmwareManagement = (githubConfig, loadFile) => {
   const [firmwares, setFirmwares] = useState([]);
+  const [releases, setReleases] = useState([]);
   const [isFetchingFirmwares, setIsFetchingFirmwares] = useState(false);
+  const [isFetchingReleases, setIsFetchingReleases] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [downloadStatus, setDownloadStatus] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [fallbackAsset, setFallbackAsset] = useState(null);
+  const [demoMode, setDemoMode] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
+  const downloadRef = useRef(null);
+  const fetchingRef = useRef(new Set());
+  useEffect(() => () => downloadRef.current?.abort(), []);
+  useEffect(() => { setDemoMode(githubDemoEnabled()); refresh("releases"); }, []);
 
-  const fetchAndSetFirmwares = async (numToFetch) => {
-    setIsFetchingFirmwares(true);
-    const fetchedFirmwares = await fetchArtifacts(githubConfig, numToFetch);
-    console.log("Fetched firmwares:", fetchedFirmwares);
-    if (fetchedFirmwares) {
-      setFirmwares(fetchedFirmwares);
-    }
-    setIsFetchingFirmwares(false);
-  };
-
-  const downloadAndFlashFirmware = async (runId, artifactId, setFileStatus) => {
+  const refresh = async (source) => {
+    if (fetchingRef.current.has(source)) return;
+    fetchingRef.current.add(source);
+    const setFetching = source === "releases" ? setIsFetchingReleases : setIsFetchingFirmwares;
+    setFetching(true);
+    setErrors((previous) => ({ ...previous, [source]: "" }));
     try {
-      setFileStatus("Downloading firmware...");
-      setFileStatus("Firmware download started. Please check your browser's downloads.");
-      downloadFirmware(githubConfig, runId, artifactId);
+      const items = githubDemoEnabled()
+        ? (source === "releases" ? demoReleases : demoBuilds)
+        : (source === "releases" ? await fetchReleases(githubConfig) : await fetchArtifacts(githubConfig));
+      (source === "releases" ? setReleases : setFirmwares)(items);
     } catch (error) {
-      console.error("Error downloading or flashing firmware:", error);
-      setFileStatus("Failed to download firmware.");
-    }
+      setErrors((previous) => ({ ...previous, [source]: error.message }));
+    } finally { setFetching(false); fetchingRef.current.delete(source); }
   };
 
-  return {
-    firmwares,
-    isFetchingFirmwares,
-    fetchAndSetFirmwares,
-    downloadAndFlashFirmware,
+  const selectRelease = async (asset) => {
+    if (asset.demo && githubDemoEnabled()) {
+      setSelectedAssetId(asset.id);
+      setFallbackAsset(null);
+      setDownloadStatus("");
+      return;
+    }
+    if (downloadRef.current) return;
+    const controller = new AbortController();
+    downloadRef.current = controller;
+    setIsDownloading(true);
+    setFallbackAsset(null);
+    setDownloadStatus(`Downloading ${asset.name}...`);
+    try {
+      const file = await downloadRelease(asset, controller.signal, (percentage) => setDownloadStatus(`Downloading ${asset.name}${percentage === null ? "..." : `: ${percentage}%`}`));
+      await loadFile(file);
+      setSelectedAssetId(asset.id);
+      setDownloadStatus("");
+    } catch (error) {
+      if (controller.signal.aborted) setDownloadStatus("Download cancelled.");
+      else {
+        setDownloadStatus("The browser could not download this release directly. Download the ZIP below, then select it in Firmware Package. No extraction is needed.");
+        setFallbackAsset(asset);
+      }
+    } finally { downloadRef.current = null; setIsDownloading(false); }
   };
+
+  return { firmwares, releases, errors, isFetchingFirmwares, isFetchingReleases, refresh, selectRelease, isDownloading, downloadStatus, fallbackAsset, demoMode, selectedAssetId, cancelDownload: () => downloadRef.current?.abort() };
 };

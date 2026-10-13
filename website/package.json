@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test:watch-tools": "node --test tests/watch-tools.test.cjs tests/watch-diagnostics.test.cjs",
+    "test:watch-tools": "node tests/watch-tools.test.cjs && node tests/watch-diagnostics.test.cjs",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build",
@@ -12,7 +12,8 @@
     "clear": "docusaurus clear",
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
-    "write-heading-ids": "docusaurus write-heading-ids"
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "test:firmware-update": "node tests/firmware-update.test.cjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.7.0",

@@ -10,6 +10,30 @@ export function logLines(text, receivedAt = new Date().toISOString()) {
   });
 }
 
+// BLELOG frames are output-buffer chunks, not necessarily complete lines.
+export class LogLineReader {
+  constructor() { this.reset(); }
+  reset() { this.pending = ""; this.receivedAt = null; }
+  push(text, receivedAt = new Date().toISOString()) {
+    if (!this.pending) this.receivedAt = receivedAt;
+    this.pending += text;
+    const end = this.pending.lastIndexOf("\n");
+    const lines = end < 0 ? [] : logLines(this.pending.slice(0, end + 1), this.receivedAt);
+    if (end >= 0) { this.pending = this.pending.slice(end + 1); this.receivedAt = receivedAt; }
+    // Bound a malformed stream that never supplies a newline.
+    while (this.pending.length > 16384) {
+      lines.push(...logLines(this.pending.slice(0, 16384), this.receivedAt).map((entry) => ({ ...entry, partial: true })));
+      this.pending = this.pending.slice(16384);
+    }
+    return lines;
+  }
+  flush() {
+    const lines = logLines(this.pending, this.receivedAt).map((entry) => ({ ...entry, partial: true }));
+    this.reset();
+    return lines;
+  }
+}
+
 export function parseCrash(input) {
   const bytes = new Uint8Array(input);
   if (!bytes.length || bytes.length > MAX_CRASH_BYTES) throw new Error("Choose a crash dump between 1 byte and 1 MB.");
@@ -44,9 +68,9 @@ export function reportBytes(report) {
   return Uint8Array.from(atob(report.raw), (char) => char.charCodeAt(0));
 }
 
-export async function makeReport(bytes, info = {}, source = "Imported file") {
+export async function makeReport(bytes, info = {}, source = "Watch dump") {
   const parsed = parseCrash(bytes);
-  // Hash the normalized dump so importing its text export does not duplicate it.
+  // Hash the normalized dump so equivalent binary/text reports count once.
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(parsed.text));
   const id = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
   return { ...parsed, id, raw: bytesToBase64(bytes), receivedAt: new Date().toISOString(), source, info: { ...info } };

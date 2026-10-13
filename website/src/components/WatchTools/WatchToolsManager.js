@@ -7,6 +7,7 @@ export const BACKGROUND_PATH = "/user/bg_new.bin";
 export default class WatchToolsManager extends UpdateMCUManager {
   constructor(options) {
     super(options);
+    this.keepSmpEnabled = Boolean(options?.keepSmpEnabled);
     this.connectionGeneration = 0;
     this.logState = "off";
     this._watchOptions = {
@@ -31,6 +32,15 @@ export default class WatchToolsManager extends UpdateMCUManager {
     this._logRequested = enabled;
     this.setLogState(enabled ? "waiting" : "off");
     try {
+      if (enabled) {
+        // Main firmware drops log output during the first 3 seconds after connecting.
+        const delay = Math.max(0, (this._bleReadyAt || 0) + 3000 - Date.now());
+        if (delay) await this.sleep(delay);
+        if (!this._logRequested || !this.isConnected()) return;
+        await this._watch.send({ t: "smp", status: false });
+        await this._watch.subscribeCommands();
+        if (!this._logRequested || !this.isConnected()) return;
+      }
       await this._watch.send({ t: "log", status: enabled });
       if (enabled && this._logRequested && this.logState === "waiting") this._logTimer = setTimeout(() => {
         if (this._logRequested && this.logState === "waiting") this.setLogState("no-data");
@@ -49,42 +59,65 @@ export default class WatchToolsManager extends UpdateMCUManager {
     return super._notification(event);
   }
 
-  async _openBle(device) {
-    await super._openBle(device);
+  async _openBle(device, reconnecting = false) {
+    await super._openBle(device, reconnecting);
     this.connectionGeneration++;
-    await this._watch.send({ t: "smp", status: false });
+    if (!this.keepSmpEnabled) await this._watch.send({ t: "smp", status: false });
     this.status("Connected. Watch tools are ready.");
+  }
+
+  async ensureUpdateReady() {
+    if (this._transport !== "ble") return super.ensureUpdateReady();
+    await this.ensureSmp();
+    await this._watch.readBattery(this._device.gatt);
+  }
+
+  shouldKeepSmpAlive() {
+    return this._transport === "ble" && this.isConnected() && this._watch?.smpEnabled && !this._logRequested && !this._request && !this._transfer && !this._rediscovering && !this._preparingSmp;
+  }
+
+  async keepSmpAlive() {
+    if (!this.shouldKeepSmpAlive()) return;
+    // Hidden tabs may suspend timers. Re-registering an expired service requires
+    // renewed GATT subscriptions, not just another enable command.
+    if (Date.now() - this._watch.smpActivityAt >= 120000) await this.ensureUpdateReady();
+    else await this._watch.enableSmp();
   }
 
   async ensureSmp() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
-    if (this._logRequested) await this.setLogCapture(false);
-    const device = this._device;
+    this._preparingSmp = true;
     try {
-      await this._watch.prepare(device.gatt);
-      await this._watch.enableSmp();
-      // Disabling SMP unregisters its GATT service. A cached characteristic can
-      // still be discoverable while its notification subscription no longer
-      // exists on the watch. Reconnect before subscribing to the new service.
-      this._rediscovering = true;
+      if (this._logRequested) await this.setLogCapture(false);
+      const device = this._device;
       try {
-        device.gatt.disconnect();
-        await this.sleep(500);
-        const server = await device.gatt.connect();
-        this.connectionGeneration++;
-        await this._watch.prepare(server);
+        // Keep metadata already read on this connection; repeated optional reads
+        // make the slow idle interval particularly expensive.
         await this._watch.enableSmp();
-        await this._discoverSmp(server);
-      } finally { this._rediscovering = false; }
-    } catch (error) {
-      if (this.isConnected()) {
-        try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
-      } else await this._disconnected();
-      throw error;
-    }
+        // Disabling SMP unregisters its GATT service. A cached characteristic can
+        // still be discoverable while its notification subscription no longer
+        // exists on the watch. Reconnect before subscribing to the new service.
+        this._rediscovering = true;
+        try {
+          device.gatt.disconnect();
+          await this.sleep(500);
+          const server = await device.gatt.connect();
+          this._bleReadyAt = Date.now();
+          this.connectionGeneration++;
+          await this._watch.prepare(server, { enableUpdates: true, readInfo: false });
+          await this._discoverSmp(server);
+        } finally { this._rediscovering = false; }
+      } catch (error) {
+        if (this.isConnected()) {
+          try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
+        } else await this._disconnected();
+        throw error;
+      }
+    } finally { this._preparingSmp = false; }
   }
 
   async backgroundCommand(action) {
+    await this._watch.subscribeCommands();
     const result = await this._watch.request(
       { t: "watchface_bg", action },
       (message) => message.t === "watchface_bg" && message.action === `${action}_result`,
@@ -119,11 +152,11 @@ export default class WatchToolsManager extends UpdateMCUManager {
 
   async restoreDefault() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
-    await this._watch.prepare(this._device.gatt);
+    if (this._logRequested) await this.setLogCapture(false);
     return this.backgroundCommand("reset");
   }
 
-  cancelUpload() { this._finishTransfer(new Error("Background upload cancelled. Your current background was kept.")); }
+  cancelUpload() { if (this.keepSmpEnabled) return super.cancelUpload(); this._finishTransfer(new Error("Background upload cancelled. Your current background was kept.")); }
 
   async withSmp(action, signal) {
     const cancelled = () => { if (signal?.aborted) throw new Error("Operation cancelled."); };

@@ -1,6 +1,7 @@
 import MCUManager from "../../../mcumgr-web/js/mcumgr";
 import CBOR from "../../../mcumgr-web/js/cbor";
 import WatchBluetooth, { NUS_SERVICE } from "./watchBluetooth";
+import BluetoothDiscovery from "./bluetoothDiscovery";
 
 // Keep the shared transport implementation, but expose acknowledged transfers.
 // The upstream cmdUpload promise only waits for the transfer to start.
@@ -9,6 +10,7 @@ export default class UpdateMCUManager extends MCUManager {
     super(options);
     this.deviceInfo = {};
     this._smpNotification = this._notification.bind(this);
+    this.discovery = new BluetoothDiscovery();
   }
 
   onDeviceInfo(callback) { this._deviceInfoCallback = callback; return this; }
@@ -16,10 +18,23 @@ export default class UpdateMCUManager extends MCUManager {
   status(message) { this._statusCallback?.(message); }
 
   async _requestDevice(filters) {
+    const saved = !this._chooseDevice && this.discovery.selected(filters);
+    this.discovery.stop();
+    if (saved) {
+      this.status(`Connecting to ${saved.name || "your saved watch"}...`);
+      return saved;
+    }
+    this.status("Choose your watch in the Bluetooth device list.");
     const options = { optionalServices: [NUS_SERVICE, 0x180a, 0x180f, this.SERVICE_UUID] };
     if (filters?.length) options.filters = filters;
     else options.acceptAllDevices = true;
     return navigator.bluetooth.requestDevice(options);
+  }
+
+  async connect(options = null) {
+    this._chooseDevice = Boolean(options?.chooseDevice);
+    try { return await super.connect(options); }
+    finally { this._chooseDevice = false; }
   }
 
   async _connectBle(filters) {
@@ -29,6 +44,7 @@ export default class UpdateMCUManager extends MCUManager {
     try {
       const device = await this._requestDevice(filters);
       await this._openBle(device);
+      if (this.isConnected()) this.discovery.remember(device);
     } catch (error) {
       if (this._device?.gatt?.connected) this._device.gatt.disconnect();
       await this._disconnected();
@@ -48,11 +64,13 @@ export default class UpdateMCUManager extends MCUManager {
       if (!this._rediscovering) this._disconnected();
     };
     device.addEventListener("gattserverdisconnected", this._bleDisconnectListener);
+    this.status(`Opening Bluetooth connection to ${this._deviceName}...`);
     let server = await device.gatt.connect();
+    this._bleReadyAt = Date.now();
     this.status("Reading watch hardware and battery...");
-    await this._watch.prepare(server);
+    await this._watch.prepare(server, { enableUpdates: true });
     this.status("Enabling Bluetooth firmware updates...");
-    const sentEnable = await this._watch.enableSmp();
+    const sentEnable = Boolean(this._watch.write);
     try {
       await this._discoverSmp(server);
     } catch (error) {
@@ -64,15 +82,15 @@ export default class UpdateMCUManager extends MCUManager {
         device.gatt.disconnect();
         await this.sleep(500);
         server = await device.gatt.connect();
-        await this._watch.prepare(server);
-        await this._watch.enableSmp();
+        this._bleReadyAt = Date.now();
+        await this._watch.prepare(server, { enableUpdates: true, readInfo: false });
         await this._discoverSmp(server);
       } catch {
         throw new Error("The watch did not expose its firmware update service. Enable Bluetooth in System → Update App and reconnect; older firmware may require this manual step.");
       } finally { this._rediscovering = false; }
     }
     this.status(sentEnable ? "Bluetooth DFU enabled. Reading installed images..." : "Firmware update service ready. Reading installed images...");
-    this._connectCallback?.({ reconnecting });
+    await this._connectCallback?.({ reconnecting });
   }
 
   async _discoverSmp(server) {
@@ -80,6 +98,7 @@ export default class UpdateMCUManager extends MCUManager {
     this._service = await server.getPrimaryService(this.SERVICE_UUID);
     this._characteristic = await this._service.getCharacteristic(this.CHARACTERISTIC_UUID);
     this._characteristic.addEventListener("characteristicvaluechanged", this._smpNotification);
+    if (this._characteristic.stopNotifications) await this._characteristic.stopNotifications();
     await this._characteristic.startNotifications();
     this._buffer = new Uint8Array();
     this._mtu = server.mtu || 244;
@@ -104,6 +123,7 @@ export default class UpdateMCUManager extends MCUManager {
       await this._characteristic.writeValueWithoutResponse(packet.slice(offset, offset + this._mtu));
       await this.sleep(5);
     }
+    if (this._watch?.smpEnabled) this._watch.smpActivityAt = Date.now();
   }
 
   async readDeviceInfo(recovery) {
@@ -297,6 +317,9 @@ export default class UpdateMCUManager extends MCUManager {
     if (request && message[0] === request.op && sequence === request.sequence && group === request.group && id === request.id) {
       const failure = error ? Object.assign(new Error(`Command rejected by watch: ${JSON.stringify(error)}`), { smpError: error }) : null;
       this._finishRequest(failure, data);
+      // Image/OS replies also update the firmware UI through its message callback.
+      // Filesystem replies must not reach the legacy upload state machine.
+      if (group !== 8) super._processMessage(message);
       return;
     }
     // Ignore late file replies instead of passing them into the legacy upload loop.

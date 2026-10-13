@@ -8,14 +8,17 @@ This page describes how to update ZSWatch firmware on WatchDK.
 
 ## Enable Updates on the Watch
 
-The **ZSWatch companion app** enables update mode automatically when you start
-a firmware update — no manual step is needed on the watch.
+The **ZSWatch companion app** and [web updater](https://zswatch.dev/update)
+enable Bluetooth firmware updates automatically. You do not need to open
+**Apps → Update** or turn on **BLE** when using them.
 
-For the **web updater** (zswatch.dev/update) or **nRF Device Manager**, you
-still need to enable updates manually:
+For your first Bluetooth connection to a computer, go to **Settings → Bluetooth**
+on the watch, enable **Pairable**, then connect in the web updater and accept
+pairing on your computer.
 
-1. On the watch, go to **Apps → Update**.
-2. Set **USB** and/or **BLE** to **ON**.
+For **USB updates**, go to **Apps → Update** on the watch and turn on **USB**.
+For **nRF Device Manager**, turn on **BLE** there manually. Older firmware that
+does not support automatic Bluetooth setup may also require this manual step.
 
 ## Firmware Download Contents
 
@@ -38,9 +41,10 @@ After updating firmware, you typically also need to upload the matching **image 
 
 ## Method A: Web Updater (USB or BLE)
 
-1. Enable USB and/or BLE updates on the watch.
-2. Open https://zswatch.dev/update.
-3. Select a WatchDK firmware image.
+1. For USB, enable **USB** in **Apps → Update** on the watch. For a first Bluetooth connection, enable **Pairable** in **Settings → Bluetooth**.
+2. Open [zswatch.dev/update](https://zswatch.dev/update), choose USB or Bluetooth, and connect. Bluetooth update mode is enabled automatically, and the watch's reported hardware selects the matching firmware filter.
+3. Choose a release or CI build and download the matching firmware package. Select the complete ZIP in **Firmware Package**; no manual extraction is needed.
+4. Use **Update watch** to upload the included image resources and firmware together. **Advanced → Update firmware only** skips the resources. The watch restarts automatically after the update.
 
 ### Firmware file naming
 
