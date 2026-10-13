@@ -53,9 +53,9 @@ class NativeSimDevice:
         """Start Xvfb and zephyr.exe, find the shell PTY."""
         # Kill leftovers
         if self.sudo:
-            subprocess.run(["sudo", "pkill", "-f", "zephyr.exe"], capture_output=True)
+            subprocess.run(["sudo", "pkill", "-x", "zephyr.exe"], capture_output=True)
         else:
-            subprocess.run(["pkill", "-f", "zephyr.exe"], capture_output=True)
+            subprocess.run(["pkill", "-x", "zephyr.exe"], capture_output=True)
         subprocess.run(["pkill", "-f", f"Xvfb {self.display}"], capture_output=True)
         time.sleep(0.3)
 
@@ -131,7 +131,9 @@ class NativeSimDevice:
                 # PTY is owned by root when running with sudo, make it accessible
                 subprocess.run(["sudo", "chmod", "666", self._pty_path], capture_output=True)
             try:
-                self._pty_fd = os.open(self._pty_path, os.O_RDWR | os.O_NONBLOCK)
+                # Never adopt the simulator PTY as the test runner's controlling
+                # terminal: closing it during teardown would deliver SIGHUP.
+                self._pty_fd = os.open(self._pty_path, os.O_RDWR | os.O_NONBLOCK | os.O_NOCTTY)
                 self._start_reader(self._pty_fd, self._pty_chunks)
                 time.sleep(0.5)  # let shell init
             except OSError:
@@ -156,7 +158,7 @@ class NativeSimDevice:
                 self._proc.kill()
                 self._proc.wait(timeout=2)
             if self.sudo:
-                subprocess.run(["sudo", "pkill", "-f", "zephyr.exe"], capture_output=True)
+                subprocess.run(["sudo", "pkill", "-x", "zephyr.exe"], capture_output=True)
             self._proc = None
 
         if self._xvfb:
