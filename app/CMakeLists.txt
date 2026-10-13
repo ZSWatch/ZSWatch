@@ -106,27 +106,28 @@ zephyr_compile_options(-Wno-double-promotion)
 
 # XIP Code Relocation
 
+# Resolve LVGL through Zephyr so relocation also works with an external SDK workspace.
 # Relocate some LVGL sources to external flash.
 # More can be added here if needed.
 # Note code running from external flash is slower than internal flash.
 # So choose wisely...
 list(APPEND XIP_RELOCATE_SOURCES
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_10.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_12.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_14.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_16.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_18.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_20.c
-    ../modules/lib/gui/lvgl/src/font/lv_font_montserrat_28.c
-    ../modules/lib/gui/lvgl/src/widgets/chart/lv_chart.c
-    ../modules/lib/gui/lvgl/src/widgets/scale/lv_scale.c
-    ../modules/lib/gui/lvgl/src/widgets/dropdown/lv_dropdown.c
-    ../modules/lib/gui/lvgl/src/widgets/buttonmatrix/lv_buttonmatrix.c
-    ../modules/lib/gui/lvgl/src/widgets/slider/lv_slider.c
-    ../modules/lib/gui/lvgl/src/widgets/menu/lv_menu.c
-    ../modules/lib/gui/lvgl/src/widgets/imagebutton/lv_imagebutton.c
-    ../modules/lib/gui/lvgl/src/widgets/led/lv_led.c
-    ../modules/lib/gui/lvgl/src/widgets/checkbox/lv_checkbox.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_10.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_12.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_14.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_16.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_18.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_20.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/font/lv_font_montserrat_28.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/chart/lv_chart.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/scale/lv_scale.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/dropdown/lv_dropdown.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/buttonmatrix/lv_buttonmatrix.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/slider/lv_slider.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/menu/lv_menu.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/imagebutton/lv_imagebutton.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/led/lv_led.c
+    ${ZEPHYR_LVGL_MODULE_DIR}/src/widgets/checkbox/lv_checkbox.c
 )
 
 zephyr_code_relocate(FILES ${XIP_RELOCATE_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY)
