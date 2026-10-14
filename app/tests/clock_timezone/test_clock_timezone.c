@@ -21,6 +21,15 @@ static void check(float offset, const char *expected, int hour, int minute)
 
 int main(void)
 {
+    float hours;
+    assert(zsw_clock_cts_offset((uint8_t[]){4, 4}, &hours) && hours == 2.0f);
+    assert(zsw_clock_cts_offset((uint8_t[]){22, 0}, &hours) && hours == 5.5f);
+    assert(zsw_clock_cts_offset((uint8_t[]){(uint8_t)-14, 0}, &hours) && hours == -3.5f);
+    assert(zsw_clock_cts_offset((uint8_t[]){51, 4}, &hours) && hours == 13.75f);
+    assert(!zsw_clock_cts_offset((uint8_t[]){128, 0}, &hours));
+    assert(!zsw_clock_cts_offset((uint8_t[]){4, 255}, &hours));
+    assert(!zsw_clock_cts_offset((uint8_t[]){4, 3}, &hours));
+    assert(!zsw_clock_cts_offset((uint8_t[]){57, 0}, &hours));
     check(2.0f, "UTC-02:00", 14, 0);
     check(0.0f, "UTC-00:00", 12, 0); /* Reset a previously nonzero timezone. */
     check(5.5f, "UTC-05:30", 17, 30);

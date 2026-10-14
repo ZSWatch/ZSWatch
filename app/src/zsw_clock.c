@@ -144,6 +144,9 @@ void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm)
 
 static int zsw_clock_init(void)
 {
+    // The RTC stores local calendar fields; mktime needs the retained timezone
+    // even when the hardware clock is already running successfully.
+    zsw_clock_set_timezone(retained.timezone);
 #if CONFIG_RTC
     if (!device_is_ready(rtc)) {
         LOG_WRN("RTC device not ready, falling back to software clock");

@@ -4,6 +4,20 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
+
+/** CTS Local Time Information: signed UTC quarter-hours plus DST quarter-hours. */
+static inline bool zsw_clock_cts_offset(const uint8_t info[2], float *hours)
+{
+    int zone = (int8_t)info[0];
+    int dst = info[1];
+    if (zone < -48 || zone > 56 ||
+        (dst != 0 && dst != 2 && dst != 4 && dst != 8)) {
+        return false; // Unknown/reserved offsets must not become UTC.
+    }
+    *hours = (zone + dst) / 4.0f;
+    return true;
+}
 
 /** Phone offsets are east of UTC; POSIX TZ offsets use the opposite sign. */
 static inline bool zsw_clock_format_timezone(float offset_hours, char *tz, size_t capacity)
