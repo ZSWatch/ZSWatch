@@ -181,8 +181,6 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
         k_work_cancel_delayable(&weather_data_timeout_work);
         last_update_gps_time = k_uptime_get();
         LOG_DBG("Got GPS data, fetch weather\n");
-        LOG_DBG("Latitude: %f\n", event->data.data.gps.lat);
-        LOG_DBG("Longitude: %f\n", event->data.data.gps.lon);
         last_lat = event->data.data.gps.lat;
         last_lon = event->data.data.gps.lon;
         fetch_weather_data(event->data.data.gps.lat, event->data.data.gps.lon);
