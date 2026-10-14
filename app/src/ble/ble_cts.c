@@ -261,7 +261,7 @@ static void security_changed(struct bt_conn *conn, bt_security_t level,
     if (!err && has_cts && conn == current_conn) {
         enable_notifications();
         bt_cts_read_current_time(&cts_c, read_current_time_cb);
-    } else {
+    } else if (err) {
         LOG_ERR("Security failed: level %u err %d", level, err);
     }
 }
