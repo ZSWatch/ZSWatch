@@ -47,6 +47,7 @@ static void publish_weather_data(struct k_work *work);
 static void weather_data_timeout(struct k_work *work);
 static void process_http_result(struct k_work *work);
 static void process_gps_result(struct k_work *work);
+static void fetch_cached_weather_data(struct k_work *work);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(weather_ble_comm_lis, on_zbus_ble_data_callback);
@@ -57,6 +58,7 @@ K_WORK_DEFINE(weather_app_publish, publish_weather_data);
 K_WORK_DELAYABLE_DEFINE(weather_data_timeout_work, weather_data_timeout);
 K_WORK_DEFINE(weather_http_work, process_http_result);
 K_WORK_DEFINE(weather_gps_work, process_gps_result);
+K_WORK_DEFINE(weather_cached_fetch_work, fetch_cached_weather_data);
 
 /* Rendering and application start/stop run on the system workqueue. Bluetooth
  * listeners must copy their borrowed data and hand it to that same queue before
@@ -241,6 +243,12 @@ static void fetch_weather_data(double lat, double lon)
     }
 }
 
+static void fetch_cached_weather_data(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    fetch_weather_data(last_lat, last_lon);
+}
+
 static void periodic_fetch_weather_data(struct k_work *work)
 {
     int ret = ble_comm_request_gps_status(true);
@@ -308,7 +316,10 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
         }
         // TODO Show GPS fetching in progress in app
     } else {
-        fetch_weather_data(last_lat, last_lon);
+        /* App startup runs inside the LVGL timer handler. Do not put the URL
+         * buffer and Bluetooth send on top of that rendering stack.
+         */
+        k_work_submit(&weather_cached_fetch_work);
     }
 
     zsw_timeval_t time;
