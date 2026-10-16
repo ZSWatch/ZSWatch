@@ -1,0 +1,38 @@
+[
+  {
+    "target_name": "zswatch-v1",
+    "setup_cmd": "west init -l app && west update -o=--depth=1 -n && pip install -r nrf/scripts/requirements-build.txt -r app/scripts/requirements.txt",
+    "build_cmd": "west build app --build-dir build -p -b zswatch@1/nrf5340/cpuapp -- -DSB_CONF_FILE=sysbuild.conf -DBOARD_ROOT=\"$PWD/app\"",
+    "elf": "build/app/zephyr/zephyr.elf",
+    "ld": "build/app/zephyr/linker.cmd",
+    "map_file": "build/app/zephyr/zephyr.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "watchdk-v1",
+    "setup_cmd": "west init -l app && west update -o=--depth=1 -n && pip install -r nrf/scripts/requirements-build.txt -r app/scripts/requirements.txt",
+    "build_cmd": "west build app --build-dir build -p -b watchdk@1/nrf5340/cpuapp -- -DSB_CONF_FILE=sysbuild.conf -DBOARD_ROOT=\"$PWD/app\"",
+    "elf": "build/app/zephyr/zephyr.elf",
+    "ld": "build/app/zephyr/linker.cmd",
+    "map_file": "build/app/zephyr/zephyr.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "zswatch-legacy-v4",
+    "setup_cmd": "west init -l app && west update -o=--depth=1 -n && pip install -r nrf/scripts/requirements-build.txt -r app/scripts/requirements.txt",
+    "build_cmd": "west build app --build-dir build -p -b zswatch_legacy@4/nrf5340/cpuapp -- -DSB_CONF_FILE=sysbuild.conf -DBOARD_ROOT=\"$PWD/app\"",
+    "elf": "build/app/zephyr/zephyr.elf",
+    "ld": "build/app/zephyr/linker.cmd",
+    "map_file": "build/app/zephyr/zephyr.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "zswatch-legacy-v5",
+    "setup_cmd": "west init -l app && west update -o=--depth=1 -n && pip install -r nrf/scripts/requirements-build.txt -r app/scripts/requirements.txt",
+    "build_cmd": "west build app --build-dir build -p -b zswatch_legacy@5/nrf5340/cpuapp -- -DSB_CONF_FILE=sysbuild.conf -DBOARD_ROOT=\"$PWD/app\"",
+    "elf": "build/app/zephyr/zephyr.elf",
+    "ld": "build/app/zephyr/linker.cmd",
+    "map_file": "build/app/zephyr/zephyr.map",
+    "linker_vars": ""
+  }
+]

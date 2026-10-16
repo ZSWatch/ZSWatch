@@ -1,0 +1,80 @@
+name: Onboard to MemBrowse
+
+on:
+  workflow_dispatch:
+    inputs:
+      num_commits:
+        description: 'Number of commits to process'
+        required: true
+        default: '100'
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  load-targets:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Load target matrix
+        id: set-matrix
+        run: echo "matrix=$(jq -c '.' .github/membrowse-targets.json)" >> $GITHUB_OUTPUT
+
+  onboard:
+    needs: load-targets
+    runs-on: ubuntu-24.04
+    container: ghcr.io/zswatch/zswatch-ci:zswatch_v0.28.4
+    env:
+      CMAKE_PREFIX_PATH: /opt/toolchains
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.load-targets.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # Onboard iterates through historical commits, so it needs full history
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Trust workspace
+        run: git config --global --add safe.directory '*'
+
+      - name: Install packages
+        run: ${{ matrix.setup_cmd }}
+
+      - name: Run MemBrowse Onboard Action
+        uses: membrowse/membrowse-action/onboard-action@v1
+        with:
+          target_name: ${{ matrix.target_name }}
+          num_commits: ${{ github.event.inputs.num_commits }}
+          # Onboarding runs `git clean -fdx` between commits, which removes the
+          # west workspace config (.west/) in the repo root. Re-init it, and sync
+          # the NCS checkout in case app/west.yml changed at that commit.
+          # app/sysbuild.cmake applies app/patches/* into zephyr and submodules,
+          # which git clean leaves alone (nested repos). Revert them so each
+          # commit applies its own version of the patches.
+          build_script: >-
+            git -C zephyr checkout -q -- . && git -C zephyr clean -qfd &&
+            (test -d .west || west init -l app) &&
+            west update -o=--depth=1 -n &&
+            git submodule foreach --recursive -q 'git checkout -q -- . && git clean -qfd' &&
+            ${{ matrix.build_cmd }}
+          elf: ${{ matrix.elf }}
+          ld: ${{ matrix.ld }}
+          map_file: ${{ matrix.map_file }}
+          linker_vars: ${{ matrix.linker_vars }}
+          binary_search: 'true'
+          api_key: ${{ secrets.MEMBROWSE_API_KEY }}
+          api_url: ${{ vars.MEMBROWSE_API_URL }}

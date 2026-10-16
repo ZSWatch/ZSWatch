@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://opensource.org/licenses/GPL-3.0)
 [![discord](https://img.shields.io/badge/chat-discord-blue?logo=discord&logoColor=white)](https://discord.gg/8XfNBmDfbY)
 [![Docs](https://img.shields.io/badge/docs-zswatch.dev-green)](https://zswatch.dev/docs/intro)
+[![MemBrowse](https://membrowse.com/badge.svg)](https://membrowse.com/public/ZSWatch/ZSWatch)
 
 <p float="left">
 <img src=".github/images/in_use.jpg" width="67.5%" object-fit="cover"/>
