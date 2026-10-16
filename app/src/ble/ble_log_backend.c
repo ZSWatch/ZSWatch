@@ -81,11 +81,12 @@ static int line_out(uint8_t *data, size_t length, void *ctx)
         return length;
     }
 
-    const size_t capped_len = MIN(length, (size_t)UINT16_MAX);
-
-    ble_comm_send((const uint8_t *)BLE_LOG_PREFIX, strlen(BLE_LOG_PREFIX));
-    ble_comm_send(data, (uint16_t)capped_len);
-    ble_comm_send((const uint8_t *)BLE_LOG_SUFFIX, strlen(BLE_LOG_SUFFIX));
+    const size_t capped_len = MIN(length, (size_t)BLE_LOG_BACKEND_BUF_SIZE);
+    uint8_t frame[sizeof(BLE_LOG_PREFIX) - 1 + BLE_LOG_BACKEND_BUF_SIZE + sizeof(BLE_LOG_SUFFIX) - 1];
+    memcpy(frame, BLE_LOG_PREFIX, sizeof(BLE_LOG_PREFIX) - 1);
+    memcpy(frame + sizeof(BLE_LOG_PREFIX) - 1, data, capped_len);
+    memcpy(frame + sizeof(BLE_LOG_PREFIX) - 1 + capped_len, BLE_LOG_SUFFIX, sizeof(BLE_LOG_SUFFIX) - 1);
+    ble_comm_send(frame, sizeof(BLE_LOG_PREFIX) - 1 + capped_len + sizeof(BLE_LOG_SUFFIX) - 1);
 
     return length;
 }

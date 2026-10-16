@@ -137,11 +137,10 @@ typedef void(*on_data_cb_t)(ble_comm_cb_data_t *data);
 */
 int ble_comm_init(void);
 
-/** @brief
- *  @param data
- *  @param len
- *  @return     0 when successful
-*/
+/** Copies one complete message into a bounded queue. Zero means queued;
+ * notifications resume asynchronously after temporary ATT buffer pressure.
+ * @return 0 when queued, negative errno when no bytes were admitted.
+ */
 int ble_comm_send(const uint8_t *data, uint16_t len);
 
 /** @brief

@@ -96,7 +96,9 @@ ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
 
 static struct bt_conn *current_conn;
-static uint32_t max_send_len;
+static struct k_spinlock ble_tx_lock;
+static uint32_t ble_tx_generation;
+static bool ble_tx_failed;
 
 static int pairing_enabled;
 
@@ -188,23 +190,118 @@ int ble_comm_init(void)
     return err;
 }
 
+/* A complete NUS message is admitted before sending any bytes. The BT RX and
+ * system work queues cannot wait for ATT buffers; a recording list can require
+ * more packets than that pool contains. A nonblocking sender resumes at the
+ * same offset when ATT buffers become available and serializes whole messages. */
+#define BLE_TX_QUEUE_BYTES 12288
+#define BLE_TX_MESSAGE_BYTES 8192
+
+struct ble_tx_message {
+    void *fifo_reserved;
+    struct bt_conn *connection;
+    uint32_t generation;
+    uint16_t length;
+    uint8_t data[];
+};
+
+static K_FIFO_DEFINE(ble_tx_queue);
+static size_t ble_tx_bytes;
+
+static struct ble_tx_message *ble_tx_active;
+static size_t ble_tx_offset;
+static int64_t ble_tx_deadline;
+static void ble_tx_work_fn(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(ble_tx_work, ble_tx_work_fn);
+
+static void ble_tx_release(struct ble_tx_message *message)
+{
+    bt_conn_unref(message->connection);
+    k_spinlock_key_t key = k_spin_lock(&ble_tx_lock);
+    ble_tx_bytes -= sizeof(*message) + message->length;
+    k_spin_unlock(&ble_tx_lock, key);
+    k_free(message);
+}
+
+static void ble_tx_work_fn(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    while (true) {
+        if (!ble_tx_active) {
+            ble_tx_active = k_fifo_get(&ble_tx_queue, K_NO_WAIT);
+            if (!ble_tx_active) {
+                return;
+            }
+            ble_tx_offset = 0;
+            ble_tx_deadline = k_uptime_get() + 30000;
+        }
+        struct ble_tx_message *message = ble_tx_active;
+        k_spinlock_key_t key = k_spin_lock(&ble_tx_lock);
+        bool current = !ble_tx_failed && message->connection == current_conn && message->generation == ble_tx_generation;
+        k_spin_unlock(&ble_tx_lock, key);
+        uint16_t mtu = bt_gatt_get_mtu(message->connection);
+        if (current && mtu > 3 && k_uptime_get() < ble_tx_deadline) {
+            uint16_t chunk = MIN(message->length - ble_tx_offset, mtu - 3);
+            int error = ble_transport_send(message->connection, message->data + ble_tx_offset, chunk);
+            if (error == -ENOMEM || error == -ENOBUFS || error == -EAGAIN) {
+                /* Waiting here would deadlock the system work queue. A rejected
+                 * notification has sent no bytes; retry exactly this fragment. */
+                k_work_reschedule(&ble_tx_work, K_MSEC(5));
+                return;
+            }
+            if (error == 0) {
+                ble_tx_offset += chunk;
+                if (ble_tx_offset < message->length) {
+                    continue;
+                }
+            }
+        }
+        if (current && ble_tx_offset > 0 && ble_tx_offset < message->length) {
+            /* A terminal partial frame must not consume the next JSON message.
+             * Fence this connection's queue and let the peer reconnect/resync. */
+            key = k_spin_lock(&ble_tx_lock);
+            if (message->connection == current_conn && message->generation == ble_tx_generation) {
+                ble_tx_failed = true;
+                ble_tx_generation++;
+            }
+            k_spin_unlock(&ble_tx_lock, key);
+            bt_conn_disconnect(message->connection, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        }
+        ble_tx_active = NULL;
+        ble_tx_release(message);
+    }
+}
+
 int ble_comm_send(const uint8_t *data, uint16_t len)
 {
-    uint16_t offset = 0;
-    int ret = 0;
-
-    while (offset < len) {
-        uint16_t chunk_len = len - offset;
-        if (chunk_len > max_send_len) {
-            chunk_len = max_send_len;
-        }
-
-        ret = ble_transport_send(current_conn, data + offset, chunk_len);
-        if (ret < 0) {
-            return ret;
-        }
-        offset += chunk_len;
+    if (!data || !len || len > BLE_TX_MESSAGE_BYTES || k_is_in_isr()) {
+        return -EINVAL;
     }
+    size_t size = sizeof(struct ble_tx_message) + len;
+    k_spinlock_key_t key = k_spin_lock(&ble_tx_lock);
+    if (!current_conn || ble_tx_failed || ble_tx_bytes + size > BLE_TX_QUEUE_BYTES) {
+        int error = current_conn && !ble_tx_failed ? -ENOBUFS : -ENOTCONN;
+        k_spin_unlock(&ble_tx_lock, key);
+        return error;
+    }
+    struct bt_conn *connection = bt_conn_ref(current_conn);
+    uint32_t generation = ble_tx_generation;
+    ble_tx_bytes += size;
+    k_spin_unlock(&ble_tx_lock, key);
+    struct ble_tx_message *message = k_malloc(size);
+    if (!message) {
+        bt_conn_unref(connection);
+        key = k_spin_lock(&ble_tx_lock);
+        ble_tx_bytes -= size;
+        k_spin_unlock(&ble_tx_lock, key);
+        return -ENOMEM;
+    }
+    message->connection = connection;
+    message->generation = generation;
+    message->length = len;
+    memcpy(message->data, data, len);
+    k_fifo_put(&ble_tx_queue, message);
+    k_work_schedule(&ble_tx_work, K_NO_WAIT);
     return 0;
 }
 
@@ -371,7 +468,6 @@ static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_ex
     if (!err) {
         LOG_INF("MTU exchange done. %d", bt_gatt_get_mtu(current_conn) - 3);
 
-        max_send_len = bt_gatt_get_mtu(current_conn) - 3;
     } else {
         LOG_ERR("MTU exchange failed (err %" PRIu8 ")", err);
     }
@@ -399,8 +495,11 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
         LOG_ERR("Connection failed (err %u)", err);
         return;
     }
+    k_spinlock_key_t key = k_spin_lock(&ble_tx_lock);
     current_conn = bt_conn_ref(conn);
-    max_send_len = 20;
+    ble_tx_failed = false;
+    ble_tx_generation++;
+    k_spin_unlock(&ble_tx_lock, key);
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
     LOG_INF("Connected %s", addr);
@@ -439,11 +538,17 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
         ble_find_device_disconnected();
     }
 
-    if (current_conn) {
+    k_spinlock_key_t key = k_spin_lock(&ble_tx_lock);
+    struct bt_conn *previous = current_conn == conn ? current_conn : NULL;
+    if (previous) {
+        current_conn = NULL;
+        ble_tx_generation++;
+    }
+    k_spin_unlock(&ble_tx_lock, key);
+    if (previous) {
         k_work_cancel_delayable(&conn_interval_slow_work);
         k_work_cancel_delayable(&conn_interval_fast_work);
-        bt_conn_unref(current_conn);
-        current_conn = NULL;
+        bt_conn_unref(previous);
     }
 
     ble_chronos_state(false);
