@@ -59,6 +59,7 @@ else ()
     # Relocate to external flash to save internal flash space
     # For now all source files and images are relocated,
     # we may want to be more selective in the future
-    list(APPEND RELOCATE_FILES ${PROJECT_SOURCES})
-    set(RELOCATE_FILES ${RELOCATE_FILES} PARENT_SCOPE)
+    zephyr_code_relocate(FILES ${PROJECT_SOURCES} LOCATION EXTFLASH_TEXT NOCOPY)
+    zephyr_code_relocate(FILES ${PROJECT_SOURCES} LOCATION EXTFLASH_RODATA NOCOPY)
+    zephyr_code_relocate(FILES ${PROJECT_SOURCES} LOCATION RAM_DATA)
 endif ()
