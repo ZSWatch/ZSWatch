@@ -27,7 +27,7 @@
 
 LOG_MODULE_REGISTER(zsw_popup_window, LOG_LEVEL_INF);
 
-#define POPUP_QUEUE_SIZE         8
+#define POPUP_QUEUE_SIZE         4
 #define POPUP_TITLE_MAX_LEN      64
 #define POPUP_BODY_MAX_LEN       192
 
