@@ -39,12 +39,7 @@ static void request_new_question(void);
 
 ZSW_LV_IMG_DECLARE(quiz);
 
-typedef struct trivia_app_question {
-    char question[MAX_HTTP_FIELD_LENGTH + 1];
-    bool correct_answer;
-} trivia_app_question_t;
-
-static trivia_app_question_t trivia_app_question;
+static bool current_correct_answer;
 
 static application_t app = {
     .name = "Trivia",
@@ -85,15 +80,16 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
                 cJSON *result = cJSON_GetArrayItem(results, 0);
                 cJSON *question = cJSON_GetObjectItem(result, "question");
                 cJSON *correct_answer = cJSON_GetObjectItem(result, "correct_answer");
-                if (question == NULL || correct_answer == NULL) {
+                if (!cJSON_IsString(question) || !cJSON_IsString(correct_answer)) {
                     LOG_ERR("Failed to parse JSON data");
                     cJSON_Delete(parsed_response);
                     return;
                 }
-                memset(trivia_app_question.question, 0, sizeof(trivia_app_question.question));
-                strncpy(trivia_app_question.question, question->valuestring, sizeof(trivia_app_question.question) - 1);
-                trivia_app_question.correct_answer = (correct_answer->valuestring[0] == 'F') ? false : true;
-                trivia_ui_update_question(trivia_app_question.question);
+                if (strlen(question->valuestring) > MAX_HTTP_FIELD_LENGTH) {
+                    question->valuestring[MAX_HTTP_FIELD_LENGTH] = '\0';
+                }
+                current_correct_answer = (correct_answer->valuestring[0] == 'F') ? false : true;
+                trivia_ui_update_question(question->valuestring);
             } else {
                 LOG_ERR("Unexpected number of results: %d, expected 1", cJSON_GetArraySize(results));
             }
@@ -115,12 +111,12 @@ static void on_button_click(trivia_button_t trivia_button)
     switch (trivia_button) {
         case TRUE_BUTTON:
             LOG_DBG("True button pressed");
-            trivia_ui_guess_feedback(trivia_app_question.correct_answer == true);
+            trivia_ui_guess_feedback(current_correct_answer == true);
             break;
 
         case FALSE_BUTTON:
             LOG_DBG("False button pressed");
-            trivia_ui_guess_feedback(trivia_app_question.correct_answer == false);
+            trivia_ui_guess_feedback(current_correct_answer == false);
             break;
 
         case PLAY_MORE_BUTTON:

@@ -140,7 +140,7 @@ static void click_event_cb(lv_event_t *e)
     click_callback(trivia_button);
 }
 
-void trivia_ui_update_question(uint8_t *buff)
+void trivia_ui_update_question(const char *buff)
 {
     lv_label_set_text_fmt(question_lb, "%s", buff);
 }

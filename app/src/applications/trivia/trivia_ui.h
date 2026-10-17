@@ -33,7 +33,7 @@ void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb);
 
 void trivia_ui_remove(void);
 
-void trivia_ui_update_question(uint8_t *buff);
+void trivia_ui_update_question(const char *buff);
 
 void trivia_ui_guess_feedback(bool correct);
 
