@@ -33,6 +33,9 @@
 
 LOG_MODULE_REGISTER(zsw_voice_memo_popup, LOG_LEVEL_INF);
 
+// Needed to get rid of strptime warning, same as zsw_clock.c
+char *strptime(const char *buf, const char *format, struct tm *tm);
+
 #define DISP_WIDTH   240
 #define DISP_HEIGHT  240
 #define AUTO_DISMISS_MS 20000
