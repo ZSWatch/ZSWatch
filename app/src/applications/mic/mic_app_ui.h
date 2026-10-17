@@ -29,20 +29,17 @@ extern "C" {
 
 typedef void (*watch_ui_toggle_cb_t)(void);
 typedef void (*watch_ui_gain_change_cb_t)(float new_gain);
-typedef void (*watch_ui_rtt_output_cb_t)(bool rtt_output);
 
 /**
  *
  * @param parent Parent object
  * @param toggle_cb Callback for start/stop button
  * @param gain_change_cb Callback for gain changes (can be NULL)
- * @param rtt_output_cb Callback for RTT output toggle (can be NULL)
  * @param initial_gain Initial gain value for the UI
  * @return lv_obj_t* Container object
  */
 lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
-                            watch_ui_gain_change_cb_t gain_change_cb,
-                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain);
+                            watch_ui_gain_change_cb_t gain_change_cb, float initial_gain);
 
 void mic_app_ui_remove(void);
 

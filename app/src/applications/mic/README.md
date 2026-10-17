@@ -1,18 +1,8 @@
 # Microphone Test Application
 
-1. Open the "Mic" application from the app menu
-2. Tick the "RTT Output" checkbox.
-3. Press "Start" button to begin microphone recording
-4. Press "Stop" after some time
-5. The python script will for each start/stop sequence store the wav file.
+1. Open the "Mic" application from the app menu.
+2. Press "Start" to display the live microphone spectrum.
+3. Adjust the gain with the plus and minus buttons.
+4. Press "Stop" to stop the microphone.
 
-## Analysis
-Use the Python script `app/scripts/mic_analyze.py` to capture and analyze the UART output:
-
-```bash
-cd app/scripts
-python mic_analyze.py
-```
-
-The script will save both raw PCM data and converted WAV files with timestamps.
-After a recording it will also try to play the recorder sound using `aplay`.
+Use the Voice Memo application to record audio to a file.

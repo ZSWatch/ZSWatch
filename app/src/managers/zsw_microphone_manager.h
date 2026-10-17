@@ -36,8 +36,7 @@ typedef enum {
  * @brief Audio output destinations
  */
 typedef enum {
-    ZSW_MIC_OUTPUT_RTT,     /**< Send audio data via RTT (for debugging) */
-    ZSW_MIC_OUTPUT_FILE,    /**< Save audio data to filesystem */
+    ZSW_MIC_OUTPUT_FILE = 1, /**< Save audio data to filesystem */
     ZSW_MIC_OUTPUT_BLE,     /**< Stream audio data over BLE (future) */
     ZSW_MIC_OUTPUT_RAW      /**< Provide raw audio blocks to callback */
 } zsw_mic_output_t;

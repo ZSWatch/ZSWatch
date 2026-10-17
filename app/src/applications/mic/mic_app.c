@@ -37,11 +37,9 @@ static void spectrum_update_work_handler(struct k_work *work);
 static uint8_t spectrum_magnitudes[NUM_SPECTRUM_BARS];
 static int16_t audio_samples[SPECTRUM_FFT_SIZE];
 static float current_gain = 1.0f;
-static bool rtt_output_enabled = false;
 
 static void on_play_stop_toggle(void);
 static void on_gain_changed(float new_gain);
-static void on_rtt_output_toggled(bool rtt_output);
 static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data, void *user_data);
 
 ZSW_LV_IMG_DECLARE(statistic_icon);
@@ -64,7 +62,7 @@ static void mic_app_start(lv_obj_t *root, lv_group_t *group)
         LOG_ERR("Failed to initialize spectrum analyzer: %d", ret);
     }
 
-    mic_app_ui_create(root, on_play_stop_toggle, on_gain_changed, on_rtt_output_toggled, current_gain);
+    mic_app_ui_create(root, on_play_stop_toggle, on_gain_changed, current_gain);
     LOG_INF("Circular spectrum watch UI created");
 
     sample_buffer_index = 0;
@@ -114,7 +112,7 @@ static void on_play_stop_toggle(void)
         zsw_mic_config_t config;
         zsw_microphone_manager_get_default_config(&config);
         config.duration_ms = 0; // Continuous recording
-        config.output = rtt_output_enabled ? ZSW_MIC_OUTPUT_RTT : ZSW_MIC_OUTPUT_RAW;
+        config.output = ZSW_MIC_OUTPUT_RAW;
 
         mic_app_ui_set_status("Starting...");
 
@@ -133,12 +131,6 @@ static void on_play_stop_toggle(void)
 static void on_gain_changed(float new_gain)
 {
     current_gain = new_gain;
-}
-
-static void on_rtt_output_toggled(bool rtt_output)
-{
-    rtt_output_enabled = rtt_output;
-    LOG_INF("RTT output %s", rtt_output ? "enabled" : "disabled");
 }
 
 static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data, void *user_data)

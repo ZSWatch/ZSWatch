@@ -45,19 +45,16 @@ static float current_gain = UI_GAIN_DEFAULT;
 
 static watch_ui_toggle_cb_t toggle_callback = NULL;
 static watch_ui_gain_change_cb_t gain_change_callback = NULL;
-static watch_ui_rtt_output_cb_t rtt_output_callback = NULL;
 
 static void spectrum_draw_event(lv_event_t *e);
 static void spectrum_decay_tick_cb(lv_timer_t *t);
 static void toggle_button_event_cb(lv_event_t *e);
 static void gain_plus_event_cb(lv_event_t *e);
 static void gain_minus_event_cb(lv_event_t *e);
-static void rtt_checkbox_event_cb(lv_event_t *e);
 static inline float norm_to_px(float v, float max_px);
 
 lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
-                            watch_ui_gain_change_cb_t gain_change_cb,
-                            watch_ui_rtt_output_cb_t rtt_output_cb, float initial_gain)
+                            watch_ui_gain_change_cb_t gain_change_cb, float initial_gain)
 {
     if (!parent) {
         LOG_ERR("Parent object is NULL");
@@ -66,7 +63,6 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     toggle_callback = toggle_cb;
     gain_change_callback = gain_change_cb;
-    rtt_output_callback = rtt_output_cb;
     current_gain = initial_gain;
 
     app_root_container = lv_obj_create(parent);
@@ -127,14 +123,6 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
     lv_obj_set_style_text_font(plus_label, &lv_font_montserrat_18, 0);
     lv_obj_center(plus_label);
 
-    // RTT output checkbox
-    lv_obj_t *rtt_checkbox = lv_checkbox_create(app_root_container);
-    lv_checkbox_set_text(rtt_checkbox, "RTT Output");
-    lv_obj_set_style_text_font(rtt_checkbox, &lv_font_montserrat_12, 0);
-    lv_obj_set_style_text_color(rtt_checkbox, lv_color_white(), 0);
-    lv_obj_align_to(rtt_checkbox, gain_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
-    lv_obj_add_event_cb(rtt_checkbox, rtt_checkbox_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
-
     memset(current_bar_vals, 0, sizeof(current_bar_vals));
     memset(decay_peak_marker_vals, 0, sizeof(decay_peak_marker_vals));
 
@@ -162,7 +150,6 @@ void mic_app_ui_remove(void)
 
     toggle_callback = NULL;
     gain_change_callback = NULL;
-    rtt_output_callback = NULL;
 }
 
 void mic_app_ui_update_spectrum(const uint8_t *magnitudes, size_t count)
@@ -366,14 +353,5 @@ static void gain_minus_event_cb(lv_event_t *e)
 
     if (gain_change_callback) {
         gain_change_callback(current_gain);
-    }
-}
-
-static void rtt_checkbox_event_cb(lv_event_t *e)
-{
-    lv_obj_t *checkbox = lv_event_get_target(e);
-    bool checked = lv_obj_get_state(checkbox) & LV_STATE_CHECKED;
-    if (rtt_output_callback) {
-        rtt_output_callback(checked);
     }
 }

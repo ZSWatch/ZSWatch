@@ -25,12 +25,6 @@
 #include "zsw_microphone_manager.h"
 #include "drivers/zsw_microphone.h"
 
-#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
-#include <SEGGER_RTT.h>
-
-static uint8_t rtt_buffer[CONFIG_ZSW_MIC_LOG_RTT_TBUFFER_SIZE];
-#endif
-
 LOG_MODULE_REGISTER(zsw_mic_manager, CONFIG_ZSW_MIC_MANAGER_LOG_LEVEL);
 
 typedef enum {
@@ -53,25 +47,8 @@ static void timeout_work_handler(struct k_work *work);
 static void mic_audio_callback(void *audio_data, size_t size);
 static int open_output_file(const char *filename);
 static void close_output_file(void);
-static int init_rtt_for_audio(void);
 
 K_WORK_DELAYABLE_DEFINE(timeout_work, timeout_work_handler);
-
-static int init_rtt_for_audio(void)
-{
-#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
-    int ret = SEGGER_RTT_ConfigUpBuffer(CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL, "ZSW_MIC",
-                                        rtt_buffer, ARRAY_SIZE(rtt_buffer),
-                                        SEGGER_RTT_MODE_NO_BLOCK_TRIM);
-    if (ret < 0) {
-        LOG_ERR("Failed to configure RTT buffer: %d", ret);
-        return -EIO;
-    }
-
-    LOG_DBG("RTT audio channel %d configured", CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL);
-#endif
-    return 0;
-}
 
 int zsw_microphone_manager_init(void)
 {
@@ -128,13 +105,6 @@ int zsw_microphone_manager_start_recording(const zsw_mic_config_t *config,
             ret = open_output_file(mic_manager.filename_buffer);
             if (ret < 0) {
                 LOG_ERR("Failed to open output file: %d", ret);
-                return ret;
-            }
-            break;
-        case ZSW_MIC_OUTPUT_RTT:
-            ret = init_rtt_for_audio();
-            if (ret < 0) {
-                LOG_ERR("Failed to initialize RTT for recording: %d", ret);
                 return ret;
             }
             break;
@@ -204,7 +174,7 @@ void zsw_microphone_manager_get_default_config(zsw_mic_config_t *config)
     config->duration_ms = 0;
     config->sample_rate = 16000;
     config->bit_depth = 16;
-    config->output = ZSW_MIC_OUTPUT_RTT;
+    config->output = ZSW_MIC_OUTPUT_RAW;
     config->filename = NULL;
 }
 
@@ -244,12 +214,6 @@ static void mic_audio_callback(void *audio_data, size_t size)
     mic_manager.recorded_ms += duration_ms;
 
     switch (mic_manager.config.output) {
-        case ZSW_MIC_OUTPUT_RTT:
-#if CONFIG_ZSW_MIC_SEND_READING_OVER_RTT
-            SEGGER_RTT_Write(CONFIG_ZSW_MIC_LOG_RTT_TRANSFER_CHANNEL, audio_data, size);
-#endif
-            break;
-
         case ZSW_MIC_OUTPUT_FILE:
             if (mic_manager.file_open) {
                 ssize_t written = fs_write(&mic_manager.file, audio_data, size);
