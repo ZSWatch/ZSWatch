@@ -28,6 +28,36 @@
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 
+#if defined(CONFIG_THREAD_MONITOR) && defined(CONFIG_THREAD_STACK_INFO) && defined(CONFIG_INIT_STACKS)
+struct stack_query {
+    const struct shell *sh;
+    const char *filter;
+};
+
+static void print_stack(const struct k_thread *thread, void *user_data)
+{
+    const struct stack_query *query = user_data;
+    const char *name = k_thread_name_get((k_tid_t)thread);
+    size_t unused;
+
+    if (!name) name = "unnamed";
+    if (query->filter && !strstr(name, query->filter)) return;
+    if (k_thread_stack_space_get(thread, &unused)) return;
+    shell_print(query->sh, "%s: size=%u used=%u free=%u", name,
+                (unsigned)thread->stack_info.size,
+                (unsigned)(thread->stack_info.size - unused), (unsigned)unused);
+}
+
+static int cmd_stack(const struct shell *sh, size_t argc, char **argv)
+{
+    struct stack_query query = {.sh = sh, .filter = argc > 1 ? argv[1] : NULL};
+    k_thread_foreach_unlocked(print_stack, &query);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(stack, NULL, "Show stack high-water use; optional thread-name filter", cmd_stack, 1, 1);
+#endif
+
 #ifdef CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
 
 static int cmd_battery(const struct shell *sh, size_t argc, char **argv)
