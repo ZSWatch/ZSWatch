@@ -443,9 +443,17 @@ bool zsw_hr_is_running(void)
 #define FW_VERSION_MINOR 13
 #define FW_VERSION_PATCH 31
 
-static int zsw_hr_init(const struct device *unused)
+static int zsw_hr_init(void)
 {
-    ARG_UNUSED(unused);
+    if (!sensor_hub) {
+        LOG_WRN("Heart rate hub alias not defined");
+        return -ENODEV;
+    }
+
+    if (!device_is_ready(sensor_hub)) {
+        LOG_WRN("Heart rate hub not ready; check VHR (LDO1), VSYS, RESET and MFIO");
+        return -ENODEV;
+    }
 
     uint8_t major, minor, patch;
     int err = max32664c_read_fw_version(sensor_hub, &major, &minor, &patch);
@@ -460,16 +468,6 @@ static int zsw_hr_init(const struct device *unused)
         return err;
     } else {
         LOG_INF("Firmware up to date: %u.%u.%u", major, minor, patch);
-    }
-
-    if (!sensor_hub) {
-        LOG_WRN("Heart rate hub alias not defined");
-        return -ENODEV;
-    }
-
-    if (!device_is_ready(sensor_hub)) {
-        LOG_WRN("Heart rate hub not ready");
-        return -ENODEV;
     }
 
     k_mutex_lock(&hr_lock, K_FOREVER);
