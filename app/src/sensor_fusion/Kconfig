@@ -13,7 +13,7 @@ menu "Sensor Fusion"
         depends on USE_SEGGER_RTT
         bool
         prompt "Log sensor fusion reading to RTT"
-        default y
+        default n
         help
             Python script can be used to read, analyze the RTT channel and plot the sensor fusion reading.
 

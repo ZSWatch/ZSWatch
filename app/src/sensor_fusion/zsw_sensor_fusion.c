@@ -33,7 +33,7 @@
 #include "../ble/zsw_gatt_sensor_server.h"
 #include <string.h>
 
-#ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
+#ifdef CONFIG_SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
 #include <SEGGER_RTT.h>
 #endif
 
@@ -94,7 +94,7 @@ static zsw_quat_t readings_quat;
 static float last_delta_time_s = 0.0f;
 static atomic_t sensor_fusion_users = ATOMIC_INIT(0);
 
-#ifdef CONFIG_SEND_SENSOR_READING_OVER_RTT
+#ifdef CONFIG_SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
 #define UP_BUFFER_SIZE 256
 static uint8_t up_buffer[UP_BUFFER_SIZE];
 #endif
@@ -189,8 +189,8 @@ static void sensor_fusion_timeout(struct k_work *work)
             euler.angle.yaw, accelerometer.axis.x, accelerometer.axis.y,
             accelerometer.axis.z, gyroscope.axis.x, gyroscope.axis.y, gyroscope.axis.z);
 #endif
-#if CONFIG_SEND_SENSOR_READING_OVER_RTT
-    uint8_t data_buf[UP_BUFFER_SIZE];
+#if CONFIG_SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
+    char data_buf[UP_BUFFER_SIZE];
 #ifdef CONFIG_SENSOR_FUSION_INCLUDE_MAGNETOMETER
     int len = snprintf(data_buf, UP_BUFFER_SIZE,
                        "%0.5f, %0.1f, %0.1f, %0.1f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f, %0.5f\n",
@@ -205,7 +205,7 @@ static void sensor_fusion_timeout(struct k_work *work)
                        euler.angle.yaw, gyroscope.axis.x,
                        gyroscope.axis.y, gyroscope.axis.z, accelerometer.axis.x, accelerometer.axis.y, accelerometer.axis.z);
 #endif
-    len = SEGGER_RTT_Write(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, data_buf, len);
+    len = SEGGER_RTT_Write(CONFIG_SENSOR_FUSION_LOG_RTT_TRANSFER_CHANNEL, data_buf, len);
 #endif
 
     k_work_schedule(&sensor_fusion_timer, K_MSEC((1000 / SAMPLE_RATE_HZ) - (k_uptime_get_32() - start)));
@@ -213,8 +213,8 @@ static void sensor_fusion_timeout(struct k_work *work)
 
 int zsw_sensor_fusion_init(void)
 {
-#if CONFIG_SEND_SENSOR_READING_OVER_RTT
-    SEGGER_RTT_ConfigUpBuffer(CONFIG_SENSOR_LOG_RTT_TRANSFER_CHANNEL, "FUSION",
+#if CONFIG_SENSOR_FUSION_SEND_SENSOR_READING_OVER_RTT
+    SEGGER_RTT_ConfigUpBuffer(CONFIG_SENSOR_FUSION_LOG_RTT_TRANSFER_CHANNEL, "FUSION",
                               up_buffer, UP_BUFFER_SIZE,
                               SEGGER_RTT_MODE_NO_BLOCK_SKIP);
 #endif
