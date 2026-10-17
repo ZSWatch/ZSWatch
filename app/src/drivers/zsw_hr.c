@@ -29,7 +29,8 @@
 
 LOG_MODULE_REGISTER(zsw_hr, LOG_LEVEL_DBG);
 
-#define HR_LOG_DATA_FOR_PLOTTING
+// Enable to log raw sensor data for the HR plotting scripts.
+//#define HR_LOG_DATA_FOR_PLOTTING
 
 #ifdef HR_LOG_DATA_FOR_PLOTTING
 #define ZSW_HR_THREAD_STACK_SIZE 1536
