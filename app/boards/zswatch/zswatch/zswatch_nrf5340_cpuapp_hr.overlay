@@ -1,0 +1,46 @@
+/*
+ * Copyright (c) 2025 ZSWatch Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+    aliases {
+        hr-hub = &biometric_hub;
+    };
+};
+
+/*
+ * LDO1 supplies VHR: MAX32664C, MAX86141 and LIS2DS12, as well as the
+ * microphone on the main PCB. Keep it on when microphone recording stops.
+ * The PMIC regulators initialize at POST_KERNEL/53, before sensors at /90.
+ * VLED comes directly from VSYS and has no software-controlled enable.
+ */
+&mic_pwr {
+    /delete-property/ regulator-boot-off;
+    regulator-boot-on;
+    regulator-always-on;
+    startup-delay-us = <10000>;
+};
+
+&i2c1 {
+    biometric_hub: max32664c@55 {
+        compatible = "maxim,max32664c";
+        reg = <0x55>;
+        status = "okay";
+        /*
+         * RESET is electrically active-low, but the current MAX32664C driver
+         * writes logical 0 to assert it and 1 to release it. Use uninverted
+         * GPIO levels here, matching the working WatchDK configuration.
+         */
+        reset-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+        mfio-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+        hr-config = [00 01];
+        spo2-config = [11 21];
+        led-current = [3F 3F 3F];
+        /* One report per 25 effective samples (1 s), matching the HR UI/cache. */
+        report-period = <25>;
+        min-sampling-rate = <400>;
+        max-sampling-rate = <400>;
+        use-max86141;
+    };
+};
