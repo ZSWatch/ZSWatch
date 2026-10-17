@@ -40,6 +40,11 @@ menu "Applications"
         prompt "Activate the application 'Chronos'"
         default y
 
+    config APPLICATIONS_USE_HR
+        bool
+        prompt "Activate the application 'Heart rate'"
+        default y if DT_HAS_MAXIM_MAX32664C_ENABLED || ARCH_POSIX
+
     config APPLICATIONS_USE_DA7212_TEST
         bool
         prompt "Activate the application 'DA7212 Test'"
