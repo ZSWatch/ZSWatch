@@ -64,12 +64,15 @@ jobs:
           # the NCS checkout in case app/west.yml changed at that commit.
           # app/sysbuild.cmake applies app/patches/* into zephyr and submodules,
           # which git clean leaves alone (nested repos). Revert them so each
-          # commit applies its own version of the patches.
+          # commit applies its own version of the patches, then force the
+          # submodules to this commit's gitlinks: the action's own submodule
+          # update ran before the revert, so leftover patches can make it fail.
           build_script: >-
             git -C zephyr checkout -q -- . && git -C zephyr clean -qfd &&
             (test -d .west || west init -l app) &&
             west update -o=--depth=1 -n &&
             git submodule foreach --recursive -q 'git checkout -q -- . && git clean -qfd' &&
+            git submodule update --init --recursive --force -q &&
             ${{ matrix.build_cmd }}
           elf: ${{ matrix.elf }}
           ld: ${{ matrix.ld }}
