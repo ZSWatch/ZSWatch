@@ -248,7 +248,7 @@ zephyr_udc0: &usbd {
             read-size = <512>;
             prog-size = <512>;
             cache-size = <512>;
-            lookahead-size = <4096>;
+            lookahead-size = <64>;
             block-cycles = <512>;
         };
     };
