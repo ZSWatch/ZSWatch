@@ -90,9 +90,9 @@ static int configure_sensor_mode(void)
 
 #if IS_ENABLED(CONFIG_PM_DEVICE)
     rc = pm_device_action_run(sensor_hub, PM_DEVICE_ACTION_RESUME);
-    if (rc) {
+    if (rc && rc != -EALREADY) {
         LOG_ERR("Failed to resume heart rate hub: %d", rc);
-        //return rc;
+        return rc;
     }
 #endif
 
@@ -122,7 +122,7 @@ static int disable_sensor(void)
 
 #if IS_ENABLED(CONFIG_PM_DEVICE)
     int pm_rc = pm_device_action_run(sensor_hub, PM_DEVICE_ACTION_SUSPEND);
-    if (pm_rc) {
+    if (pm_rc && pm_rc != -EALREADY) {
         LOG_WRN("Failed to suspend heart rate hub: %d", pm_rc);
         if (rc == 0) {
             rc = pm_rc;
@@ -374,7 +374,11 @@ int zsw_hr_stop(void)
 
     rc = disable_sensor();
 
-    LOG_INF("Heart rate sampling stopped");
+    if (rc) {
+        LOG_ERR("Heart rate sampling stopped, but sensor shutdown failed: %d", rc);
+    } else {
+        LOG_INF("Heart rate sampling stopped");
+    }
 
     return rc;
 }
