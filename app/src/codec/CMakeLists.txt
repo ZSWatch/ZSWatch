@@ -89,8 +89,8 @@ endif()
 
 # --- XIP Relocation for hardware builds ---
 if(CONFIG_ZSW_XIP)
-    zephyr_code_relocate(FILES ${opus_all_sources} LOCATION EXTFLASH_TEXT NOCOPY)
-    zephyr_code_relocate(FILES ${opus_all_sources} LOCATION EXTFLASH_RODATA NOCOPY)
+    zephyr_code_relocate(FILES ${opus_all_sources} LOCATION EXTFLASH_TEXT NOCOPY NOKEEP)
+    zephyr_code_relocate(FILES ${opus_all_sources} LOCATION EXTFLASH_RODATA NOCOPY NOKEEP)
 endif()
 
 # --- ZSWatch audio codec wrapper ---
