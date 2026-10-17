@@ -56,7 +56,9 @@ static void notification_app_zbus_notification_callback(const struct zbus_channe
 
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
         not = zsw_notification_manager_get_newest();
-        notifications_ui_add_notification(not, notification_group);
+        if (not != NULL) {
+            notifications_ui_add_notification(not, notification_group);
+        }
     }
 }
 
@@ -86,23 +88,20 @@ static void notification_app_on_ui_available(void)
     notification_app_start(root_obj, notification_group);
 }
 
+static void add_notification_to_ui(const zsw_not_mngr_notification_t *notification, void *user_data)
+{
+    notifications_ui_add_notification(notification, (lv_group_t *)user_data);
+}
+
 static void notification_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    static uint32_t num_notifications;
-
-    // TODO: Can we remove this buffer in some way because we already have one notification buffer?
-    static zsw_not_mngr_notification_t notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
-
     notification_group = group;
     root_obj = root;
 
-    zsw_notification_manager_get_all(notifications, &num_notifications);
     notifications_ui_page_init(on_notification_page_notification_close);
     notifications_ui_page_create(root_obj, notification_group);
 
-    for (uint32_t i = 0; i < num_notifications; i++) {
-        notifications_ui_add_notification(&notifications[i], notification_group);
-    }
+    zsw_notification_manager_for_each(add_notification_to_ui, notification_group);
 }
 
 static void notification_app_stop(void)

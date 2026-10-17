@@ -36,7 +36,7 @@ static void notification_delta2char(uint32_t delta, char *buf)
 static bool any_notifiction(void)
 {
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification != NULL) {
+        if (active_notifications[i].panel != NULL) {
             return true;
         }
     }
@@ -54,7 +54,7 @@ static void label_on_timer_callback(lv_timer_t *timer)
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
         // Make sure that the notification exists and prevent exceptions because of a fragmented array.
         if ((active_notifications[i].panel != NULL) && (active_notifications[i].deltaLabel != NULL)) {
-            delta = time(NULL) - active_notifications[i].notification->timestamp;
+            delta = time(NULL) - active_notifications[i].timestamp;
             notification_delta2char(delta, buf);
 
             lv_label_set_text(active_notifications[i].deltaLabel, buf);
@@ -72,7 +72,7 @@ static void notification_on_clicked_callback(lv_event_t *event)
     id = (uint32_t)lv_event_get_user_data(event);
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
+        if ((active_notifications[i].panel != NULL) && (active_notifications[i].id == id)) {
             notification_removed_callback(id);
             break;
         }
@@ -88,7 +88,7 @@ static void notification_on_clicked_callback(lv_event_t *event)
  *  @param not
  *  @param group
 */
-static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group)
+static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     lv_obj_t *ui_Panel;
     lv_obj_t *ui_LabelSource;
@@ -107,7 +107,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     // TODO: Make me better
     index = 0xFFFFFFFF;
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification == NULL) {
+        if (active_notifications[i].panel == NULL) {
             index = i;
 
             break;
@@ -162,7 +162,8 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
 
     active_notifications[index].panel = ui_Panel;
     active_notifications[index].deltaLabel = ui_LabelTimeDelta;
-    active_notifications[index].notification = not;
+    active_notifications[index].id = not->id;
+    active_notifications[index].timestamp = not->timestamp;
 
     ui_ImageIcon = lv_img_create(ui_Panel);
     lv_obj_set_width(ui_ImageIcon, 16);
@@ -276,7 +277,7 @@ void notifications_ui_page_close(void)
     timer = NULL;
 }
 
-void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
+void notifications_ui_add_notification(const zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     if (main_page == NULL) {
         return;
@@ -298,12 +299,11 @@ void notifications_ui_remove_notification(uint32_t id)
     }
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
+        if ((active_notifications[i].panel != NULL) && (active_notifications[i].id == id)) {
             lv_obj_add_flag(active_notifications[i].panel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_del(active_notifications[i].panel);
             active_notifications[i].panel = NULL;
             active_notifications[i].deltaLabel = NULL;
-            active_notifications[i].notification = NULL;
             if (lv_obj_get_child(main_page, -1)) {
                 lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
             }

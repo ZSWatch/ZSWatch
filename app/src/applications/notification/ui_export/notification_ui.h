@@ -23,8 +23,10 @@
 #include "managers/zsw_notification_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
+// Only id and timestamp are kept, the notification manager may reuse its slots while the UI is closed.
 typedef struct {
-    zsw_not_mngr_notification_t *notification;
+    uint32_t id;
+    uint32_t timestamp;
     lv_obj_t *deltaLabel;
     lv_obj_t *panel;
 } active_notification_t;
@@ -37,6 +39,6 @@ void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group);
 
 void notifications_ui_page_close(void);
 
-void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group);
+void notifications_ui_add_notification(const zsw_not_mngr_notification_t *not, lv_group_t *group);
 
 void notifications_ui_remove_notification(uint32_t id);

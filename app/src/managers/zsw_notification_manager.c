@@ -321,6 +321,15 @@ void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, uint32_
     *num_notifications = num_stored;
 }
 
+void zsw_notification_manager_for_each(zsw_notification_manager_visit_cb_t cb, void *user_data)
+{
+    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
+        if (notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) {
+            cb(&notifications[i], user_data);
+        }
+    }
+}
+
 int32_t zsw_notification_manager_get_num(void)
 {
     return num_notifications;

@@ -94,6 +94,14 @@ int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *n
 */
 void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, uint32_t *num_notifications);
 
+typedef void (*zsw_notification_manager_visit_cb_t)(const zsw_not_mngr_notification_t *notification, void *user_data);
+
+/** @brief Call cb for every stored notification, without copying them.
+ *  @param cb           Called synchronously; the notification pointer is only valid during the call.
+ *  @param user_data    Passed to cb
+*/
+void zsw_notification_manager_for_each(zsw_notification_manager_visit_cb_t cb, void *user_data);
+
 /** @brief
  *  @return
 */
