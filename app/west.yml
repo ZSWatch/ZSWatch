@@ -53,6 +53,6 @@ manifest:
 
     - name: Zephyr-MAX32664C
       remote: zswatch
-      revision: jakkra_zephyr_module
+      revision: 507813b6c480e1b3ffdb7a3922b38deea036b3b4
       path: modules/lib/max32664c
 
