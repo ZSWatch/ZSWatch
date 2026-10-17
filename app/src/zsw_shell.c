@@ -40,9 +40,15 @@ static void print_stack(const struct k_thread *thread, void *user_data)
     const char *name = k_thread_name_get((k_tid_t)thread);
     size_t unused;
 
-    if (!name) name = "unnamed";
-    if (query->filter && !strstr(name, query->filter)) return;
-    if (k_thread_stack_space_get(thread, &unused)) return;
+    if (!name) {
+        name = "unnamed";
+    }
+    if (query->filter && !strstr(name, query->filter)) {
+        return;
+    }
+    if (k_thread_stack_space_get(thread, &unused)) {
+        return;
+    }
     shell_print(query->sh, "%s: size=%u used=%u free=%u", name,
                 (unsigned)thread->stack_info.size,
                 (unsigned)(thread->stack_info.size - unused), (unsigned)unused);

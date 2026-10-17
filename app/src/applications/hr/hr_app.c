@@ -81,8 +81,8 @@ static void on_tileview_change(lv_event_t *e);
 static void create_page_indicator(lv_obj_t *container);
 static void set_indicator_page(int page);
 static void update_timer_cb(lv_timer_t *timer);
-static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf, 
-                                   int rr, int rr_conf, int skin_contact, int activity);
+static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
+                                  int rr, int rr_conf, int skin_contact, int activity);
 
 // Application registration
 ZSW_LV_IMG_DECLARE(heart_beat);
@@ -173,11 +173,11 @@ static void find_chart_in_page(lv_obj_t *parent)
             conf_series = lv_chart_get_series_next(hr_chart, hr_series);
             // Hide the data point dots, show only lines
             lv_obj_set_style_size(hr_chart, 0, 0, LV_PART_INDICATOR);
-            
+
             // Ensure chart axis range matches our scale (XML may not set it correctly)
             lv_chart_set_range(hr_chart, LV_CHART_AXIS_PRIMARY_Y, 40, 130);
             lv_chart_set_range(hr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 100);
-            
+
             // Find and configure the Y-axis scale (created in XML with name "hr_scale")
             lv_obj_t *hr_scale = lv_obj_get_child_by_type(hr_chart, 0, &lv_scale_class);
             if (hr_scale) {
@@ -188,7 +188,7 @@ static void find_chart_in_page(lv_obj_t *parent)
                 lv_obj_set_style_line_width(hr_scale, 0, LV_PART_MAIN);
                 LOG_DBG("Configured HR scale");
             }
-            
+
             LOG_DBG("Found chart with series");
             return;
         }
@@ -198,7 +198,7 @@ static void find_chart_in_page(lv_obj_t *parent)
 }
 
 static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
-                                   int rr, int rr_conf, int skin_contact, int activity)
+                                  int rr, int rr_conf, int skin_contact, int activity)
 {
     char buf[32];
 
@@ -248,37 +248,45 @@ static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
 
 #if USE_FAKE_DATA
 static void generate_fake_data(int *hr, int *hr_conf, int *spo2, int *spo2_conf,
-                                int *rr, int *rr_conf, int *skin_contact, int *activity)
+                               int *rr, int *rr_conf, int *skin_contact, int *activity)
 {
     // Generate realistic-looking fake HR data with some variation
     fake_counter++;
-    
+
     // HR varies between 60-100 with some noise
     int hr_variation = (fake_counter % 20) - 10;  // -10 to +10
     *hr = fake_hr_base + hr_variation + (sys_rand32_get() % 5) - 2;
-    if (*hr < 50) *hr = 50;
-    if (*hr > 120) *hr = 120;
-    
+    if (*hr < 50) {
+        *hr = 50;
+    }
+    if (*hr > 120) {
+        *hr = 120;
+    }
+
     // Confidence builds up over time, with occasional dips
     if (fake_counter < 10) {
         *hr_conf = 30 + fake_counter * 5;
     } else {
         *hr_conf = fake_conf_base + (sys_rand32_get() % 10) - 5;
     }
-    if (*hr_conf < 0) *hr_conf = 0;
-    if (*hr_conf > 100) *hr_conf = 100;
-    
+    if (*hr_conf < 0) {
+        *hr_conf = 0;
+    }
+    if (*hr_conf > 100) {
+        *hr_conf = 100;
+    }
+
     // SpO2 stays stable around 97-99%
     *spo2 = 97 + (sys_rand32_get() % 3);
     *spo2_conf = 80 + (sys_rand32_get() % 15);
-    
+
     // RR interval correlates with HR (60000/HR ≈ RR in ms)
     *rr = 60000 / (*hr) + (sys_rand32_get() % 50) - 25;
     *rr_conf = 65 + (sys_rand32_get() % 20);
-    
+
     // Skin contact: mostly on skin (3), occasionally on subject (2)
     *skin_contact = (sys_rand32_get() % 10 < 8) ? 3 : 2;
-    
+
     // Activity: cycle through different activities
     *activity = (fake_counter / 30) % NUM_ACTIVITIES;
 }

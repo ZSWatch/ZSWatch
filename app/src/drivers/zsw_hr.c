@@ -66,7 +66,7 @@ static uint32_t sanitize_interval(zsw_hr_mode_t mode, uint32_t interval_ms)
 
     if (interval == 0) {
         interval = (mode == ZSW_HR_MODE_CONTINUOUS) ? ZSW_HR_REALTIME_INTERVAL_MS
-                                                    : ZSW_HR_DEFAULT_INTERVAL_MS;
+                   : ZSW_HR_DEFAULT_INTERVAL_MS;
     }
 
     if (interval < ZSW_HR_MIN_INTERVAL_MS) {
