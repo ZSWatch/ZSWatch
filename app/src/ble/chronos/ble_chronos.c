@@ -136,6 +136,13 @@ static int parse_notify(chronos_notification_t *notification)
 
     send_ble_data_event(&cb);
 
+    // All observers are listeners and copy what they need during the publish.
+    free(cb.data.data.notify.src);
+    free(cb.data.data.notify.sender);
+    free(cb.data.data.notify.title);
+    free(cb.data.data.notify.subject);
+    free(cb.data.data.notify.body);
+
     return 0;
 }
 
