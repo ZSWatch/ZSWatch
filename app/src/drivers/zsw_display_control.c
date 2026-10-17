@@ -214,13 +214,14 @@ int zsw_display_control_pwr_ctrl(bool on)
                 LOG_DBG("Display sleeping, power off");
                 if (device_is_ready(reg_dev)) {
                     display_state = DISPLAY_STATE_POWERED_OFF;
-#ifndef CONFIG_ARCH_POSIX
-                    regulator_disable(reg_dev);
-#endif
                     pm_device_action_run(display_dev, PM_DEVICE_ACTION_TURN_OFF);
                     if (device_is_ready(touch_dev)) {
                         pm_device_action_run(touch_dev, PM_DEVICE_ACTION_TURN_OFF);
                     }
+#ifndef CONFIG_ARCH_POSIX
+                    // Let the drivers finish shutdown I/O before removing their supply.
+                    regulator_disable(reg_dev);
+#endif
                     res = 0;
                 }
             }
