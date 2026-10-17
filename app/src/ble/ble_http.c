@@ -46,22 +46,24 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
         k_work_cancel_delayable_sync(&ble_http_timeout_work, &sync);
         request_pending = false;
 
-        if (strlen(event->data.data.http_response.err) > 0) {
-            LOG_WRN("HTTP request failed: %s", event->data.data.http_response.err);
-        } else if (strlen(event->data.data.http_response.response) > 0) {
-            char *fixed_rsp = k_malloc(strlen(event->data.data.http_response.response) + 1);
+        const ble_comm_http_response_t *http_rsp = &event->data.data.http_response;
+
+        if (http_rsp->err_len > 0) {
+            LOG_WRN("HTTP request failed: %.*s", http_rsp->err_len, http_rsp->err);
+        } else if (http_rsp->response_len > 0) {
+            char *fixed_rsp = k_malloc(http_rsp->response_len + 1);
             __ASSERT(fixed_rsp, "Failed to allocate memory for fixed_rsp");
             // As the response from Gadgetbride contains two characters like this[\\, "] instead of just one character [\"],
             // we need to remove them for it to be avalid JSON accepted by cJSON
             int i;
             int j;
-            for (i = 0, j = 0; i < strlen(event->data.data.http_response.response) - 1;) {
-                if (event->data.data.http_response.response[i] == '\\' && event->data.data.http_response.response[i + 1] == '"') {
+            for (i = 0, j = 0; i < http_rsp->response_len - 1;) {
+                if (http_rsp->response[i] == '\\' && http_rsp->response[i + 1] == '"') {
                     fixed_rsp[j] = '\"';
                     j++;
                     i += 2;
                 } else {
-                    fixed_rsp[j] = event->data.data.http_response.response[i];
+                    fixed_rsp[j] = http_rsp->response[i];
                     j++;
                     i++;
                 }

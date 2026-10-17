@@ -674,15 +674,18 @@ static int parse_httpstate(char *data, int len)
     temp_value = extract_value_str("\"err\":", data, &temp_len);
 
     if (temp_value != NULL) {
-        LOG_ERR("HTTP err: %s", temp_value);
-        memcpy(cb.data.data.http_response.err, temp_value, temp_len);
+        LOG_ERR("HTTP err: %.*s", temp_len, temp_value);
+        cb.data.data.http_response.err = temp_value;
+        cb.data.data.http_response.err_len = temp_len;
         send_ble_data_event(&cb);
     } else {
         temp_value = extract_value_str("\"resp\":", data, &temp_len);
         if (temp_value) {
             LOG_DBG("HTTP response: %s", temp_value);
-            memcpy(cb.data.data.http_response.response, temp_value,
-                   (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
+            // The response contains escaped quotes, so extract_value_str stops at the first one.
+            // Pass everything up to the end of the packet and let ble_http strip the trailing quote.
+            cb.data.data.http_response.response = temp_value;
+            cb.data.data.http_response.response_len = strlen(temp_value);
             send_ble_data_event(&cb);
         }
     }

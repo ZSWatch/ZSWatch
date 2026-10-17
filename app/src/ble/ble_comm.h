@@ -88,9 +88,13 @@ typedef struct ble_comm_remote_control {
     int button;
 } ble_comm_remote_control_t;
 
+/* err and response point into the BLE receive buffer and are only valid while the
+ * ble_comm_data_chan publish is in progress. They are not NUL-terminated. */
 typedef struct ble_comm_http_response {
-    char err[MAX_HTTP_FIELD_LENGTH + 1];
-    char response[MAX_HTTP_FIELD_LENGTH + 1];
+    const char *err;
+    int err_len;
+    const char *response;
+    int response_len;
     int id;
 } ble_comm_http_response_t;
 
