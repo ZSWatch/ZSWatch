@@ -29,6 +29,7 @@
 #include <zephyr/logging/log.h>
 #include "lvgl.h"
 #include <lvgl_zephyr.h>
+#include <lvgl_common_input.h>
 
 #include <zephyr/drivers/counter.h>
 #include <stdint.h>
@@ -39,6 +40,7 @@ LOG_MODULE_REGISTER(display_control, LOG_LEVEL_WRN);
 
 static void lvgl_render(struct k_work *item);
 static int schedule_render_locked(k_timeout_t delay);
+static void discard_queued_touch_input(void);
 
 static void set_brightness_level(uint8_t brightness);
 static void brightness_alarm_start_cb(const struct device *counter_dev, uint8_t chan_id, uint32_t ticks,
@@ -59,6 +61,7 @@ static const struct device *const reg_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(r
 static const struct device *const level_shifter_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(display_en));
 static const struct device *display_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_display));
 static const struct device *touch_dev =  DEVICE_DT_GET_OR_NULL(DT_NODELABEL(cst816s));
+static const struct device *lvgl_pointer_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(lvgl_pointer_input));
 
 K_WORK_DELAYABLE_DEFINE(lvgl_work, lvgl_render);
 
@@ -170,6 +173,8 @@ int zsw_display_control_sleep_ctrl(bool on)
                     zsw_display_control_set_brightness(last_brightness);
                 }
                 display_blanking_off(display_dev);
+                // Touches queued while LVGL was not running are stale, don't replay them.
+                discard_queued_touch_input();
                 if (schedule_render_locked(K_MSEC(250)) != 0) {
                     atomic_set(&render_enabled, 0);
                 }
@@ -315,6 +320,7 @@ int zsw_display_control_unblock_render(void)
         LOG_DBG("Rendering unblocked, count=%u", render_block_count);
         res = 0;
         if (render_block_count == 0 && !atomic_get(&render_enabled)) {
+            discard_queued_touch_input();
             (void)schedule_render_locked(K_MSEC(100));
         }
     }
@@ -353,6 +359,32 @@ static int schedule_render_locked(k_timeout_t delay)
     atomic_set(&render_enabled, 1);
     k_work_schedule(&lvgl_work, delay);
     return 0;
+}
+
+static void discard_queued_touch_input(void)
+{
+    const struct lvgl_common_input_config *cfg;
+    const struct lvgl_common_input_data *data;
+    lv_indev_data_t release = { 0 };
+    uint32_t queued;
+
+    if (lvgl_pointer_dev == NULL) {
+        return;
+    }
+
+    cfg = lvgl_pointer_dev->config;
+    data = lvgl_pointer_dev->data;
+    queued = k_msgq_num_used_get(cfg->event_msgq);
+    if (queued == 0) {
+        return;
+    }
+
+    k_msgq_purge(cfg->event_msgq);
+    // The purged events may have contained the release, so end any press LVGL still tracks.
+    release.point = data->previous_event.point;
+    release.state = LV_INDEV_STATE_RELEASED;
+    (void)k_msgq_put(cfg->event_msgq, &release, K_NO_WAIT);
+    LOG_DBG("Discarded %u queued touch events", queued);
 }
 
 static void lvgl_render(struct k_work *item)
