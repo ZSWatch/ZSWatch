@@ -478,10 +478,7 @@ static int bmi270_sensor_init(const struct device *p_dev)
         return -EFAULT;
     }
 
-    if (bmi2_soft_reset(&data->bmi2) != BMI2_OK) {
-        return -EFAULT;
-    }
-
+    /* bmi270_init() already resets the sensor and uploads its configuration. */
     // Initialize with reset values from the datasheet.
     data->acc_odr = BOSCH_BMI270_ACC_ODR_100_HZ;
     data->acc_range = 8;
