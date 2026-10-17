@@ -6,6 +6,13 @@ app:
   end_address: 0xe4000
   region: flash_primary
   size: 0xd3e00
+# Partition Manager sizes the dynamic app from the unreserved gap.
+# Keep its linker region within the MCUboot primary slot.
+app_reserved:
+  address: 0xe4000
+  end_address: 0xf0000
+  region: flash_primary
+  size: 0xc000
 mcuboot:
   address: 0x0
   end_address: 0x10000
