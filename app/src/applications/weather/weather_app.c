@@ -28,6 +28,7 @@
 #include "weather_ui.h"
 #include <zsw_clock.h>
 #include <stdio.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 
@@ -139,6 +140,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
 static void publish_weather_data(struct k_work *work)
 {
     ble_comm_cb_data_t data;
+    memset(&data, 0, sizeof(data));
     data.type = BLE_COMM_DATA_TYPE_WEATHER;
     data.data.weather = last_weather;
     zbus_chan_pub(&ble_comm_data_chan, &data, K_MSEC(250));
