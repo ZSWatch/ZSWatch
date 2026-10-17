@@ -47,6 +47,8 @@ struct zsw_hr_sample {
     int32_t respiration_rate;
     uint8_t respiration_confidence;
     bool skin_contact;
+    /* MAX32664C SCD: 0 unknown, 1 off skin, 2 on subject, 3 on skin. */
+    uint8_t skin_contact_state;
     int32_t activity_class;
     int64_t timestamp_ms;
 };

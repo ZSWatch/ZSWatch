@@ -301,7 +301,7 @@ static void update_timer_cb(lv_timer_t *timer)
             sample.spo2_confidence,
             sample.respiration_rate,
             sample.respiration_confidence,
-            sample.skin_contact ? 3 : 0,  // Convert bool to our scale
+            sample.skin_contact_state,
             sample.activity_class
         );
     }
@@ -347,7 +347,7 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
     lv_obj_add_event_cb(tv, on_tileview_change, LV_EVENT_VALUE_CHANGED, NULL);
 
     // Initialize with some default data
-    update_ui_from_sample(72, 78, 98, 85, 850, 72, 3, 2);
+    update_ui_from_sample(0, 0, 0, 0, 0, 0, 0, 0);
 
 #if !USE_FAKE_DATA
     // Start the HR sensor

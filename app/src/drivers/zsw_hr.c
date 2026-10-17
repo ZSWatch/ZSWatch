@@ -196,7 +196,8 @@ static int fetch_sample(struct zsw_hr_sample *sample)
     sample->spo2_confidence = sensor_max32664c_value_to_confidence(&spo2);
     sample->respiration_rate = rr.val1;
     sample->respiration_confidence = (uint8_t)rr.val2;
-    sample->skin_contact = (skin_contact.val1 != 0);
+    sample->skin_contact_state = skin_contact.val1;
+    sample->skin_contact = (skin_contact.val1 == 3);
     sample->activity_class = activity.val1;
 
 #ifdef HR_LOG_DATA_FOR_PLOTTING
@@ -268,7 +269,7 @@ static void hr_thread(void *p1, void *p2, void *p3)
             if (cb) {
                 cb(&sample, cb_data);
             }
-        } else {
+        } else if (rc != -EAGAIN && rc != -ENOMSG) {
             failure_count++;
             if ((failure_count == 1) || (failure_count % 50 == 0)) {
                 LOG_WRN("Failed to read heart rate sample (%d, %u)", rc, failure_count);
