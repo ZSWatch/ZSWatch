@@ -33,6 +33,7 @@ K_WORK_DEFINE(init_work, production_test_init_work);
 #define FW_VERSION_MAJOR 30
 #define FW_VERSION_MINOR 13
 #define FW_VERSION_PATCH 31
+#include <zephyr/drivers/sensor/max32664c.h>
 #include "ext_drivers/firmware/MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31.h"
 
 static const struct device *const sensor_hub = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr_hub));
@@ -43,17 +44,24 @@ static void setup_hr_firmware(void)
 #ifdef CONFIG_MAX32664C_USE_FIRMWARE_LOADER
 
     uint8_t major, minor, patch;
+
+    if (!device_is_ready(sensor_hub)) {
+        LOG_ERR("HR sensor hub not ready");
+        return;
+    }
+
     int err = max32664c_read_fw_version(sensor_hub, &major, &minor, &patch);
     if (err || major != FW_VERSION_MAJOR || minor != FW_VERSION_MINOR || patch != FW_VERSION_PATCH) {
         if (err) {
             LOG_ERR("Failed to read firmware version");
         }
         LOG_DBG("Updating firmware to version %u.%u.%u", FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH);
-        max32664c_bl_enter(sensor_hub, MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31,
-                           sizeof(MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31));
+        err = max32664c_bl_enter(sensor_hub, MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31,
+                                 sizeof(MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31));
+        if (err) {
+            LOG_ERR("Failed to update HR firmware: %d", err);
+        }
         max32664c_bl_leave(sensor_hub);
-
-        return 0;
     } else {
         LOG_INF("Firmware up to date: %u.%u.%u", major, minor, patch);
     }
