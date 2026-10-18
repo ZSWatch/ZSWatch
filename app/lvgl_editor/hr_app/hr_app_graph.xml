@@ -46,7 +46,7 @@
 			bg_opa="0"
 			border_width="0"
 		/>
-		<style pad_bottom="0" name="style_conf_value" text_color="0x3388ff" text_font="montserrat_18" />
+		<style pad_bottom="0" name="style_conf_value" text_color="0x3388ff" text_font="montserrat_14" />
 		<style pad_top="0" name="style_conf_label" text_color="0x666666" text_font="montserrat_10" />
 
 		<!-- Chart container -->

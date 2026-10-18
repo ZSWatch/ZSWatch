@@ -65,8 +65,6 @@ extern lv_font_t * montserrat_12;
 
 extern lv_font_t * montserrat_14;
 
-extern lv_font_t * montserrat_18;
-
 extern lv_font_t * montserrat_24;
 
 extern lv_font_t * montserrat_28;

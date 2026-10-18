@@ -109,7 +109,7 @@ lv_obj_t * hr_app_graph_create(lv_obj_t * parent)
         lv_style_init(&style_conf_value);
         lv_style_set_pad_bottom(&style_conf_value, 0);
         lv_style_set_text_color(&style_conf_value, lv_color_hex(0x3388ff));
-        lv_style_set_text_font(&style_conf_value, montserrat_18);
+        lv_style_set_text_font(&style_conf_value, montserrat_14);
 
         lv_style_init(&style_conf_label);
         lv_style_set_pad_top(&style_conf_label, 0);

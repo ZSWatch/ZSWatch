@@ -55,8 +55,6 @@ lv_font_t * montserrat_12;
 extern lv_font_t montserrat_12_data;
 lv_font_t * montserrat_14;
 extern lv_font_t montserrat_14_data;
-lv_font_t * montserrat_18;
-extern lv_font_t montserrat_18_data;
 lv_font_t * montserrat_24;
 extern lv_font_t montserrat_24_data;
 lv_font_t * montserrat_28;
@@ -135,8 +133,6 @@ void lvgl_editor_init_gen(const char * asset_path)
     montserrat_12 = &montserrat_12_data;
     /* get font 'montserrat_14' from a C array */
     montserrat_14 = &montserrat_14_data;
-    /* get font 'montserrat_18' from a C array */
-    montserrat_18 = &montserrat_18_data;
     /* get font 'montserrat_24' from a C array */
     montserrat_24 = &montserrat_24_data;
     /* get font 'montserrat_28' from a C array */
@@ -263,7 +259,6 @@ void lvgl_editor_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "montserrat_10", montserrat_10);
     lv_xml_register_font(NULL, "montserrat_12", montserrat_12);
     lv_xml_register_font(NULL, "montserrat_14", montserrat_14);
-    lv_xml_register_font(NULL, "montserrat_18", montserrat_18);
     lv_xml_register_font(NULL, "montserrat_24", montserrat_24);
     lv_xml_register_font(NULL, "montserrat_28", montserrat_28);
     lv_xml_register_font(NULL, "montserrat_48", montserrat_48);

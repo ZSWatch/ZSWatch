@@ -93,14 +93,6 @@
 			range="0x00-0xff"
 		/>
 		<bin
-			name="montserrat_18"
-			as_file="false"
-			bpp="2"
-			src_path="fonts/Montserrat-Medium.ttf"
-			size="14"
-			range="0x00-0xff"
-		/>
-		<bin
 			name="montserrat_24"
 			as_file="false"
 			bpp="2"

@@ -113,8 +113,8 @@
 		/>
 
 		<style name="style_data_label" text_color="0x666666" text_font="montserrat_12" />
-		<style name="style_data_value" text_color="0xffffff" text_font="montserrat_18" />
-		<style name="style_data_value_good" text_color="0x00ff88" text_font="montserrat_18" />
+		<style name="style_data_value" text_color="0xffffff" text_font="montserrat_14" />
+		<style name="style_data_value_good" text_color="0x00ff88" text_font="montserrat_14" />
 
 		<!-- Bottom row -->
 		<style

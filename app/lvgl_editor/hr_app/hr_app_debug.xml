@@ -114,7 +114,7 @@
 		<!-- HR display section -->
 		<lv_obj width="content" height="content">
 			<style name="style_hr_section" />
-			<lv_label text="❤️" style_text_font="montserrat_18" />
+			<lv_label text="❤️" style_text_font="montserrat_14" />
 			<lv_label bind_text="hr_bpm_text">
 				<style name="style_hr_value" />
 			</lv_label>

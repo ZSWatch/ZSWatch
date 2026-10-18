@@ -164,11 +164,11 @@ lv_obj_t * hr_app_overview_create(lv_obj_t * parent)
 
         lv_style_init(&style_data_value);
         lv_style_set_text_color(&style_data_value, lv_color_hex(0xffffff));
-        lv_style_set_text_font(&style_data_value, montserrat_18);
+        lv_style_set_text_font(&style_data_value, montserrat_14);
 
         lv_style_init(&style_data_value_good);
         lv_style_set_text_color(&style_data_value_good, lv_color_hex(0x00ff88));
-        lv_style_set_text_font(&style_data_value_good, montserrat_18);
+        lv_style_set_text_font(&style_data_value_good, montserrat_14);
 
         lv_style_init(&style_bottom_row);
         lv_style_set_layout(&style_bottom_row, LV_LAYOUT_FLEX);

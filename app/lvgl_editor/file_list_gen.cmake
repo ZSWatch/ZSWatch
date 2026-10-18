@@ -12,7 +12,6 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_10_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_12_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_14_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_18_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_24_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_28_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/montserrat_48_data.c
