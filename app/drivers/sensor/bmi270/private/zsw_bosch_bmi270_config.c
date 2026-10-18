@@ -364,7 +364,7 @@ int bmi2_set_accel_odr(const struct device *p_dev, const struct sensor_value *p_
     }
 
     // If the Sampling frequency is higher than 100Hz, enter performance mode else, power optimized.
-    if (p_odr->val1 >= BOSCH_BMI270_ACC_ODR_100_HZ) {
+    if (p_odr->val1 > BOSCH_BMI270_ACC_ODR_100_HZ) {
         config |= (0x01 << 0x07);
     } else {
         config &= ~(0x01 << 0x07);
@@ -406,7 +406,8 @@ int bmi2_set_accel_osr(const struct device *p_dev, const struct sensor_value *p_
 
     config &= ~(0x07 << 0x04);
 
-    if (data->acc_odr >= BOSCH_BMI270_ACC_ODR_100_HZ) {
+    // acc_filter_perf selects whether bwp is an oversampling ratio or an averaging count.
+    if (config & (0x01 << 0x07)) {
         LOG_DBG("Performance mode active");
 
         switch (p_osr->val1) {
@@ -455,8 +456,6 @@ int bmi2_set_accel_osr(const struct device *p_dev, const struct sensor_value *p_
                 return -ENOTSUP;
         }
     }
-
-    data->acc_odr = p_osr->val1;
 
     if (data->bmi2.write(BOSCH_BMI270_REG_ACC_CONF, &config, 1, data->bmi2.intf_ptr) != BMI2_OK) {
         return -EFAULT;

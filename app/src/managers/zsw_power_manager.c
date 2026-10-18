@@ -99,6 +99,26 @@ static uint32_t last_pwr_off_time;
 static uint32_t last_activity_time_ms;
 static zsw_power_manager_state_t state;
 static bool initialized = false;
+static bool any_motion_armed;
+static bool no_motion_armed;
+
+static void set_motion_detection(bool any_motion, bool no_motion)
+{
+    if (any_motion != any_motion_armed) {
+        int rc = any_motion ? zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true)
+                 : zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
+        if (!rc) {
+            any_motion_armed = any_motion;
+        }
+    }
+    if (no_motion != no_motion_armed) {
+        int rc = no_motion ? zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true)
+                 : zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
+        if (!rc) {
+            no_motion_armed = no_motion;
+        }
+    }
+}
 
 static struct {
     tilt_state_t state;
@@ -161,6 +181,17 @@ uint32_t zsw_power_manager_get_ms_to_inactive(void)
     }
 }
 
+int zsw_power_manager_request_sleep(void)
+{
+    if (!initialized) {
+        return -EAGAIN;
+    }
+    if (is_active) {
+        enter_inactive();
+    }
+    return is_active ? -EAGAIN : 0;
+}
+
 zsw_power_manager_state_t zsw_power_manager_get_state(void)
 {
     __ASSERT(initialized, "Power manager not initialized");
@@ -216,8 +247,7 @@ static void enter_inactive(void)
     zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, true);
 
     // Screen inactive -> wait for NO_MOTION interrupt in order to power off display regulator.
-    zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
-    zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
+    set_motion_detection(false, true);
 }
 
 static void enter_active(void)
@@ -226,6 +256,9 @@ static void enter_active(void)
     int ret;
 
     is_active = true;
+    if (is_stationary) {
+        zsw_imu_set_low_power(false);
+    }
     is_stationary = false;
     last_wakeup_time = k_uptime_get_32();
     update_last_activity_timestamp();
@@ -245,8 +278,7 @@ static void enter_active(void)
     }
 
     // Only used when display is not active.
-    zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
-    zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
+    set_motion_detection(false, false);
 
     tilt_request_reference_update();
 
@@ -424,12 +456,13 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         }
         case ZSW_IMU_EVT_TYPE_NO_MOTION: {
             LOG_INF("Watch enterted stationary state");
-            if (!is_active) {
+            // Motion tracking also arms these interrupts, so ignore repeated transitions.
+            if (!is_active && !is_stationary) {
                 is_stationary = true;
                 last_pwr_off_time = k_uptime_get_32();
                 zsw_display_control_pwr_ctrl(false);
-                zsw_imu_feature_enable(ZSW_IMU_FEATURE_ANY_MOTION, true);
-                zsw_imu_feature_disable(ZSW_IMU_FEATURE_NO_MOTION);
+                set_motion_detection(true, false);
+                zsw_imu_set_low_power(true);
 
                 update_and_publish_state(ZSW_ACTIVITY_STATE_NOT_WORN_STATIONARY);
             }
@@ -437,14 +470,14 @@ static void zbus_accel_data_callback(const struct zbus_channel *chan)
         }
         case ZSW_IMU_EVT_TYPE_ANY_MOTION: {
             LOG_INF("Watch moved, init display");
-            if (!is_active) {
+            if (!is_active && is_stationary) {
                 is_stationary = false;
+                zsw_imu_set_low_power(false);
                 zsw_display_control_pwr_ctrl(true);
                 zsw_display_control_sleep_ctrl(false);
                 retained.display_off_time += k_uptime_get_32() - last_pwr_off_time;
                 zsw_retained_ram_update();
-                zsw_imu_feature_enable(ZSW_IMU_FEATURE_NO_MOTION, true);
-                zsw_imu_feature_disable(ZSW_IMU_FEATURE_ANY_MOTION);
+                set_motion_detection(false, true);
 
                 update_and_publish_state(ZSW_ACTIVITY_STATE_INACTIVE);
             }

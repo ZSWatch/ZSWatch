@@ -37,6 +37,12 @@ int zsw_power_manager_init(void);
 */
 bool zsw_power_manager_reset_idle_timout(void);
 
+/** @brief  Put the screen to sleep now instead of waiting for the idle timeout.
+ *  @return 0 when the screen is asleep, -EAGAIN if the power manager is not initialized
+ *          or the screen must stay on for its minimum active time
+*/
+int zsw_power_manager_request_sleep(void);
+
 /** @brief  Returns the time in seconds until the watch will go into inactive state.
  *  @return Time until the watch will go into inactive state
 */

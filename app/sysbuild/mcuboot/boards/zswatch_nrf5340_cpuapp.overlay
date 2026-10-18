@@ -30,8 +30,6 @@
     status = "disabled";
 };
 
-&gpio0 {
-    displa-en {
-        status = "disabled";
-    };
+&display_en {
+    status = "disabled";
 };

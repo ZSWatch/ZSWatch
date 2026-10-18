@@ -81,6 +81,7 @@
     pinctrl-1 = <&uart0_sleep>;
     pinctrl-names = "default", "sleep";
     current-speed = <115200>;
+    zephyr,pm-device-runtime-auto;
 };
 
 &pwm0 {
