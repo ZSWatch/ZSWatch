@@ -33,6 +33,7 @@ graph LR
         ENV[Environment]
         LIGHT[Light]
         BAT[Battery]
+        HR[Heart Rate]
     end
 
     subgraph Phone
@@ -63,6 +64,7 @@ graph LR
         WF[Watchface]
         MUSIC[Music Control]
         COMPASS[Compass]
+        HR_APP[Heart Rate]
         OTHER[Other Apps]
     end
 
@@ -79,6 +81,7 @@ graph LR
 
     SENSOR_CH --> WF
     SENSOR_CH --> COMPASS
+    SENSOR_CH --> HR_APP
     SENSOR_CH --> OTHER
 
     PM --> ACTIVITY_CH --> AM
@@ -145,7 +148,7 @@ The sensor data pipeline is straightforward:
 Periodic Timer → Sensor Driver → zbus channel → App Listener → k_work → UI Update
 ```
 
-Sensor modules (IMU, magnetometer, pressure, environment, light) are abstracted behind simple APIs in `app/src/sensors/`. The IMU is an exception: it is primarily **interrupt-driven** (gestures, step events) rather than polled.
+Sensor modules (IMU, magnetometer, pressure, environment, light) are abstracted behind simple APIs in `app/src/sensors/`. The IMU is an exception: it is primarily **interrupt-driven** (gestures, step events) rather than polled. The **Heart Rate (HR) driver** (`app/src/drivers/zsw_hr.c/h`) provides periodic or continuous heart rate measurements via callback, supporting modes for real-time biometric monitoring.
 
 ## BLE Communication
 
