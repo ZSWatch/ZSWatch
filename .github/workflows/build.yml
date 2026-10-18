@@ -185,12 +185,16 @@ jobs:
           # Copy qspi ini file
           mv app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini fw_images/qspi_mx25u51245.ini
 
-      - name: Build zswatch heart rate addon variant
-        if: ${{ matrix.build_type == 'debug' && matrix.board == 'zswatch@1/nrf5340/cpuapp' }}
+      - name: Build heart rate addon variant
+        if: ${{ matrix.build_type == 'debug' && (matrix.board == 'zswatch@1/nrf5340/cpuapp' || matrix.board == 'watchdk@1/nrf5340/cpuapp') }}
         working-directory: ZSWatch
         run: |
           # Build only, to catch regressions in the optional HR code.
-          HR=boards/zswatch/zswatch/zswatch_nrf5340_cpuapp_hr
+          if [ "${{ matrix.board }}" = "watchdk@1/nrf5340/cpuapp" ]; then
+            HR=boards/zswatch/watchdk/watchdk_nrf5340_cpuapp_hr
+          else
+            HR=boards/zswatch/zswatch/zswatch_nrf5340_cpuapp_hr
+          fi
           west build app --build-dir "${{ env.BUILD_DIR }}_hr" -p -b "${{ matrix.board }}" -- \
             -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf;${HR}.conf" \
             -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay;${HR}.overlay" \

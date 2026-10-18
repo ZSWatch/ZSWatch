@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/* The production test updates the firmware of the HR extension hub. */
+#include "../../app/boards/zswatch/watchdk/watchdk_nrf5340_cpuapp_hr.overlay"
+
 / {
     chosen {
         zephyr,console = &uart0;
@@ -10,7 +13,6 @@
 
 };
 &i2c1 {
-    clock-frequency = <I2C_BITRATE_FAST>;
     // Flash buffer size is needed for the I2C bootloader to flash the firmware
     zephyr,flash-buf-max-size = <8250>;
 };
