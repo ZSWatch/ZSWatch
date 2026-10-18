@@ -90,7 +90,6 @@ int zsw_microphone_manager_start_recording(const zsw_mic_config_t *config,
     mic_manager.callback = callback;
     mic_manager.user_data = user_data;
     mic_manager.recorded_ms = 0;
-    mic_manager.state = ZSW_MIC_STATE_RECORDING;
 
     switch (config->output) {
         case ZSW_MIC_OUTPUT_FILE:
@@ -119,9 +118,13 @@ int zsw_microphone_manager_start_recording(const zsw_mic_config_t *config,
             return -EINVAL;
     }
 
+    // Only mark the manager busy once the output is ready, so a rejected start can be retried.
+    mic_manager.state = ZSW_MIC_STATE_RECORDING;
+
     ret = zsw_microphone_driver_start();
     if (ret < 0) {
         LOG_ERR("Failed to start microphone recording: %d", ret);
+        mic_manager.state = ZSW_MIC_STATE_IDLE;
         close_output_file();
         return ret;
     }
