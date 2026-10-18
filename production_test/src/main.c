@@ -34,7 +34,7 @@ K_WORK_DEFINE(init_work, production_test_init_work);
 #define FW_VERSION_MINOR 13
 #define FW_VERSION_PATCH 31
 #include <zephyr/drivers/sensor/max32664c.h>
-#include "ext_drivers/firmware/MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31.h"
+#include "MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31.h"
 
 static const struct device *const sensor_hub = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr_hub));
 #endif
