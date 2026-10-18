@@ -61,6 +61,7 @@
 #include "drivers/zsw_display_control.h"
 
 #include "managers/zsw_power_manager.h"
+#include "managers/zsw_hr_manager.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
 
@@ -182,6 +183,12 @@ static void enable_bluetooth(void)
 #ifdef CONFIG_SETTINGS
     settings_load();
 #endif
+    if (IS_ENABLED(CONFIG_ZSW_HR_MANAGER)) {
+        int hr_rc = zsw_hr_manager_init();
+        if (hr_rc) {
+            LOG_ERR("HR manager initialization failed: %d", hr_rc);
+        }
+    }
 
     __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();

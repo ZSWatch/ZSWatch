@@ -13,3 +13,5 @@ target_sources_ifdef(CONFIG_APPLICATIONS_USE_VOICE_MEMO app PRIVATE zsw_recordin
 target_sources_ifdef(CONFIG_APPLICATIONS_USE_VOICE_MEMO app PRIVATE zsw_recording_manager_store.c)
 target_sources_ifdef(CONFIG_ZSW_XIP app PRIVATE zsw_xip_manager.c)
 target_sources_ifdef(CONFIG_MCUMGR app PRIVATE zsw_smp_manager.c)
+
+target_sources_ifdef(CONFIG_ZSW_HR_MANAGER app PRIVATE zsw_hr_manager.c)

@@ -63,3 +63,6 @@ typedef bool zsw_settings_swipe_back_t;
 #define ZSW_SETTINGS_SWIPE_BACK (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_SWIPE_BACK)
 
 int zsw_settings_erase_all(void);
+
+/* Loaded by the HR manager independently of the settings application. */
+#define ZSW_SETTINGS_HR_MODE "hr/mode"
