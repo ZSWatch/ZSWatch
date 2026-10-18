@@ -365,7 +365,9 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
     };
     int ret = zsw_hr_start(&config);
     if (ret) {
+        // Without a running sensor the timer would only show a previous session's sample.
         LOG_ERR("Failed to start HR sensor: %d", ret);
+        return;
     }
 #endif
 
