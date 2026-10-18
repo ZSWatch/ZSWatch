@@ -32,8 +32,8 @@
 #include "managers/zsw_power_manager.h"
 #include "events/zsw_notification_event.h"
 #include "sensors/zsw_imu.h"
-#if defined(CONFIG_BT_HRS)
-#include "sensors/zsw_health_data.h"
+#if defined(CONFIG_ZSW_HR_MANAGER)
+#include "drivers/zsw_hr.h"
 #endif
 
 LOG_MODULE_REGISTER(zsw_phone_app_publisher, LOG_LEVEL_DBG);
@@ -61,7 +61,12 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .disconnected = disconnected,
 };
 
-static void send_activity_data(void)
+/*
+ * Gadgetbridge stores every activity message as a sample at the time it is received.
+ * A heart rate is therefore only sent once, when it is measured. The periodic messages
+ * carry steps with heart rate 0, meaning no new reading.
+ */
+static void send_activity_data(uint16_t heart_rate)
 {
     uint32_t steps = 0;
     zsw_imu_data_step_activity_t step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
@@ -69,16 +74,40 @@ static void send_activity_data(void)
     zsw_imu_fetch_num_steps(&steps);
     zsw_imu_fetch_step_activity(&step_activity);
 
-#if defined(CONFIG_BT_HRS)
-    uint16_t hr = zsw_health_data_get_heart_rate();
-    bt_hrs_notify(hr);
-    ble_gadgetbridge_send_activity_data(hr, steps, step_activity,
+    ble_gadgetbridge_send_activity_data(heart_rate, steps, step_activity,
                                         zsw_power_manager_get_state());
-#else
-    ble_gadgetbridge_send_activity_data(0, steps, step_activity,
-                                        zsw_power_manager_get_state());
-#endif
 }
+
+#if defined(CONFIG_ZSW_HR_MANAGER)
+ZBUS_CHAN_DECLARE(hr_sample_data_chan);
+
+static int64_t last_hr_notification;
+
+static void publish_hr(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    struct zsw_hr_sample sample;
+
+    if (zbus_chan_read(&hr_sample_data_chan, &sample, K_MSEC(100)) || !is_connected ||
+        sample.timestamp_ms <= last_hr_notification) {
+        return;
+    }
+    last_hr_notification = sample.timestamp_ms;
+#if defined(CONFIG_BT_HRS)
+    bt_hrs_notify(sample.heart_rate_bpm);
+#endif
+    send_activity_data(sample.heart_rate_bpm);
+}
+K_WORK_DEFINE(publish_hr_work, publish_hr);
+
+static void hr_measurement_received(const struct zbus_channel *chan)
+{
+    ARG_UNUSED(chan);
+    k_work_submit(&publish_hr_work);
+}
+ZBUS_LISTENER_DEFINE(phone_hr_listener, hr_measurement_received);
+ZBUS_CHAN_ADD_OBS(hr_sample_data_chan, phone_hr_listener, 1);
+#endif
 
 static void send_status_update(int mV, int percent, bool is_charging)
 {
@@ -97,7 +126,7 @@ static void zbus_send_status_data_callback(const struct zbus_channel *chan)
     bt_bas_set_battery_level(event->percent);
     if (is_connected) {
         send_status_update(event->mV, event->percent, event->is_charging);
-        send_activity_data();
+        send_activity_data(0);
     }
 }
 
@@ -124,7 +153,7 @@ static void handle_delayed_send_status(struct k_work *item)
 
     ble_gadgetbridge_send_version_info();
 
-    send_activity_data();
+    send_activity_data(0);
 
     if (zbus_chan_read(&battery_sample_data_chan, &last_sample, K_MSEC(100)) == 0) {
         send_status_update(last_sample.mV, last_sample.percent, last_sample.is_charging);
