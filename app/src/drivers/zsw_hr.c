@@ -309,6 +309,12 @@ int zsw_hr_start(const struct zsw_hr_config *config)
                                     config ? config->sample_interval_ms : hr_state.sample_interval_ms);
 
     k_mutex_lock(&hr_lock, K_FOREVER);
+    if (!hr_state.initialized) {
+        k_mutex_unlock(&hr_lock);
+        LOG_ERR("Heart rate hub not initialized");
+        return -ENODEV;
+    }
+
     hr_state.mode = mode;
     hr_state.sample_interval_ms = interval_ms;
 
@@ -469,7 +475,7 @@ static int zsw_hr_init(void)
                     major, minor, patch, FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH);
         }
 
-        return err;
+        return err ? err : -ENOTSUP;
     } else {
         LOG_INF("Firmware up to date: %u.%u.%u", major, minor, patch);
     }
