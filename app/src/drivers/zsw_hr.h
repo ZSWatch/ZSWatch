@@ -60,6 +60,7 @@ int zsw_hr_stop(void);
 int zsw_hr_set_sampling_interval(uint32_t interval_ms);
 int zsw_hr_get_latest(struct zsw_hr_sample *sample);
 int zsw_hr_register_callback(zsw_hr_sample_cb_t callback, void *user_data);
+bool zsw_hr_is_available(void);
 bool zsw_hr_is_running(void);
 
 #ifdef __cplusplus

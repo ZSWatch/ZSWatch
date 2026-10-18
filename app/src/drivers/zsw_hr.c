@@ -43,6 +43,7 @@ static const struct device *const sensor_hub = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr
 
 static K_THREAD_STACK_DEFINE(hr_thread_stack, ZSW_HR_THREAD_STACK_SIZE);
 static K_MUTEX_DEFINE(hr_lock);
+static K_SEM_DEFINE(hr_wake, 0, 1);
 
 struct zsw_hr_state {
     bool initialized;
@@ -278,9 +279,9 @@ static void hr_thread(void *p1, void *p2, void *p3)
         }
 
 #ifdef HR_LOG_DATA_FOR_PLOTTING
-        k_msleep(ZSW_HR_REALTIME_INTERVAL_MS);
+        k_sem_take(&hr_wake, K_MSEC(ZSW_HR_REALTIME_INTERVAL_MS));
 #else
-        k_msleep(interval_ms);
+        k_sem_take(&hr_wake, K_MSEC(interval_ms));
 #endif
     }
 }
@@ -325,6 +326,7 @@ int zsw_hr_start(const struct zsw_hr_config *config)
     }
 
     hr_state.running = true;
+    k_sem_reset(&hr_wake);
     k_mutex_unlock(&hr_lock);
 
     rc = configure_sensor_mode();
@@ -336,7 +338,9 @@ int zsw_hr_start(const struct zsw_hr_config *config)
         return rc;
     }
 
+    k_mutex_lock(&hr_lock, K_FOREVER);
     memset(&hr_state.last_sample, 0, sizeof(hr_state.last_sample));
+    k_mutex_unlock(&hr_lock);
 
     hr_state.thread_id = k_thread_create(&hr_state.thread, hr_thread_stack,
                                          K_THREAD_STACK_SIZEOF(hr_thread_stack), hr_thread, NULL,
@@ -361,7 +365,8 @@ int zsw_hr_stop(void)
     k_mutex_lock(&hr_lock, K_FOREVER);
     if (!hr_state.running) {
         k_mutex_unlock(&hr_lock);
-        return -EALREADY;
+        /* A failed shutdown must remain retryable after the sampling thread stops. */
+        return disable_sensor();
     }
 
     hr_state.running = false;
@@ -369,7 +374,7 @@ int zsw_hr_stop(void)
     k_mutex_unlock(&hr_lock);
 
     if (tid) {
-        k_wakeup(tid);
+        k_sem_give(&hr_wake);
         rc = k_thread_join(tid, K_FOREVER);
         if (rc) {
             LOG_WRN("Failed to join heart rate thread: %d", rc);
@@ -401,7 +406,7 @@ int zsw_hr_set_sampling_interval(uint32_t interval_ms)
     k_mutex_unlock(&hr_lock);
 
     if (tid) {
-        k_wakeup(tid);
+        k_sem_give(&hr_wake);
     }
 
     return 0;
@@ -432,10 +437,15 @@ int zsw_hr_register_callback(zsw_hr_sample_cb_t callback, void *user_data)
     k_mutex_unlock(&hr_lock);
 
     if (tid) {
-        k_wakeup(tid);
+        k_sem_give(&hr_wake);
     }
 
     return 0;
+}
+
+bool zsw_hr_is_available(void)
+{
+    return sensor_hub && device_is_ready(sensor_hub) && hr_state.initialized;
 }
 
 bool zsw_hr_is_running(void)

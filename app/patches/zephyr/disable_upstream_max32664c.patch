@@ -1,0 +1,18 @@
+diff --git a/drivers/sensor/adi/CMakeLists.txt b/drivers/sensor/adi/CMakeLists.txt
+index b30a0701156..8cb33257696 100644
+--- a/drivers/sensor/adi/CMakeLists.txt
++++ b/drivers/sensor/adi/CMakeLists.txt
+@@ -11,5 +11,4 @@ add_subdirectory_ifdef(CONFIG_ADXL362 adxl362)
+ add_subdirectory_ifdef(CONFIG_ADXL367 adxl367)
+ add_subdirectory_ifdef(CONFIG_ADXL372 adxl372)
+ add_subdirectory_ifdef(CONFIG_MAX30210 max30210)
+-add_subdirectory_ifdef(CONFIG_SENSOR_MAX32664C max32664c)
+ # zephyr-keep-sorted-stop
+diff --git a/dts/bindings/sensor/maxim,max32664c.yaml b/dts/bindings/sensor/maxim,max32664c.yaml.disabled
+similarity index 100%
+rename from dts/bindings/sensor/maxim,max32664c.yaml
+rename to dts/bindings/sensor/maxim,max32664c.yaml.disabled
+diff --git a/include/zephyr/drivers/sensor/max32664c.h b/include/zephyr/drivers/sensor/max32664c.h.disabled
+similarity index 100%
+rename from include/zephyr/drivers/sensor/max32664c.h
+rename to include/zephyr/drivers/sensor/max32664c.h.disabled
