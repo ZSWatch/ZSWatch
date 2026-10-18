@@ -222,7 +222,7 @@ lv_obj_t * hr_app_debug_create(lv_obj_t * parent)
     lv_obj_add_style(lv_label_7, &style_data_label, 0);
     
     lv_obj_t * lv_label_8 = lv_label_create(lv_obj_6);
-    lv_label_bind_text(lv_label_8, &hr_confidence_text, NULL);
+    lv_label_bind_text(lv_label_8, &hr_rr_confidence, "%d%%");
     lv_obj_add_style(lv_label_8, &style_data_value_info, 0);
     
     lv_obj_t * lv_obj_7 = lv_obj_create(lv_obj_4);
@@ -246,7 +246,7 @@ lv_obj_t * hr_app_debug_create(lv_obj_t * parent)
     lv_obj_add_style(lv_label_11, &style_data_label, 0);
     
     lv_obj_t * lv_label_12 = lv_label_create(lv_obj_8);
-    lv_label_bind_text(lv_label_12, &hr_confidence_text, NULL);
+    lv_label_bind_text(lv_label_12, &hr_spo2_confidence, "%d%%");
     lv_obj_add_style(lv_label_12, &style_data_value_info, 0);
     
     lv_obj_t * lv_obj_9 = lv_obj_create(lv_obj_4);

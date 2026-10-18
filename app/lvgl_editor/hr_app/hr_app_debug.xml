@@ -149,7 +149,7 @@
 				<lv_label text="RR Conf">
 					<style name="style_data_label" />
 				</lv_label>
-				<lv_label bind_text="hr_confidence_text">
+				<lv_label bind_text="hr_rr_confidence" bind_text-fmt="%d%%">
 					<style name="style_data_value_info" />
 				</lv_label>
 			</lv_obj>
@@ -171,7 +171,7 @@
 				<lv_label text="SpO2 Conf">
 					<style name="style_data_label" />
 				</lv_label>
-				<lv_label bind_text="hr_confidence_text">
+				<lv_label bind_text="hr_spo2_confidence" bind_text-fmt="%d%%">
 					<style name="style_data_value_info" />
 				</lv_label>
 			</lv_obj>
