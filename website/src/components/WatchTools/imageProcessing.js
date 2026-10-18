@@ -70,7 +70,7 @@ export function loadImage(url) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Could not open this image. Choose a PNG, JPEG, WebP or GIF file."));
+    image.onerror = () => reject(new Error("Could not open this image. Choose a PNG, JPEG, WebP, GIF or BMP file."));
     image.src = url;
   });
 }

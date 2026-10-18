@@ -49,39 +49,32 @@ export default class WatchToolsManager extends UpdateMCUManager {
     return super._notification(event);
   }
 
-  async _openBle(device) {
-    await super._openBle(device);
+  async _openBle(device, reconnecting) {
+    await super._openBle(device, reconnecting);
     this.connectionGeneration++;
-    await this._watch.send({ t: "smp", status: false });
+    if (this._watch.write) await this._watch.send({ t: "smp", status: false });
     this.status("Connected. Watch tools are ready.");
   }
 
   async ensureSmp() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
     if (this._logRequested) await this.setLogCapture(false);
-    const device = this._device;
     try {
-      await this._watch.prepare(device.gatt);
+      await this._watch.prepare(this._device.gatt);
       await this._watch.enableSmp();
-      // Disabling SMP unregisters its GATT service. A cached characteristic can
-      // still be discoverable while its notification subscription no longer
-      // exists on the watch. Reconnect before subscribing to the new service.
-      this._rediscovering = true;
-      try {
-        device.gatt.disconnect();
-        await this.sleep(500);
-        const server = await device.gatt.connect();
-        this.connectionGeneration++;
-        await this._watch.prepare(server);
-        await this._watch.enableSmp();
-        await this._discoverSmp(server);
-      } finally { this._rediscovering = false; }
+      // Disabling SMP unregisters its GATT service, so always reconnect.
+      await this._reconnectSmp();
     } catch (error) {
       if (this.isConnected()) {
         try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
       } else await this._disconnected();
       throw error;
     }
+  }
+
+  async _reconnectSmp() {
+    try { await super._reconnectSmp(); }
+    finally { this.connectionGeneration++; }
   }
 
   async backgroundCommand(action) {

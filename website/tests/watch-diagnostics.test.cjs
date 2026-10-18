@@ -86,8 +86,10 @@ test("browser history deduplicates text exports, preserves originals and counts 
   assert.deepEqual(crashFrequencies(history), [["test.c:20", 1]]);
   const saved = new Map(), storage = { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) };
   saveHistory(storage, history); assert.deepEqual(loadHistory(storage), history);
-  storage.setItem(HISTORY_KEY, '[{"id":"bad","raw":"aaaa"}]');
-  assert.throws(() => loadHistory(storage), /BEGIN/);
+  storage.setItem(HISTORY_KEY, JSON.stringify([{ id: "bad", raw: "aaaa" }, null, ...history]));
+  assert.deepEqual(loadHistory(storage), history);
+  storage.setItem(HISTORY_KEY, '{"id":"bad"}');
+  assert.throws(() => loadHistory(storage), /invalid/);
   const many = Array.from({ length: 22 }, (_, i) => ({ ...report, id: String(i) }));
   assert.equal(addReport(many, { ...report, id: "new" }).length, 20);
 });

@@ -61,10 +61,13 @@ export function addReport(history, report) {
 
 export function loadHistory(storage) {
   const data = JSON.parse(storage.getItem(HISTORY_KEY) || "[]");
-  if (!Array.isArray(data) || data.length > 20) throw new Error("Saved crash history is invalid.");
-  return data.map((item) => {
-    if (typeof item.id !== "string" || typeof item.raw !== "string" || item.raw.length > MAX_CRASH_BYTES * 1.4) throw new Error("Saved crash history is invalid.");
-    return { ...item, ...parseCrash(reportBytes(item)) };
+  if (!Array.isArray(data)) throw new Error("Saved crash history is invalid.");
+  // Skip bad entries one by one so a single unreadable dump can't make the
+  // next save overwrite every valid report.
+  return data.slice(0, 20).flatMap((item) => {
+    if (!item || typeof item.id !== "string" || typeof item.raw !== "string" || item.raw.length > MAX_CRASH_BYTES * 1.4) return [];
+    try { return [{ ...item, ...parseCrash(reportBytes(item)) }]; }
+    catch { return []; }
   });
 }
 

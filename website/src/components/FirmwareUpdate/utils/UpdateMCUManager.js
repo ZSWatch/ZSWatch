@@ -48,7 +48,7 @@ export default class UpdateMCUManager extends MCUManager {
       if (!this._rediscovering) this._disconnected();
     };
     device.addEventListener("gattserverdisconnected", this._bleDisconnectListener);
-    let server = await device.gatt.connect();
+    const server = await device.gatt.connect();
     this.status("Reading watch hardware and battery...");
     await this._watch.prepare(server);
     this.status("Enabling Bluetooth firmware updates...");
@@ -59,17 +59,10 @@ export default class UpdateMCUManager extends MCUManager {
       if (!sentEnable) throw new Error("Firmware update service unavailable. Enable Bluetooth in System → Update App on the watch, then reconnect.");
       // Chrome may retain the service list from before dynamic SMP registration.
       this.status("Rediscovering firmware update service...");
-      this._rediscovering = true;
-      try {
-        device.gatt.disconnect();
-        await this.sleep(500);
-        server = await device.gatt.connect();
-        await this._watch.prepare(server);
-        await this._watch.enableSmp();
-        await this._discoverSmp(server);
-      } catch {
+      try { await this._reconnectSmp(); }
+      catch {
         throw new Error("The watch did not expose its firmware update service. Enable Bluetooth in System → Update App and reconnect; older firmware may require this manual step.");
-      } finally { this._rediscovering = false; }
+      }
     }
     this.status(sentEnable ? "Bluetooth DFU enabled. Reading installed images..." : "Firmware update service ready. Reading installed images...");
     this._connectCallback?.({ reconnecting });
@@ -85,13 +78,29 @@ export default class UpdateMCUManager extends MCUManager {
     this._mtu = server.mtu || 244;
   }
 
+  // Re-registering SMP can leave a cached characteristic whose notification
+  // subscription no longer exists on the watch. Reconnect before subscribing.
+  async _reconnectSmp() {
+    const device = this._device;
+    this._rediscovering = true;
+    try {
+      device.gatt.disconnect();
+      await this.sleep(500);
+      const server = await device.gatt.connect();
+      await this._watch.prepare(server);
+      await this._watch.enableSmp();
+      await this._discoverSmp(server);
+    } finally { this._rediscovering = false; }
+  }
+
   async ensureUpdateReady() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
     if (this._transport === "ble") {
       this.status("Enabling Bluetooth firmware updates...");
       await this._watch.prepare(this._device.gatt);
-      await this._watch.enableSmp(); // Firmware automatically disables SMP after idle time.
-      await this._discoverSmp(this._device.gatt);
+      // Firmware automatically disables SMP after idle time.
+      if (await this._watch.enableSmp()) await this._reconnectSmp();
+      else await this._discoverSmp(this._device.gatt);
       await this._watch.readBattery(this._device.gatt);
     }
   }

@@ -182,13 +182,16 @@ export default class WatchBluetooth {
   }
 
   async send(message) {
+    if (!this.write) throw new Error("This watch firmware does not support Bluetooth commands. Update the firmware and reconnect.");
     const bytes = new TextEncoder().encode(`GB(${JSON.stringify(message)})`);
     // Web Bluetooth doesn't expose negotiated MTU. 20-byte chunks work even
     // on the minimum ATT MTU, and the watch parser accepts fragmented commands.
     for (let offset = 0; offset < bytes.length; offset += 20) {
+      const write = this.write;
+      if (!write) throw new Error("Watch disconnected while sending a command.");
       const chunk = bytes.slice(offset, offset + 20);
-      if (this.write.properties?.writeWithoutResponse) await this.write.writeValueWithoutResponse(chunk);
-      else await this.write.writeValueWithResponse(chunk);
+      if (write.properties?.writeWithoutResponse) await write.writeValueWithoutResponse(chunk);
+      else await write.writeValueWithResponse(chunk);
       this.options.onTraffic?.({ direction: "TX", channel: "NUS", bytes: chunk });
     }
   }
