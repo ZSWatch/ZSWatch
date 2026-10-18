@@ -34,6 +34,7 @@ LOG_MODULE_REGISTER(notification_mgr, LOG_LEVEL_DBG);
 
 static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_channel *chan);
 static void notification_mgr_update_worker(struct k_work *item);
+static int32_t remove_notification(uint32_t id, zsw_notification_remove_reason_t reason);
 
 static uint8_t num_notifications;
 static zsw_not_mngr_notification_t notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
@@ -148,7 +149,7 @@ static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_chann
     } else if (event->data.type == BLE_COMM_DATA_TYPE_NOTIFY_REMOVE) {
         LOG_DBG("Remove notification with ID %u", event->data.data.notify_remove.id);
 
-        if (zsw_notification_manager_remove(event->data.data.notify_remove.id) != 0) {
+        if (remove_notification(event->data.data.notify_remove.id, ZSW_NOTIFICATION_REMOVED_BY_PHONE) != 0) {
             LOG_WRN("Notification %d not found", event->data.data.notify_remove.id);
         }
     }
@@ -181,7 +182,7 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
         LOG_DBG("Notification buffer full");
 
         idx = find_oldest_notification_idx();
-        zsw_notification_manager_remove(notifications[idx].id);
+        remove_notification(notifications[idx].id, ZSW_NOTIFICATION_REMOVED_EVICTED);
 
         // No check needed because we have removed one notification.
         idx = find_free_notification_idx();
@@ -274,6 +275,11 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
 
 int32_t zsw_notification_manager_remove(uint32_t id)
 {
+    return remove_notification(id, ZSW_NOTIFICATION_REMOVED_BY_USER);
+}
+
+static int32_t remove_notification(uint32_t id, zsw_notification_remove_reason_t reason)
+{
     uint32_t idx = find_notification_idx(id);
 
     if (idx != NOTIFICATION_INVALID_INDEX) {
@@ -285,6 +291,7 @@ int32_t zsw_notification_manager_remove(uint32_t id)
         // handle the notification, because the data in the notification buffer can change before
         // the listeners have ececuted their operations.
         memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
+        evt.reason = reason;
         zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
 
         notifications[idx].id = ZSW_NOTIFICATION_MGR_INVALID_ID;

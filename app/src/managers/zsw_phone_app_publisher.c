@@ -135,7 +135,9 @@ static void zbus_notification_remove_callback(const struct zbus_channel *chan)
 {
     const struct zsw_notification_remove_event *evt = zbus_chan_const_msg(chan);
 
-    if (evt->notification.id != 0) {
+    // Only a dismissal on the watch is the user's decision. Evicting the oldest
+    // notification or echoing a phone removal must not clear it on the phone.
+    if (evt->notification.id != 0 && evt->reason == ZSW_NOTIFICATION_REMOVED_BY_USER) {
         ble_gadgetbridge_send_notification_action(evt->notification.id, BLE_COMM_NOTIFY_ACTION_DISMISS);
     }
 }

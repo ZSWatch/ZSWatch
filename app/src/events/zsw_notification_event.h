@@ -28,4 +28,5 @@ struct zsw_notification_event {
 
 struct zsw_notification_remove_event {
     zsw_not_mngr_notification_t notification;
+    zsw_notification_remove_reason_t reason;
 };

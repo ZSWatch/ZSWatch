@@ -57,6 +57,14 @@ typedef struct not_mngr_notification {
     zsw_notification_src_t src;                                 /**< */
 } zsw_not_mngr_notification_t;
 
+/** @brief Why a notification left the watch. Only a user dismissal is reported to the phone.
+*/
+typedef enum {
+    ZSW_NOTIFICATION_REMOVED_BY_USER,                           /**< Dismissed on the watch. */
+    ZSW_NOTIFICATION_REMOVED_BY_PHONE,                          /**< Removed on the phone. */
+    ZSW_NOTIFICATION_REMOVED_EVICTED,                           /**< Dropped to make room for a newer one. */
+} zsw_notification_remove_reason_t;
+
 /** @brief
 */
 void zsw_notification_manager_init(void);
@@ -67,7 +75,7 @@ void zsw_notification_manager_init(void);
 */
 zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_t *notification);
 
-/** @brief
+/** @brief      Remove a notification the user dismissed on the watch.
  *  @param id   Notification ID
  *  @return     0 when successful
 */
