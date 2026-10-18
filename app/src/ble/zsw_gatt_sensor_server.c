@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
@@ -318,72 +319,115 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     notif_enabled = false;
 }
 
+#define ZSW_GATT_SENSOR_MAX_NOTIFICATIONS   8
+#define ZSW_GATT_SENSOR_MAX_VALUES          4
+
+struct sensor_notifications {
+    struct bt_gatt_notify_params params[ZSW_GATT_SENSOR_MAX_NOTIFICATIONS];
+    float values[ZSW_GATT_SENSOR_MAX_NOTIFICATIONS][ZSW_GATT_SENSOR_MAX_VALUES];
+    uint16_t count;
+};
+
+static void add_notification(struct sensor_notifications *notifications, const struct bt_gatt_attr *attr,
+                             const float *values, size_t num_values)
+{
+    __ASSERT_NO_MSG(notifications->count < ZSW_GATT_SENSOR_MAX_NOTIFICATIONS);
+    __ASSERT_NO_MSG(num_values <= ZSW_GATT_SENSOR_MAX_VALUES);
+
+    float *data = notifications->values[notifications->count];
+
+    memcpy(data, values, num_values * sizeof(float));
+    notifications->params[notifications->count] = (struct bt_gatt_notify_params) {
+        .attr = attr,
+        .data = data,
+        .len = num_values * sizeof(float),
+    };
+    notifications->count++;
+}
+
+static void send_notifications(struct bt_conn *conn, void *user_data)
+{
+    const struct sensor_notifications *notifications = user_data;
+    struct bt_gatt_notify_params params[ZSW_GATT_SENSOR_MAX_NOTIFICATIONS];
+    struct bt_conn_info info;
+    uint16_t count = 0;
+
+    if (bt_conn_get_info(conn, &info) != 0 || info.state != BT_CONN_STATE_CONNECTED) {
+        return;
+    }
+
+    for (uint16_t i = 0; i < notifications->count; i++) {
+        if (bt_gatt_is_subscribed(conn, notifications->params[i].attr, BT_GATT_CCC_NOTIFY)) {
+            params[count++] = notifications->params[i];
+        }
+    }
+
+    // Send all readings in one ATT PDU when the client supports it. Zephyr's automatic
+    // batching (BT_GATT_NOTIFY_MULTIPLE_FLUSH_MS) is disabled as it is not thread safe.
+    if (count > 1 && bt_gatt_notify_multiple(conn, count, params) == 0) {
+        return;
+    }
+
+    for (uint16_t i = 0; i < count; i++) {
+        bt_gatt_notify_cb(conn, &params[i]);
+    }
+}
+
 static void zbus_periodic_fast_callback(const struct zbus_channel *chan)
 {
+    static struct sensor_notifications notifications;
     int16_t x;
     int16_t y;
     int16_t z;
-    int write_len;
-    float *f_ptr;
+    float values[ZSW_GATT_SENSOR_MAX_VALUES];
     float pressure = 0.0;
     zsw_quat_t quat;
-    uint8_t buf[CONFIG_BT_L2CAP_TX_MTU];
 
     notify_period_counter++;
     if (notify_period_counter < ZSW_GATT_SENSOR_NOTIFY_INTERVAL_PERIODS) {
         return;
     }
     notify_period_counter = 0;
+    notifications.count = 0;
 
-    f_ptr = (float *)buf;
-
-    f_ptr[0] = 0.0;
-    write_len = sizeof(float);
-    bt_gatt_notify(NULL, &temp_service.attrs[2], &buf, write_len);
-
-    f_ptr[0] = 0.0;
-    write_len = sizeof(float);
-    bt_gatt_notify(NULL, &humidity_service.attrs[2], &buf, write_len);
+    values[0] = 0.0;
+    add_notification(&notifications, &temp_service.attrs[2], values, 1);
+    add_notification(&notifications, &humidity_service.attrs[2], values, 1);
 
     zsw_pressure_sensor_get_pressure(&pressure);
-    f_ptr[0] = pressure;
-    write_len = sizeof(float);
-    bt_gatt_notify(NULL, &pressure_service.attrs[2], &buf, write_len);
+    add_notification(&notifications, &pressure_service.attrs[2], &pressure, 1);
 
     if (zsw_imu_fetch_accel(&x, &y, &z) == 0) {
-        f_ptr[0] = x;
-        f_ptr[1] = y;
-        f_ptr[2] = z;
-        write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &accel_service.attrs[2], &buf, write_len);
+        values[0] = x;
+        values[1] = y;
+        values[2] = z;
+        add_notification(&notifications, &accel_service.attrs[2], values, 3);
     }
 
     if (zsw_imu_fetch_gyro(&x, &y, &z) == 0) {
-        f_ptr[0] = x;
-        f_ptr[1] = y;
-        f_ptr[2] = z;
-        write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &gyro_service.attrs[2], &buf, write_len);
+        values[0] = x;
+        values[1] = y;
+        values[2] = z;
+        add_notification(&notifications, &gyro_service.attrs[2], values, 3);
     }
 
     if (zsw_magnetometer_set_enable(true) == 0) {
-        zsw_magnetometer_get_all(&f_ptr[0], &f_ptr[1], &f_ptr[2]);
+        zsw_magnetometer_get_all(&values[0], &values[1], &values[2]);
         zsw_magnetometer_set_enable(false);
-        write_len = 3 * sizeof(float);
-        bt_gatt_notify(NULL, &mag_service.attrs[2], &buf, write_len);
+        add_notification(&notifications, &mag_service.attrs[2], values, 3);
     }
 
-    if (zsw_light_sensor_get_light(&f_ptr[0]) == 0) {
-        write_len = sizeof(float);
-        bt_gatt_notify(NULL, &light_service.attrs[2], &buf, write_len);
+    if (zsw_light_sensor_get_light(&values[0]) == 0) {
+        add_notification(&notifications, &light_service.attrs[2], values, 1);
     }
 
     if (zsw_sensor_fusion_get_quaternion(&quat) == 0) {
-        f_ptr[0] = quat.w;
-        f_ptr[1] = quat.x;
-        f_ptr[2] = quat.y;
-        f_ptr[3] = quat.z;
-        write_len = 4 * sizeof(float);
-        bt_gatt_notify(NULL, &sensor_fusion_service.attrs[2], &buf, write_len);
+        values[0] = quat.w;
+        values[1] = quat.x;
+        values[2] = quat.y;
+        values[3] = quat.z;
+        add_notification(&notifications, &sensor_fusion_service.attrs[2], values, 4);
     }
+
+    bt_conn_foreach(BT_CONN_TYPE_LE, send_notifications, &notifications);
 }
