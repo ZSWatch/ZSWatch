@@ -113,7 +113,7 @@ Key rules:
 | `periodic_event_1s_chan` | Tick | Timer → Subscribers | 1-second periodic event |
 | `periodic_event_10s_chan` | Tick | Timer → Subscribers | 10-second periodic event |
 | `zsw_notification_mgr_chan` | Notification | Notif Mgr → Apps | New notification received |
-| `zsw_notification_mgr_remove_chan` | Notification ID | Notif Mgr → Apps | Notification dismissed/removed |
+| `zsw_notification_mgr_remove_chan` | Notification + removal reason | Notif Mgr → Apps | Notification removed (user dismissal, phone removal, or evicted) |
 | `voice_memo_event_chan` | Voice memo event | Recording Mgr → Apps | Voice memo recorded/deleted/list updated |
 
 ## Periodic Events
