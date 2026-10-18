@@ -60,8 +60,9 @@ static void setup_hr_firmware(void)
                                  sizeof(MAX32664C_HSP2_WHRM_AEC_SCD_WSPO2_C_30_13_31));
         if (err) {
             LOG_ERR("Failed to update HR firmware: %d", err);
+            // A successful update already leaves the bootloader.
+            max32664c_bl_leave(sensor_hub);
         }
-        max32664c_bl_leave(sensor_hub);
     } else {
         LOG_INF("Firmware up to date: %u.%u.%u", major, minor, patch);
     }
