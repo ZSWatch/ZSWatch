@@ -91,6 +91,9 @@ void trivia_ui_close_popup(void)
 {
     if (mbox != NULL) {
         lv_msgbox_close(mbox);
+        mbox = NULL;
+        more_btn = NULL;
+        close_btn = NULL;
     }
 }
 
@@ -100,6 +103,7 @@ void trivia_ui_guess_feedback(bool correct)
 
     sprintf(msg, "Your answer is %s!", correct ? "Correct" : "Wrong");
 
+    trivia_ui_close_popup();
     mbox = lv_msgbox_create(NULL);
     lv_msgbox_add_text(mbox, msg);
     more_btn = lv_msgbox_add_footer_button(mbox, "More");
@@ -111,6 +115,7 @@ void trivia_ui_guess_feedback(bool correct)
 
 void trivia_ui_not_supported()
 {
+    trivia_ui_close_popup();
     mbox = lv_msgbox_create(NULL);
     lv_msgbox_add_text(mbox, "Your phone does not support this app");
     close_btn = lv_msgbox_add_footer_button(mbox, CLOSE_TXT);
