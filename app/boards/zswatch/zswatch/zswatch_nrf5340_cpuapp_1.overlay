@@ -3,10 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-&gpio0 {
-    displa-en {
-        gpio-hog;
-        gpios = <10 GPIO_ACTIVE_HIGH>; 
-        output-high;
+/ {
+    /*
+     * OE of the touch level shifter. Driven low together with the 3V0 rail,
+     * otherwise the shifter leaks into the unpowered display/touch supply.
+     */
+    display_en: display-en {
+        compatible = "regulator-fixed";
+        regulator-name = "display-en";
+        enable-gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+        regulator-boot-on;
     };
 };

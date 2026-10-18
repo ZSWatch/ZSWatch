@@ -8,3 +8,8 @@
         zephyr,console = &uart0;
     };
 };
+
+/* Runtime PM per logged byte stalls rendering, keep the UARTE enabled. */
+&uart0 {
+    /delete-property/ zephyr,pm-device-runtime-auto;
+};

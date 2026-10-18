@@ -309,3 +309,7 @@ dmic_dev: &pdm0 {
 		};
 	};
 };
+
+&uart0 {
+    zephyr,pm-device-runtime-auto;
+};

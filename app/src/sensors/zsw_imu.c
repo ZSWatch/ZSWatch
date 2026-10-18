@@ -34,6 +34,42 @@ static struct sensor_trigger bmi270_trigger;
 static int step_offset = 0;
 static zsw_imu_data_step_activity_t last_step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
 static atomic_t feature_refcount[BOSCH_BMI270_FEAT_WEAR_WAKE_UP + 1];
+static K_MUTEX_DEFINE(feature_lock);
+static atomic_t motion_state;
+static bool tracking_any_motion;
+static bool tracking_no_motion;
+static bool low_power_requested;
+static bool low_power_applied;
+// Cleared when a rate write fails, so the next request writes both settings again
+static bool accel_rate_valid = true;
+
+#define MOTION_TRACKING_RETRY_S 30
+
+static void motion_tracking_work_handler(struct k_work *work);
+static int apply_accel_rate_locked(void);
+static K_WORK_DELAYABLE_DEFINE(motion_tracking_work, motion_tracking_work_handler);
+
+// Follows the motion events on the channel rather than the trigger handler, so injected
+// events (shell "hr motion") update the state the same way as real interrupts.
+static void motion_event(const struct zbus_channel *chan)
+{
+    const struct accel_event *event = zbus_chan_const_msg(chan);
+    zsw_imu_motion_state_t state;
+
+    if (event->data.type == ZSW_IMU_EVT_TYPE_NO_MOTION) {
+        state = ZSW_IMU_MOTION_STATIONARY;
+    } else if (event->data.type == ZSW_IMU_EVT_TYPE_ANY_MOTION) {
+        state = ZSW_IMU_MOTION_MOVING;
+    } else {
+        return;
+    }
+    if (atomic_set(&motion_state, state) != (int)state) {
+        k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
+    }
+}
+
+ZBUS_LISTENER_DEFINE(imu_motion_listener, motion_event);
+ZBUS_CHAN_ADD_OBS(accel_data_chan, imu_motion_listener, 0);
 
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
@@ -126,6 +162,9 @@ int zsw_imu_init(void)
     bmi270_trigger.chan = SENSOR_CHAN_ALL;
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
+
+    // Always track whether the watch is moving or stationary.
+    k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
 
     return 0;
 }
@@ -318,6 +357,7 @@ int zsw_imu_reset_step_count(void)
 int zsw_imu_feature_disable(zsw_imu_feature_t feature)
 {
     struct sensor_value value;
+    int rc = 0;
 
     if ((feature < 0) || (feature > BOSCH_BMI270_FEAT_WEAR_WAKE_UP)) {
         return -EINVAL;
@@ -327,28 +367,37 @@ int zsw_imu_feature_disable(zsw_imu_feature_t feature)
         return -ENODEV;
     }
 
+    // Serialize claims, the power manager and HR motion tracking share these features.
+    k_mutex_lock(&feature_lock, K_FOREVER);
+
     if (atomic_get(&feature_refcount[feature]) <= 0) {
         LOG_WRN("Feature %d already disabled", feature);
-        return 0;
+        goto out;
     }
 
     if (atomic_dec(&feature_refcount[feature]) != 1) {
-        return 0;
+        goto out;
     }
 
     value.val1 = feature;
     value.val2 = BOSCH_BMI270_FEAT_DISABLE;
 
     if (sensor_attr_set(bmi270, SENSOR_CHAN_FEATURE, SENSOR_ATTR_CONFIGURATION, &value) != 0) {
-        return -EFAULT;
+        atomic_inc(&feature_refcount[feature]);
+        rc = -EFAULT;
+    } else if (feature == ZSW_IMU_FEATURE_GYRO && apply_accel_rate_locked() != 0) {
+        LOG_WRN("Failed to update accelerometer rate");
     }
 
-    return 0;
+out:
+    k_mutex_unlock(&feature_lock);
+    return rc;
 }
 
 int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en)
 {
     struct sensor_value value;
+    int rc = 0;
 
     if ((feature < 0) || (feature > BOSCH_BMI270_FEAT_WEAR_WAKE_UP)) {
         return -EINVAL;
@@ -358,9 +407,11 @@ int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en)
         return -ENODEV;
     }
 
+    k_mutex_lock(&feature_lock, K_FOREVER);
+
     // TODO: handle interrupt enable/disable properly
     if (atomic_inc(&feature_refcount[feature]) != 0) {
-        return 0;
+        goto out;
     }
 
     value.val1 = feature;
@@ -368,8 +419,101 @@ int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en)
 
     if (sensor_attr_set(bmi270, SENSOR_CHAN_FEATURE, SENSOR_ATTR_CONFIGURATION, &value) != 0) {
         atomic_dec(&feature_refcount[feature]);
-        return -EFAULT;
+        rc = -EFAULT;
+    } else if (feature == ZSW_IMU_FEATURE_GYRO && apply_accel_rate_locked() != 0) {
+        LOG_WRN("Failed to update accelerometer rate");
     }
 
-    return 0;
+out:
+    k_mutex_unlock(&feature_lock);
+    return rc;
+}
+
+int zsw_imu_set_low_power(bool enable)
+{
+    int rc;
+
+    if (!device_is_ready(bmi270)) {
+        return -ENODEV;
+    }
+
+    k_mutex_lock(&feature_lock, K_FOREVER);
+    low_power_requested = enable;
+    rc = apply_accel_rate_locked();
+    k_mutex_unlock(&feature_lock);
+
+    return rc;
+}
+
+/*
+ * The motion features run at 50 Hz, so they keep working at the lower rate with less
+ * averaging. The gyro (sensor fusion) needs the full accelerometer rate.
+ */
+static int apply_accel_rate_locked(void)
+{
+    bool low_power = low_power_requested && atomic_get(&feature_refcount[ZSW_IMU_FEATURE_GYRO]) == 0;
+    struct sensor_value odr = {.val1 = low_power ? BOSCH_BMI270_ACC_ODR_50_HZ : BOSCH_BMI270_ACC_ODR_100_HZ};
+    struct sensor_value avg = {.val1 = low_power ? BOSCH_BMI270_AVG2 : BOSCH_BMI270_AVG4};
+    int rc;
+
+    if (accel_rate_valid && low_power == low_power_applied) {
+        return 0;
+    }
+
+    rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
+    if (rc == 0) {
+        rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_OVERSAMPLING, &avg);
+    }
+    accel_rate_valid = rc == 0;
+    if (rc == 0) {
+        low_power_applied = low_power;
+    }
+
+    return rc;
+}
+
+static int tracking_feature(zsw_imu_feature_t feature, bool want, bool *held)
+{
+    if (want == *held) {
+        return 0;
+    }
+    int rc = want ? zsw_imu_feature_enable(feature, true) : zsw_imu_feature_disable(feature);
+    if (!rc) {
+        *held = want;
+    }
+    return rc;
+}
+
+static void motion_tracking_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    zsw_imu_motion_state_t state = atomic_get(&motion_state);
+    bool want_any = state != ZSW_IMU_MOTION_MOVING;
+    bool want_no = state != ZSW_IMU_MOTION_STATIONARY;
+    int rc = 0;
+
+    /* Arm the next transition before dropping the previous claim. */
+    if (want_any) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, true, &tracking_any_motion);
+    }
+    if (!rc && want_no) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, true, &tracking_no_motion);
+    }
+    if (!rc && !want_any) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, false, &tracking_any_motion);
+    }
+    if (!rc && !want_no) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, false, &tracking_no_motion);
+    }
+    if (rc) {
+        // Keep a newer state from a motion event that arrived meanwhile.
+        atomic_cas(&motion_state, state, ZSW_IMU_MOTION_UNKNOWN);
+        LOG_ERR("Motion tracking configuration failed: %d", rc);
+        k_work_schedule(&motion_tracking_work, K_SECONDS(MOTION_TRACKING_RETRY_S));
+    }
+}
+
+zsw_imu_motion_state_t zsw_imu_get_motion_state(void)
+{
+    return atomic_get(&motion_state);
 }

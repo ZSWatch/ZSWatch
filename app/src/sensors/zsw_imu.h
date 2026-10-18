@@ -122,3 +122,21 @@ int zsw_imu_reset_step_count(void);
 int zsw_imu_feature_disable(zsw_imu_feature_t feature);
 
 int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
+
+/** @brief Request a lower accelerometer rate while only the motion features are needed.
+ *  The full rate is kept while the gyro is enabled.
+ *  @param enable true to request low power, false to restore the full rate
+ *  @return 0 on success, negative error code otherwise
+ */
+int zsw_imu_set_low_power(bool enable);
+
+typedef enum {
+    ZSW_IMU_MOTION_UNKNOWN,
+    ZSW_IMU_MOTION_MOVING,
+    ZSW_IMU_MOTION_STATIONARY,
+} zsw_imu_motion_state_t;
+
+/** @brief Get whether the watch is physically moving, tracked from boot.
+ *  @return Motion state, independent of the display power state
+ */
+zsw_imu_motion_state_t zsw_imu_get_motion_state(void);
