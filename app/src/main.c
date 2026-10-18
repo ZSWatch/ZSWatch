@@ -61,6 +61,7 @@
 #include "drivers/zsw_display_control.h"
 
 #include "managers/zsw_power_manager.h"
+#include "managers/zsw_hr_manager.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
 
@@ -104,6 +105,12 @@ static void run_init_work(struct k_work *item)
     zsw_notification_manager_init();
 
     enable_bluetooth();
+    if (IS_ENABLED(CONFIG_ZSW_HR_MANAGER)) {
+        int hr_rc = zsw_hr_manager_init();
+        if (hr_rc) {
+            LOG_ERR("HR manager initialization failed: %d", hr_rc);
+        }
+    }
 
     zsw_imu_init();
     zsw_magnetometer_init();

@@ -2,6 +2,54 @@
 # SPDX-License-Identifier: Apache-2.0
 
 menu "Managers"
+    config ZSW_HR_MANAGER
+        bool "Manage background heart-rate acquisition"
+        default y
+        depends on DT_HAS_MAXIM_MAX32664C_ENABLED && SETTINGS
+        help
+          Decides when the heart rate sensor runs: periodic background measurements,
+          continuous measurement while moving, or manual one-shot measurements.
+
+    if ZSW_HR_MANAGER
+    config ZSW_HR_BACKGROUND_INTERVAL_SECONDS
+        int "Background HR interval (seconds)"
+        default 300
+        range 30 3600
+        help
+          Time between the start of two background measurements, in background mode.
+          Measurements only start while the watch is moving (worn). Each measurement
+          runs the optical sensor, about 1.2 mA extra, until a heart rate is accepted
+          (typically 10-20 s) or ZSW_HR_ATTEMPT_TIMEOUT_SECONDS. With the default 300 s,
+          a 15 s measurement adds about 60 uA on average; halving the interval doubles it.
+
+    config ZSW_HR_ATTEMPT_TIMEOUT_SECONDS
+        int "Maximum one-shot HR attempt (seconds)"
+        default 45
+        range 5 120
+        help
+          Longest time a background or manual measurement keeps the optical sensor on
+          without getting an accepted heart rate. Also how long continuous mode waits
+          for a sensor report before restarting the sensor. Bounds the worst case power
+          use of a failing measurement, for example with a loose fit.
+
+    config ZSW_HR_MIN_CONFIDENCE
+        int "Minimum accepted HR confidence"
+        default 75
+        range 1 100
+        help
+          Minimum confidence (percent) reported by the sensor hub for a heart rate to be
+          accepted and published.
+
+    config ZSW_HR_GOOD_REPORTS
+        int "Consecutive good reports before accepting HR"
+        default 3
+        range 1 10
+        help
+          Number of consecutive reports (one per second) with skin contact and at least
+          ZSW_HR_MIN_CONFIDENCE before a heart rate is accepted. Higher values reject
+          more noise but keep the sensor on longer per measurement.
+    endif
+
     menu "Power Manager"
         module = ZSW_PWR_MANAGER
         module-str = ZSW_PWR_MANAGER

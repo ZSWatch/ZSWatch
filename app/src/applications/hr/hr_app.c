@@ -22,14 +22,12 @@
 #include <zephyr/random/random.h>
 
 #include "lvgl_editor_gen.h"
-#include "hr_app_overview_gen.h"
+#include "hr_overview_ui.h"
 #include "hr_app_debug_gen.h"
 #include "hr_app_graph_gen.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
-#ifndef CONFIG_ARCH_POSIX
-#include "drivers/zsw_hr.h"
-#endif
+#include "managers/zsw_hr_manager.h"
 
 LOG_MODULE_REGISTER(hr_app, LOG_LEVEL_DBG);
 
@@ -58,6 +56,8 @@ static lv_obj_t *led3;
 static lv_obj_t *hr_chart;
 static lv_chart_series_t *hr_series;
 static lv_chart_series_t *conf_series;
+static uint32_t last_graph_sequence;
+static lv_obj_t *graph_span_label;
 
 // Timer for fake data / real sensor updates
 static lv_timer_t *update_timer;
@@ -156,6 +156,7 @@ static void on_tileview_change(lv_event_t *e)
         lv_obj_t *current = lv_tileview_get_tile_act(tv);
         lv_coord_t tile_x = lv_obj_get_x(current) / lv_obj_get_width(current);
         set_indicator_page(tile_x);
+        update_timer_cb(NULL);
     }
 }
 
@@ -172,7 +173,12 @@ static void find_chart_in_page(lv_obj_t *parent)
             hr_series = lv_chart_get_series_next(hr_chart, NULL);
             conf_series = lv_chart_get_series_next(hr_chart, hr_series);
             // Hide the data point dots, show only lines
-            lv_obj_set_style_size(hr_chart, 0, 0, LV_PART_INDICATOR);
+            lv_chart_set_type(hr_chart, LV_CHART_TYPE_SCATTER);
+            lv_chart_set_point_count(hr_chart, ZSW_HR_HISTORY_CAPACITY);
+            lv_obj_set_style_size(hr_chart, 3, 3, LV_PART_INDICATOR);
+            lv_obj_set_style_line_width(hr_chart, 0, LV_PART_ITEMS);
+            lv_chart_set_all_value(hr_chart, hr_series, LV_CHART_POINT_NONE);
+            lv_chart_set_all_value(hr_chart, conf_series, LV_CHART_POINT_NONE);
 
             // Ensure chart axis range matches our scale (XML may not set it correctly)
             lv_chart_set_range(hr_chart, LV_CHART_AXIS_PRIMARY_Y, 40, 130);
@@ -239,11 +245,6 @@ static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
         lv_subject_copy_string(&hr_skin_text, "Unknown");
     }
 
-    // Update chart if available
-    if (hr_chart && hr_series && conf_series) {
-        lv_chart_set_next_value(hr_chart, hr_series, hr);
-        lv_chart_set_next_value(hr_chart, conf_series, hr_conf);
-    }
 }
 
 #if USE_FAKE_DATA
@@ -299,19 +300,39 @@ static void update_timer_cb(lv_timer_t *timer)
     generate_fake_data(&hr, &hr_conf, &spo2, &spo2_conf, &rr, &rr_conf, &skin_contact, &activity);
     update_ui_from_sample(hr, hr_conf, spo2, spo2_conf, rr, rr_conf, skin_contact, activity);
 #else
-    // Real sensor data path
-    struct zsw_hr_sample sample;
-    if (zsw_hr_get_latest(&sample) == 0) {
-        update_ui_from_sample(
-            sample.heart_rate_bpm,
-            sample.heart_rate_confidence,
-            sample.spo2_percent,
-            sample.spo2_confidence,
-            sample.respiration_rate,
-            sample.respiration_confidence,
-            sample.skin_contact_state,
-            sample.activity_class
-        );
+    struct zsw_hr_manager_snapshot snapshot;
+    zsw_hr_manager_get_snapshot(&snapshot);
+    int64_t now = k_uptime_get();
+    hr_overview_ui_update(&snapshot, now);
+    bool diagnostic_page = page_debug && lv_tileview_get_tile_act(tv) == lv_obj_get_parent(page_debug);
+    const struct zsw_hr_sample *sample = diagnostic_page && snapshot.has_report ? &snapshot.report
+                                             : snapshot.has_sample ? &snapshot.sample : NULL;
+    if (sample) {
+        update_ui_from_sample(sample->heart_rate_bpm, sample->heart_rate_confidence,
+                              sample->spo2_percent, sample->spo2_confidence, sample->respiration_rate,
+                              sample->respiration_confidence, sample->skin_contact_state, sample->activity_class);
+    } else {
+        update_ui_from_sample(0, 0, 0, 0, 0, 0, 0, 0);
+        lv_subject_copy_string(&hr_bpm_text, "--");
+        lv_subject_copy_string(&hr_confidence_text, "--");
+    }
+    if (hr_chart && snapshot.sequence != last_graph_sequence) {
+        struct zsw_hr_history_point points[ZSW_HR_HISTORY_CAPACITY];
+        size_t count = zsw_hr_manager_get_history(points, ARRAY_SIZE(points));
+        int32_t seconds = now / 1000;
+        int32_t first = count ? points[0].timestamp_ms / 1000 : seconds;
+        lv_chart_set_axis_range(hr_chart, LV_CHART_AXIS_PRIMARY_X, MAX(0, first - 1), MAX(first + 1, seconds));
+        int32_t span = MAX(1, seconds - first);
+        lv_label_set_text_fmt(graph_span_label, span < 60 ? "History: %d s" : "History: %d min",
+                              span < 60 ? span : span / 60);
+        for (size_t i = 0; i < count; i++) {
+            if (points[i].sequence <= last_graph_sequence) {
+                continue;
+            }
+            lv_chart_set_next_value2(hr_chart, hr_series, points[i].timestamp_ms / 1000, points[i].bpm);
+            lv_chart_set_next_value2(hr_chart, conf_series, points[i].timestamp_ms / 1000, points[i].confidence);
+            last_graph_sequence = points[i].sequence;
+        }
     }
 #endif
 }
@@ -341,9 +362,16 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
     lv_obj_t *tile_graph = lv_tileview_add_tile(tv, 2, 0, LV_DIR_HOR);
 
     // Create the UI for each page using LVGL Editor generated functions
-    page_overview = hr_app_overview_create(tile_overview);
+    page_overview = hr_overview_ui_create(tile_overview, group);
+    last_graph_sequence = 0;
     page_debug = hr_app_debug_create(tile_debug);
     page_graph = hr_app_graph_create(tile_graph);
+    graph_span_label = lv_label_create(page_graph);
+    lv_obj_add_flag(graph_span_label, LV_OBJ_FLAG_FLOATING);
+    lv_obj_set_style_text_font(graph_span_label, montserrat_10, 0);
+    lv_obj_set_style_text_color(graph_span_label, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_align(graph_span_label, LV_ALIGN_TOP_MID, 0, 199);
+    lv_label_set_text(graph_span_label, "No accepted history");
 
     // Find the chart widget in the graph page for data updates
     find_chart_in_page(page_graph);
@@ -357,19 +385,7 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
     // Initialize with some default data
     update_ui_from_sample(0, 0, 0, 0, 0, 0, 0, 0);
 
-#if !USE_FAKE_DATA
-    // Start the HR sensor
-    struct zsw_hr_config config = {
-        .mode = ZSW_HR_MODE_CONTINUOUS,
-        .sample_interval_ms = 1000,
-    };
-    int ret = zsw_hr_start(&config);
-    if (ret) {
-        // Without a running sensor the timer would only show a previous session's sample.
-        LOG_ERR("Failed to start HR sensor: %d", ret);
-        return;
-    }
-#endif
+    update_timer_cb(NULL);
 
     // Start update timer (1 second interval)
     update_timer = lv_timer_create(update_timer_cb, 1000, NULL);
@@ -380,11 +396,6 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
 static void hr_app_stop(void)
 {
     LOG_INF("HR App stopping");
-
-#if !USE_FAKE_DATA
-    // Stop the HR sensor
-    zsw_hr_stop();
-#endif
 
     // Delete timer
     if (update_timer) {
@@ -404,6 +415,7 @@ static void hr_app_stop(void)
     page_debug = NULL;
     page_graph = NULL;
     hr_chart = NULL;
+    graph_span_label = NULL;
     hr_series = NULL;
     conf_series = NULL;
     ui_page_indicator = NULL;
