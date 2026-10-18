@@ -24,9 +24,15 @@
 #include "ui/zsw_ui_controller.h"
 #include "events/battery_event.h"
 #include "events/pressure_event.h"
+#include "events/accel_event.h"
+#if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
+#include "drivers/zsw_hr.h"
+#include "managers/zsw_hr_manager.h"
+#endif
 
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
+ZBUS_CHAN_DECLARE(accel_data_chan);
 
 #if defined(CONFIG_THREAD_MONITOR) && defined(CONFIG_THREAD_STACK_INFO) && defined(CONFIG_INIT_STACKS)
 struct stack_query {
@@ -137,13 +143,143 @@ static int cmd_power_wake(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+static bool power_sleep_stationary;
+static int power_sleep_rc;
+
+// Runs on the system workqueue like all other power state changes.
+static void power_sleep_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    power_sleep_rc = zsw_power_manager_request_sleep();
+    if (!power_sleep_rc && power_sleep_stationary) {
+        struct accel_event event = {.data.type = ZSW_IMU_EVT_TYPE_NO_MOTION};
+        power_sleep_rc = zbus_chan_pub(&accel_data_chan, &event, K_MSEC(250));
+    }
+}
+
+static K_WORK_DEFINE(power_sleep_work, power_sleep_work_handler);
+
+static int cmd_power_sleep(const struct shell *sh, size_t argc, char **argv)
+{
+    struct k_work_sync sync;
+
+    if (argc == 2 && strcmp(argv[1], "stationary") != 0) {
+        shell_error(sh, "Usage: power sleep [stationary]");
+        return -EINVAL;
+    }
+    power_sleep_stationary = argc == 2;
+    k_work_submit(&power_sleep_work);
+    k_work_flush(&power_sleep_work, &sync);
+    if (power_sleep_rc) {
+        shell_error(sh, "Sleep failed, retry shortly (%d)", power_sleep_rc);
+        return power_sleep_rc;
+    }
+    shell_print(sh, power_sleep_stationary ? "Screen asleep, injected NO_MOTION" : "Screen asleep");
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_power,
                                SHELL_CMD_ARG(status, NULL, "Show power status and sleep timer", cmd_power_status, 1, 0),
                                SHELL_CMD_ARG(wake, NULL, "Reset idle timeout to keep device awake", cmd_power_wake, 1, 0),
+                               SHELL_CMD_ARG(sleep, NULL, "Sleep now; optional stationary injects NO_MOTION", cmd_power_sleep, 1, 1),
                                SHELL_SUBCMD_SET_END
                               );
 
 SHELL_CMD_REGISTER(power, &sub_power, "Power management commands", NULL);
+
+#if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
+static int cmd_hr_measure(const struct shell *sh, size_t argc, char **argv)
+{
+    int rc = zsw_hr_manager_measure_now();
+    shell_print(sh, "HR manual request: %d", rc);
+    return rc;
+}
+
+static int cmd_hr_stop(const struct shell *sh, size_t argc, char **argv)
+{
+    int rc = zsw_hr_manager_set_mode(ZSW_HR_SETTING_OFF);
+    shell_print(sh, "HR disabled: %d", rc);
+    return rc;
+}
+
+static int cmd_hr_cancel(const struct shell *sh, size_t argc, char **argv)
+{
+    int rc = zsw_hr_manager_cancel_measurement();
+    shell_print(sh, "HR manual cancel: %d", rc);
+    return rc;
+}
+
+static int cmd_hr_mode(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc == 1) {
+        struct zsw_hr_manager_snapshot s;
+        zsw_hr_manager_get_snapshot(&s);
+        shell_print(sh, "HR mode: %u (0=off, 1=background, 2=continuous)", s.mode);
+        return 0;
+    }
+    zsw_hr_setting_t mode;
+    if (!strcmp(argv[1], "off")) {
+        mode = ZSW_HR_SETTING_OFF;
+    } else if (!strcmp(argv[1], "background")) {
+        mode = ZSW_HR_SETTING_BACKGROUND;
+    } else if (!strcmp(argv[1], "continuous")) {
+        mode = ZSW_HR_SETTING_CONTINUOUS;
+    } else {
+        return -EINVAL;
+    }
+    int rc = zsw_hr_manager_set_mode(mode);
+    shell_print(sh, "HR mode set: %d", rc);
+    return rc;
+}
+
+static int cmd_hr_motion(const struct shell *sh, size_t argc, char **argv)
+{
+    struct accel_event event = {0};
+    if (!strcmp(argv[1], "moving")) {
+        event.data.type = ZSW_IMU_EVT_TYPE_ANY_MOTION;
+    } else if (!strcmp(argv[1], "stationary")) {
+        event.data.type = ZSW_IMU_EVT_TYPE_NO_MOTION;
+    } else {
+        return -EINVAL;
+    }
+    int rc = zbus_chan_pub(&accel_data_chan, &event, K_MSEC(250));
+    shell_print(sh, "Injected IMU event: %d", rc);
+    return rc;
+}
+
+static int cmd_hr_status(const struct shell *sh, size_t argc, char **argv)
+{
+    struct zsw_hr_manager_snapshot s;
+    zsw_hr_manager_get_snapshot(&s);
+    shell_print(sh, "HR mode=%u status=%u manual=%u hardware=%u error=%d sequence=%u next=%lld ms",
+                s.mode, s.status, s.manual, zsw_hr_is_running(), s.error, s.sequence,
+                (long long)MAX(0, s.next_measurement_ms - k_uptime_get()));
+    if (s.has_sample) {
+        shell_print(sh, "Accepted HR: %d bpm confidence=%u age=%lld ms",
+                    s.sample.heart_rate_bpm, s.sample.heart_rate_confidence,
+                    (long long)(k_uptime_get() - s.sample.timestamp_ms));
+    } else {
+        shell_print(sh, "No accepted measurement");
+    }
+    if (s.has_report) {
+        shell_print(sh, "Latest report: %d bpm confidence=%u skin=%u age=%lld ms",
+                    s.report.heart_rate_bpm, s.report.heart_rate_confidence,
+                    s.report.skin_contact_state, (long long)(k_uptime_get() - s.report.timestamp_ms));
+    }
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_hr,
+                               SHELL_CMD_ARG(measure, NULL, "Request one manual measurement", cmd_hr_measure, 1, 0),
+                               SHELL_CMD_ARG(cancel, NULL, "Cancel the manual request", cmd_hr_cancel, 1, 0),
+                               SHELL_CMD_ARG(stop, NULL, "Save mode off and stop all HR requests", cmd_hr_stop, 1, 0),
+                               SHELL_CMD_ARG(mode, NULL, "Get/set off, background, continuous", cmd_hr_mode, 1, 1),
+                               SHELL_CMD_ARG(motion, NULL, "Inject moving/stationary for policy tests", cmd_hr_motion, 2, 0),
+                               SHELL_CMD_ARG(status, NULL, "Show manager state and the latest report", cmd_hr_status, 1, 0),
+                               SHELL_SUBCMD_SET_END);
+SHELL_CMD_REGISTER(hr, &sub_hr, "Heart rate manager", NULL);
+#endif
 
 static int cmd_vibration_run_pattern(const struct shell *sh, size_t argc, char **argv)
 {
