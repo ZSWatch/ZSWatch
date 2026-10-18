@@ -417,13 +417,16 @@ int zsw_hr_get_latest(struct zsw_hr_sample *sample)
 
 int zsw_hr_register_callback(zsw_hr_sample_cb_t callback, void *user_data)
 {
+    k_tid_t tid;
+
     k_mutex_lock(&hr_lock, K_FOREVER);
     hr_state.callback = callback;
     hr_state.callback_user_data = user_data;
+    tid = hr_state.thread_id;
     k_mutex_unlock(&hr_lock);
 
-    if (hr_state.thread_id) {
-        k_wakeup(hr_state.thread_id);
+    if (tid) {
+        k_wakeup(tid);
     }
 
     return 0;
