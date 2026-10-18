@@ -53,6 +53,6 @@ manifest:
 
     - name: Zephyr-MAX32664C
       remote: zswatch
-      revision: 507813b6c480e1b3ffdb7a3922b38deea036b3b4
+      revision: 4a0dda55df6f85c1d565a6469e736eb98e9c014f
       path: modules/lib/max32664c
 
