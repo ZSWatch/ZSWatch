@@ -36,6 +36,25 @@ GitHub requires you to be logged in to download **GitHub Actions** artifacts. If
 
 After updating firmware, you typically also need to upload the matching **image resources** so icons and graphics display correctly. See [Image Resources](../development/image_resources.md) for details.
 
+## Watches With an Older Bootloader
+
+Current firmware uses 32-bit addressing for the external flash, so all of its
+64 MB can be used. Bootloaders flashed before this change use 24-bit
+addressing. The firmware switches the flash back before every restart it
+makes itself, so updates, crashes and reboots keep working with an older
+bootloader.
+
+A reset that does not come from the firmware, such as a reset from a
+debugger, leaves the flash in 32-bit mode. An older bootloader then reports
+`Image in the primary slot is not valid!` and stays in serial recovery.
+Remove all power (USB and battery) for a few seconds and the watch boots
+normally again.
+
+To avoid this, update the bootloader too by flashing the full firmware hex
+with a debugger ([Method B1](#option-b1-flash-a-pre-built-firmware-nrfjprog)).
+Use the `qspi_mx25u51245.ini` from the same download; an older one cannot
+program or verify the external flash.
+
 ## Method A: Web Updater (USB or BLE)
 
 1. Enable USB and/or BLE updates on the watch.
