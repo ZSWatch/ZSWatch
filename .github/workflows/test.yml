@@ -1,28 +1,31 @@
+# Called by ci.yml for PRs from this repository, by test-fork.yml (workflow_run) for
+# fork PRs using the images that CI built from the fork's code, and by test-only.yml.
 on:
   workflow_call:
     inputs:
-      is-external-pr:
-        description: 'Whether this is an external PR from a fork'
+      pr-number:
+        description: 'PR number, needed when called from workflow_run'
+        type: number
+        required: false
+        default: 0
+      run-id:
+        description: 'CI run to take the images from, default the triggering run'
+        type: string
+        required: false
+        default: ''
+      skip-flash:
+        description: 'Test the firmware already on the devices'
         type: boolean
         required: false
         default: false
-      pr-head-sha:
-        description: 'PR head SHA for external PRs'
-        type: string
-        required: false
-        default: ''
-      pr-head-repo:
-        description: 'PR head repository for external PRs'
-        type: string
-        required: false
-        default: ''
 
 jobs:
   test:
     runs-on: [self-hosted, x64]
-    environment: ${{ inputs.is-external-pr && 'external-pr-approval' || null }}
+    # Fork PRs run their own test code on this machine, so they wait for approval.
+    environment: ${{ github.event_name == 'workflow_run' && 'external-pr-approval' || null }}
     concurrency:
-      group: hardware-test-runner-${{ github.event.pull_request.number || github.run_id }}
+      group: hardware-test-runner-${{ inputs.pr-number || github.event.pull_request.number || github.run_id }}
       cancel-in-progress: true
     env:
       BLEAK_ADAPTER: hci1
@@ -31,18 +34,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.is-external-pr && inputs.pr-head-sha || github.sha }}
-          repository: ${{ inputs.is-external-pr && inputs.pr-head-repo || github.repository }}
-          allow-unsafe-pr-checkout: true
-
-      - name: PR Type Notice
-        run: |
-          if [ "${{ inputs.is-external-pr }}" = "true" ]; then
-            echo "::notice::External PR detected - using stable workflows from main branch"
-            echo "::notice::Testing code from: ${{ inputs.pr-head-repo }}@${{ inputs.pr-head-sha }}"
-          else
-            echo "::notice::Internal PR detected - using workflows from PR branch"
-          fi
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          repository: ${{ github.event.workflow_run.head_repository.full_name || github.repository }}
+          allow-unsafe-pr-checkout: ${{ github.event_name == 'workflow_run' }}
+          persist-credentials: false
 
       - name: Install dependencies
         continue-on-error: true # JLink install may fail
@@ -106,18 +101,24 @@ jobs:
         with:
           name: watchdk@1_nrf5340_cpuapp_debug
           path: app/pytest/
+          run-id: ${{ inputs.run-id || github.event.workflow_run.id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: 'Download image'
         uses: actions/download-artifact@v4
         with:
           name: zswatch_legacy@5_nrf5340_cpuapp_debug
           path: app/pytest/
+          run-id: ${{ inputs.run-id || github.event.workflow_run.id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: 'Download image'
         uses: actions/download-artifact@v4
         with:
           name: native_sim_native_64_debug
           path: app/pytest/
+          run-id: ${{ inputs.run-id || github.event.workflow_run.id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Display structure of downloaded files
         run: |
@@ -149,6 +150,7 @@ jobs:
           sudo hciconfig "$BLEAK_ADAPTER" up
 
           pytest \
+            ${{ inputs.skip-flash && '--skip-flash' || '' }} \
             --junitxml=report_target.xml -v \
             -m 'not linux_only' \
             --html=report_target.html \
@@ -191,6 +193,8 @@ jobs:
           fail_on_failure: false # Until test setup is stable, let it fail gracefully
           fail_on_parse_error: false # Don't fail on XML parsing errors
           require_tests: false # Don't require tests to be found
+          commit: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+          pr_id: ${{ inputs.pr-number || github.event.pull_request.number }}
 
       - name: Create/Update Power Consumption Comment
         if: success() || failure()
@@ -208,19 +212,19 @@ jobs:
           fi
 
       - name: Find existing power consumption comment
-        if: success() || failure()
+        if: (success() || failure()) && (inputs.pr-number || github.event.pull_request.number)
         uses: peter-evans/find-comment@v3
         id: fc
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ inputs.pr-number || github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
           body-includes: '⚡ Power Consumption'
 
       - name: Create or update power consumption comment
-        if: success() || failure()
+        if: (success() || failure()) && (inputs.pr-number || github.event.pull_request.number)
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ inputs.pr-number || github.event.pull_request.number }}
           body-path: app/pytest/power_comment.md
           edit-mode: replace

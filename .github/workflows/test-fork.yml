@@ -1,0 +1,40 @@
+name: Hardware Test (fork PRs)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  find-pr:
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    runs-on: ubuntu-24.04
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+    steps:
+      # workflow_run does not list fork PRs, so look the PR up by its head commit.
+      - id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          number=$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.sha == \"$HEAD_SHA\") | .number" | head -n1)
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: find-pr
+    if: needs.find-pr.outputs.number != ''
+    uses: ./.github/workflows/test.yml
+    with:
+      pr-number: ${{ fromJSON(needs.find-pr.outputs.number) }}
