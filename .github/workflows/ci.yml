@@ -27,11 +27,14 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      MEMBROWSE_API_KEY: ${{ secrets.MEMBROWSE_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Post combined PR comment
+        if: ${{ env.MEMBROWSE_API_KEY != '' }}
         uses: membrowse/membrowse-action/comment-action@v1
         with:
           api_key: ${{ secrets.MEMBROWSE_API_KEY }}
