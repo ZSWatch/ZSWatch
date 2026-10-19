@@ -232,6 +232,9 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
         return;
     }
 
+    /* A successful retry replaces the previous error as well as the forecast. */
+    lv_label_set_text(ui_status_label, "");
+
     if (lv_obj_has_flag(ui_root_container, LV_OBJ_FLAG_HIDDEN)) {
         lv_obj_clear_flag(ui_root_container, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_today_container, LV_OBJ_FLAG_HIDDEN);
