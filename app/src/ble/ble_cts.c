@@ -111,8 +111,8 @@ static void publish_time_event(struct bt_cts_current_time *current_time, float o
 }
 
 static uint8_t local_time_read_cb(struct bt_conn *conn, uint8_t err,
-                                 struct bt_gatt_read_params *params,
-                                 const void *data, uint16_t length)
+                                  struct bt_gatt_read_params *params,
+                                  const void *data, uint16_t length)
 {
     if (conn != current_conn || !local_time_pending) {
         return BT_GATT_ITER_STOP;

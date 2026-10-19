@@ -86,8 +86,8 @@ static bool is_json_safe_string(const cJSON *item)
     if (!cJSON_IsString(item)) {
         return false;
     }
-    for (const char *c = item->valuestring; *c; c++) {
-        if (*c == '"' || *c == '\\' || (uint8_t)*c < 0x20) {
+    for (const uint8_t *c = (const uint8_t *)item->valuestring; *c; c++) {
+        if (*c == '"' || *c == '\\' || *c < 0x20) {
             return false;
         }
     }
@@ -723,16 +723,29 @@ static int extract_js_string(const char *key, const char *data, char *dst, size_
         return -EINVAL;
     }
     while (*src && *src != '"') {
-        uint32_t cp = (uint8_t)*src++;
+        uint32_t cp = (uint8_t)src[0];
+        src++;
         if (cp == '\\') {
             char esc = *src++;
             switch (esc) {
-                case 'b': cp = '\b'; break;
-                case 'f': cp = '\f'; break;
-                case 'n': cp = '\n'; break;
-                case 'r': cp = '\r'; break;
-                case 't': cp = '\t'; break;
-                case 'v': cp = '\v'; break;
+                case 'b':
+                    cp = '\b';
+                    break;
+                case 'f':
+                    cp = '\f';
+                    break;
+                case 'n':
+                    cp = '\n';
+                    break;
+                case 'r':
+                    cp = '\r';
+                    break;
+                case 't':
+                    cp = '\t';
+                    break;
+                case 'v':
+                    cp = '\v';
+                    break;
                 case 'x':
                     if (hex_value(src, 2, &cp)) {
                         return -EINVAL;

@@ -118,7 +118,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
         current_weather.wind_speed = current_wind_speed->valuedouble;
         current_weather.apparent_temperature = apparent_temperature->valuedouble;
         current_weather.icon = zsw_ui_utils_icon_from_wmo_weather_code(current_weather_code->valueint,
-                              &current_weather.color, &current_weather.text);
+                                                                       &current_weather.color, &current_weather.text);
         for (int i = 0; i < num_forecasts; i++) {
             cJSON *high = cJSON_GetArrayItem(temperature_2m_max_list, i);
             cJSON *low = cJSON_GetArrayItem(temperature_2m_min_list, i);
@@ -134,7 +134,7 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             forecasts[i].high_temp = high->valuedouble;
             forecasts[i].rain_percent = rain->valueint;
             forecasts[i].icon = zsw_ui_utils_icon_from_wmo_weather_code(code->valueint,
-                                &forecasts[i].color, &forecasts[i].text);
+                                                                        &forecasts[i].color, &forecasts[i].text);
             snprintf(forecasts[i].day, sizeof(forecasts[i].day), "%s",
                      zsw_ui_utils_day_name((time_now.tm.tm_wday + i) % 7));
         }

@@ -12,4 +12,4 @@
 /** Encodes the oldest BLE_VOICE_RECORDING_LIST_MAX_ENTRIES entries; reorders entries by timestamp.
  *  Returns encoded length or a negative errno. */
 int ble_voice_recording_list_encode(zsw_recording_entry_t *entries, size_t count,
-                                   char *output, size_t capacity);
+                                    char *output, size_t capacity);

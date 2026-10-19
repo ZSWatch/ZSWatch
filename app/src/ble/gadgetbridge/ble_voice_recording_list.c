@@ -22,7 +22,7 @@ static int append(char *output, size_t capacity, size_t *used, const char *forma
 }
 
 int ble_voice_recording_list_encode(zsw_recording_entry_t *entries, size_t count,
-                                   char *output, size_t capacity)
+                                    char *output, size_t capacity)
 {
     if (!output || !capacity || count > ZSW_RECORDING_MAX_FILES || (count && !entries)) {
         return -EINVAL;
@@ -52,7 +52,7 @@ int ble_voice_recording_list_encode(zsw_recording_entry_t *entries, size_t count
             if (*p == '"' || *p == '\\') {
                 rc = append(output, capacity, &used, "\\%c", *p);
             } else if (*p < 0x20) {
-                rc = append(output, capacity, &used, "\\u%04x", (unsigned)*p);
+                rc = append(output, capacity, &used, "\\u%04x", (unsigned int)p[0]);
             } else {
                 rc = append(output, capacity, &used, "%c", *p);
             }
