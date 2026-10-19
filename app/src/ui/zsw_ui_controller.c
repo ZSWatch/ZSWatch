@@ -22,6 +22,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/sys/atomic.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -75,6 +76,7 @@ static lv_indev_t *touch_indev;
 static uint8_t last_pressed;
 static ui_state_t watch_state = INIT_STATE;
 static bool swipe_back_enabled;
+static atomic_t input_ready;
 
 static void encoder_read(lv_indev_t *indev, lv_indev_data_t *data);
 static void on_input_subsys_callback(struct input_event *evt, void *user_data);
@@ -245,6 +247,13 @@ static void on_root_screen_gesture(lv_event_t *e)
 
 static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 {
+    /* INPUT_CALLBACK_DEFINE is registered at boot, even though its declaration
+     * appears inside init(). Touch hardware can publish before the power/UI
+     * managers are ready. Do not call them or queue input until init completes.
+     */
+    if (!atomic_get(&input_ready)) {
+        return;
+    }
     zsw_power_manager_on_user_activity();
 
     LOG_DBG("Input event received: type=%u, code=%u, value=%d", evt->type, evt->code, evt->value);
@@ -536,6 +545,7 @@ int zsw_ui_controller_init(void)
 #endif
     }
 
+    atomic_set(&input_ready, 1);
     LOG_INF("UI Controller initialized");
 
     return 0;
