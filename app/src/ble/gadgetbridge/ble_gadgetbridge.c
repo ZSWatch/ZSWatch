@@ -30,6 +30,7 @@
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
 #include "events/zsw_voice_memo_event.h"
+#include "ble_voice_recording_list.h"
 #endif
 
 LOG_MODULE_REGISTER(ble_gadgetbridge, CONFIG_ZSW_BLE_LOG_LEVEL);
@@ -77,6 +78,20 @@ static void on_ble_recording_event(const struct zbus_channel *chan)
         memcpy(&ble_recording_evt_copy, evt, sizeof(ble_recording_evt_copy));
         k_work_submit(&ble_recording_notify_work);
     }
+}
+
+/* The result ACK echoes phone strings into JSON without escaping. */
+static bool is_json_safe_string(const cJSON *item)
+{
+    if (!cJSON_IsString(item)) {
+        return false;
+    }
+    for (const char *c = item->valuestring; *c; c++) {
+        if (*c == '"' || *c == '\\' || (uint8_t)*c < 0x20) {
+            return false;
+        }
+    }
+    return true;
 }
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
 
@@ -938,45 +953,30 @@ static int parse_voice_memo_command(char *data, int len)
     if (strcmp(action, "list") == 0) {
         cJSON_Delete(root);
 
-        /* Build JSON response with recording list */
-        zsw_recording_entry_t entries[50];
+        /* Do not retain a cJSON node tree for every file on the libc heap.
+         * Use one bounded transient buffer from the kernel heap instead. */
+        zsw_recording_entry_t entries[ZSW_RECORDING_MAX_FILES];
         int count = zsw_recording_manager_list(entries, ARRAY_SIZE(entries));
         if (count < 0) {
             LOG_ERR("voice_memo: list failed: %d", count);
-            count = 0;
+            return count;
         }
 
-        cJSON *resp = cJSON_CreateObject();
-        if (resp == NULL) {
+        char *response = k_malloc(BLE_VOICE_RECORDING_LIST_CAPACITY);
+        if (!response) {
             return -ENOMEM;
         }
-
-        cJSON_AddStringToObject(resp, "t", "voice_memo");
-        cJSON_AddStringToObject(resp, "action", "list_result");
-
-        cJSON *arr = cJSON_AddArrayToObject(resp, "recordings");
-        for (int i = 0; i < count; i++) {
-            cJSON *entry = cJSON_CreateObject();
-            cJSON_AddStringToObject(entry, "filename", entries[i].filename);
-            cJSON_AddNumberToObject(entry, "duration_ms", entries[i].duration_ms);
-            cJSON_AddNumberToObject(entry, "size_bytes", entries[i].size_bytes);
-            cJSON_AddNumberToObject(entry, "timestamp", entries[i].timestamp);
-            cJSON_AddItemToArray(arr, entry);
+        int msg_len = ble_voice_recording_list_encode(entries, count, response, BLE_VOICE_RECORDING_LIST_CAPACITY);
+        if (msg_len < 0) {
+            LOG_ERR("voice_memo: list encoding failed: %d", msg_len);
+            k_free(response);
+            return msg_len;
         }
 
-        char *json_str = cJSON_PrintUnformatted(resp);
-        cJSON_Delete(resp);
-
-        if (json_str == NULL) {
-            LOG_ERR("voice_memo: JSON print failed");
-            return -ENOMEM;
-        }
-
-        int msg_len = strlen(json_str);
         LOG_INF("voice_memo: sending list_result (%d recordings, %d bytes)", count, msg_len);
-        ble_comm_send(json_str, msg_len);
-        cJSON_free(json_str);
-        return 0;
+        int sent = ble_comm_send(response, msg_len);
+        k_free(response);
+        return sent;
     }
 
     if (strcmp(action, "delete") == 0) {
@@ -1026,10 +1026,27 @@ static int parse_voice_memo_command(char *data, int len)
         if (cJSON_IsString(dt_obj)) {
             strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
         }
+        result_evt.is_draft = cJSON_IsTrue(cJSON_GetObjectItem(root, "draft"));
         zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
 
+        /* ACK so the phone stops resending. A resend after a lost ACK shows the popup again. */
+        cJSON *generation = cJSON_GetObjectItem(root, "generation");
+        cJSON *key = cJSON_GetObjectItem(root, "recording_key");
+        cJSON *id = cJSON_GetObjectItem(root, "result_id");
+        cJSON *sha = cJSON_GetObjectItem(root, "result_sha256");
+        int rc = 0;
+        if (cJSON_IsNumber(generation) && is_json_safe_string(key) && is_json_safe_string(id) &&
+            is_json_safe_string(sha)) {
+            char ack[360];
+            int length = snprintf(ack, sizeof(ack),
+                                  "{\"t\":\"voice_memo\",\"action\":\"result_ack\",\"version\":1,"
+                                  "\"result_id\":\"%s\",\"recording_key\":\"%s\",\"result_sha256\":\"%s\","
+                                  "\"generation\":%u,\"status\":\"accepted\"}",
+                                  id->valuestring, key->valuestring, sha->valuestring, (uint32_t)generation->valuedouble);
+            rc = length > 0 && length < sizeof(ack) ? ble_comm_send(ack, length) : -ENOSPC;
+        }
         cJSON_Delete(root);
-        return 0;
+        return rc;
     }
 
     LOG_WRN("voice_memo: unknown action '%s'", action);
