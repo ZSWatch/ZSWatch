@@ -5,12 +5,10 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/zbus/zbus.h>
 #include <events/ble_event.h>
-#include <cJSON.h>
 
 LOG_MODULE_REGISTER(ble_http, LOG_LEVEL_DBG);
 
-#define GB_HTTP_REQUEST_FMT "{\"t\":\"http\", \"url\":\"%s\", id:\"%d\"} \n"
-
+#define GB_HTTP_REQUEST_FMT "{\"t\":\"http\",\"url\":\"%s\",\"id\":\"%u\"}\n"
 #define HTTP_TIMEOUT_SECONDS 10
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan);
@@ -20,90 +18,107 @@ ZBUS_LISTENER_DEFINE(ble_http_lis, zbus_ble_comm_data_callback);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, ble_http_lis, 1);
 
+static struct k_spinlock request_lock;
 static bool request_pending;
 static uint16_t request_id;
+static int64_t request_deadline;
 static ble_http_callback ble_http_cb;
 
 K_WORK_DELAYABLE_DEFINE(ble_http_timeout_work, ble_http_timeout_handler);
 
 static void ble_http_timeout_handler(struct k_work *work)
 {
-    LOG_WRN("HTTP Timeout");
-    request_pending = false;
-    ble_http_cb(BLE_HTTP_STATUS_TIMEOUT, NULL);
+    ARG_UNUSED(work);
+    ble_http_callback cb = NULL;
+    k_spinlock_key_t key = k_spin_lock(&request_lock);
+    if (request_pending) {
+        int64_t remaining = request_deadline - k_uptime_get();
+        if (remaining > 0) {
+            /* An old queued timeout may run after a callback starts a new request. */
+            k_work_reschedule(&ble_http_timeout_work, K_MSEC(remaining));
+        } else {
+            cb = ble_http_cb;
+            request_pending = false;
+            ble_http_cb = NULL;
+        }
+    }
+    k_spin_unlock(&request_lock, key);
+    if (cb) {
+        LOG_WRN("HTTP Timeout");
+        cb(BLE_HTTP_STATUS_TIMEOUT, NULL);
+    }
 }
 
 static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
 {
     const struct ble_data_event *event = zbus_chan_const_msg(chan);
+    if (event->data.type != BLE_COMM_DATA_TYPE_HTTP) {
+        return;
+    }
 
-    if (event->data.type == BLE_COMM_DATA_TYPE_HTTP) {
-        if (event->data.data.http_response.id != request_id) {
-            LOG_WRN("Not the expected response ID, was: %d, expected: %d", event->data.data.http_response.id, request_id);
-            return;
-        }
-        struct k_work_sync sync;
-        k_work_cancel_delayable_sync(&ble_http_timeout_work, &sync);
+    ble_http_callback cb = NULL;
+    bool expired = false;
+    k_spinlock_key_t key = k_spin_lock(&request_lock);
+    if (request_pending && event->data.data.http_response.id == request_id) {
+        expired = k_uptime_get() >= request_deadline;
+        cb = ble_http_cb;
         request_pending = false;
+        ble_http_cb = NULL;
+    }
+    k_spin_unlock(&request_lock, key);
+    if (!cb) {
+        return; /* Late, duplicate or unrelated replies never finish another request. */
+    }
 
-        if (strlen(event->data.data.http_response.err) > 0) {
-            LOG_WRN("HTTP request failed: %s", event->data.data.http_response.err);
-        } else if (strlen(event->data.data.http_response.response) > 0) {
-            char *fixed_rsp = k_malloc(strlen(event->data.data.http_response.response) + 1);
-            __ASSERT(fixed_rsp, "Failed to allocate memory for fixed_rsp");
-            // As the response from Gadgetbride contains two characters like this[\\, "] instead of just one character [\"],
-            // we need to remove them for it to be avalid JSON accepted by cJSON
-            int i;
-            int j;
-            for (i = 0, j = 0; i < strlen(event->data.data.http_response.response) - 1;) {
-                if (event->data.data.http_response.response[i] == '\\' && event->data.data.http_response.response[i + 1] == '"') {
-                    fixed_rsp[j] = '\"';
-                    j++;
-                    i += 2;
-                } else {
-                    fixed_rsp[j] = event->data.data.http_response.response[i];
-                    j++;
-                    i++;
-                }
-            }
-            if (j > 0) {
-                fixed_rsp[j - 1] = '\0'; // Remove the last " as it belongs not to the data
-            } else {
-                fixed_rsp[0] = '\0';
-            }
-            ble_http_cb(BLE_HTTP_STATUS_OK, fixed_rsp);
-            k_free(fixed_rsp);
-        }
+    /* Do not synchronously cancel work: its callback may itself issue an HTTP request.
+     * The deadline guard makes a queued timeout harmless and keeps callbacks outside the lock.
+     */
+    if (expired) {
+        cb(BLE_HTTP_STATUS_TIMEOUT, NULL);
+    } else if (event->data.data.http_response.err[0] || !event->data.data.http_response.response[0]) {
+        LOG_WRN("HTTP request failed or returned an empty body");
+        cb(BLE_HTTP_STATUS_ERROR, NULL);
+    } else {
+        cb(BLE_HTTP_STATUS_OK, (char *)event->data.data.http_response.response);
     }
 }
 
 int zsw_ble_http_get(char *url, ble_http_callback cb)
 {
-    int ret;
-    char *request;
+    if (!url || !cb) {
+        return -EINVAL;
+    }
+    /* Five digits for the uint16_t ID, even after the request counter grows. */
+    size_t capacity = strlen(url) + sizeof(GB_HTTP_REQUEST_FMT) + 5;
+    char *request = k_malloc(capacity);
+    if (!request) {
+        return -ENOMEM;
+    }
 
+    k_spinlock_key_t key = k_spin_lock(&request_lock);
     if (request_pending) {
-        // TODO implement a queue for requests
+        k_spin_unlock(&request_lock, key);
+        k_free(request);
         return -EBUSY;
     }
-
-    request_id++;
-
-    request = k_calloc(1, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1);
-    __ASSERT(request, "Failed to allocate memory for request URL");
-    memset(request, 0, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1);
-
-    snprintf(request, strlen(url) + strlen(GB_HTTP_REQUEST_FMT) + 1, GB_HTTP_REQUEST_FMT, url, request_id);
-    ret = ble_comm_send(request, strlen(request));
-    k_free(request);
-    if (ret != 0) {
-        return ret;
-    }
-
+    uint16_t id = ++request_id;
     ble_http_cb = cb;
     request_pending = true;
+    request_deadline = k_uptime_get() + HTTP_TIMEOUT_SECONDS * 1000;
+    /* Publish the callback and timeout before sending: a fast reply can arrive during send. */
+    k_work_reschedule(&ble_http_timeout_work, K_SECONDS(HTTP_TIMEOUT_SECONDS));
+    k_spin_unlock(&request_lock, key);
 
-    k_work_schedule(&ble_http_timeout_work, K_SECONDS(HTTP_TIMEOUT_SECONDS));
-
-    return 0;
+    snprintf(request, capacity, GB_HTTP_REQUEST_FMT, url, (unsigned int)id);
+    int ret = ble_comm_send((const uint8_t *)request, strlen(request));
+    k_free(request);
+    if (ret != 0) {
+        key = k_spin_lock(&request_lock);
+        if (request_pending && request_id == id) {
+            request_pending = false;
+            ble_http_cb = NULL;
+        }
+        k_spin_unlock(&request_lock, key);
+    }
+    return ret;
 }

@@ -634,46 +634,169 @@ static int parse_musicstate(char *data, int len)
     return 0;
 }
 
+static int utf8_put(uint32_t cp, char *dst, size_t *pos, size_t cap)
+{
+    uint8_t bytes[4];
+    size_t n;
+    if (cp < 0x80) {
+        bytes[0] = cp;
+        n = 1;
+    } else if (cp < 0x800) {
+        bytes[0] = 0xC0 | (cp >> 6);
+        bytes[1] = 0x80 | (cp & 0x3F);
+        n = 2;
+    } else if (cp < 0x10000) {
+        bytes[0] = 0xE0 | (cp >> 12);
+        bytes[1] = 0x80 | ((cp >> 6) & 0x3F);
+        bytes[2] = 0x80 | (cp & 0x3F);
+        n = 3;
+    } else {
+        bytes[0] = 0xF0 | (cp >> 18);
+        bytes[1] = 0x80 | ((cp >> 12) & 0x3F);
+        bytes[2] = 0x80 | ((cp >> 6) & 0x3F);
+        bytes[3] = 0x80 | (cp & 0x3F);
+        n = 4;
+    }
+    if (*pos + n >= cap) {
+        return -ENOSPC;
+    }
+    memcpy(&dst[*pos], bytes, n);
+    *pos += n;
+    return 0;
+}
+
+static int hex_value(const char *src, int digits, uint32_t *value)
+{
+    *value = 0;
+    for (int i = 0; i < digits; i++) {
+        char c = src[i];
+        int v = (c >= '0' && c <= '9') ? c - '0' : (c >= 'a' && c <= 'f') ? c - 'a' + 10 :
+                (c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1;
+        if (v < 0) {
+            return -EINVAL;
+        }
+        *value = (*value << 4) | v;
+    }
+    return 0;
+}
+
+/* Decode the string value of key into dst as UTF-8. Gadgetbridge (Bangle.js) sends
+ * JavaScript, not strict JSON: strings may use \xNN, \v and octal escapes, or be
+ * replaced by atob("base64"). Strict JSON from the companion apps is a subset. */
+static int extract_js_string(const char *key, const char *data, char *dst, size_t cap)
+{
+    const char *src = strstr(data, key);
+    size_t pos = 0;
+    if (!src || cap == 0) {
+        return -ENOENT;
+    }
+    src += strlen(key);
+    while (*src == ' ') {
+        src++;
+    }
+    if (strncmp(src, "atob(\"", strlen("atob(\"")) == 0) {
+        src += strlen("atob(\"");
+        const char *end = strchr(src, '"');
+        size_t decoded_len;
+        if (!end || base64_decode((uint8_t *)dst, cap - 1, &decoded_len, (const uint8_t *)src, end - src) != 0) {
+            return -EINVAL;
+        }
+        dst[decoded_len] = '\0';
+        return decoded_len;
+    }
+    if (*src++ != '"') {
+        return -EINVAL;
+    }
+    while (*src && *src != '"') {
+        uint32_t cp = (uint8_t)*src++;
+        if (cp == '\\') {
+            char esc = *src++;
+            switch (esc) {
+                case 'b': cp = '\b'; break;
+                case 'f': cp = '\f'; break;
+                case 'n': cp = '\n'; break;
+                case 'r': cp = '\r'; break;
+                case 't': cp = '\t'; break;
+                case 'v': cp = '\v'; break;
+                case 'x':
+                    if (hex_value(src, 2, &cp)) {
+                        return -EINVAL;
+                    }
+                    src += 2;
+                    break;
+                case 'u':
+                    if (hex_value(src, 4, &cp)) {
+                        return -EINVAL;
+                    }
+                    src += 4;
+                    if (cp >= 0xD800 && cp <= 0xDBFF && src[0] == '\\' && src[1] == 'u') {
+                        uint32_t low;
+                        if (hex_value(src + 2, 4, &low) == 0 && low >= 0xDC00 && low <= 0xDFFF) {
+                            cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+                            src += 6;
+                        }
+                    }
+                    break;
+                case '\0':
+                    return -EINVAL;
+                default:
+                    if (esc >= '0' && esc <= '7') {
+                        cp = esc - '0';
+                    } else {
+                        cp = (uint8_t)esc; /* \" \\ \/ and unknown escapes map to the character. */
+                    }
+                    break;
+            }
+            if (utf8_put(cp, dst, &pos, cap)) {
+                return -ENOSPC;
+            }
+        } else {
+            /* Raw bytes are already UTF-8 (or converted before parsing). */
+            if (pos + 1 >= cap) {
+                return -ENOSPC;
+            }
+            dst[pos++] = cp;
+        }
+    }
+    if (*src != '"') {
+        return -EINVAL;
+    }
+    dst[pos] = '\0';
+    return pos;
+}
+
 static int parse_httpstate(char *data, int len)
 {
-    // {"t":"http","resp":"{\"response_code\":0,\"results\":[{\"type\":\"boolean\",\"difficulty\":\"easy\",\"category\":\"Geography\",\"question\":\"Hungary is the only country in the world beginning with H.\",\"correct_answer\":\"False\",\"incorrect_answers\":[\"True\"]}]}"}
-    char *temp_value;
-    int temp_len;
-    struct ble_data_event cb;
-    memset(&cb, 0, sizeof(cb));
-
+    ARG_UNUSED(len);
+    // {"t":"http","id":"5","resp":"{\"current\":...}"} or {"t":"http","id":"5","err":"..."}
+    struct ble_data_event cb = {0};
     cb.data.type = BLE_COMM_DATA_TYPE_HTTP;
 
-    temp_value = extract_value_str("\"id\":", data, &temp_len);
-    if (temp_value) {
-        errno = 0;
-        char *end_data;
-        cb.data.data.http_response.id  = strtol(temp_value, &end_data, 10);
-        if (temp_value == end_data || errno != 0) {
-            LOG_WRN("Failed parsing http request id");
-            cb.data.data.http_response.id = -1;
-        }
-    } else {
-        cb.data.data.http_response.id = -1;
+    /* The request sends the id as a string; accept a plain number too. */
+    char *id = strstr(data, "\"id\":");
+    if (!id) {
+        return -EINVAL;
     }
-
-    // {"t":"http","err":"Internet access not enabled in this Gadgetbridge build"}
-    temp_value = extract_value_str("\"err\":", data, &temp_len);
-
-    if (temp_value != NULL) {
-        LOG_ERR("HTTP err: %s", temp_value);
-        memcpy(cb.data.data.http_response.err, temp_value, temp_len);
-        send_ble_data_event(&cb);
-    } else {
-        temp_value = extract_value_str("\"resp\":", data, &temp_len);
-        if (temp_value) {
-            LOG_DBG("HTTP response: %s", temp_value);
-            memcpy(cb.data.data.http_response.response, temp_value,
-                   (strlen(temp_value) > MAX_HTTP_FIELD_LENGTH) ? MAX_HTTP_FIELD_LENGTH : strlen(temp_value)); /// @todo cast?
-            send_ble_data_event(&cb);
-        }
+    id += strlen("\"id\":");
+    if (*id == '"') {
+        id++;
     }
+    char *end;
+    errno = 0;
+    long request_id = strtol(id, &end, 10);
+    if (end == id || errno || request_id < 0 || request_id > UINT16_MAX) {
+        return -EINVAL;
+    }
+    cb.data.data.http_response.id = request_id;
 
+    if (strstr(data, "\"err\":") ||
+        extract_js_string("\"resp\":", data, cb.data.data.http_response.response,
+                          sizeof(cb.data.data.http_response.response)) <= 0) {
+        /* Even an error or malformed relay result must finish the matching request. */
+        snprintf(cb.data.data.http_response.err, sizeof(cb.data.data.http_response.err), "HTTP relay error");
+        cb.data.data.http_response.response[0] = '\0';
+    }
+    send_ble_data_event(&cb);
     return 0;
 }
 
@@ -1028,21 +1151,10 @@ static int parse_find_command(char *data, int len)
     return 0;
 }
 
-static int parse_data(char *data, int len)
+static int parse_data_utf8(char *data, int len)
 {
     int type_len;
     char *type;
-    char input_data_utf8[MAX_GB_PACKET_LENGTH + 1];
-
-    if (!is_valid_utf8(data, len)) {
-        int converted_len = convert_to_encoded_text(data, len, input_data_utf8, sizeof(input_data_utf8));
-        if (converted_len < 0) {
-            LOG_WRN("Invalid or oversized Gadgetbridge text (%d)", converted_len);
-            return converted_len;
-        }
-        data = input_data_utf8;
-        len = converted_len;
-    }
 
     type = extract_value_str("\"t\":", data, &type_len);
     if (type == NULL) {
@@ -1107,6 +1219,30 @@ static int parse_data(char *data, int len)
     }
 
     return 0;
+}
+
+static int parse_data(char *data, int len)
+{
+    if (is_valid_utf8(data, len)) {
+        return parse_data_utf8(data, len);
+    }
+
+    /* NUS input is parsed on a Bluetooth workqueue. Keep this large, rarely
+     * used conversion buffer off its stack. */
+    char *converted = k_calloc(MAX_GB_PACKET_LENGTH + 1, 1);
+    if (converted == NULL) {
+        LOG_ERR("Failed to allocate Gadgetbridge UTF-8 conversion buffer");
+        return -ENOMEM;
+    }
+    int converted_len = convert_to_encoded_text(data, len, converted, MAX_GB_PACKET_LENGTH + 1);
+    if (converted_len < 0) {
+        LOG_WRN("Invalid or oversized Gadgetbridge text (%d)", converted_len);
+        k_free(converted);
+        return converted_len;
+    }
+    int rc = parse_data_utf8(converted, converted_len);
+    k_free(converted);
+    return rc;
 }
 
 void ble_gadgetbridge_input(const uint8_t *const data, uint16_t len)
