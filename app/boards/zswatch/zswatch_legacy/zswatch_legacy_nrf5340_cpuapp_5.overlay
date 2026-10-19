@@ -263,6 +263,9 @@ dmic_dev: &pdm0 {
 		sck-frequency = <96000000>;
 		jedec-id = [c2 25 3a];
 		size = <DT_SIZE_M(64*8)>;
+		/* User storage crosses 16 MiB; 24-bit addresses alias other partitions. */
+		address-size-32;
+		enter-4byte-addr = <0x01>;
 		/*
 		has-dpd;
         // CS High to Power-Down Mode (tDP) - 3 us
