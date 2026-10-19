@@ -76,13 +76,12 @@ static void smp_auto_disable_work_handler(struct k_work *work)
         return;
     }
 
+    smp_enabled = false;
+    auto_disable_active = false;
     ble_comm_set_default_adv_interval();
     ble_comm_set_default_connection_interval();
     unblock_fs_write_render();
     zsw_xip_disable();
-
-    smp_enabled = false;
-    auto_disable_active = false;
 }
 
 static void reset_auto_disable_timer(void)
@@ -150,6 +149,8 @@ int zsw_smp_manager_enable(bool auto_disable)
 {
     if (smp_enabled) {
         LOG_DBG("SMP already enabled");
+        // Cancel any ordinary idle work; the SMP transport owns parameters.
+        ble_comm_set_short_connection_interval();
         auto_disable_active = auto_disable;
         if (auto_disable) {
             k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
@@ -204,14 +205,13 @@ int zsw_smp_manager_disable(void)
         return rc;
     }
 
+    smp_enabled = false;
+    auto_disable_active = false;
     ble_comm_set_default_adv_interval();
     ble_comm_set_default_connection_interval();
     unblock_fs_write_render();
 
     zsw_xip_disable();
-
-    smp_enabled = false;
-    auto_disable_active = false;
 
     LOG_INF("SMP disabled");
     return 0;
