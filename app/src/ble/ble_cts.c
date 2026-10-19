@@ -24,6 +24,7 @@
 #include "ble/ble_comm.h"
 #include "ble/ble_cts.h"
 #include "events/ble_event.h"
+#include "zsw_clock_timezone.h"
 
 LOG_MODULE_REGISTER(ble_cts, CONFIG_ZSW_BLE_LOG_LEVEL);
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -34,6 +35,10 @@ static bool has_cts;
 
 /* Local copy of the current connection. */
 static struct bt_conn *current_conn;
+static uint16_t local_time_handle;
+static struct bt_gatt_read_params local_time_read;
+static bool local_time_pending;
+static struct bt_cts_current_time pending_time;
 
 static const char *day_of_week[] = {"Unknown", "Monday", "Tuesday",
                                     "Wednesday", "Thursday", "Friday",
@@ -81,7 +86,7 @@ static void current_time_print(struct bt_cts_current_time *current_time)
     LOG_DBG("\tManual update    %x", current_time->adjust_reason.manual_time_update);
 }
 
-void publish_time_event(struct bt_cts_current_time *current_time)
+static void publish_time_event(struct bt_cts_current_time *current_time, float offset)
 {
     struct ble_data_event evt_time_inf = {0};
 
@@ -95,11 +100,57 @@ void publish_time_event(struct bt_cts_current_time *current_time)
     };
 
     evt_time_inf.data.type = BLE_COMM_DATA_TYPE_SET_TIME;
-    evt_time_inf.data.data.time.seconds = timeutil_timegm(&tm);
+    // CTS exposes local calendar fields, while the app protocol carries UTC.
+    evt_time_inf.data.data.time.seconds = timeutil_timegm(&tm) - (int32_t)(offset * 3600);
+    evt_time_inf.data.data.time.tz_offset = offset;
+    evt_time_inf.data.data.time.tz_offset_valid = true;
 
     LOG_DBG("EPOCH %d", evt_time_inf.data.data.time.seconds);
 
     zbus_chan_pub(&ble_comm_data_chan, &evt_time_inf, K_MSEC(250));
+}
+
+static uint8_t local_time_read_cb(struct bt_conn *conn, uint8_t err,
+                                 struct bt_gatt_read_params *params,
+                                 const void *data, uint16_t length)
+{
+    if (conn != current_conn || !local_time_pending) {
+        return BT_GATT_ITER_STOP;
+    }
+    local_time_pending = false;
+    float offset;
+    if (err || !data || length != 2 || !zsw_clock_cts_offset(data, &offset)) {
+        LOG_WRN("CTS timezone unavailable; keeping existing clock");
+        return BT_GATT_ITER_STOP;
+    }
+    publish_time_event(&pending_time, offset);
+    return BT_GATT_ITER_STOP;
+}
+
+static void receive_current_time(struct bt_cts_current_time *time)
+{
+    if (!has_cts || cts_c.conn != current_conn || !local_time_handle ||
+        time->exact_time_256.year == 0 || time->exact_time_256.month == 0 ||
+        time->exact_time_256.day == 0) {
+        // Local Time Information is optional. Without it we cannot infer UTC;
+        // the companion's explicit UTC/timezone sync remains available.
+        return;
+    }
+    pending_time = *time;
+    if (local_time_pending) {
+        return;
+    }
+    local_time_read = (struct bt_gatt_read_params) {
+        .func = local_time_read_cb,
+        .handle_count = 1,
+        .single = {.handle = local_time_handle, .offset = 0},
+    };
+    local_time_pending = true;
+    int err = bt_gatt_read(current_conn, &local_time_read);
+    if (err) {
+        local_time_pending = false;
+        LOG_WRN("CTS timezone read failed: %d", err);
+    }
 }
 
 static void notify_current_time_cb(struct bt_cts_client *cts_c,
@@ -107,7 +158,7 @@ static void notify_current_time_cb(struct bt_cts_client *cts_c,
 {
     current_time_print(current_time);
 
-    publish_time_event(current_time);
+    receive_current_time(current_time);
 }
 
 static void enable_notifications(void)
@@ -133,6 +184,9 @@ static void discover_completed_cb(struct bt_gatt_dm *dm, void *ctx)
         LOG_ERR("Could not assign CTS client handles, error: %d", err);
     } else {
         has_cts = true;
+        const struct bt_gatt_dm_attr *chrc = bt_gatt_dm_char_by_uuid(dm, BT_UUID_GATT_LTI);
+        const struct bt_gatt_dm_attr *value = chrc ? bt_gatt_dm_desc_by_uuid(dm, chrc, BT_UUID_GATT_LTI) : NULL;
+        local_time_handle = value ? value->handle : 0;
 
         err = bt_conn_get_security(cts_c.conn);
 
@@ -181,13 +235,16 @@ static void read_current_time_cb(struct bt_cts_client *cts_c,
 
     current_time_print(current_time);
 
-    publish_time_event(current_time);
+    receive_current_time(current_time);
 }
 
 static void pairing_complete(struct bt_conn *conn, bool bonded)
 {
     LOG_DBG("Pairing completed, get time");
 
+    if (!has_cts || conn != current_conn) {
+        return;
+    }
     int err = bt_cts_read_current_time(&cts_c, read_current_time_cb);
     if (err) {
         LOG_ERR("Failed reading current time (err: %d)", err);
@@ -201,9 +258,10 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
 static void security_changed(struct bt_conn *conn, bt_security_t level,
                              enum bt_security_err err)
 {
-    if (!err) {
+    if (!err && has_cts && conn == current_conn) {
         enable_notifications();
-    } else {
+        bt_cts_read_current_time(&cts_c, read_current_time_cb);
+    } else if (err) {
         LOG_ERR("Security failed: level %u err %d", level, err);
     }
 }
@@ -225,7 +283,9 @@ static void discover_gattp(struct bt_conn *conn)
 
 static void cts_discover_retry_handle(struct k_work *item)
 {
-    discover_gattp(current_conn);
+    if (current_conn) {
+        discover_gattp(current_conn);
+    }
 }
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -236,13 +296,34 @@ static void connected(struct bt_conn *conn, uint8_t err)
     }
 
     has_cts = false;
-
+    local_time_handle = 0;
+    if (current_conn) {
+        bt_conn_unref(current_conn);
+    }
+    current_conn = bt_conn_ref(conn);
     discover_gattp(conn);
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    if (conn != current_conn) {
+        return;
+    }
+    k_work_cancel_delayable(&cts_discover_retry);
+    if (local_time_pending) {
+        bt_gatt_cancel(conn, &local_time_read);
+    }
+    local_time_pending = false;
+    local_time_handle = 0;
+    has_cts = false;
+    bt_conn_unref(current_conn);
+    current_conn = NULL;
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected = connected,
     .security_changed = security_changed,
+    .disconnected = disconnected,
 };
 
 void ble_cts_init(void)

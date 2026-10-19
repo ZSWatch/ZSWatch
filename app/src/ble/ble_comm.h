@@ -57,6 +57,7 @@ typedef struct ble_comm_notify_remove {
 typedef struct ble_comm_notify_time {
     uint32_t seconds;
     float tz_offset;
+    bool tz_offset_valid; /* Distinguish an explicit UTC offset from a time-only event. */
 } ble_comm_notify_time_t;
 
 typedef struct ble_comm_weather {
