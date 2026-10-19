@@ -1,5 +1,9 @@
 on: [workflow_call]
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   cleanup:
     runs-on: ubuntu-24.04
@@ -43,6 +47,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          persist-credentials: false
+          allow-unsafe-pr-checkout: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository }}
           path: ZSWatch
           submodules: recursive
 
