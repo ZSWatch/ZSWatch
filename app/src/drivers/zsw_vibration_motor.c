@@ -17,6 +17,7 @@
 
 #include "drivers/zsw_vibration_motor.h"
 #include <zephyr/kernel.h>
+#include <zephyr/irq.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/drivers/gpio.h>
@@ -111,6 +112,7 @@ static vib_motor_state_t find_pattern[] = {
 };
 
 static vib_motor_state_t *active_pattern;
+static zsw_vibration_pattern_t active_pattern_id;
 static uint8_t active_pattern_index;
 static uint8_t active_pattern_len;
 static bool vib_motor_busy;
@@ -171,6 +173,7 @@ int zsw_vibration_run_pattern(zsw_vibration_pattern_t pattern)
     }
 
     vib_motor_busy = true;
+    active_pattern_id = pattern;
     active_pattern_index = 0;
     repeat_pattern = false;
     run_next_motor_state(&active_pattern[active_pattern_index]);
@@ -206,6 +209,17 @@ void zsw_vibration_stop(void)
     vibration_motor_set_on(false);
     vib_motor_busy = false;
     repeat_pattern = false;
+}
+
+bool zsw_vibration_stop_pattern(zsw_vibration_pattern_t pattern)
+{
+    unsigned int key = irq_lock();
+    bool stopped = vib_motor_busy && active_pattern_id == pattern;
+    if (stopped) {
+        zsw_vibration_stop();
+    }
+    irq_unlock(key);
+    return stopped;
 }
 
 static void run_next_motor_state(vib_motor_state_t *state)

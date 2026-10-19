@@ -30,6 +30,7 @@
 
 #include "ui/zsw_ui.h"
 #include "gadgetbridge/ble_gadgetbridge.h"
+#include "gadgetbridge/ble_find_device.h"
 #include "chronos/ble_chronos.h"
 #include "managers/zsw_smp_manager.h"
 
@@ -456,7 +457,8 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 
     LOG_INF("Disconnected: %s (reason %u)", addr, reason);
 
-    if (current_conn) {
+    if (current_conn == conn) {
+        ble_find_device_disconnected();
         k_work_cancel_delayable(&conn_interval_slow_work);
         k_work_cancel_delayable(&conn_interval_fast_work);
         bt_conn_unref(current_conn);

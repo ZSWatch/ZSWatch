@@ -24,6 +24,7 @@
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_smp_manager.h"
 #include "ble_gadgetbridge.h"
+#include "ble_find_device.h"
 #include "app_version.h"
 
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
@@ -78,22 +79,6 @@ static void on_ble_recording_event(const struct zbus_channel *chan)
     }
 }
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
-
-static void find_dev_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-    (void)zsw_power_manager_reset_idle_timout();
-}
-
-static K_WORK_DEFINE(find_dev_work, find_dev_work_handler);
-
-static void find_dev_timer_cb(struct k_timer *timer_id)
-{
-    ARG_UNUSED(timer_id);
-    k_work_submit(&find_dev_work);
-}
-
-static K_TIMER_DEFINE(find_dev_timer, find_dev_timer_cb, NULL);
 
 static void send_ble_data_event(struct ble_data_event *evt)
 {
@@ -1032,16 +1017,10 @@ static int parse_find_command(char *data, int len)
     bool find = cJSON_IsTrue(n);
     cJSON_Delete(root);
 
-    if (find) {
-        /* starts the vibration motor and wake display */
-        (void)zsw_vibration_run_pattern_loop(ZSW_VIBRATION_PATTERN_FIND);
-        k_work_submit(&find_dev_work);
-
-        /* Find pattern is 1s, let's trigger the timer slightly longer */
-        k_timer_start(&find_dev_timer, K_MSEC(1100), K_MSEC(1100));
-    } else {
-        k_timer_stop(&find_dev_timer);
-        zsw_vibration_stop();
+    int ret = ble_find_device_set(find);
+    if (ret != 0) {
+        LOG_WRN("Cannot start Find vibration: %d", ret);
+        return ret;
     }
 
     LOG_INF("Find command received, find=%s", find ? "true" : "false");

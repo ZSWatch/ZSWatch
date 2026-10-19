@@ -69,3 +69,8 @@ void zsw_vibration_stop(void);
 * @param enable true to enable, false to disable
 */
 int zsw_vibration_set_enabled(bool enable);
+
+/** @brief Stop the motor only if the given pattern is running; other patterns keep running.
+ *  @return true if the pattern was running and was stopped.
+ */
+bool zsw_vibration_stop_pattern(zsw_vibration_pattern_t pattern);
