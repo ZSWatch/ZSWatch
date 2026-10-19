@@ -8,3 +8,22 @@ devices:
     ppk2_port: "/dev/serial/by-id/usb-Nordic_Semiconductor_PPK2_E01C7386A791-if01"
   native_sim:
     mac: "DE:AD:BE:EF:BA:11"
+
+  # Desk setups used by the bench tools (bench/). pytest skips bench_only
+  # entries unless one is selected with --board. The PPK2 is the battery.
+  bench-zswatch:
+    bench_only: true
+    board: zswatch@1
+    jlink_serial: "51022722"
+    serial_port: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00RS5E-if00-port0"
+    mac: "F1:C6:AD:DD:F2:E3"
+    ppk2_port: "/dev/serial/by-id/usb-Nordic_Semiconductor_PPK2_EDE85D51E621-if01"
+    ppk2_voltage_mv: 4000
+  bench-watchdk:
+    bench_only: true
+    board: watchdk@1
+    jlink_serial: "1059914791"
+    serial_port: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_BG00RS5E-if00-port0"
+    mac: "CF:4B:3D:A1:C5:E2"
+    ppk2_port: "/dev/serial/by-id/usb-Nordic_Semiconductor_PPK2_EDE85D51E621-if01"
+    ppk2_voltage_mv: 4000

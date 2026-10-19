@@ -32,3 +32,5 @@ pytest-asyncio
 smpclient
 
 ppk2-api
+# bench/swd.py: ELF symbol lookup
+pyelftools

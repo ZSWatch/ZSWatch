@@ -1,11 +1,10 @@
-import os
 import pytest
 import utils
 import logging
-import yaml
 import serial
 import time
 from ppk2_helper import setup_ppk2
+from bench.devices import load_devices
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,13 +19,7 @@ def ppk2_instance(device_config, prepare_device):
 
 
 def get_all_devices():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    local_path = os.path.join(base_dir, "devices_local.yaml")
-    default_path = os.path.join(base_dir, "devices.yaml")
-    path = local_path if os.path.exists(local_path) else default_path
-    with open(path) as f:
-        config = yaml.safe_load(f)
-    return config["devices"]
+    return load_devices()
 
 
 def pytest_generate_tests(metafunc):
@@ -72,6 +65,9 @@ def pytest_generate_tests(metafunc):
     for board_name, device_cfg in devices.items():
         if board_option and board_name != board_option:
             continue  # Skip non-selected boards
+
+        if device_cfg.get("bench_only") and board_option != board_name:
+            continue  # Desk setups for the bench tools; run only when selected
 
         if skip_native_sim and board_name == "native_sim":
             continue  # Skip native_sim if requested

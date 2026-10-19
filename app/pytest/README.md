@@ -44,3 +44,7 @@ pytest -m "ppk2"
 - **BLE tests**: Bluetooth functionality
 - **Power tests**: Current consumption measurement (requires PPK2)
 - **Linux tests**: Native simulation testing
+
+## Bench helpers
+`bench/` has the BLE, PPK2, SWD and toolchain helpers for manual and scripted
+testing on a desk setup. See [bench/README.md](bench/README.md).

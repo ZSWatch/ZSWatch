@@ -11,11 +11,29 @@ import statistics
 from typing import List, Dict, Optional, Tuple
 
 try:
-    from ppk2_api.ppk2_api import PPK2_API
+    from ppk2_api.ppk2_api import PPK2_API as _PPK2_API
 except ImportError:
-    PPK2_API = None
+    _PPK2_API = None
 
 log = logging.getLogger(__name__)
+
+if _PPK2_API:
+
+    class PPK2_API(_PPK2_API):
+        """ppk2-api reads metadata with one fixed read, which can return it partially."""
+
+        def _read_metadata(self):
+            data = bytearray()
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                data.extend(self.ser.read(self.ser.in_waiting))
+                if b"END\n" in data:
+                    return data.decode()
+                time.sleep(0.02)
+            raise RuntimeError("Incomplete PPK2 metadata")
+
+else:
+    PPK2_API = None
 
 
 class PPK2Manager:
@@ -221,7 +239,7 @@ def setup_ppk2(device_config: Dict) -> Optional[PPK2Manager]:
         return None
 
     try:
-        manager = PPK2Manager(device_config["ppk2_port"], 4100)
+        manager = PPK2Manager(device_config["ppk2_port"], device_config.get("ppk2_voltage_mv", 4100))
         manager.setup()
         return manager
     except Exception as e:
