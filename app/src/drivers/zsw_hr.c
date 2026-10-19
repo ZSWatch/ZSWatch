@@ -26,6 +26,7 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/sensor/max32664c.h>
+#include <zephyr/drivers/regulator.h>
 
 LOG_MODULE_REGISTER(zsw_hr, LOG_LEVEL_DBG);
 
@@ -40,6 +41,13 @@ LOG_MODULE_REGISTER(zsw_hr, LOG_LEVEL_DBG);
 #define ZSW_HR_THREAD_PRIORITY   K_PRIO_PREEMPT(10)
 
 static const struct device *const sensor_hub = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr_hub));
+
+static const struct device *const hr_supply = DEVICE_DT_GET_OR_NULL(DT_ALIAS(hr_supply));
+// Both on at boot: the supply is boot-on for the driver initialization.
+static bool hub_powered = true;
+static bool supply_held = true;
+// Set when stopping failed, so a later zsw_hr_stop() retries it
+static bool shutdown_pending;
 
 static K_THREAD_STACK_DEFINE(hr_thread_stack, ZSW_HR_THREAD_STACK_SIZE);
 static K_MUTEX_DEFINE(hr_lock);
@@ -132,6 +140,79 @@ static int disable_sensor(void)
     }
 #endif
 
+    return rc;
+}
+
+static int power_on_hub(void)
+{
+#if IS_ENABLED(CONFIG_PM_DEVICE)
+    int rc;
+
+    if (!hr_supply) {
+        return 0;
+    }
+    if (!supply_held) {
+        rc = regulator_enable(hr_supply);
+        if (rc) {
+            LOG_ERR("Failed to enable heart rate supply: %d", rc);
+            return rc;
+        }
+        supply_held = true;
+    }
+    if (!hub_powered) {
+        // The hub lost its state without supply, this resets and configures it again.
+        rc = pm_device_action_run(sensor_hub, PM_DEVICE_ACTION_TURN_ON);
+        if (rc) {
+            LOG_ERR("Failed to power on heart rate hub: %d", rc);
+            // A failed TURN_ON still leaves the device SUSPENDED, go back to OFF to allow a retry.
+            (void)pm_device_action_run(sensor_hub, PM_DEVICE_ACTION_TURN_OFF);
+            if (regulator_disable(hr_supply) == 0) {
+                supply_held = false;
+            }
+            return rc;
+        }
+        hub_powered = true;
+    }
+#endif
+    return 0;
+}
+
+static int power_off_hub(void)
+{
+#if IS_ENABLED(CONFIG_PM_DEVICE)
+    int rc;
+
+    if (!hr_supply) {
+        return 0;
+    }
+    if (hub_powered) {
+        // Releases RESET and MFIO before the supply is released.
+        rc = pm_device_action_run(sensor_hub, PM_DEVICE_ACTION_TURN_OFF);
+        if (rc) {
+            LOG_ERR("Failed to power off heart rate hub: %d", rc);
+            return rc;
+        }
+        hub_powered = false;
+    }
+    if (supply_held) {
+        rc = regulator_disable(hr_supply);
+        if (rc) {
+            LOG_ERR("Failed to release heart rate supply: %d", rc);
+            return rc;
+        }
+        supply_held = false;
+    }
+#endif
+    return 0;
+}
+
+static int stop_hub(void)
+{
+    int rc = hub_powered ? disable_sensor() : 0;
+    int power_rc = power_off_hub();
+
+    rc = rc ? rc : power_rc;
+    shutdown_pending = rc != 0;
     return rc;
 }
 
@@ -329,12 +410,15 @@ int zsw_hr_start(const struct zsw_hr_config *config)
     k_sem_reset(&hr_wake);
     k_mutex_unlock(&hr_lock);
 
-    rc = configure_sensor_mode();
+    rc = power_on_hub();
+    if (!rc) {
+        rc = configure_sensor_mode();
+    }
     if (rc) {
         k_mutex_lock(&hr_lock, K_FOREVER);
         hr_state.running = false;
         k_mutex_unlock(&hr_lock);
-        disable_sensor();
+        stop_hub();
         return rc;
     }
 
@@ -366,7 +450,7 @@ int zsw_hr_stop(void)
     if (!hr_state.running) {
         k_mutex_unlock(&hr_lock);
         /* A failed shutdown must remain retryable after the sampling thread stops. */
-        return disable_sensor();
+        return shutdown_pending ? stop_hub() : -EALREADY;
     }
 
     hr_state.running = false;
@@ -385,7 +469,7 @@ int zsw_hr_stop(void)
     hr_state.thread_id = NULL;
     k_mutex_unlock(&hr_lock);
 
-    rc = disable_sensor();
+    rc = stop_hub();
 
     if (rc) {
         LOG_ERR("Heart rate sampling stopped, but sensor shutdown failed: %d", rc);
@@ -477,6 +561,9 @@ static int zsw_hr_init(void)
 
     uint8_t major, minor, patch;
     int err = max32664c_read_fw_version(sensor_hub, &major, &minor, &patch);
+
+    // The supply is on at boot for the driver initialization, turn it off until needed.
+    stop_hub();
     if (err || major != FW_VERSION_MAJOR || minor != FW_VERSION_MINOR || patch != FW_VERSION_PATCH) {
         if (err) {
             LOG_ERR("No MAX32664C detected. Either not connected or sensor hub have no firmware: %d", err);

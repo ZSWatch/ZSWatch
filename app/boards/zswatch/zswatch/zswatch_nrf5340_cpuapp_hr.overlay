@@ -6,19 +6,18 @@
 / {
     aliases {
         hr-hub = &biometric_hub;
+        hr-supply = &mic_pwr;
     };
 };
 
 /*
  * LDO1 supplies VHR: MAX32664C, MAX86141 and LIS2DS12, as well as the
- * microphone on the main PCB. Keep it on when microphone recording stops.
- * The PMIC regulators initialize at POST_KERNEL/53, before sensors at /90.
- * VLED comes directly from VSYS and has no software-controlled enable.
+ * microphone on the main PCB. On at boot for the hub initialization, after
+ * that the HR driver and the microphone each enable it while they need it.
  */
 &mic_pwr {
     /delete-property/ regulator-boot-off;
     regulator-boot-on;
-    regulator-always-on;
     startup-delay-us = <10000>;
 };
 
