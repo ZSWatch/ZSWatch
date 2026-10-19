@@ -2,18 +2,20 @@ name: MemBrowse PR Comment
 
 on:
   workflow_run:
-    workflows: [MemBrowse Memory Report]
+    workflows: [CI]
     types:
       - completed
 
 jobs:
   comment:
     runs-on: ubuntu-24.04
-    # Run even if some builds failed — but skip cancelled runs and skipped runs
-    # (e.g. draft PRs, where nothing is built or uploaded, so the summary lookup
-    # would 404 on a commit with no report).
+    # Fork PRs only: internal PRs are commented from ci.yml right after the
+    # build job. Run even if some builds failed — but skip cancelled runs and
+    # skipped runs (e.g. draft PRs, where nothing is built or uploaded, so the
+    # summary lookup would 404 on a commit with no report).
     if: >
       github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name != github.repository &&
       github.event.workflow_run.conclusion != 'cancelled' &&
       github.event.workflow_run.conclusion != 'skipped'
     permissions:

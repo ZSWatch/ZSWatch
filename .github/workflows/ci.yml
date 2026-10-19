@@ -16,6 +16,29 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  membrowse-comment:
+    needs: [build]
+    # Internal PRs only: fork PRs have no secrets here and are handled by
+    # membrowse-comment.yml via workflow_run. Run even if some builds failed.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Post combined PR comment
+        uses: membrowse/membrowse-action/comment-action@v1
+        with:
+          api_key: ${{ secrets.MEMBROWSE_API_KEY }}
+          api_url: ${{ vars.MEMBROWSE_API_URL }}
+          commit: ${{ github.event.pull_request.head.sha }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test:
     needs: [build]

@@ -22,6 +22,9 @@ jobs:
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
     strategy:
+      # Let every variant finish so one failure does not cancel the other
+      # boards' builds, artifacts and MemBrowse reports.
+      fail-fast: false
       matrix:
         build_type: [debug, release]
         board: [zswatch@1/nrf5340/cpuapp, watchdk@1/nrf5340/cpuapp, zswatch_legacy@4/nrf5340/cpuapp, zswatch_legacy@5/nrf5340/cpuapp, native_sim/native/64]
@@ -184,6 +187,31 @@ jobs:
 
           # Copy qspi ini file
           mv app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini fw_images/qspi_mx25u51245.ini
+
+      - name: Resolve MemBrowse target
+        id: membrowse-target
+        if: >-
+          matrix.build_type == 'release' &&
+          matrix.board != 'native_sim/native/64' &&
+          (github.event_name == 'pull_request' || github.event_name == 'push')
+        run: |
+          # zswatch_legacy@4/nrf5340/cpuapp -> zswatch-legacy-v4 (must match .github/membrowse-targets.json)
+          NAME=$(echo "${{ matrix.board }}" | sed -e 's#/.*##' -e 's/@/-v/' -e 's/_/-/g')
+          echo "target_name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: MemBrowse memory report
+        if: ${{ steps.membrowse-target.outputs.target_name != '' }}
+        continue-on-error: true
+        uses: membrowse/membrowse-action@v1
+        with:
+          target_name: ${{ steps.membrowse-target.outputs.target_name }}
+          elf: ZSWatch/fw_images/${{ env.BUILD_DIR }}.elf
+          ld: ZSWatch/${{ env.BUILD_DIR }}/app/zephyr/linker.cmd
+          map_file: ZSWatch/${{ env.BUILD_DIR }}/app/zephyr/zephyr.map
+          api_key: ${{ secrets.MEMBROWSE_API_KEY }}
+          api_url: ${{ vars.MEMBROWSE_API_URL }}
+          verbose: INFO
+          dont_fail_on_alerts: true
 
       - name: Build heart rate addon variant
         if: ${{ matrix.build_type == 'debug' && (matrix.board == 'zswatch@1/nrf5340/cpuapp' || matrix.board == 'watchdk@1/nrf5340/cpuapp') }}
