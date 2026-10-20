@@ -104,6 +104,11 @@ static uint32_t max_send_len;
 
 static atomic_t pairing_enabled;
 
+// Runs on the system work queue, so it must not live in XIP.
+#define PAIRING_WINDOW_TIMEOUT K_SECONDS(60)
+static void pairing_timeout_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(pairing_timeout_work, pairing_timeout_work_handler);
+
 static struct ble_transport_cb ble_transport_callbacks = {
     .data_receive = bt_receive_cb,
 };
@@ -247,9 +252,17 @@ void ble_comm_set_pairable(bool pairable)
     atomic_set(&pairing_enabled, pairable);
     if (pairable) {
         LOG_WRN("Enable Pairable");
+        k_work_reschedule(&pairing_timeout_work, PAIRING_WINDOW_TIMEOUT);
     } else {
         LOG_WRN("Disable Pairable");
+        k_work_cancel_delayable(&pairing_timeout_work);
     }
+}
+
+static void pairing_timeout_work_handler(struct k_work *work)
+{
+    LOG_DBG("Pairing window expired");
+    ble_comm_set_pairable(false);
 }
 
 // Bit per enum ble_comm_short_interval_reason. The connection uses the short

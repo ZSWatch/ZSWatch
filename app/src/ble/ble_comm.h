@@ -144,10 +144,7 @@ int ble_comm_init(void);
 */
 int ble_comm_send(const uint8_t *data, uint16_t len);
 
-/** @brief
- *  @param pairable
- *  @return         0 when successful
-*/
+/** @brief Open or close the pairing window; an open window closes after 60 s. */
 void ble_comm_set_pairable(bool pairable);
 
 /** Why the connection should use the short (15 ms) interval. */

@@ -60,8 +60,6 @@ static void on_swipe_back_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
-static void ble_pairing_work_handler(struct k_work *work);
-
 ZSW_LV_IMG_DECLARE(settings);
 
 typedef struct setting_app {
@@ -74,8 +72,6 @@ typedef struct setting_app {
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
     zsw_settings_watchface_t            watchface;
 } setting_app_t;
-
-K_WORK_DELAYABLE_DEFINE(ble_pairing_dwork, ble_pairing_work_handler);
 
 // Default values.
 static setting_app_t settings_app = {
@@ -342,12 +338,6 @@ static lv_settings_page_t settings_menu[] = {
     },
 };
 
-static void ble_pairing_work_handler(struct k_work *work)
-{
-    LOG_DBG("Timer expired. Disable pairing");
-    ble_comm_set_pairable(false);
-}
-
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
     settings_load_subtree(ZSW_SETTINGS_PATH); // Update any values that may have changed outside of the settings app.
@@ -435,9 +425,6 @@ static void on_pairing_enable_changed(lv_setting_value_t value, bool final)
 {
     if (final) {
         ble_comm_set_pairable(true);
-
-        LOG_DBG("Schedule new work");
-        k_work_reschedule(&ble_pairing_dwork, K_MSEC(60 * 1000UL));
     } else {
         ble_comm_set_pairable(false);
     }
