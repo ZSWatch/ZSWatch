@@ -265,7 +265,8 @@ int zsw_recording_manager_store_init(void)
 
     fs_dir_t_init(&dirp);
 
-    ret = fs_mkdir(VOICE_MEMO_DIR);
+    // fs_mkdir() logs an error if the directory exists.
+    ret = fs_stat(VOICE_MEMO_DIR, &entry) == 0 ? 0 : fs_mkdir(VOICE_MEMO_DIR);
     if (ret < 0 && ret != -EEXIST) {
         LOG_ERR("Failed to create recordings dir: %d", ret);
         return ret;

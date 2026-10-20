@@ -200,8 +200,10 @@ static void fetch_cached_weather_data(struct k_work *work)
 static void periodic_fetch_weather_data(struct k_work *work)
 {
     int ret = ble_comm_request_gps_status(true);
-    if (ret != 0) {
-        LOG_ERR("Failed to disable phone GPS: %d", ret);
+    if (ret == -ENOTCONN) {
+        LOG_DBG("No phone connected for GPS request");
+    } else if (ret != 0) {
+        LOG_ERR("Failed to request phone GPS: %d", ret);
     }
     k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_BACKGROUND_FETCH_INTERVAL_S));
 }
