@@ -36,6 +36,8 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 #define SMP_AUTO_DISABLE_TIMEOUT_SEC  180
 // Keep the short connection interval this long after the last SMP command.
 #define SMP_SHORT_INTERVAL_HOLD_MS    5000
+// After enabling SMP, give the phone this long to rediscover services and start.
+#define SMP_ENABLE_SHORT_INTERVAL_MS  15000
 
 static bool smp_enabled;
 static bool auto_disable_active;
@@ -95,6 +97,12 @@ static void smp_traffic_done_work_handler(struct k_work *work)
     ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
 }
 
+static void hold_short_interval(int hold_ms)
+{
+    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
+    k_work_reschedule(&smp_traffic_done_work, K_MSEC(hold_ms));
+}
+
 static void reset_auto_disable_timer(void)
 {
     if (smp_enabled && auto_disable_active) {
@@ -118,8 +126,7 @@ static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return
 
     // Firmware updates and file transfers both arrive here; keep the interval
     // short during the traffic and a little after it.
-    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
-    k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_SHORT_INTERVAL_HOLD_MS));
+    hold_short_interval(SMP_SHORT_INTERVAL_HOLD_MS);
 
     return MGMT_CB_OK;
 }
@@ -165,6 +172,7 @@ int zsw_smp_manager_enable(bool auto_disable)
 {
     if (smp_enabled) {
         LOG_DBG("SMP already enabled");
+        hold_short_interval(SMP_ENABLE_SHORT_INTERVAL_MS);
         auto_disable_active = auto_disable;
         if (auto_disable) {
             k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
@@ -187,9 +195,11 @@ int zsw_smp_manager_enable(bool auto_disable)
         return rc;
     }
 
-    // Advertise faster so the phone finds the watch quickly. The connection
-    // interval follows the SMP traffic (cmd_recv_callback).
+    // Advertise faster so the phone finds the watch quickly, and switch to the
+    // short interval now so the transfer does not start at the idle interval.
+    // SMP commands keep it short after that (cmd_recv_callback).
     ble_comm_set_fast_adv_interval();
+    hold_short_interval(SMP_ENABLE_SHORT_INTERVAL_MS);
 
     smp_enabled = true;
     auto_disable_active = auto_disable;
