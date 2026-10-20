@@ -451,7 +451,12 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 static void ble_recycled(void)
 {
     int err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
-    if (err) {
+    // update_adv_interval() restarts advertising itself; the connection object
+    // it released is recycled afterwards, while the new advertiser holds the
+    // only one (CONFIG_BT_MAX_CONN=1).
+    if (err == -EALREADY || err == -ENOMEM) {
+        LOG_DBG("Already advertising (err %d)", err);
+    } else if (err) {
         LOG_ERR("Advertising failed to start (err %d)", err);
     } else {
         LOG_DBG("Advertising successfully started");
