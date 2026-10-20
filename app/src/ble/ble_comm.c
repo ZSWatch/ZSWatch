@@ -45,6 +45,9 @@ LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 #define BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS    5000
 // 15 ms in 1.25 ms units.
 #define BLE_COMM_SHORT_INTERVAL                 12
+// Re-check an interval request after this long, at most this many times.
+#define BLE_COMM_INTERVAL_RETRY_MS              6000
+#define BLE_COMM_INTERVAL_MAX_ATTEMPTS          3
 
 static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
@@ -90,7 +93,7 @@ static struct bt_le_adv_param adv_param = {
     .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
 };
 
-K_WORK_DEFINE(conn_interval_update_work, conn_interval_update_handler);
+K_WORK_DELAYABLE_DEFINE(conn_interval_update_work, conn_interval_update_handler);
 K_WORK_DELAYABLE_DEFINE(discovery_done_work, discovery_done_handler);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
@@ -252,20 +255,26 @@ void ble_comm_set_pairable(bool pairable)
 // Bit per enum ble_comm_short_interval_reason. The connection uses the short
 // interval while any bit is set and the long idle interval otherwise.
 static atomic_t short_interval_reasons;
-// What was last requested on the current connection: -1 nothing, 0 long, 1 short.
-static int requested_short = -1;
+// Requests for the current target; reset when the target changes. A central
+// can drop a request (for example when it collides with its own PHY or data
+// length update), so it is repeated a few times until the interval matches.
+static int interval_attempts;
+static int interval_target = -1;
+// Some phones misbehave when the interval changes before the MTU exchange, so
+// nothing is requested on a connection until it is done (or has failed).
+static bool mtu_exchange_finished;
 
 void ble_comm_short_interval_request(enum ble_comm_short_interval_reason reason)
 {
     if (!atomic_test_and_set_bit(&short_interval_reasons, reason)) {
-        k_work_submit(&conn_interval_update_work);
+        k_work_reschedule(&conn_interval_update_work, K_NO_WAIT);
     }
 }
 
 void ble_comm_short_interval_release(enum ble_comm_short_interval_reason reason)
 {
     if (atomic_test_and_clear_bit(&short_interval_reasons, reason)) {
-        k_work_submit(&conn_interval_update_work);
+        k_work_reschedule(&conn_interval_update_work, K_NO_WAIT);
     }
 }
 
@@ -273,8 +282,9 @@ static void conn_interval_update_handler(struct k_work *item)
 {
     ARG_UNUSED(item);
     bool want_short = atomic_get(&short_interval_reasons) != 0;
+    struct bt_conn_info info;
 
-    if (current_conn == NULL || requested_short == want_short) {
+    if (current_conn == NULL || !mtu_exchange_finished || bt_conn_get_info(current_conn, &info)) {
         return;
     }
 
@@ -287,15 +297,28 @@ static void conn_interval_update_handler(struct k_work *item)
         .timeout = CONFIG_BT_PERIPHERAL_PREF_TIMEOUT,
     };
 
-    LOG_DBG("Request %s connection interval (reasons 0x%lx)", want_short ? "short" : "long",
-            atomic_get(&short_interval_reasons));
+    if (info.le.interval >= param.interval_min && info.le.interval <= param.interval_max) {
+        interval_attempts = 0;
+        return;
+    }
+    if (interval_target != want_short) {
+        interval_target = want_short;
+        interval_attempts = 0;
+    }
+    if (interval_attempts >= BLE_COMM_INTERVAL_MAX_ATTEMPTS) {
+        return; // The central keeps refusing; wait for the next change.
+    }
+    interval_attempts++;
+
+    LOG_DBG("Request %s connection interval (reasons 0x%lx, attempt %d)", want_short ? "short" : "long",
+            atomic_get(&short_interval_reasons), interval_attempts);
 
     int err = bt_conn_le_param_update(current_conn, &param);
     if (err && err != -EALREADY) {
         LOG_ERR("bt_conn_le_param_update failed: %d", err);
-        return;
     }
-    requested_short = want_short;
+    // An update takes a few connection events; check again after a while.
+    k_work_schedule(&conn_interval_update_work, K_MSEC(BLE_COMM_INTERVAL_RETRY_MS));
 }
 
 static void discovery_done_handler(struct k_work *item)
@@ -365,6 +388,14 @@ static int update_adv_interval(uint16_t interval_min, uint16_t interval_max)
     return 0;
 }
 
+static void on_mtu_exchange_finished(void)
+{
+    // Discovery starts in earnest now; give it its short interval from here.
+    mtu_exchange_finished = true;
+    k_work_reschedule(&conn_interval_update_work, K_NO_WAIT);
+    k_work_schedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
+}
+
 static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_exchange_params *params)
 {
     if (!err) {
@@ -374,6 +405,7 @@ static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_ex
     } else {
         LOG_ERR("MTU exchange failed (err %" PRIu8 ")", err);
     }
+    on_mtu_exchange_finished();
 }
 
 static void request_mtu_exchange(void)
@@ -385,6 +417,7 @@ static void request_mtu_exchange(void)
     err = bt_gatt_exchange_mtu(current_conn, &exchange_params);
     if (err) {
         LOG_ERR("MTU exchange failed (err %d)", err);
+        on_mtu_exchange_finished();
     } else {
         LOG_INF("MTU exchange pending");
     }
@@ -400,6 +433,9 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     }
     current_conn = bt_conn_ref(conn);
     max_send_len = 20;
+    interval_target = -1;
+    interval_attempts = 0;
+    mtu_exchange_finished = false;
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
     LOG_INF("Connected %s", addr);
@@ -411,11 +447,9 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     // Right after a new connection we want short connection interval
     // to let the peer discover services etc. quickly. A central such as BlueZ
     // reuses the long interval from the previous connection otherwise.
-    // After some time assume the peer is done; other reasons may keep it short.
-    requested_short = -1;
+    // It is requested once the MTU exchange is done (on_mtu_exchange_finished),
+    // and after some time we assume the peer is done; other reasons may keep it short.
     ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
-    k_work_submit(&conn_interval_update_work);
-    k_work_schedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
 
     if (atomic_get(&pairing_enabled)) {
         int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -466,6 +500,7 @@ static void ble_recycled(void)
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout)
 {
     LOG_INF("Updated => Interval: %d, latency: %d, timeout: %d", interval, latency, timeout);
+    k_work_reschedule(&conn_interval_update_work, K_NO_WAIT);
     ble_chronos_connection_update();
 }
 
