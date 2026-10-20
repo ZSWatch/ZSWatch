@@ -53,6 +53,7 @@ typedef struct {
     uint32_t connection_latency;
     uint32_t connection_timeout;
     bt_security_t security_level;
+    enum bt_security_err security_err;
     uint32_t mtu;
     bool notifications_enabled;
 } ble_connection_info_t;
@@ -76,6 +77,19 @@ static application_t app = {
 
 static lv_timer_t *refresh_timer;
 static ble_connection_info_t ble_info;
+// BT callbacks must not touch the UI (other thread, and info_ui.c is in XIP).
+static atomic_t conn_info_changed;
+
+static void show_conn_info(void)
+{
+    if (ble_info.connected) {
+        info_app_ui_set_conn_mac(strlen(ble_info.remote_addr) > 0 ? ble_info.remote_addr : "Not connected");
+        info_app_ui_set_conn_params(ble_info.connection_interval, ble_info.connection_latency, ble_info.connection_timeout);
+        info_app_ui_set_conn_security_info(ble_info.security_level, ble_info.security_err);
+    } else {
+        info_app_ui_set_conn_mac("Not connected");
+    }
+}
 
 static void info_app_start(lv_obj_t *root, lv_group_t *group)
 {
@@ -100,10 +114,9 @@ static void info_app_start(lv_obj_t *root, lv_group_t *group)
     bt_addr_le_to_str(&local_addr, addr, sizeof(addr));
     info_ui_set_mac_addr(addr);
 
+    atomic_clear(&conn_info_changed);
     if (ble_info.connected) {
-        info_app_ui_set_conn_mac(strlen(ble_info.remote_addr) > 0 ? ble_info.remote_addr : "Not connected");
-        info_app_ui_set_conn_params(ble_info.connection_interval, ble_info.connection_latency, ble_info.connection_timeout);
-        info_app_ui_set_conn_security_info(ble_info.security_level, 0);
+        show_conn_info();
         if (ble_comm_send("A", strlen("A")) < 0) { // Try if possible to send data to phone, i.e. CCCD notifications enabled
             ble_info.notifications_enabled = false;
         } else {
@@ -124,6 +137,9 @@ static void info_app_stop(void)
 static void timer_callback(lv_timer_t *timer)
 {
     if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        if (atomic_clear(&conn_info_changed)) {
+            show_conn_info();
+        }
         info_ui_set_uptime_sec(k_uptime_get() / 1000);
         info_ui_set_total_uptime_sec(retained.uptime_sum / 1000);
         info_ui_set_wakeup_time_sec(retained.wakeup_time / 1000, (retained.wakeup_time / (double)retained.uptime_sum) * 100);
@@ -146,7 +162,7 @@ static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t late
     }
 
     LOG_INF("Updated => Interval: %d, latency: %d, timeout: %d", interval, latency, timeout);
-    info_app_ui_set_conn_params(interval, latency, timeout);
+    atomic_set(&conn_info_changed, 1);
 }
 
 static void ble_connected(struct bt_conn *conn, uint8_t err)
@@ -164,28 +180,21 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
 
     ble_info.connected = true;
 
-    if (app.current_state != ZSW_APP_STATE_STOPPED) {
-        info_app_ui_set_conn_mac(ble_info.remote_addr);
-        info_app_ui_set_conn_params(info.le.interval, info.le.latency, info.le.timeout);
-    }
+    atomic_set(&conn_info_changed, 1);
 }
 
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 {
     memset(&ble_info, 0, sizeof(ble_connection_info_t));
-    if (app.current_state != ZSW_APP_STATE_STOPPED) {
-        info_app_ui_set_conn_mac("Not connected");
-    }
+    atomic_set(&conn_info_changed, 1);
 }
 
 static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
 {
 
     ble_info.security_level = level;
-
-    if (app.current_state != ZSW_APP_STATE_STOPPED) {
-        info_app_ui_set_conn_security_info(level, err);
-    }
+    ble_info.security_err = err;
+    atomic_set(&conn_info_changed, 1);
 }
 
 static void on_reset_pressed(void)
