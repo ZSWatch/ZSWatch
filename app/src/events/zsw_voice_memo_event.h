@@ -39,5 +39,4 @@ struct zsw_voice_memo_result_event {
     char filename[32];
     char action_type[20];
     char datetime[32];
-    bool is_draft;
 };

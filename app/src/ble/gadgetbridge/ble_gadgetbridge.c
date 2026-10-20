@@ -1039,7 +1039,6 @@ static int parse_voice_memo_command(char *data, int len)
         if (cJSON_IsString(dt_obj)) {
             strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
         }
-        result_evt.is_draft = cJSON_IsTrue(cJSON_GetObjectItem(root, "draft"));
         zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
 
         /* ACK so the phone stops resending. A resend after a lost ACK shows the popup again. */
