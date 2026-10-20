@@ -59,6 +59,7 @@ static int update_adv_interval(uint16_t interval_min, uint16_t interval_max);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param);
 static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_len_info *info);
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err);
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected    = ble_connected,
@@ -66,7 +67,8 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .recycled = ble_recycled,
     .le_param_updated = param_updated,
     .le_phy_updated = phy_updated,
-    .le_data_len_updated = le_data_length_updated
+    .le_data_len_updated = le_data_length_updated,
+    .security_changed = security_changed,
 };
 
 static const struct bt_data ad[] = {
@@ -321,6 +323,16 @@ static void conn_interval_update_handler(struct k_work *item)
     k_work_schedule(&conn_interval_update_work, K_MSEC(BLE_COMM_INTERVAL_RETRY_MS));
 }
 
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
+{
+    // ANCS, AMS and CTS start discovery once encrypted.
+    if (err || level < BT_SECURITY_L2 || conn != current_conn) {
+        return;
+    }
+    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
+    k_work_reschedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
+}
+
 static void discovery_done_handler(struct k_work *item)
 {
     ARG_UNUSED(item);
@@ -393,7 +405,7 @@ static void on_mtu_exchange_finished(void)
     // Discovery starts in earnest now; give it its short interval from here.
     mtu_exchange_finished = true;
     k_work_reschedule(&conn_interval_update_work, K_NO_WAIT);
-    k_work_schedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
+    k_work_reschedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
 }
 
 static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_exchange_params *params)
