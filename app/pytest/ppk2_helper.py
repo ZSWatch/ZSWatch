@@ -17,6 +17,56 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+
+def sample_offset(buf: bytes) -> int:
+    """Byte offset where 4-byte samples start: the 6-bit counter (bits 18-23) counts up by one."""
+    def score(offset):
+        counters = [(int.from_bytes(buf[i:i + 4], "little") >> 18) & 0x3F
+                    for i in range(offset, min(len(buf), offset + 4 * 256) - 3, 4)]
+        return sum((b - a) % 64 == 1 for a, b in zip(counters, counters[1:]))
+    return max(range(4), key=score)
+
+
+class AlignedDecoder:
+    """Decode PPK2 samples, realigning when the per-sample counter breaks (ppk2_api never does)."""
+
+    def __init__(self, ppk):
+        self.ppk = ppk
+        self.pending = b""
+        self.last_counter = None
+        self.realigned = 0
+        self.dropped = 0
+
+    def feed(self, data: bytes) -> list:
+        self.pending += data
+        values = []
+        if self.last_counter is None:
+            if len(self.pending) < 64:
+                return values
+            self.pending = self.pending[sample_offset(self.pending):]
+        i = 0
+        while len(self.pending) - i >= 4:
+            raw = int.from_bytes(self.pending[i:i + 4], "little")
+            counter = (raw >> 18) & 0x3F
+            if self.last_counter is not None and (counter - self.last_counter) % 64 != 1:
+                rest = self.pending[i:]
+                if len(rest) < 64:
+                    break
+                offset = sample_offset(rest)
+                if offset:
+                    self.realigned += 1
+                    self.dropped += offset
+                    self.pending = rest[offset:]
+                    i = 0
+                    self.last_counter = None
+                    continue
+            self.last_counter = counter
+            values.append(self.ppk.get_adc_result(min((raw >> 14) & 0x7, 4), (raw & 0x3FFF) * 4) * 1e6)
+            i += 4
+        self.pending = self.pending[i:]
+        return values
+
+
 if _PPK2_API:
 
     class PPK2_API(_PPK2_API):
@@ -113,6 +163,13 @@ class PPK2Manager:
         log.info(f"PPK2 ready - providing {self.voltage_mv}mV power")
         return self.ppk2
 
+    def flush(self):
+        """Drop bytes still in flight from an earlier capture."""
+        self.ppk2.stop_measuring()
+        time.sleep(0.05)
+        self.ppk2.ser.reset_input_buffer()
+        self.ppk2.remainder = {"sequence": b"", "len": 0}
+
     def measure_current(
         self, duration_s: int, sample_interval_s: float = 0.001
     ) -> List[float]:
@@ -137,13 +194,13 @@ class PPK2Manager:
         log.info(f"Measuring current for {duration_s} seconds...")
 
         # Start fresh measurement
+        self.flush()
         self.ppk2.start_measuring()
 
         # Brief delay and clear any initial data
         time.sleep(0.1)
-        initial_data = self.ppk2.get_data()
-        if initial_data:
-            self.ppk2.get_samples(initial_data)  # Discard initial samples
+        decoder = AlignedDecoder(self.ppk2)
+        decoder.feed(self.ppk2.get_data() or b"")  # Discard initial samples
 
         start_time = time.time()
         samples: List[float] = []
@@ -151,14 +208,14 @@ class PPK2Manager:
         try:
             while time.time() - start_time < duration_s:
                 raw_data = self.ppk2.get_data()
-                if raw_data != b"":
-                    current_samples, _ = self.ppk2.get_samples(raw_data)
-                    if current_samples:
-                        samples.extend(current_samples)
+                if raw_data:
+                    samples.extend(decoder.feed(raw_data))
 
                 time.sleep(sample_interval_s)
         finally:
             self.ppk2.stop_measuring()
+        if decoder.realigned:
+            log.warning("PPK2 sample stream realigned %d time(s)", decoder.realigned)
 
         log.info(f"Collected {len(samples)} current samples")
         return samples

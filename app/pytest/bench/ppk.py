@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 
 from bench.devices import get_device, require
-from ppk2_helper import PPK2Manager, analyze_current_samples
+from ppk2_helper import AlignedDecoder, PPK2Manager, analyze_current_samples
 
 log = logging.getLogger(__name__)
 
@@ -52,9 +52,8 @@ def stream_measure(manager: PPK2Manager, seconds: float, label: str, out: Path |
     manager.ensure_calibrated()
     ppk.start_measuring()
     time.sleep(0.1)
-    raw = ppk.get_data()
-    if raw:
-        ppk.get_samples(raw)
+    decoder = AlignedDecoder(ppk)
+    decoder.feed(ppk.get_data() or b"")  # settle; discard
     started = time.time()
     start = bin_start = time.monotonic()
     bins = []
@@ -70,7 +69,7 @@ def stream_measure(manager: PPK2Manager, seconds: float, label: str, out: Path |
         while time.monotonic() - start < seconds:
             raw = ppk.get_data()
             if raw:
-                values, _ = ppk.get_samples(raw)
+                values = decoder.feed(raw)
                 if values:
                     total += sum(values)
                     count += len(values)
@@ -96,7 +95,8 @@ def stream_measure(manager: PPK2Manager, seconds: float, label: str, out: Path |
     result = {"label": label, "voltage_mv": manager.voltage_mv, "started": started,
               "elapsed_seconds": elapsed, "average_ma": total / count / 1000,
               "min_ma": minimum / 1000, "max_ma": maximum / 1000, "sample_count": count,
-              "charge_mah": total / count / 1000 * elapsed / 3600}
+              "charge_mah": total / count / 1000 * elapsed / 3600,
+              "realigned": decoder.realigned}
     if path:
         path.write_text(json.dumps(dict(result, bins=bins), indent=2))
     return result
@@ -104,6 +104,8 @@ def stream_measure(manager: PPK2Manager, seconds: float, label: str, out: Path |
 
 def _handle(manager: PPK2Manager, request: dict) -> dict:
     action = request["action"]
+    if action in ("stream", "measure"):
+        manager.flush()
     out = Path(request["out"]) if request.get("out") else None
     if out:
         out.mkdir(parents=True, exist_ok=True)
@@ -154,7 +156,10 @@ def serve(port: str, voltage_mv: int) -> None:
                 except Exception as exc:
                     result = {"error": str(exc)}
                 print(json.dumps(result), flush=True)
-                conn.sendall(json.dumps(result).encode() + b"\n")
+                try:
+                    conn.sendall(json.dumps(result).encode() + b"\n")
+                except OSError:
+                    pass  # The client gave up; keep serving.
     finally:
         # Leave the output on: the PPK2 is the watch's battery.
         manager.ppk2.stop_measuring()
