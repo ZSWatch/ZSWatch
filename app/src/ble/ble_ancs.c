@@ -255,7 +255,9 @@ static void discover_gattp(struct bt_conn *conn)
 
 static void gatt_discover_retry_handle(struct k_work *item)
 {
-    discover_gattp(current_conn);
+    if (current_conn) {
+        discover_gattp(current_conn);
+    }
 }
 
 static void discover_ancs(struct bt_conn *conn, bool retry)
@@ -324,14 +326,19 @@ static void connected(struct bt_conn *conn, uint8_t err)
         return;
     }
 
+    if (current_conn) {
+        bt_conn_unref(current_conn);
+    }
     current_conn = bt_conn_ref(conn);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-    if (current_conn) {
-        bt_conn_unref(current_conn);
+    if (conn != current_conn) {
+        return;
     }
+    bt_conn_unref(current_conn);
+    current_conn = NULL;
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
