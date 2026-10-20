@@ -150,15 +150,18 @@ int ble_comm_send(const uint8_t *data, uint16_t len);
 */
 void ble_comm_set_pairable(bool pairable);
 
-/** @brief
- *  @return 0 when successful
-*/
-int ble_comm_set_short_connection_interval(void);
+/** Why the connection should use the short (15 ms) interval. */
+enum ble_comm_short_interval_reason {
+    BLE_COMM_SHORT_INTERVAL_DISCOVERY,  /**< The first seconds after connecting */
+    BLE_COMM_SHORT_INTERVAL_SENSORS,    /**< GATT sensor notifications are enabled */
+    BLE_COMM_SHORT_INTERVAL_SMP,        /**< MCUmgr traffic and a few seconds after it */
+};
 
-/** @brief
- *  @return 0 when successful
-*/
-int ble_comm_set_default_connection_interval(void);
+/** @brief Keep the short connection interval for a reason; repeated calls are fine. */
+void ble_comm_short_interval_request(enum ble_comm_short_interval_reason reason);
+
+/** @brief Drop a reason; the long interval returns when no reason is left. */
+void ble_comm_short_interval_release(enum ble_comm_short_interval_reason reason);
 
 /** @brief
  *  @return The MTU for current connection. 0 If no connection.

@@ -278,10 +278,10 @@ static void on_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
         if (zsw_sensor_fusion_init() != 0) {
             LOG_ERR("Failed to start sensor fusion for BLE notifications");
         }
-        ble_comm_set_short_connection_interval();
+        ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SENSORS);
         zsw_periodic_chan_add_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
     } else if (notif_enabled && !notifications_active) {
-        ble_comm_set_default_connection_interval();
+        ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SENSORS);
         zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
         zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
         zsw_sensor_fusion_deinit();
@@ -315,7 +315,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
         return;
     }
 
-    ble_comm_set_default_connection_interval();
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SENSORS);
     zsw_periodic_chan_rm_obs(&periodic_event_100ms_chan, &azsw_gatt_sensor_server_lis);
     zsw_imu_feature_disable(ZSW_IMU_FEATURE_GYRO);
     zsw_sensor_fusion_deinit();

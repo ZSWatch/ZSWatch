@@ -32,7 +32,6 @@
 #include "gadgetbridge/ble_gadgetbridge.h"
 #include "gadgetbridge/ble_find_device.h"
 #include "chronos/ble_chronos.h"
-#include "managers/zsw_smp_manager.h"
 
 #ifdef CONFIG_BT_AMS_CLIENT
 #include <bluetooth/services/ams_client.h>
@@ -42,14 +41,17 @@
 #endif
 LOG_MODULE_REGISTER(ble_comm, CONFIG_ZSW_BLE_LOG_LEVEL);
 
-#define BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS     5000
+// How long after connecting the peer gets the short interval for discovery.
+#define BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS    5000
+// 15 ms in 1.25 ms units.
+#define BLE_COMM_SHORT_INTERVAL                 12
 
 static void ble_connected(struct bt_conn *conn, uint8_t err);
 static void ble_disconnected(struct bt_conn *conn, uint8_t reason);
 static void ble_recycled(void);
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len);
-static void update_conn_interval_slow_handler(struct k_work *item);
-static void update_conn_interval_short_handler(struct k_work *item);
+static void conn_interval_update_handler(struct k_work *item);
+static void discovery_done_handler(struct k_work *item);
 static int update_adv_interval(uint16_t interval_min, uint16_t interval_max);
 static void param_updated(struct bt_conn *conn, uint16_t interval, uint16_t latency, uint16_t timeout);
 static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param);
@@ -88,8 +90,8 @@ static struct bt_le_adv_param adv_param = {
     .interval_max = BT_GAP_ADV_SLOW_INT_MAX,
 };
 
-K_WORK_DELAYABLE_DEFINE(conn_interval_slow_work, update_conn_interval_slow_handler);
-K_WORK_DELAYABLE_DEFINE(conn_interval_fast_work, update_conn_interval_short_handler);
+K_WORK_DEFINE(conn_interval_update_work, conn_interval_update_handler);
+K_WORK_DELAYABLE_DEFINE(discovery_done_work, discovery_done_handler);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_CHAN_DECLARE(music_control_data_chan);
@@ -247,70 +249,59 @@ void ble_comm_set_pairable(bool pairable)
     }
 }
 
-int ble_comm_set_short_connection_interval(void)
+// Bit per enum ble_comm_short_interval_reason. The connection uses the short
+// interval while any bit is set and the long idle interval otherwise.
+static atomic_t short_interval_reasons;
+// What was last requested on the current connection: -1 nothing, 0 long, 1 short.
+static int requested_short = -1;
+
+void ble_comm_short_interval_request(enum ble_comm_short_interval_reason reason)
 {
-    int err;
-    struct bt_le_conn_param param = {
-        .interval_min = CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
-        .interval_max = CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
-        .latency = CONFIG_BT_PERIPHERAL_PREF_LATENCY,
-        .timeout = CONFIG_BT_PERIPHERAL_PREF_TIMEOUT,
-    };
-
-    // If someone explicitly requested short connection interval,
-    // don't change it back.
-    k_work_cancel_delayable(&conn_interval_slow_work);
-
-    // Zephyr's SMP transport owns the connection parameters while SMP is enabled.
-    if (IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) && zsw_smp_manager_is_enabled()) {
-        return 0;
+    if (!atomic_test_and_set_bit(&short_interval_reasons, reason)) {
+        k_work_submit(&conn_interval_update_work);
     }
-
-    if (current_conn == NULL) {
-        // Need context switch as this function can get called before
-        // the connection is propogated to this file.
-        // For example in CCC notify callbacks, triggered by a connect.
-        k_work_schedule(&conn_interval_fast_work, K_MSEC(1));
-        return 0;
-    }
-
-    LOG_DBG("Set short conection interval");
-
-    err = bt_conn_le_param_update(current_conn, &param);
-    if (err && err != -EALREADY) {
-        LOG_ERR("bt_conn_le_param_update failed: %d", err);
-    }
-
-    return err;
 }
 
-int ble_comm_set_default_connection_interval(void)
+void ble_comm_short_interval_release(enum ble_comm_short_interval_reason reason)
 {
-    // Zephyr's SMP transport restores CONFIG_BT_PERIPHERAL_PREF_* itself after SMP traffic.
-    if (IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) && zsw_smp_manager_is_enabled()) {
-        k_work_cancel_delayable(&conn_interval_slow_work);
-        return 0;
+    if (atomic_test_and_clear_bit(&short_interval_reasons, reason)) {
+        k_work_submit(&conn_interval_update_work);
     }
-    if (current_conn == NULL) {
-        return -ENOTCONN;
+}
+
+static void conn_interval_update_handler(struct k_work *item)
+{
+    ARG_UNUSED(item);
+    bool want_short = atomic_get(&short_interval_reasons) != 0;
+
+    if (current_conn == NULL || requested_short == want_short) {
+        return;
     }
 
-    int err;
+    // 15 ms is the shortest interval iOS accepts. The long one is the idle
+    // interval from CONFIG_BT_PERIPHERAL_PREF_*.
     struct bt_le_conn_param param = {
-        .interval_min = CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
-        .interval_max = CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
+        .interval_min = want_short ? BLE_COMM_SHORT_INTERVAL : CONFIG_BT_PERIPHERAL_PREF_MIN_INT,
+        .interval_max = want_short ? BLE_COMM_SHORT_INTERVAL : CONFIG_BT_PERIPHERAL_PREF_MAX_INT,
         .latency = CONFIG_BT_PERIPHERAL_PREF_LATENCY,
         .timeout = CONFIG_BT_PERIPHERAL_PREF_TIMEOUT,
     };
 
-    LOG_DBG("Set long conection interval");
+    LOG_DBG("Request %s connection interval (reasons 0x%lx)", want_short ? "short" : "long",
+            atomic_get(&short_interval_reasons));
 
-    err = bt_conn_le_param_update(current_conn, &param);
+    int err = bt_conn_le_param_update(current_conn, &param);
     if (err && err != -EALREADY) {
-        LOG_ERR("bt_conn_le_param_update failed %d", err);
+        LOG_ERR("bt_conn_le_param_update failed: %d", err);
+        return;
     }
+    requested_short = want_short;
+}
 
-    return err;
+static void discovery_done_handler(struct k_work *item)
+{
+    ARG_UNUSED(item);
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
 }
 
 int ble_comm_set_fast_adv_interval(void)
@@ -374,20 +365,6 @@ static int update_adv_interval(uint16_t interval_min, uint16_t interval_max)
     return 0;
 }
 
-static void update_conn_interval_slow_handler(struct k_work *item)
-{
-    LOG_DBG("Change to long connection interval");
-    ble_comm_set_default_connection_interval();
-}
-
-static void update_conn_interval_short_handler(struct k_work *item)
-{
-    LOG_DBG("Change to fast connection interval");
-    if (current_conn != NULL) {
-        ble_comm_set_short_connection_interval();
-    }
-}
-
 static void mtu_exchange_cb(struct bt_conn *conn, uint8_t err, struct bt_gatt_exchange_params *params)
 {
     if (!err) {
@@ -432,12 +409,13 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     LOG_INF("Interval: %d, latency: %d, timeout: %d", info.le.interval, info.le.latency, info.le.timeout);
 
     // Right after a new connection we want short connection interval
-    // to let the peer discover services etc. quickly.
-    // After some time assume the peer is done and change to longer intervals
-    // to save power.
-    if (!IS_ENABLED(CONFIG_MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL) || !zsw_smp_manager_is_enabled()) {
-        k_work_schedule(&conn_interval_slow_work, K_MSEC(BLE_COMM_CONN_INT_UPDATE_TIMEOUT_MS));
-    }
+    // to let the peer discover services etc. quickly. A central such as BlueZ
+    // reuses the long interval from the previous connection otherwise.
+    // After some time assume the peer is done; other reasons may keep it short.
+    requested_short = -1;
+    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
+    k_work_submit(&conn_interval_update_work);
+    k_work_schedule(&discovery_done_work, K_MSEC(BLE_COMM_DISCOVERY_SHORT_INTERVAL_MS));
 
     if (atomic_get(&pairing_enabled)) {
         int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -459,8 +437,10 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
 
     if (current_conn == conn) {
         ble_find_device_disconnected();
-        k_work_cancel_delayable(&conn_interval_slow_work);
-        k_work_cancel_delayable(&conn_interval_fast_work);
+        k_work_cancel_delayable(&discovery_done_work);
+        // Sensor notifications release their own reason when they stop.
+        atomic_clear_bit(&short_interval_reasons, BLE_COMM_SHORT_INTERVAL_DISCOVERY);
+        atomic_clear_bit(&short_interval_reasons, BLE_COMM_SHORT_INTERVAL_SMP);
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }

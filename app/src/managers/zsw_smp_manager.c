@@ -34,12 +34,15 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 #ifndef CONFIG_ARCH_POSIX
 
 #define SMP_AUTO_DISABLE_TIMEOUT_SEC  180
+// Keep the short connection interval this long after the last SMP command.
+#define SMP_SHORT_INTERVAL_HOLD_MS    5000
 
 static bool smp_enabled;
 static bool auto_disable_active;
 static bool fs_write_render_blocked;
 
 static void smp_auto_disable_work_handler(struct k_work *work);
+static void smp_traffic_done_work_handler(struct k_work *work);
 static void unblock_fs_write_render(void);
 static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return prev_status,
                                              int32_t *rc, uint16_t *group, bool *abort_more,
@@ -49,6 +52,7 @@ static enum mgmt_cb_return fs_access_callback(uint32_t event, enum mgmt_cb_retur
                                               void *data, size_t data_size);
 
 static K_WORK_DELAYABLE_DEFINE(smp_auto_disable_work, smp_auto_disable_work_handler);
+static K_WORK_DELAYABLE_DEFINE(smp_traffic_done_work, smp_traffic_done_work_handler);
 
 static struct mgmt_callback cmd_recv_callback_entry = {
     .callback = cmd_recv_callback,
@@ -78,10 +82,17 @@ static void smp_auto_disable_work_handler(struct k_work *work)
 
     smp_enabled = false;
     auto_disable_active = false;
+    k_work_cancel_delayable(&smp_traffic_done_work);
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
     ble_comm_set_default_adv_interval();
-    ble_comm_set_default_connection_interval();
     unblock_fs_write_render();
     zsw_xip_disable();
+}
+
+static void smp_traffic_done_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
 }
 
 static void reset_auto_disable_timer(void)
@@ -104,6 +115,11 @@ static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return
     ARG_UNUSED(data_size);
 
     reset_auto_disable_timer();
+
+    // Firmware updates and file transfers both arrive here; keep the interval
+    // short during the traffic and a little after it.
+    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
+    k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_SHORT_INTERVAL_HOLD_MS));
 
     return MGMT_CB_OK;
 }
@@ -149,8 +165,6 @@ int zsw_smp_manager_enable(bool auto_disable)
 {
     if (smp_enabled) {
         LOG_DBG("SMP already enabled");
-        // Cancel any ordinary idle work; the SMP transport owns parameters.
-        ble_comm_set_short_connection_interval();
         auto_disable_active = auto_disable;
         if (auto_disable) {
             k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
@@ -173,9 +187,9 @@ int zsw_smp_manager_enable(bool auto_disable)
         return rc;
     }
 
-    // Optimize BLE parameters for faster transfer
+    // Advertise faster so the phone finds the watch quickly. The connection
+    // interval follows the SMP traffic (cmd_recv_callback).
     ble_comm_set_fast_adv_interval();
-    ble_comm_set_short_connection_interval();
 
     smp_enabled = true;
     auto_disable_active = auto_disable;
@@ -207,8 +221,9 @@ int zsw_smp_manager_disable(void)
 
     smp_enabled = false;
     auto_disable_active = false;
+    k_work_cancel_delayable(&smp_traffic_done_work);
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
     ble_comm_set_default_adv_interval();
-    ble_comm_set_default_connection_interval();
     unblock_fs_write_render();
 
     zsw_xip_disable();
