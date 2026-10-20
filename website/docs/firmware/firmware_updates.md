@@ -41,12 +41,14 @@ After updating firmware, you typically also need to upload the matching **image 
 Current firmware uses 32-bit addressing for the external flash, so all of its
 64 MB can be used. Bootloaders flashed before this change use 24-bit
 addressing. The firmware switches the flash back before every restart it
-makes itself, so updates, crashes and reboots keep working with an older
-bootloader.
+makes itself, so updates, crashes, reboots and task watchdog resets keep
+working with an older bootloader.
 
-A reset that does not come from the firmware, such as a reset from a
-debugger, leaves the flash in 32-bit mode. An older bootloader then reports
-`Image in the primary slot is not valid!` and stays in serial recovery.
+A reset that does not come from the firmware leaves the flash in 32-bit
+mode. That is a reset from a debugger, or the hardware watchdog when the
+whole system has stopped responding (release builds). An older bootloader
+then reports `Image in the primary slot is not valid!` and stays in serial
+recovery.
 Remove all power (USB and battery) for a few seconds and the watch boots
 normally again.
 
