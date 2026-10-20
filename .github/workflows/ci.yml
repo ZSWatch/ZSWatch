@@ -34,7 +34,7 @@ jobs:
 
       - name: Post combined PR comment
         if: ${{ env.MEMBROWSE_API_KEY != '' }}
-        uses: membrowse/membrowse-action/comment-action@34719bdb04722be5cbe9c1d6df4a1567ae98238d # v1.2.15
+        uses: membrowse/membrowse-action/comment-action@v1
         with:
           api_key: ${{ secrets.MEMBROWSE_API_KEY }}
           api_url: ${{ vars.MEMBROWSE_API_URL }}

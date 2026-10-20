@@ -202,7 +202,7 @@ jobs:
       - name: MemBrowse memory report
         if: ${{ steps.membrowse-target.outputs.target_name != '' }}
         continue-on-error: true
-        uses: membrowse/membrowse-action@34719bdb04722be5cbe9c1d6df4a1567ae98238d # v1.2.15
+        uses: membrowse/membrowse-action@v1
         # The checkout lives under ZSWatch/, but action steps run from the
         # workspace root. Point git at the checkout so MemBrowse reads the
         # commit message and author from it.
