@@ -473,8 +473,8 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
         ble_find_device_disconnected();
         k_work_cancel_delayable(&discovery_done_work);
         // Sensor notifications release their own reason when they stop.
-        atomic_clear_bit(&short_interval_reasons, BLE_COMM_SHORT_INTERVAL_DISCOVERY);
-        atomic_clear_bit(&short_interval_reasons, BLE_COMM_SHORT_INTERVAL_SMP);
+        ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
+        ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
         bt_conn_unref(current_conn);
         current_conn = NULL;
     }
