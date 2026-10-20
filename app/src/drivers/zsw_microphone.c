@@ -159,6 +159,30 @@ int zsw_microphone_driver_start(void)
         return ret;
     }
 
+    // Power-on/PDM settling produces a clipped transient that can dominate
+    // short voice memos. Drain 500 ms before publishing any PCM or reporting
+    // that capture has started; every slab block must still be released.
+    size_t settling_bytes = (AUDIO_FREQ * (CHAN_SIZE / 8) * 500) / 1000;
+    while (settling_bytes > 0) {
+        void *block = NULL;
+        size_t size = 0;
+        ret = dmic_read(mic_state.mic_dev, 0, &block, &size, 100);
+        if (ret < 0 || block == NULL || size == 0) {
+            if (ret >= 0) {
+                if (block != NULL) {
+                    k_mem_slab_free(&rx_mem_slab, block);
+                }
+                ret = -EIO;
+            }
+            LOG_ERR("Failed to settle microphone: %d", ret);
+            dmic_trigger(mic_state.mic_dev, DMIC_TRIGGER_STOP);
+            power_off_microphone();
+            return ret;
+        }
+        settling_bytes = size >= settling_bytes ? 0 : settling_bytes - size;
+        k_mem_slab_free(&rx_mem_slab, block);
+    }
+
     mic_state.recording = true;
 
     mic_state.buffer_allocation_failures = 0;
