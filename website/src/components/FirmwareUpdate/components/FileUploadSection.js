@@ -6,6 +6,7 @@ const FileUploadSection = ({
   fileUploadPercentage,
   fileUploadSpeed,
   fileInfos,
+  firmwareBoard = "",
   isFileUploadInProgress,
   onFileChange,
   onFileUpload,
@@ -94,6 +95,16 @@ const FileUploadSection = ({
             <p className="text-sm text-gray-600 dark:text-gray-400 text-right">{fileUploadSpeed} KB/s</p>
           )}
         </div>
+      )}
+
+      {firmwareBoard === "watchdk" && (
+        <details className="text-xs text-gray-600 dark:text-gray-400">
+          <summary className="cursor-pointer">WatchDK with a bootloader from before 2026-10-19?</summary>
+          <p className="mt-1 mb-0">
+            The update works. If a debugger reset later leaves the watch in serial recovery, remove
+            all power for a few seconds. <a href="/docs/firmware/firmware_updates#watchdk-with-an-older-bootloader">More</a>
+          </p>
+        </details>
       )}
 
       {/* Enhanced File Information with Two-Column Grid */}

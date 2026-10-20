@@ -69,6 +69,7 @@ const FirmwareUpdateApp = () => {
     fileUploadSpeed,
     isFileUploadInProgress,
     fileInfos,
+    firmwareBoard,
     fileStatus,
     setFileStatus,
     fileInputRef,
@@ -393,6 +394,7 @@ const FirmwareUpdateApp = () => {
                 fileUploadPercentage={fileUploadPercentage}
                 fileUploadSpeed={fileUploadSpeed}
                 fileInfos={fileInfos}
+                firmwareBoard={firmwareBoard}
                 isFileUploadInProgress={isFileUploadInProgress}
                 onFileChange={handleFileChange}
                 onFileUpload={handleFileUpload}

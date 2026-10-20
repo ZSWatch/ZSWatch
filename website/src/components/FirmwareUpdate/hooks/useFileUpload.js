@@ -7,6 +7,8 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
   const [fileUploadSpeed, setFileUploadSpeed] = useState(null);
   const [isFileUploadInProgress, setIsFileUploadInProgress] = useState(false);
   const [fileInfos, setFileInfos] = useState([]);
+  // Board from the dfu_application.zip manifest, e.g. "watchdk".
+  const [firmwareBoard, setFirmwareBoard] = useState("");
   const [fileStatus, setFileStatus] = useState("Select image files (.bin or dfu_application.zip)");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -118,6 +120,13 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
     const zip = new JSZip();
     try {
       const zipContent = await zip.loadAsync(reader.result);
+      const manifest = zipContent.file("manifest.json");
+      try {
+        const files = manifest ? JSON.parse(await manifest.async("string")).files : [];
+        setFirmwareBoard(files?.[0]?.board || "");
+      } catch {
+        setFirmwareBoard("");
+      }
       const fwFiles = await Promise.all(
         Object.keys(zipContent.files)
           .filter((filename) => filename.endsWith(".bin"))
@@ -261,6 +270,7 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
 
   const clearFiles = () => {
     setFileInfos([]);
+    setFirmwareBoard("");
     setFileStatus("Select image files (.bin or dfu_application.zip)");
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -270,6 +280,7 @@ export const useFileUpload = (mcumgr, isSerialRecoveryMode) => {
     fileUploadSpeed,
     isFileUploadInProgress,
     fileInfos,
+    firmwareBoard,
     fileStatus,
     setFileStatus,
     fileInputRef,
