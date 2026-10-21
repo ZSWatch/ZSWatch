@@ -54,12 +54,15 @@ extra conf/overlay lists.
 
 ## Build
 
-West needs the NCS toolchain environment. If the repo root has `.nrf_env.sh`
-(gitignored, machine-specific), prefix commands with `source .nrf_env.sh &&`.
-Without it, run `eval "$(python app/pytest/bench/toolchain.py --print)"` once,
-or prefix single commands with `python -m bench.toolchain` from `app/pytest`.
-It uses `ZSW_NCS_TOOLCHAIN` or the newest bundle in `~/ncs/toolchains`.
-Plain `west` failing with 127 means the environment is missing.
+West needs the nRF Connect SDK environment. Prefix every `west`, `nrfjprog`
+or `nrfutil` command with `source .nrf_env.sh &&` from the repo root. Plain
+`west` failing with 127 means the environment is missing.
+
+`.nrf_env.sh` is gitignored and machine-specific. If it is missing, generate it
+with the VS Code task **Get nRF Connect environment setup**
+(`.vscode/tasks.json`). The task runs in the nRF Connect shell and saves its
+`PATH`, `ZEPHYR_BASE`, `PYTHONPATH` etc. as exports. If you can't run VS Code
+tasks, ask the user to run it.
 
 ```sh
 # Hardware, debug, logs on UART (the usual dev build)
