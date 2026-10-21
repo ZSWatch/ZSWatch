@@ -13,7 +13,7 @@ device with `--device NAME` or `ZSW_DEVICE`.
 | `bench.ble` | One BLE connection with SMP (shell) and NUS (companion protocol) |
 | `bench.ppk` | PPK2 as the battery: a long-running session plus measurements |
 | `bench.swd` | Read firmware variables by name from the ELF over J-Link |
-| `bench.toolchain` | Run `west`, `nrfjprog` etc. in the nRF Connect toolchain |
+| `bench.toolchain` | Run `west`, `nrfjprog` etc. with the environment from `.nrf_env.sh` (or `ZSW_NCS_TOOLCHAIN`) |
 
 ```bash
 export ZSW_DEVICE=bench-watchdk
