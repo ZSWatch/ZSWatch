@@ -40,17 +40,9 @@
 #include "zsw_power_manager.h"
 #include "zsw_ui_controller.h"
 #include "ui/zsw_ui.h"
+#include "ui/zsw_overlay_manager.h"
 #include "ui/onboarding/zsw_onboarding_ui.h"
 #include "lvgl_editor_gen.h"
-
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-#include "managers/zsw_recording_manager.h"
-#include "ui/overlay/zsw_recording_overlay.h"
-#include "ui/overlay/zsw_voice_memo_popup.h"
-#endif
-#ifdef CONFIG_APPLICATIONS_USE_CHAT
-#include "applications/chat/chat_app.h"
-#endif
 
 typedef enum ui_state {
     INIT_STATE,
@@ -98,27 +90,7 @@ LOG_MODULE_REGISTER(zsw_ui_controller, CONFIG_ZSW_UI_CONTROLLER_LOG_LEVEL);
 
 static bool handle_back_action(void)
 {
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-    if (zsw_recording_overlay_is_shown()) {
-        zsw_recording_manager_stop();
-        zsw_recording_overlay_hide();
-        return true;
-    }
-
-    if (zsw_voice_memo_popup_is_shown()) {
-        return true;
-    }
-#endif
-
-#ifdef CONFIG_APPLICATIONS_USE_CHAT
-    if (zsw_chat_popup_is_shown()) {
-        zsw_chat_popup_close();
-        return true;
-    }
-#endif
-
-    if (zsw_notification_popup_is_shown()) {
-        zsw_notification_popup_remove();
+    if (zsw_overlay_handle_back()) {
         return true;
     }
 
@@ -161,15 +133,7 @@ static void run_input_work(struct k_work *item)
                 break;
             }
             case INPUT_KEY_1: {
-                if ((watch_state == WATCHFACE_STATE) && !zsw_notification_popup_is_shown()
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-                    && !zsw_recording_overlay_is_shown()
-                    && !zsw_voice_memo_popup_is_shown()
-#endif
-#ifdef CONFIG_APPLICATIONS_USE_CHAT
-                    && !zsw_chat_popup_is_shown()
-#endif
-                   ) {
+                if ((watch_state == WATCHFACE_STATE) && !zsw_overlay_active()) {
                     zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
                     lv_async_call(open_application_manager_page, NULL);
                 }
@@ -290,13 +254,7 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 
 static void handle_screen_gesture(lv_dir_t event_code)
 {
-    bool overlay_active = zsw_notification_popup_is_shown();
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-    overlay_active = overlay_active || zsw_recording_overlay_is_shown() || zsw_voice_memo_popup_is_shown();
-#endif
-#ifdef CONFIG_APPLICATIONS_USE_CHAT
-    overlay_active = overlay_active || zsw_chat_popup_is_shown();
-#endif
+    bool overlay_active = zsw_overlay_active();
     if (watch_state == WATCHFACE_STATE && !overlay_active) {
         switch (event_code) {
             case LV_DIR_LEFT: {
@@ -322,9 +280,7 @@ static void handle_screen_gesture(lv_dir_t event_code)
             lv_indev_wait_release(indev);
         }
     } else if (overlay_active) {
-        if (zsw_notification_popup_is_shown()) {
-            zsw_notification_popup_remove();
-        }
+        zsw_overlay_handle_swipe();
     }
 }
 
@@ -407,15 +363,7 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
         return;
     }
 
-    if (watch_state == WATCHFACE_STATE && !zsw_notification_popup_is_shown()
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
-        && !zsw_recording_overlay_is_shown()
-        && !zsw_voice_memo_popup_is_shown()
-#endif
-#ifdef CONFIG_APPLICATIONS_USE_CHAT
-        && !zsw_chat_popup_is_shown()
-#endif
-       ) {
+    if (watch_state == WATCHFACE_STATE && !zsw_overlay_active()) {
         switch (evt.type) {
             case WATCHFACE_APP_EVENT_OPEN_APP:
                 handle_watchface_open_app_event(evt.data.app);

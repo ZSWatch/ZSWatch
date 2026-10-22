@@ -21,4 +21,3 @@
 
 void zsw_recording_overlay_show(void);
 void zsw_recording_overlay_hide(void);
-bool zsw_recording_overlay_is_shown(void);

@@ -205,15 +205,12 @@ static void enable_bluetooth(void)
 static void on_close_popup_notification(uint32_t id)
 {
     zsw_notification_manager_remove(id);
-
-    zsw_ui_controller_clear_notification_mode();
 }
 
 static void open_notification_popup(void *data)
 {
     zsw_not_mngr_notification_t *not = zsw_notification_manager_get_newest();
     if (not != NULL) {
-        zsw_ui_controller_set_notification_mode();
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
         zsw_notification_popup_show(not->sender, not->body, not->src, not->id, on_close_popup_notification, 10);
     }

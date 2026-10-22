@@ -16,8 +16,10 @@
  */
 
 #include <lvgl.h>
+#include <string.h>
 
 #include "ui/notification/zsw_popup_notification.h"
+#include "ui/zsw_overlay_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 typedef struct {
@@ -30,14 +32,27 @@ typedef struct {
 
 static void on_notification_closed(lv_event_t *e);
 static void on_notification_expand(lv_event_t *e);
-static void close_notif_timer(lv_timer_t *timer);
-static void close_notification_async(lv_timer_t *timer);
-static void remove_notification(uint32_t notif_id);
+static void popup_show(lv_obj_t *parent, lv_group_t *group);
+static void popup_close(void);
+static bool popup_back(void);
 
 static on_close_notif_cb_t on_close_cb;
 static uint32_t active_notif_id;
-static lv_timer_t *auto_close_timer;
+static bool dismissed;
 static notif_box_t notif_box;
+static char notif_title[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];
+static char notif_body[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];
+static zsw_notification_src_t notif_icon;
+
+static zsw_overlay_t overlay = {
+    .name = "Notification",
+    .priority = 10,
+    .blocks_input = true,
+    .swipe_is_back = true,
+    .show = popup_show,
+    .close = popup_close,
+    .back = popup_back,
+};
 
 LV_FONT_DECLARE(lv_font_montserrat_14_full)
 
@@ -45,8 +60,26 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
                                  on_close_notif_cb_t close_cb,
                                  uint32_t close_after_seconds)
 {
+    // Copied, as the popup may wait behind another overlay.
+    strncpy(notif_title, title, sizeof(notif_title) - 1);
+    strncpy(notif_body, body, sizeof(notif_body) - 1);
+    notif_icon = icon;
     active_notif_id = id;
     on_close_cb = close_cb;
+    overlay.timeout_ms = close_after_seconds * 1000;
+    zsw_overlay_show(&overlay);
+}
+
+static void popup_show(lv_obj_t *parent, lv_group_t *group)
+{
+    // Created on the screen instead of parent (lv_layer_top), so swipes on it
+    // still reach the screen gesture handlers.
+    LV_UNUSED(parent);
+    LV_UNUSED(group);
+    const char *title = notif_title;
+    const char *body = notif_body;
+
+    dismissed = false;
 
     // create panel
     notif_box.panel = lv_obj_create(lv_scr_act());
@@ -70,7 +103,7 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_obj_set_width(notif_box.icon, LV_SIZE_CONTENT);
     lv_obj_set_height(notif_box.icon, LV_SIZE_CONTENT);
     lv_obj_align_to(notif_box.icon, notif_box.panel, LV_ALIGN_TOP_LEFT, 2, 2);
-    lv_img_set_src(notif_box.icon, zsw_ui_utils_icon_from_notification(icon));
+    lv_img_set_src(notif_box.icon, zsw_ui_utils_icon_from_notification(notif_icon));
 
     // create title text
     notif_box.title = lv_label_create(notif_box.panel);
@@ -112,36 +145,23 @@ void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t
     lv_obj_t *ui_x = lv_label_create(notif_box.close_btn);
     lv_obj_set_align(ui_x, LV_ALIGN_CENTER);
     lv_label_set_text(ui_x, LV_SYMBOL_CLOSE);
-
-    // set auto close timer
-    auto_close_timer = lv_timer_create(close_notif_timer, close_after_seconds * 1000, NULL);
-    lv_timer_set_repeat_count(auto_close_timer, 1);
 }
 
 void zsw_notification_popup_remove(void)
 {
-    // To allow lvgl group modifications etc. without cusing issues in the callback,
-    // we make sure to call it in a fresh context switch.
-    // Core issue:
-    // Changing back input group directly here causes LVGL
-    // to not remove the notifcation for some reason.
-    // Maybe a bug, or something done wrong.
-    // Anyway doing it after a while instead seems to fix
-    // the problem.
-    lv_timer_t *timer = lv_timer_create(close_notification_async, 500,  (void *)(uintptr_t)active_notif_id);
-    lv_timer_set_repeat_count(timer, 1);
-    remove_notification(active_notif_id);
+    dismissed = true;
+    zsw_overlay_close(&overlay);
 }
 
 bool zsw_notification_popup_is_shown(void)
 {
-    return notif_box.panel != NULL;
+    return zsw_overlay_is_shown(&overlay);
 }
 
-static void close_notification_async(lv_timer_t *timer)
+static bool popup_back(void)
 {
-    uint32_t id = (uint32_t)(uintptr_t)lv_timer_get_user_data(timer);
-    remove_notification(id);
+    zsw_notification_popup_remove();
+    return true;
 }
 
 static void on_notification_closed(lv_event_t *e)
@@ -169,23 +189,11 @@ static void on_notification_expand(lv_event_t *e)
     lv_obj_remove_event_cb(notif_box.panel, on_notification_expand);
     lv_obj_add_event_cb(notif_box.panel, on_notification_closed, LV_EVENT_CLICKED, NULL);
 
-    if (auto_close_timer) {
-        lv_timer_set_period(auto_close_timer, 20000);
-    }
+    zsw_overlay_set_timeout(&overlay, 20000);
 }
 
-static void close_notif_timer(lv_timer_t *timer)
+static void popup_close(void)
 {
-    remove_notification(0);
-}
-
-static void remove_notification(uint32_t notif_id)
-{
-    if (auto_close_timer) {
-        lv_timer_del(auto_close_timer);
-        auto_close_timer = NULL;
-    }
-
     if (notif_box.panel) {
         lv_obj_del(notif_box.panel);
         notif_box.panel = NULL;
@@ -196,5 +204,6 @@ static void remove_notification(uint32_t notif_id)
         notif_box.close_btn = NULL;
     }
 
-    on_close_cb(notif_id);
+    // Only a dismissal removes the notification, a timeout keeps it.
+    on_close_cb(dismissed ? active_notif_id : 0);
 }

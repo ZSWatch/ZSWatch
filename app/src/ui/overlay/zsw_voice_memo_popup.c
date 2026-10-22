@@ -26,10 +26,9 @@
 #include "zsw_voice_memo_popup.h"
 #include "events/zsw_voice_memo_event.h"
 #include "managers/zsw_recording_manager.h"
-#include "managers/zsw_power_manager.h"
 #include "ble/gadgetbridge/ble_gadgetbridge.h"
 #include "ui/zsw_ui.h"
-#include "ui/zsw_ui_controller.h"
+#include "ui/zsw_overlay_manager.h"
 
 LOG_MODULE_REGISTER(zsw_voice_memo_popup, LOG_LEVEL_INF);
 
@@ -40,7 +39,6 @@ LOG_MODULE_REGISTER(zsw_voice_memo_popup, LOG_LEVEL_INF);
 ZBUS_CHAN_DECLARE(voice_memo_result_chan);
 
 static lv_obj_t *popup_container;
-static lv_timer_t *dismiss_timer;
 static char popup_filename[32];
 
 static struct k_work show_popup_work;
@@ -49,28 +47,32 @@ static char pending_filename[32];
 static char pending_action_type[20];
 static char pending_datetime[32];
 
-bool zsw_voice_memo_popup_is_shown(void)
-{
-    return popup_container != NULL;
-}
+static void popup_show(lv_obj_t *parent, lv_group_t *group);
+static void popup_close(void);
+static bool popup_back(void);
 
-static void dismiss_popup(void)
+static zsw_overlay_t overlay = {
+    .name = "Voice memo",
+    .priority = 20,
+    .blocks_input = true,
+    .timeout_ms = AUTO_DISMISS_MS,
+    .show = popup_show,
+    .close = popup_close,
+    .back = popup_back,
+};
+
+static void popup_close(void)
 {
-    if (dismiss_timer) {
-        lv_timer_delete(dismiss_timer);
-        dismiss_timer = NULL;
-    }
     if (popup_container) {
         lv_obj_del(popup_container);
         popup_container = NULL;
-        zsw_ui_controller_clear_notification_mode();
     }
 }
 
-static void dismiss_timer_cb(lv_timer_t *timer)
+/* Back is ignored, so the Undo is not lost by accident. */
+static bool popup_back(void)
 {
-    LV_UNUSED(timer);
-    dismiss_popup();
+    return true;
 }
 
 static void undo_btn_cb(lv_event_t *e)
@@ -79,19 +81,15 @@ static void undo_btn_cb(lv_event_t *e)
     LOG_INF("Undo requested for: %s", popup_filename);
     zsw_recording_manager_delete(popup_filename);
     ble_gadgetbridge_send_voice_memo_undo(popup_filename);
-    dismiss_popup();
+    zsw_overlay_close(&overlay);
 }
 
-static void show_popup_async(void *data)
+static void popup_show(lv_obj_t *parent, lv_group_t *group)
 {
-    ARG_UNUSED(data);
-
-    dismiss_popup();
-
     strncpy(popup_filename, pending_filename, sizeof(popup_filename) - 1);
     popup_filename[sizeof(popup_filename) - 1] = '\0';
 
-    popup_container = lv_obj_create(lv_layer_top());
+    popup_container = lv_obj_create(parent);
     lv_obj_set_size(popup_container, DISP_WIDTH, DISP_HEIGHT);
     lv_obj_set_style_bg_color(popup_container, lv_color_make(0x1a, 0x1a, 0x2e), 0);
     lv_obj_set_style_bg_opa(popup_container, LV_OPA_90, 0);
@@ -171,9 +169,7 @@ static void show_popup_async(void *data)
     lv_obj_align(undo_btn, LV_ALIGN_BOTTOM_MID, 0, -30);
     lv_obj_add_event_cb(undo_btn, undo_btn_cb, LV_EVENT_CLICKED, NULL);
 
-    /* Enable notification mode so buttons can reach the Undo button */
-    zsw_ui_controller_set_notification_mode();
-    lv_group_add_obj(lv_group_get_default(), undo_btn);
+    lv_group_add_obj(group, undo_btn);
     lv_group_focus_obj(undo_btn);
 
     lv_obj_t *undo_label = lv_label_create(undo_btn);
@@ -181,16 +177,12 @@ static void show_popup_async(void *data)
     lv_obj_set_style_text_font(undo_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(undo_label, lv_color_white(), 0);
     lv_obj_center(undo_label);
-
-    dismiss_timer = lv_timer_create(dismiss_timer_cb, AUTO_DISMISS_MS, NULL);
-    lv_timer_set_repeat_count(dismiss_timer, 1);
 }
 
 static void show_popup_work_fn(struct k_work *work)
 {
     ARG_UNUSED(work);
-    zsw_power_manager_reset_idle_timout();
-    lv_async_call(show_popup_async, NULL);
+    zsw_overlay_show_async(&overlay);
 }
 
 static void on_voice_memo_result(const struct zbus_channel *chan)

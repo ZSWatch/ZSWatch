@@ -31,13 +31,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "chat_app.h"
 #include "managers/zsw_recording_manager.h"
 #include "managers/zsw_power_manager.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "events/zsw_voice_memo_event.h"
 #include "ui/zsw_ui.h"
-#include "ui/zsw_ui_controller.h"
+#include "ui/zsw_overlay_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(chat_app, CONFIG_ZSW_CHAT_APP_LOG_LEVEL);
@@ -77,6 +76,16 @@ static struct {
 } popup;
 
 static void popup_render(void);
+static void popup_show(lv_obj_t *parent, lv_group_t *group);
+static void popup_close(void);
+
+static zsw_overlay_t overlay = {
+    .name = "Chat",
+    .priority = 20,
+    .blocks_input = true,
+    .show = popup_show,
+    .close = popup_close,
+};
 
 static lv_obj_t *create_label(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color)
 {
@@ -166,9 +175,6 @@ static void build_answer_view(lv_obj_t *parent, int top, int bottom_space)
 
 static void popup_close(void)
 {
-    if (!popup.cont) {
-        return;
-    }
     if (state == STATE_RECORDING) {
         zsw_recording_manager_abort();
         state = STATE_ANSWER;
@@ -176,7 +182,6 @@ static void popup_close(void)
     lv_timer_delete(popup.timer);
     lv_obj_del(popup.cont);
     memset(&popup, 0, sizeof(popup));
-    zsw_ui_controller_clear_notification_mode();
 }
 
 static void popup_timer_cb(lv_timer_t *timer)
@@ -193,14 +198,14 @@ static void popup_timer_cb(lv_timer_t *timer)
         lv_label_set_text_fmt(popup.time_label, "%u:%02u", elapsed_s / 60, elapsed_s % 60);
     } else if ((state == STATE_ANSWER || state == STATE_TIMED_OUT) &&
                k_uptime_get() - popup.shown_at > POPUP_DISMISS_MS) {
-        popup_close();
+        zsw_overlay_close(&overlay);
     }
 }
 
 static void popup_close_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    popup_close();
+    zsw_overlay_close(&overlay);
 }
 
 static lv_obj_t *popup_button(const char *text, lv_color_t color, lv_event_cb_t cb, int x, int width)
@@ -271,7 +276,7 @@ static void popup_render(void)
             break;
         }
         case STATE_IDLE:
-            popup_close();
+            zsw_overlay_close(&overlay);
             return;
     }
     if (focus) {
@@ -279,28 +284,10 @@ static void popup_render(void)
     }
 }
 
-static void popup_close_async(void *data)
+static void popup_show(lv_obj_t *parent, lv_group_t *group)
 {
-    ARG_UNUSED(data);
-    popup_close();
-}
-
-bool zsw_chat_popup_is_shown(void)
-{
-    return popup.cont != NULL;
-}
-
-void zsw_chat_popup_close(void)
-{
-    lv_async_call(popup_close_async, NULL);
-}
-
-static void popup_open(void)
-{
-    if (popup.cont) {
-        return;
-    }
-    popup.cont = create_view(lv_layer_top());
+    LV_UNUSED(group);
+    popup.cont = create_view(parent);
     lv_obj_set_style_bg_color(popup.cont, lv_color_make(0x1a, 0x1a, 0x2e), 0);
     lv_obj_set_style_bg_opa(popup.cont, LV_OPA_90, 0);
 
@@ -308,7 +295,7 @@ static void popup_open(void)
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
 
     popup.timer = lv_timer_create(popup_timer_cb, UI_UPDATE_INTERVAL_MS, NULL);
-    zsw_ui_controller_set_notification_mode();
+    popup_render();
 }
 
 static void answer_async(void *data)
@@ -318,8 +305,11 @@ static void answer_async(void *data)
     if (state != STATE_RECORDING) {
         state = STATE_ANSWER;
     }
-    popup_open();
-    popup_render();
+    if (zsw_overlay_is_shown(&overlay)) {
+        popup_render();
+    } else {
+        zsw_overlay_show(&overlay);
+    }
 }
 
 static void answer_work_fn(struct k_work *work)
