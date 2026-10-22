@@ -1,0 +1,16 @@
+# Copyright (c) 2026 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Chat"
+
+config APPLICATIONS_USE_CHAT
+    bool
+    prompt "Activate the application 'Chat'"
+    default y
+    depends on APPLICATIONS_USE_VOICE_MEMO
+
+module = ZSW_CHAT_APP
+module-str = ZSW_CHAT_APP
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

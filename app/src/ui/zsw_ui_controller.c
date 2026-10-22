@@ -48,6 +48,9 @@
 #include "ui/overlay/zsw_recording_overlay.h"
 #include "ui/overlay/zsw_voice_memo_popup.h"
 #endif
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+#include "applications/chat/chat_app.h"
+#endif
 
 typedef enum ui_state {
     INIT_STATE,
@@ -107,6 +110,13 @@ static bool handle_back_action(void)
     }
 #endif
 
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+    if (zsw_chat_popup_is_shown()) {
+        zsw_chat_popup_close();
+        return true;
+    }
+#endif
+
     if (zsw_notification_popup_is_shown()) {
         zsw_notification_popup_remove();
         return true;
@@ -155,6 +165,9 @@ static void run_input_work(struct k_work *item)
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
                     && !zsw_recording_overlay_is_shown()
                     && !zsw_voice_memo_popup_is_shown()
+#endif
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+                    && !zsw_chat_popup_is_shown()
 #endif
                    ) {
                     zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
@@ -281,6 +294,9 @@ static void handle_screen_gesture(lv_dir_t event_code)
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
     overlay_active = overlay_active || zsw_recording_overlay_is_shown() || zsw_voice_memo_popup_is_shown();
 #endif
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+    overlay_active = overlay_active || zsw_chat_popup_is_shown();
+#endif
     if (watch_state == WATCHFACE_STATE && !overlay_active) {
         switch (event_code) {
             case LV_DIR_LEFT: {
@@ -395,6 +411,9 @@ static void on_watchface_app_event_callback(watchface_app_evt_t evt)
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
         && !zsw_recording_overlay_is_shown()
         && !zsw_voice_memo_popup_is_shown()
+#endif
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+        && !zsw_chat_popup_is_shown()
 #endif
        ) {
         switch (evt.type) {

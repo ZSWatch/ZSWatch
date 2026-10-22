@@ -34,4 +34,12 @@ ZBUS_CHAN_DEFINE(voice_memo_result_chan,
                  ZBUS_OBSERVERS(voice_memo_popup_result_lis, voice_memo_app_result_lis),
                  ZBUS_MSG_INIT());
 
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+ZBUS_CHAN_DEFINE(chat_answer_chan,
+                 struct zsw_chat_answer_event,
+                 NULL, NULL,
+                 ZBUS_OBSERVERS(chat_app_answer_lis),
+                 ZBUS_MSG_INIT());
+#endif
+
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */

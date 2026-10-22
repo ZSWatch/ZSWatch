@@ -184,6 +184,11 @@ int zsw_recording_manager_init(void)
 
 int zsw_recording_manager_start(void)
 {
+    return zsw_recording_manager_start_prefixed(NULL);
+}
+
+int zsw_recording_manager_start_prefixed(const char *prefix)
+{
     int ret;
 
     if (is_recording) {
@@ -213,7 +218,7 @@ int zsw_recording_manager_start(void)
         return ret;
     }
 
-    ret = zsw_recording_manager_store_start_recording();
+    ret = zsw_recording_manager_store_start_recording(prefix);
     if (ret < 0) {
         LOG_ERR("Store start failed: %d", ret);
         zsw_audio_codec_deinit();

@@ -70,7 +70,7 @@ typedef struct {
 int zsw_recording_manager_store_init(void);
 
 /** @brief Create a new recording file with a dirty header. */
-int zsw_recording_manager_store_start_recording(void);
+int zsw_recording_manager_store_start_recording(const char *prefix);
 
 /** @brief Append an encoded Opus frame (buffered, flushed when buffer is full). */
 int zsw_recording_manager_store_write_frame(const uint8_t *opus_data, size_t len);
