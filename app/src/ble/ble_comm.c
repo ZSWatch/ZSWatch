@@ -301,7 +301,8 @@ static void security_request_work_handler(struct k_work *work)
     }
     LOG_INF("Peer has not paired or encrypted, requesting security");
     int rc = bt_conn_set_security(current_conn, BT_SECURITY_L2);
-    if (rc != 0) {
+    // -EBUSY: the peer is already pairing or encrypting.
+    if (rc != 0 && rc != -EBUSY) {
         LOG_ERR("Failed to set security: %d", rc);
         bt_conn_disconnect(current_conn, BT_HCI_ERR_AUTH_FAIL);
     }
