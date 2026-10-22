@@ -83,10 +83,13 @@ static const struct bt_data ad[] = {
 #endif
 };
 
-static const struct bt_data ad_nus[] = {
-    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+// "ZSWatch E3": the last address byte tells watches nearby apart.
+static char device_name[sizeof(CONFIG_BT_DEVICE_NAME) + 3];
+
+// Scan response; flags belong in the advertising data only.
+static struct bt_data ad_nus[] = {
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UUID_TRANSPORT_VAL),
-    BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1),
+    BT_DATA(BT_DATA_NAME_COMPLETE, device_name, 0),
 };
 
 static struct bt_le_adv_param adv_param = {
@@ -198,6 +201,20 @@ static struct bt_conn_auth_info_cb auth_cb_info = {
     .pairing_failed = pairing_failed,
 };
 
+static void set_device_name(void)
+{
+    bt_addr_le_t addr = {0};
+    size_t count = 1;
+
+    bt_id_get(&addr, &count);
+    snprintk(device_name, sizeof(device_name), "%s %02X", CONFIG_BT_DEVICE_NAME, addr.a.val[0]);
+    ad_nus[1].data_len = strlen(device_name);
+    int err = bt_set_name(device_name);
+    if (err) {
+        LOG_WRN("Failed to set device name (err %d)", err);
+    }
+}
+
 int ble_comm_init(void)
 {
     ble_comm_set_pairable(false);
@@ -219,6 +236,8 @@ int ble_comm_init(void)
         LOG_ERR("Failed to initialize UART service (err: %d)", err);
         return err;
     }
+
+    set_device_name();
 
     err = bt_le_adv_start(&adv_param, ad, ARRAY_SIZE(ad), ad_nus, ARRAY_SIZE(ad_nus));
     if (err) {
