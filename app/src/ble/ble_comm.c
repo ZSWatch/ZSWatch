@@ -111,6 +111,16 @@ static atomic_t pairing_enabled;
 static void pairing_timeout_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(pairing_timeout_work, pairing_timeout_work_handler);
 
+// Phones pair or encrypt by themselves when they first access an encrypted
+// attribute (NUS). iOS rejects a security request sent while AccessorySetupKit is
+// still setting up the link and then stops pairing, so only peers that have not
+// paired or encrypted by then get one. This replaces CONFIG_BT_GATT_AUTO_SEC_REQ,
+// which asks at once when a bonded address reconnects, also after the phone has
+// forgotten its keys.
+#define SECURITY_REQUEST_DELAY K_SECONDS(3)
+static void security_request_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(security_request_work, security_request_work_handler);
+
 static struct ble_transport_cb ble_transport_callbacks = {
     .data_receive = bt_receive_cb,
 };
@@ -160,6 +170,8 @@ static enum bt_security_err pairing_accept(struct bt_conn *conn,
         return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
     }
 
+    // The peer pairs by itself; a request now would interrupt it.
+    k_work_cancel_delayable(&security_request_work);
     LOG_INF("Pairing accepted: pairing window open");
     return BT_SECURITY_ERR_SUCCESS;
 }
@@ -258,6 +270,21 @@ void ble_comm_set_pairable(bool pairable)
     } else {
         LOG_WRN("Disable Pairable");
         k_work_cancel_delayable(&pairing_timeout_work);
+    }
+}
+
+static void security_request_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    if (current_conn == NULL || bt_conn_get_security(current_conn) >= BT_SECURITY_L2 ||
+        !(atomic_get(&pairing_enabled) || bt_le_bond_exists(BT_ID_DEFAULT, bt_conn_get_dst(current_conn)))) {
+        return;
+    }
+    LOG_INF("Peer has not paired or encrypted, requesting security");
+    int rc = bt_conn_set_security(current_conn, BT_SECURITY_L2);
+    if (rc != 0) {
+        LOG_ERR("Failed to set security: %d", rc);
+        bt_conn_disconnect(current_conn, BT_HCI_ERR_AUTH_FAIL);
     }
 }
 
@@ -476,13 +503,7 @@ static void ble_connected(struct bt_conn *conn, uint8_t err)
     // and after some time we assume the peer is done; other reasons may keep it short.
     ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
 
-    if (atomic_get(&pairing_enabled)) {
-        int rc = bt_conn_set_security(conn, BT_SECURITY_L2);
-        if (rc != 0) {
-            LOG_ERR("Failed to set security: %d", rc);
-            bt_conn_disconnect(conn, BT_HCI_ERR_AUTH_FAIL);
-        }
-    }
+    k_work_reschedule(&security_request_work, SECURITY_REQUEST_DELAY);
     ble_chronos_state(true);
 }
 
@@ -497,6 +518,7 @@ static void ble_disconnected(struct bt_conn *conn, uint8_t reason)
     if (current_conn == conn) {
         ble_find_device_disconnected();
         k_work_cancel_delayable(&discovery_done_work);
+        k_work_cancel_delayable(&security_request_work);
         // Sensor notifications release their own reason when they stop.
         ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_DISCOVERY);
         ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
