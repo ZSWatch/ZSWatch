@@ -32,10 +32,10 @@ This Privacy Policy describes how ZSWatch Companion App ("we", "us", or "our") c
 | GitHub | Firmware updates | Nothing personal |
 | Hugging Face | Downloading on-device AI models | Nothing personal |
 | Open-Meteo | Weather and altitude on the watch | Approximate location |
-| OpenRouter | Only if you add your own key and agree | Voice memo audio and text, Chat questions |
+| OpenRouter, and the AI model provider you select there | Only if you add your own key and agree | Voice memo audio and text, Chat questions |
 | Open Trivia Database | Trivia app on the watch | Nothing personal |
 
-We do not sell, trade or otherwise transfer your information to anyone else.
+Apart from the services above, we do not sell, trade or otherwise transfer your information to anyone.
 
 ## Permissions Explained
 
@@ -52,6 +52,8 @@ We do not sell, trade or otherwise transfer your information to anyone else.
 ## Data Storage and Deletion
 
 All app data is stored on your phone. You can delete it with the delete options in the app, or by uninstalling the app.
+
+This does not delete data already sent to the services above, such as voice memos sent to OpenRouter and your selected AI model provider. Those services keep and delete data according to their own privacy policies.
 
 ## Children's Privacy
 
