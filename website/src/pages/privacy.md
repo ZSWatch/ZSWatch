@@ -5,45 +5,53 @@ description: Privacy Policy for ZSWatch Companion App
 
 # Privacy Policy
 
-**Last updated: February 12, 2026**
+**Last updated: October 23, 2026**
 
 This Privacy Policy describes how ZSWatch Companion App ("we", "us", or "our") collects, uses, and shares information when you use our mobile application.
 
-## Information We Collect
+## Summary
 
-### Information You Provide
-- **Device pairing information**: When you pair your ZSWatch with the app, we store the device identifier locally on your phone to enable automatic reconnection.
+- We do not run servers that collect your data. There are no accounts, analytics, ads or tracking.
+- Your data stays on your phone and your watch. It only leaves them when a feature you use needs it, and only to the services listed below.
 
-### Information Collected Automatically
-- **Bluetooth data**: The app communicates with your ZSWatch over Bluetooth Low Energy (BLE) to sync notifications, health data, and settings.
-- **Location data**: If you grant permission, the app may access your location to relay GPS coordinates to your watch for weather and fitness features. Location data is sent directly to your watch and is not stored or transmitted elsewhere.
-- **Health and fitness data**: Step counts, heart rate, and activity data synced from your watch are stored locally on your device.
+## Information the App Handles
 
-## How We Use Information
+- **Watch pairing**: The app stores your watch's Bluetooth identifier on your phone so it can reconnect.
+- **Health and activity data**: Steps, heart rate, battery and similar data synced from your watch are stored on your phone only.
+- **Notifications**: On Android, if you grant notification access, the app forwards your phone's notifications to your watch. On iOS, the watch reads notifications directly from the phone through Apple's notification service. Notifications are not stored or sent anywhere else.
+- **Location**: If you allow it, the app shares your location with your watch. The watch uses it to request weather and altitude data from Open-Meteo, and the phone relays those requests, so your approximate coordinates are sent to Open-Meteo without any other identifier. Background location keeps weather and GPS working when the app is closed. The app does not keep a location history.
+- **Voice memos**: Recordings made on your watch are copied to your phone and stored there. By default they are transcribed and summarized on your phone with on-device models. If you add your own OpenRouter API key and agree to the prompt in the app, the audio, the transcript and the text needed for summaries and Chat answers are sent to [OpenRouter](https://openrouter.ai/privacy), which passes them to the AI model provider you selected. You can delete recordings and transcripts in the app at any time.
+- **Calendar and reminders**: If you allow it, the app adds the events, reminders, timers and alarms found in your voice memos. It does not upload your calendar.
+- **Photos**: If you pick a photo as a watchface background, it is converted and sent to your watch. The app only gets the photo you pick.
+- **Internet requests from the watch**: Some watch apps, such as weather and trivia, fetch data through the phone. The phone only relays these HTTPS requests and adds no personal data.
 
-We use the information solely to:
-- Enable communication between your phone and ZSWatch
-- Sync health data, weather, and other features to your watch
-- Provide firmware update functionality
+## Services the App Connects To
 
-## Data Storage and Security
+| Service | Why | What is sent |
+|---------|-----|--------------|
+| GitHub | Firmware updates | Nothing personal |
+| Hugging Face | Downloading on-device AI models | Nothing personal |
+| Open-Meteo | Weather and altitude on the watch | Approximate location |
+| OpenRouter | Only if you add your own key and agree | Voice memo audio and text, Chat questions |
+| Open Trivia Database | Trivia app on the watch | Nothing personal |
 
-- **Local storage only**: All data is stored locally on your device. We do not have servers that collect or store your personal information.
-- **No cloud sync**: Your health data, notifications, and settings are not uploaded to any cloud service.
-- **No analytics**: We do not use third-party analytics services that track your usage.
-
-## Data Sharing
-
-We do not sell, trade, or otherwise transfer your information to third parties. The app may connect to:
-- **GitHub**: To download firmware updates (no personal data is sent)
+We do not sell, trade or otherwise transfer your information to anyone else.
 
 ## Permissions Explained
 
 | Permission | Purpose |
 |------------|---------|
-| Bluetooth | Required to communicate with your ZSWatch |
-| Location | Optional - provides GPS data to watch for weather/fitness |
-| Internet | Required for firmware downloads from GitHub |
+| Bluetooth | Communicate with your ZSWatch |
+| Location (including background) | Weather and GPS for your watch, also when the app is closed |
+| Notifications | Timers, alarms and the connection status |
+| Notification access (Android) | Forward phone notifications to your watch |
+| Calendar and reminders | Add items found in voice memos |
+| Photos | Pick a watchface background |
+| Internet | Firmware and model downloads, weather, and optional OpenRouter |
+
+## Data Storage and Deletion
+
+All app data is stored on your phone. You can delete it with the delete options in the app, or by uninstalling the app.
 
 ## Children's Privacy
 
