@@ -42,6 +42,8 @@ export const useFirmwareManagement = (githubConfig, loadFile) => {
       return;
     }
     if (downloadRef.current) return;
+    const previousStatus = downloadStatus;
+    const previousFallback = fallbackAsset;
     const controller = new AbortController();
     downloadRef.current = controller;
     setIsDownloading(true);
@@ -49,9 +51,16 @@ export const useFirmwareManagement = (githubConfig, loadFile) => {
     setDownloadStatus(`Downloading ${asset.name}...`);
     try {
       const file = await downloadRelease(asset, controller.signal, (percentage) => setDownloadStatus(`Downloading ${asset.name}${percentage === null ? "..." : `: ${percentage}%`}`));
-      await loadFile(file);
-      setSelectedAssetId(asset.id);
-      setDownloadStatus("");
+      const loaded = await loadFile(file);
+      if (loaded) {
+        setSelectedAssetId(asset.id);
+        setDownloadStatus("");
+      } else if (loaded === false) {
+        setDownloadStatus("The downloaded package could not be loaded. See Firmware package for details.");
+      } else {
+        setDownloadStatus(previousStatus);
+        setFallbackAsset(previousFallback);
+      }
     } catch (error) {
       if (controller.signal.aborted) setDownloadStatus("Download cancelled.");
       else {

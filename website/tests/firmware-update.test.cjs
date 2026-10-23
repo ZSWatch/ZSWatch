@@ -445,18 +445,29 @@ test("hardware filters distinguish boards, and release results exclude unrelated
   } finally { global.fetch = previousFetch; }
 });
 
-test("CI discovery skips non-firmware runs before deduplicating branches", async () => {
+test("CI discovery queries only the firmware workflow and deduplicates runs and branches", async () => {
   const previousFetch = global.fetch;
   try {
     const run = (id, branch) => ({ id, head_branch: branch, conclusion: "success", actor: { login: "dev" } });
-    global.fetch = async (url) => ({ ok: true, json: async () => {
+    const requests = [];
+    global.fetch = async (url) => { requests.push(url); return { ok: true, json: async () => {
       if (url.includes("/artifacts")) return { artifacts: url.includes("/10/") ? [] : [{ id: 1, name: "watchdk@1_debug", expired: false }, { id: 2, name: "zswatch@1_release", expired: true }] };
       if (url.includes("branch=main")) return { workflow_runs: [run(10, "main"), run(9, "main")] };
-      return { workflow_runs: [run(8, "feature"), run(7, "feature"), run(6, "main")] };
-    } });
+      return { workflow_runs: [run(10, "main"), run(8, "feature"), run(7, "feature"), run(6, "main"), { ...run(5, "failed"), conclusion: "failure" }, run(4, "gh-pages")] };
+    } }; };
     const builds = await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" });
     assert.deepEqual(builds.map((run) => [run.branch, run.runId]), [["main", 9], ["feature", 8]]);
     assert.equal(builds[0].artifacts.length, 1);
+    const discovery = requests.filter((url) => !url.includes("/artifacts"));
+    assert.equal(discovery.length, 2);
+    assert.ok(discovery.every((url) => url.includes("/actions/workflows/ci.yml/runs?")));
+    assert.ok(discovery.every((url) => url.includes("status=success")));
+    assert.ok(discovery.some((url) => url.includes("branch=main") && url.includes("per_page=10")));
+    assert.ok(discovery.some((url) => url.includes("per_page=50")));
+    assert.deepEqual(requests.filter((url) => url.includes("/artifacts")).map((url) => Number(url.match(/runs\/(\d+)/)[1])), [10, 9, 8]);
+    requests.length = 0;
+    assert.equal((await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" }, 1)).length, 1);
+    assert.equal(requests.filter((url) => url.includes("/artifacts")).length, 2);
   } finally { global.fetch = previousFetch; }
 });
 
@@ -676,4 +687,94 @@ test("disconnect invalidates queued NUS commands before a new connection can rec
   assert.equal(received.join(""), 'GB({"t":"ver"})');
   assert.equal(watch.smpEnabled, false);
   watch.cleanup();
+});
+
+// Exercise hook callbacks with persistent state/refs and explicit rerenders.
+// Effects are omitted: these tests cover package loading, not browser lifecycle.
+function hookHarness(relativePath, exportName, args, dependencies = {}) {
+  const filename = path.resolve(__dirname, relativePath);
+  const localRequire = require("node:module").createRequire(filename);
+  const slots = [];
+  let cursor = 0;
+  const hooks = {
+    useState(initial) {
+      const index = cursor++;
+      if (!(index in slots)) slots[index] = initial;
+      return [slots[index], (next) => { slots[index] = typeof next === "function" ? next(slots[index]) : next; }];
+    },
+    useRef(initial) {
+      const index = cursor++;
+      if (!(index in slots)) slots[index] = { current: initial };
+      return slots[index];
+    },
+    useEffect() {},
+    useCallback(callback) { return callback; },
+  };
+  const { code } = babel.transformSync(fs.readFileSync(filename, "utf8"), {
+    filename, configFile: false, babelrc: false,
+    plugins: [require.resolve("@babel/plugin-transform-modules-commonjs")],
+  });
+  const exports = {};
+  new Function("require", "exports", code)((name) => {
+    if (name === "react") return hooks;
+    if (name === "@docusaurus/router") return { useHistory: () => ({}) };
+    return dependencies[name] || localRequire(name);
+  }, exports);
+  return () => { cursor = 0; return exports[exportName](...args); };
+}
+
+test("package loading distinguishes success, parse failure and busy without replacing the current package", async () => {
+  let finishPreparing;
+  const render = hookHarness("../src/components/FirmwareUpdate/hooks/useFirmwareUpdate.js", "useFirmwareUpdate", [{
+    imageInfo,
+    ensureUpdateReady: () => new Promise((resolve) => { finishPreparing = resolve; }),
+    cancelUpload() {},
+  }, false, true]);
+  const valid = await dfu(1);
+  const loaded = await render().loadFile(valid);
+  assert.equal(loaded.name, valid.name);
+  assert.equal(render().selection, loaded);
+  assert.equal(await render().loadFile(new File(["not a zip"], "bad.zip")), false);
+  assert.equal(render().selection, loaded);
+  assert.match(render().error, /Invalid ZIP/);
+
+  let finishReading;
+  const reading = render().loadFile({ name: valid.name, arrayBuffer: () => new Promise((resolve) => { finishReading = resolve; }) });
+  const readingStatus = render().status;
+  assert.equal(await render().loadFile(valid), null);
+  assert.equal(render().status, readingStatus);
+  finishReading(await valid.arrayBuffer());
+  await reading;
+
+  const updating = render().handleFileUpload();
+  const updatingStatus = render().status;
+  assert.equal(render().activity, "updating");
+  assert.equal(await render().loadFile(valid), null);
+  assert.equal(render().status, updatingStatus);
+  render().cancel();
+  finishPreparing();
+  await updating;
+  assert.match(render().error, /cancelled/);
+});
+
+test("release catalog marks only loaded packages selected and preserves status when the loader is busy", async () => {
+  let result = { name: "good.zip" };
+  const file = new File(["package"], "release.zip");
+  const render = hookHarness("../src/components/FirmwareUpdate/hooks/useFirmwareManagement.js", "useFirmwareManagement", [{}, async () => result], {
+    "../utils/githubApi": { downloadRelease: async (_asset, _signal, progress) => { progress(100); return file; } },
+  });
+  await render().selectRelease({ id: 1, name: "good.zip" });
+  assert.equal(render().selectedAssetId, 1);
+  assert.equal(render().downloadStatus, "");
+  result = false;
+  await render().selectRelease({ id: 2, name: "bad.zip" });
+  assert.equal(render().selectedAssetId, 1);
+  assert.match(render().downloadStatus, /package could not be loaded/);
+  assert.equal(render().fallbackAsset, null, "A parse failure does not suggest downloading the same file again");
+  const previousStatus = render().downloadStatus;
+  result = null;
+  await render().selectRelease({ id: 3, name: "busy.zip" });
+  assert.equal(render().selectedAssetId, 1);
+  assert.equal(render().downloadStatus, previousStatus);
+  assert.equal(render().isDownloading, false);
 });

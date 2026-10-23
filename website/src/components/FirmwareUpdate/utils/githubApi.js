@@ -23,8 +23,8 @@ export async function fetchReleases(config) {
 
 export async function fetchArtifacts(config, numRuns = 10) {
   const [recent, main] = await Promise.all([
-    githubJson(config, "actions/runs?per_page=50&status=success"),
-    githubJson(config, "actions/runs?branch=main&status=success&per_page=10"),
+    githubJson(config, "actions/workflows/ci.yml/runs?per_page=50&status=success"),
+    githubJson(config, "actions/workflows/ci.yml/runs?branch=main&status=success&per_page=10"),
   ]);
   const seenRuns = new Set();
   const seenBranches = new Set();

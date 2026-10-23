@@ -20,4 +20,4 @@ Open **Logs** and click **Start capture** to stream firmware logs, with filterin
 
 ## Crash Reports
 
-Open **Crash reports** and click **Check watch** to download the stored crash dump, Up to 20 reports are kept in browser storage, so download the ones you want to keep. **Erase from watch…** removes the dump from the watch after confirmation.
+Open **Crash reports** and click **Check watch** to download the stored crash dump. Up to 20 reports are kept in browser storage, so download the ones you want to keep. **Erase from watch…** removes the dump from the watch after confirmation.

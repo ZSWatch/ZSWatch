@@ -61,7 +61,7 @@ export function useFirmwareUpdate(mcumgr, isSerialRecoveryMode, isConnected) {
   }, [mcumgr]);
 
   const loadFile = async (file, rotate = rotated, slot = imageNumber) => {
-    if (!file || operationRef.current || loadingRef.current) return;
+    if (!file || operationRef.current || loadingRef.current) return null;
     loadingRef.current = true;
     setActivity("loading");
     setError("");
@@ -73,9 +73,11 @@ export function useFirmwareUpdate(mcumgr, isSerialRecoveryMode, isConnected) {
       setRotated(rotate);
       setProgress(null);
       log(`${loaded.name}: ${loaded.images.length} firmware image(s)${loaded.filesystem ? " + filesystem" : ""} ready.`);
+      return loaded;
     } catch (failure) {
       setError(failure.message);
       log(failure.message);
+      return false;
     } finally {
       loadingRef.current = false;
       setActivity("idle");
