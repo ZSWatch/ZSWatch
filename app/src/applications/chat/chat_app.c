@@ -16,7 +16,7 @@
  */
 
 /*
- * Chat by voice; the phone answers with an OpenRouter model.
+ * Chat by voice; the phone answers.
  * Questions are ordinary recordings named "chat_..." (new question) or
  * "chatr_..." (reply to the shown answer), so they sync like voice memos.
  * The phone keeps the conversation; the watch only shows the latest answer.
@@ -46,7 +46,6 @@ LOG_MODULE_REGISTER(chat_app, CONFIG_ZSW_CHAT_APP_LOG_LEVEL);
 #define POPUP_DISMISS_MS       (30 * 1000)
 #define POPUP_TOP              46
 
-/* Has the Latin-1 letters (å, ä, ö) that answers use. */
 LV_FONT_DECLARE(lv_font_montserrat_14_full);
 
 typedef enum {
@@ -66,7 +65,6 @@ static char answer[ZSW_CHAT_MAX_ANSWER];
 static K_MUTEX_DEFINE(answer_lock);
 static struct k_work answer_work;
 
-/* Shows answers, also on top of other apps. */
 static struct {
     lv_obj_t *cont;
     lv_obj_t *body;
@@ -333,7 +331,6 @@ static void on_answer_event(const struct zbus_channel *chan)
     k_work_submit(&answer_work);
 }
 
-/* Lets HIL tests drive the same paths as the buttons. */
 static void render_async(void *data)
 {
     ARG_UNUSED(data);
@@ -349,7 +346,6 @@ static int cmd_chat(const struct shell *sh, size_t argc, char **argv)
         shell_print(sh, "state=%d popup=%d answer=%s", state, popup.cont != NULL, answer);
         return 0;
     }
-    /* Not via LVGL: lv_async_call does not run while the display sleeps. */
     for (int i = 0; i < ARRAY_SIZE(actions); i++) {
         if (strcmp(argv[1], actions[i]) != 0) {
             continue;

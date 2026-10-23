@@ -43,7 +43,7 @@ struct zsw_voice_memo_result_event {
 
 #define ZSW_CHAT_MAX_ANSWER 1024
 
-/* An OpenRouter answer to a question recorded by the Chat app. */
+/* An answer to a question recorded by the Chat app. */
 struct zsw_chat_answer_event {
     char text[ZSW_CHAT_MAX_ANSWER];
     char filename[32];

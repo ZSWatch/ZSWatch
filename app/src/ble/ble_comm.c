@@ -83,10 +83,8 @@ static const struct bt_data ad[] = {
 #endif
 };
 
-// "ZSWatch E3": the last address byte tells watches nearby apart.
 static char device_name[sizeof(CONFIG_BT_DEVICE_NAME) + 3];
 
-// Scan response; flags belong in the advertising data only.
 static struct bt_data ad_nus[] = {
     BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UUID_TRANSPORT_VAL),
     BT_DATA(BT_DATA_NAME_COMPLETE, device_name, 0),
@@ -207,7 +205,7 @@ static void set_device_name(void)
     size_t count = 1;
 
     bt_id_get(&addr, &count);
-    snprintk(device_name, sizeof(device_name), "%s %02X", CONFIG_BT_DEVICE_NAME, addr.a.val[0]);
+    snprintk(device_name, sizeof(device_name), "%s-%02X", CONFIG_BT_DEVICE_NAME, addr.a.val[0]);
     ad_nus[1].data_len = strlen(device_name);
     int err = bt_set_name(device_name);
     if (err) {
