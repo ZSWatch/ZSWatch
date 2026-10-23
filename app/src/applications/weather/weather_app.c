@@ -183,7 +183,7 @@ static void fetch_weather_data(double lat, double lon)
     char weather_url[512];
     snprintf(weather_url, sizeof(weather_url), HTTP_REQUEST_URL_FMT, lat, lon, WEATHER_UI_NUM_FORECASTS);
     int ret = zsw_ble_http_get(weather_url, http_rsp_cb);
-    if (ret != 0 && ret != -EBUSY) {
+    if (ret != 0) {
         LOG_ERR("Failed to send HTTP request: %d", ret);
         if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
             weather_ui_set_error("Failed fetching weather");
