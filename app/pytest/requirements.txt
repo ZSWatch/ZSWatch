@@ -30,6 +30,7 @@ pytest-html
 bleak
 pytest-asyncio
 smpclient
+PyYAML
 
 ppk2-api
 # bench/swd.py: ELF symbol lookup

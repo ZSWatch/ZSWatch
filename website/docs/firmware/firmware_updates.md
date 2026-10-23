@@ -71,6 +71,40 @@ The WatchDK firmware build is named:
 
 - `watchdk@1_nrf5340_cpuapp_debug`
 
+## Local BLE updates (macOS and Linux)
+
+For development, `bench.dfu` installs a local `dfu_application.zip` over BLE.
+Use Python 3.11+ in a virtual environment with `bleak`, `smpclient` and `PyYAML`
+installed. Run the commands from `app/pytest` in the firmware repository and
+select a device entry from `devices.yaml` or `devices_local.yaml`:
+
+```bash
+python -m bench.ble scan
+python -m bench.ble --device NAME pair
+python -m bench.dfu --device NAME ../build/dfu_application.zip
+python -m bench.ble --device NAME logs
+```
+
+Disconnect the phone first; the watch accepts one BLE connection. For the
+first computer connection, enable **Pairable** in **Settings → Bluetooth**
+on the watch and accept the computer's pairing prompt. On macOS, run from
+Terminal and allow Bluetooth access in **System Settings → Privacy & Security
+→ Bluetooth**. Linux selects the configured MAC address; macOS uses the
+advertised name `ZSWatch-XX` (the last MAC byte), overridable with `ble_name`.
+
+The updater enables SMP, skips images already running, resumes interrupted
+uploads, checks the uploaded hashes, marks the images pending, reboots, and
+confirms them after checking they booted. The network core is skipped unless
+`--net` is passed. `--no-confirm` leaves new images unconfirmed for a test boot.
+It refuses to update during a recording or while another build is pending.
+Use firmware for the correct board, and upload changed image resources before
+installing firmware; this command handles firmware only.
+
+The `logs` command streams BLE logs and reconnects after disconnects. Stop it
+with Ctrl+C. See the repository's
+[bench README](https://github.com/ZSWatch/ZSWatch/blob/main/app/pytest/bench/README.md)
+for setup and library examples.
+
 ## Method B: Flash via Debugger (SWD)
 
 Use this method if you have a debugger connected (for example J-Link, or Nordic nRF54L15 DK) and a 10-pin 1.27mm SWD cable.
