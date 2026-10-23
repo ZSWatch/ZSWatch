@@ -445,14 +445,14 @@ test("hardware filters distinguish boards, and release results exclude unrelated
   } finally { global.fetch = previousFetch; }
 });
 
-test("CI discovery queries only the firmware workflow and deduplicates runs and branches", async () => {
+test("CI discovery uses the PR and main firmware workflows and deduplicates runs and branches", async () => {
   const previousFetch = global.fetch;
   try {
     const run = (id, branch) => ({ id, head_branch: branch, conclusion: "success", actor: { login: "dev" } });
     const requests = [];
     global.fetch = async (url) => { requests.push(url); return { ok: true, json: async () => {
       if (url.includes("/artifacts")) return { artifacts: url.includes("/10/") ? [] : [{ id: 1, name: "watchdk@1_debug", expired: false }, { id: 2, name: "zswatch@1_release", expired: true }] };
-      if (url.includes("branch=main")) return { workflow_runs: [run(10, "main"), run(9, "main")] };
+      if (url.includes("/workflows/build-main.yml/runs?")) return { workflow_runs: [run(10, "main"), run(9, "main")] };
       return { workflow_runs: [run(10, "main"), run(8, "feature"), run(7, "feature"), run(6, "main"), { ...run(5, "failed"), conclusion: "failure" }, run(4, "gh-pages")] };
     } }; };
     const builds = await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" });
@@ -460,7 +460,8 @@ test("CI discovery queries only the firmware workflow and deduplicates runs and 
     assert.equal(builds[0].artifacts.length, 1);
     const discovery = requests.filter((url) => !url.includes("/artifacts"));
     assert.equal(discovery.length, 2);
-    assert.ok(discovery.every((url) => url.includes("/actions/workflows/ci.yml/runs?")));
+    assert.ok(discovery.some((url) => url.includes("/actions/workflows/ci.yml/runs?per_page=50")));
+    assert.ok(discovery.some((url) => url.includes("/actions/workflows/build-main.yml/runs?branch=main")));
     assert.ok(discovery.every((url) => url.includes("status=success")));
     assert.ok(discovery.some((url) => url.includes("branch=main") && url.includes("per_page=10")));
     assert.ok(discovery.some((url) => url.includes("per_page=50")));
