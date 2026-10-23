@@ -12,6 +12,7 @@ const FileUploadSection = ({
   onFileUpload,
   onEraseFiles,
   onConfirmFiles,
+  advanced = false,
   isConnected = false,
   isSerialRecoveryMode = true,
 }) => {
@@ -43,19 +44,20 @@ const FileUploadSection = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Enhanced Drag & Drop Zone */}
       <div className="relative">
         <input 
-          type="file" 
+          type="file"
+          aria-label="Select firmware package"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
           onChange={onFileChange}
           ref={fileInputRef}
-          accept=".zip,.bin"
+          accept={advanced ? ".zip,.bin" : ".zip"}
         />
         <div 
           className={`
-            relative border-2 border-dashed rounded-xl p-4 text-center transition-all duration-200
+            relative border-2 border-dashed rounded-lg p-3 text-center transition-all duration-200
             ${isDragOver 
               ? 'border-zswatch-primary bg-zswatch-primary/5 scale-105' 
               : 'border-gray-300 dark:border-gray-600 hover:border-zswatch-primary/50 hover:bg-zswatch-primary/5'
@@ -66,11 +68,11 @@ const FileUploadSection = ({
           onDrop={handleDrop}
         >
           <div className={`transition-all duration-200 ${isDragOver ? 'scale-110' : ''}`}>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              {isDragOver ? 'Drop your files here' : 'Upload Firmware Files'}
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              {isDragOver ? 'Drop your files here' : 'Choose firmware ZIP'}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-2">
-              Drag and drop the <code>dfu_application.zip</code> from your firmware package here
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-0">
+              {advanced ? "Choose or drop a firmware ZIP or standalone BIN." : "Choose or drop a firmware ZIP. No extraction needed."}
             </p>
           </div>
         </div>
@@ -140,13 +142,13 @@ const FileUploadSection = ({
                   <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
                     {fileInfo.isUploaded && (
                       <span className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-1 rounded text-xs">
-                        ✅ Done
+                        ✅ Uploaded
                       </span>
                     )}
                     {fileInfo.isUploading && (
                       <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded text-xs flex items-center gap-1">
                         <div className="w-2 h-2 border border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        {fileInfo.uploadPercentage || 0}%
+                        {fileUploadPercentage || 0}%
                       </span>
                     )}
                   </div>
@@ -167,7 +169,7 @@ const FileUploadSection = ({
           className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div className="relative">
-            {isFileUploadInProgress ? 'Uploading...' : 'Upload Firmware'}
+            {isFileUploadInProgress ? 'Updating...' : 'Update Firmware'}
           </div>
         </button>
         {!isSerialRecoveryMode && (
@@ -193,6 +195,7 @@ const FileUploadSection = ({
           </>
         )}
       </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">Uploads the selected firmware, applies it and restarts the watch automatically.</p>
 
     </div>
   );

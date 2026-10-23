@@ -33,11 +33,13 @@ import TabItem from '@theme/TabItem';
   <TabItem value="ble" label="Over BLE / USB (Web)">
   :::note Prerequisites
   - ZSWatch must be flashed with functional firmware.
-  - On the watch, go to **Apps → Update** and enable **USB** and/or **BLE** before starting.
+  - For USB, open **Apps → Update** on the watch and enable **USB**.
+  - The web updater enables Bluetooth updates automatically. For a first connection to the computer, enable **Pairable** in **Settings → Bluetooth** on the watch and accept pairing on the computer.
+  - On older firmware that does not support automatic Bluetooth setup, enable **BLE** in **Apps → Update** manually.
   - The image resources file (`lvgl_resources_raw.bin`) is bundled in every firmware download from [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases) and [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions).
   - Downloading from **GitHub Actions** requires you to be logged in to GitHub.
   :::
-  Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions.
+  Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions. You can select the complete firmware package and use **Update firmware + resources** to upload both firmware and resources, or select `lvgl_resources_raw.bin` in **File System** to upload resources separately.
 
   </TabItem>
   <TabItem value="terminal" label="From terminal">

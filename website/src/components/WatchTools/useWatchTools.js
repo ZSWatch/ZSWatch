@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import WatchToolsManager from "./WatchToolsManager";
+import { useHistory } from "@docusaurus/router";
+import { useWatchSession } from "../WatchSession/context";
+import { SCREENS } from "../FirmwareUpdate/constants";
 
-export default function useWatchTools() {
-  const manager = useRef(null);
+export function useWatchToolsConnection(session) {
+  const history = useHistory();
+  const manager = useRef(session.mcumgr);
   const operation = useRef(null);
   const alive = useRef(false);
   const [available, setAvailable] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState({});
+  const sessionConnected = session.screen === SCREENS.CONNECTED;
+  const connected = sessionConnected && session.transport === "ble";
+  const deviceInfo = session.deviceInfo;
   const [phase, setPhase] = useState("idle");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -17,36 +21,32 @@ export default function useWatchTools() {
   useEffect(() => {
     alive.current = true;
     setAvailable(Boolean(navigator.bluetooth));
-    const connection = new WatchToolsManager({ logger: { info() {}, error: console.error } });
-    manager.current = connection;
-    connection.onDeviceInfo((info) => { if (alive.current) setDeviceInfo(info); });
-    connection.onDisconnect(() => { if (alive.current) setConnected(false); });
     return () => {
       alive.current = false;
       operation.current?.abort();
-      connection.disconnect().catch(() => {});
     };
   }, []);
 
   useEffect(() => {
     if (!busy || phase === "connecting") return;
+    const unblock = history.block(() => false);
     const warn = (event) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", warn);
     let lock, released = false;
     navigator.wakeLock?.request("screen").then((value) => { lock = value; if (released) value.release(); }).catch(() => {});
-    return () => { released = true; window.removeEventListener("beforeunload", warn); lock?.release(); };
-  }, [busy, phase]);
+    return () => { unblock(); released = true; window.removeEventListener("beforeunload", warn); lock?.release(); };
+  }, [busy, phase, history]);
 
   async function connect(deviceName) {
     if (operation.current || !manager.current) return;
     const connection = manager.current;
     const controller = new AbortController();
     operation.current = controller;
-    setError(""); setStatus("Choose your watch in the Bluetooth device list."); setPhase("connecting");
+    setError(""); setStatus("Connecting to watch..."); setPhase("connecting");
     try {
-      await connection.connect({ transport: "ble", filters: deviceName.trim() ? [{ namePrefix: deviceName.trim() }] : null });
-      if (alive.current && manager.current === connection) { setConnected(true); setPhase("idle"); setStatus("Connected. Watch tools are ready."); }
-      else await connection.disconnect();
+      const ok = await session.handleConnect({ transport: "ble", deviceName: deviceName.trim() });
+      if (!ok) { setStatus(""); setPhase("idle"); return; }
+      if (alive.current && manager.current === connection) { setPhase("idle"); setStatus("Connected. Watch tools are ready."); }
     } catch (failure) {
       if (alive.current && manager.current === connection) { setError(failure.name === "NotFoundError" ? "No watch selected. Connect again when ready." : failure.message); setStatus(""); setPhase("idle"); }
     } finally { if (operation.current === controller) operation.current = null; }
@@ -54,13 +54,13 @@ export default function useWatchTools() {
 
   async function disconnect() {
     if (operation.current) return;
-    await manager.current?.disconnect();
-    if (alive.current) { setDeviceInfo({}); setStatus("Disconnected."); }
+    await session.handleDisconnect();
+    if (alive.current) { setStatus("Disconnected."); }
   }
 
   async function run(action, getBytes) {
     const connection = manager.current;
-    if (operation.current || !connection?.isConnected()) return false;
+    if (operation.current || session.preparingFirmware || !connected || !connection?.isConnected()) return false;
     const controller = new AbortController();
     operation.current = controller;
     setError(""); setProgress(null);
@@ -79,7 +79,7 @@ export default function useWatchTools() {
       if (alive.current) { setPhase("success"); setStatus(action === "apply" ? "Background applied. Your watch is ready." : "Default background restored."); }
       return true;
     } catch (failure) {
-      if (alive.current) { setError(failure.message); setStatus(""); setPhase("idle"); setConnected(connection.isConnected()); }
+      if (alive.current) { setError(failure.message); setStatus(""); setPhase("idle"); }
       return false;
     } finally { if (operation.current === controller) operation.current = null; }
   }
@@ -88,7 +88,7 @@ export default function useWatchTools() {
 
   async function perform(kind, message, action) {
     const connection = manager.current;
-    if (operation.current || !connection?.isConnected()) return { ok: false };
+    if (operation.current || session.preparingFirmware || !connected || !connection?.isConnected()) return { ok: false };
     const controller = new AbortController();
     operation.current = controller;
     setError(""); setProgress(null); setPhase(kind); setStatus(message);
@@ -97,12 +97,14 @@ export default function useWatchTools() {
       if (alive.current) { setPhase("success"); setStatus(""); }
       return { ok: true, value };
     } catch (failure) {
-      if (alive.current) { setError(failure.message); setStatus(""); setPhase("idle"); setConnected(connection.isConnected()); }
+      if (alive.current) { setError(failure.message); setStatus(""); setPhase("idle"); }
       return { ok: false };
     } finally { if (operation.current === controller) operation.current = null; }
   }
 
-  return { available, connected, deviceInfo, phase, busy, status, error, progress, connect, disconnect, clearMessages,
+  return { available, connected, sessionConnected, transport: session.transport, deviceName: session.deviceName, watchName: session.mcumgr.name || session.deviceName, handleDeviceNameChange: session.handleDeviceNameChange, deviceInfo, phase, busy: busy || session.preparingFirmware || session.screen === SCREENS.CONNECTING, status: phase === "connecting" ? session.connectionStatus || status : status, error: error || session.connectionError, progress, connect, disconnect, clearMessages,
     manager, perform,
     apply: (getBytes) => run("apply", getBytes), restore: () => run("reset"), cancel: () => operation.current?.abort() };
 }
+
+export default function useWatchTools() { return useWatchSession().tools; }

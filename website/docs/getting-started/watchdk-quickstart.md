@@ -56,10 +56,13 @@ We recommend updating to the latest firmware as the first thing you do.
 
 ### Enable Updates on the Watch
 
-Before any USB or BLE update, you must enable it on the watch:
+The web updater enables **Bluetooth updates automatically** when connecting.
+For your first connection to a computer, open **Settings → Bluetooth** on the
+watch, enable **Pairable**, and accept pairing on the computer when connecting.
 
-1. On the watch, navigate to **Apps → Update**.
-2. Set **USB** and/or **BLE** to **ON** depending on which method you plan to use.
+For **USB updates**, open **Apps → Update** on the watch and turn on **USB**.
+Older firmware that does not support automatic Bluetooth setup may require
+turning on **BLE** there manually.
 
 ### Choose Your Update Method
 
@@ -68,7 +71,7 @@ Before any USB or BLE update, you must enable it on the watch:
 
   This method requires no extra hardware.
 
-  1. Make sure you enabled USB or BLE updates on the watch (see above).
+  1. Prepare USB or first-time Bluetooth pairing as described above.
   2. Go to [zswatch.dev/update](https://zswatch.dev/update).
   3. Follow the on-screen instructions to flash via USB or BLE.
 
@@ -86,11 +89,11 @@ Before any USB or BLE update, you must enable it on the watch:
 
 ## Step 3 - Upload Image Resources
 
-Many icons and images in the ZSWatch UI are stored in external flash and are **not** included in the firmware binary itself. They need to be uploaded separately. The image resources file (`lvgl_resources_raw.bin`) is included in the firmware download package, so you already have it.
+Many icons and images in the ZSWatch UI are stored in external flash and are **not** included in the firmware binary itself. The image resources file (`lvgl_resources_raw.bin`) is included in the firmware download package. If you used **Update firmware + resources** in the web updater, these resources were uploaded together with the firmware and you can skip this step.
 
 The **easiest method** is the web updater, no debugger required:
 
-1. On the watch, go to **Apps → Update** and enable **USB** and/or **BLE**.
+1. For USB, enable **USB** in **Apps → Update** on the watch. Bluetooth updates are enabled automatically by the web updater; for a first connection, enable **Pairable** in **Settings → Bluetooth**.
 2. Go to [zswatch.dev/update](https://zswatch.dev/update).
 3. Follow the on-screen instructions to upload image resources via USB or BLE.
 

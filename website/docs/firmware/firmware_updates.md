@@ -8,14 +8,17 @@ This page describes how to update ZSWatch firmware on WatchDK.
 
 ## Enable Updates on the Watch
 
-The **ZSWatch companion app** enables update mode automatically when you start
-a firmware update — no manual step is needed on the watch.
+The **ZSWatch companion app** and [web updater](https://zswatch.dev/update)
+enable Bluetooth firmware updates automatically. You do not need to open
+**Apps → Update** or turn on **BLE** when using them.
 
-For the **web updater** (zswatch.dev/update) or **nRF Device Manager**, you
-still need to enable updates manually:
+For your first Bluetooth connection to a computer, go to **Settings → Bluetooth**
+on the watch, enable **Pairable**, then connect in the web updater and accept
+pairing on your computer.
 
-1. On the watch, go to **Apps → Update**.
-2. Set **USB** and/or **BLE** to **ON**.
+For **USB updates**, go to **Apps → Update** on the watch and turn on **USB**.
+For **nRF Device Manager**, turn on **BLE** there manually. Older firmware that
+does not support automatic Bluetooth setup may also require this manual step.
 
 ## Firmware Download Contents
 
@@ -34,7 +37,7 @@ GitHub requires you to be logged in to download **GitHub Actions** artifacts. If
 | `lvgl_resources_raw.hex` | RAW filesystem image for `nrfjprog` flashing |
 | `qspi_mx25u51245.ini` | QSPI flash configuration for `nrfjprog` (required for `--qspiini`) |
 
-After updating firmware, you typically also need to upload the matching **image resources** so icons and graphics display correctly. See [Image Resources](../development/image_resources.md) for details.
+Image resources need to match the firmware's icons and graphics. You can keep the installed resources when they are unchanged; otherwise upload the matching resources from the same package. See [Image Resources](../development/image_resources.md) for details.
 
 ## WatchDK With an Older Bootloader
 
@@ -53,9 +56,14 @@ bootloader and removes the issue.
 
 ## Method A: Web Updater (USB or BLE)
 
-1. Enable USB and/or BLE updates on the watch.
-2. Open https://zswatch.dev/update.
-3. Select a WatchDK firmware image.
+1. For USB, enable **USB** in **Apps → Update** on the watch. For a first Bluetooth connection, enable **Pairable** in **Settings → Bluetooth**.
+2. Open [zswatch.dev/update](https://zswatch.dev/update), choose USB or Bluetooth, and connect. Bluetooth update mode is enabled automatically, and the watch's reported hardware selects the matching firmware filter.
+3. Under **Choose firmware**, select a release or download a CI build. You can also open a complete ZIP in **Firmware package**; no manual extraction is needed.
+4. Choose **Update firmware** for a faster update that keeps the current image resources. Choose **Update firmware + resources** when the new version changes icons or graphics. The combined action appears when the ZIP includes resources and requires application mode. The watch restarts automatically after the update.
+
+For Bluetooth connections, **Name filter** filters the browser's device list by name prefix. For example, `ZSWatch` includes names such as `ZSWatch AA:BB:CC`. Matching is case-sensitive. Clear the field to show all devices. **Connect watch** always opens the filtered device picker so you can choose which watch to connect.
+
+The updater and Watch Tools share the same connection toolbar. **Device details** is collapsed by default; expand it to see hardware, firmware and battery information. Installed firmware slots and shell commands are under **Installed images & diagnostics**.
 
 ### Firmware file naming
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 const FileSystemUpload = ({
+  hasFile = false,
   fileFsInputRef,
   fileSystemUploadStatus,
   fileSystemUploadProgress,
@@ -36,11 +37,12 @@ const FileSystemUpload = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Enhanced File System Drag & Drop Zone */}
       <div className="relative">
         <input 
-          type="file" 
+          type="file"
+          aria-label="Select filesystem image"
           ref={fileFsInputRef}
           onChange={onFileSystemSelection}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
@@ -48,7 +50,7 @@ const FileSystemUpload = ({
         />
         <div 
           className={`
-            relative border-2 border-dashed rounded-xl p-4 text-center transition-all duration-200
+            relative border-2 border-dashed rounded-lg p-3 text-center transition-all duration-200
             ${isDragOver 
               ? 'border-zswatch-secondary bg-zswatch-secondary/5 scale-105' 
               : 'border-gray-300 dark:border-gray-600 hover:border-zswatch-secondary/50 hover:bg-zswatch-secondary/5'
@@ -59,16 +61,11 @@ const FileSystemUpload = ({
           onDrop={handleDrop}
         >
           <div className={`transition-all duration-200 ${isDragOver ? 'scale-110' : ''}`}>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
               {isDragOver ? 'Drop your file system file here' : 'Upload File System'}
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Drag and drop your <code>lvgl_resources_raw.bin</code> file here to upload icons and graphics.
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              This file is included in the firmware download package from{' '}
-              <a href="https://github.com/ZSWatch/ZSWatch/releases" target="_blank" rel="noopener noreferrer" className="underline text-zswatch-primary">GitHub Releases</a>{' '}
-              or <a href="https://github.com/ZSWatch/ZSWatch/actions" target="_blank" rel="noopener noreferrer" className="underline text-zswatch-primary">GitHub Actions</a>.
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-0">
+              Choose or drop <code>lvgl_resources_raw.bin</code> from your firmware package.
             </p>
           </div>
         </div>
@@ -125,7 +122,7 @@ const FileSystemUpload = ({
           <div className="flex gap-3">
             <button 
               onClick={onFileSystemUploadStart}
-              disabled={!canUploadFilesystem || fileSystemUploadProgress !== null}
+              disabled={!hasFile || !canUploadFilesystem || fileSystemUploadProgress !== null}
               className="flex-1 px-4 py-2 text-sm font-medium transition-all border rounded group bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="relative">
@@ -135,6 +132,7 @@ const FileSystemUpload = ({
           </div>
         </div>
       )}
+      <p className="text-xs text-gray-500 dark:text-gray-400">The watch restarts automatically after a successful filesystem upload.</p>
     </div>
   );
 };

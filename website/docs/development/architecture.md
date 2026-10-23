@@ -187,6 +187,8 @@ Incoming BLE data is parsed and published to `ble_comm_data_chan` with a **type 
 
 Outbound commands (e.g., music play/pause) flow in reverse: the app publishes to `music_control_data_chan`, and the BLE module picks it up and sends it to the phone.
 
+The watch prefers a 15 ms BLE connection interval. Discovery, sensor streaming and SMP transfers request zero peripheral latency. When none of them needs an active link, the watch requests a peripheral latency of 29, allowing up to 450 ms between attended connection events while keeping the base interval fast for reconnects. The central decides whether to accept these parameters. Interval changes wait for the MTU exchange, and the five-second discovery hold starts only after the active parameters take effect.
+
 :::tip Custom Watchface Backgrounds
 Custom watchface backgrounds can be uploaded via BLE. See the [Watch Tools background guide](../getting-started/watch-tools.md#background) for instructions.
 :::

@@ -1,187 +1,74 @@
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { artifactUrl, boardFromAsset, compatibleAssets } from "../utils/githubApi";
+import { boardFromHardwareVersion } from "../utils/watchBluetooth";
+import styles from "./PrebuiltFirmwares.module.css";
 
-const PrebuiltFirmwares = ({ 
-  firmwares, 
-  isFetchingFirmwares, 
-  onFetchFirmwares, 
-  onDownloadFirmware,
-  isConnected = false
-}) => {
-  const [expandedBranches, setExpandedBranches] = useState({});
-  const filteredFirmwares = firmwares.filter((firmware) => firmware.artifacts && firmware.artifacts.length > 0);
+const sources = [["releases", "Releases"], ["builds", "CI Builds"]];
+const date = (value) => value ? new Date(value).toLocaleDateString() : "";
+const buildTypeOf = (name) => /_debug(?:\.zip)?$/i.test(name) ? "Debug" : /_release(?:\.zip)?$/i.test(name) ? "Release" : "Firmware";
 
-  const getBuildType = (artifactName) => {
-    const lowerName = (artifactName || "").toLowerCase();
-    if (lowerName.includes("_release") || lowerName.endsWith("release")) return "release";
-    if (lowerName.includes("_debug") || lowerName.endsWith("debug")) return "debug";
-    return "";
+export default function PrebuiltFirmwares({ manager, githubConfig, disabled, hardwareVersion }) {
+  const [source, setSource] = useState("releases");
+  const [selectedVersion, setSelectedVersion] = useState("");
+  const tabRefs = useRef([]);
+  const detectedBoard = boardFromHardwareVersion(hardwareVersion);
+  const [boardOverride, setBoardOverride] = useState(null);
+  const board = boardOverride ?? detectedBoard;
+  useEffect(() => { setBoardOverride(null); }, [detectedBoard]);
+  const [buildType, setBuildType] = useState("");
+  const { releases, firmwares, isFetchingReleases, isFetchingFirmwares, errors, refresh, selectRelease, downloadStatus, fallbackAsset, isDownloading, cancelDownload, demoMode, selectedAssetId } = manager;
+  const fetching = source === "releases" ? isFetchingReleases : isFetchingFirmwares;
+  const assets = [...releases.flatMap((item) => item.assets), ...firmwares.flatMap((item) => item.artifacts)];
+  const boards = [...new Set([detectedBoard, ...assets.map((asset) => boardFromAsset(asset.name))].filter(Boolean))].sort();
+  const filtered = (items) => compatibleAssets(items, board).filter((asset) => !buildType || buildTypeOf(asset.name).toLowerCase() === buildType);
+  const versions = (source === "releases" ? releases : firmwares).filter((item) => filtered(item.assets || item.artifacts).length);
+  const keyOf = (item) => String(item.id ?? item.runId);
+  const current = versions.find((item) => keyOf(item) === selectedVersion) || versions[0];
+  const selectSource = (key) => {
+    setSource(key);
+    setSelectedVersion("");
+    if (!(key === "releases" ? releases : firmwares).length && !errors[key]) refresh(key);
+  };
+  const tabKeyDown = (event, index) => {
+    const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : ["ArrowLeft", "ArrowRight"].includes(event.key) ? 1 - index : null;
+    if (next === null) return;
+    event.preventDefault();
+    selectSource(sources[next][0]);
+    tabRefs.current[next]?.focus();
   };
 
-  const getDisplayName = (artifactName) => {
-    if (!artifactName) return "";
-    return artifactName.replace(/_(debug|release)$/i, "");
-  };
-
-  const toggleExpanded = (branch) => {
-    setExpandedBranches(prev => ({
-      ...prev,
-      [branch]: !prev[branch]
-    }));
-  };
-
-  // Group firmwares by branch, skipping runs without artifacts
-  const firmwaresByBranch = filteredFirmwares.reduce((acc, firmware) => {
-    if (!acc[firmware.branch]) {
-      acc[firmware.branch] = [];
-    }
-    acc[firmware.branch].push(firmware);
-    return acc;
-  }, {});
-
-  return (
-    <div className="space-y-3">
-      {/* Loading/Results */}
-      {isFetchingFirmwares ? (
-        <div className="text-center py-6">
-          <div className="inline-flex items-center justify-center w-6 h-6 bg-zswatch-secondary rounded-full animate-spin mb-2">
-            <span className="text-white text-xs">⏳</span>
-          </div>
-          <p className="text-gray-700 dark:text-white text-sm">Loading firmwares...</p>
-        </div>
-      ) : filteredFirmwares.length === 0 ? (
-        <div className="text-center py-6 bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg">
-          <span className="text-2xl mb-2 block">📦</span>
-          <p className="text-gray-700 dark:text-white text-sm">No firmwares fetched yet</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Click "Fetch Latest" to get builds</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {Object.entries(firmwaresByBranch).map(([branch, branchFirmwares]) => (
-            <div key={branch} className="border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
-              {/* Branch Header */}
-              <div className="bg-gray-50 dark:bg-black/20 px-3 py-2 border-b border-gray-200 dark:border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{branch}</span>
-                    {branch === 'main' && (
-                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
-                        Release
-                      </span>
-                    )}
-                    {branch !== 'main' && (
-                      <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
-                        Debug
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {branchFirmwares.length} build{branchFirmwares.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-
-              {/* Branch Builds */}
-              <div className="space-y-1">
-                {branchFirmwares.map((firmware, index) => {
-                  const branchKey = `${branch}-${index}`;
-                  const shortSha = firmware.sha ? firmware.sha.substring(0, 7) : "";
-                  const commitMsg = firmware.commitMessage
-                    ? firmware.commitMessage.split("\n")[0]
-                    : "";
-                  const buildDate = firmware.createdAt
-                    ? new Date(firmware.createdAt).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : "";
-                  return (
-                    <div key={index} className="border-b border-gray-100 dark:border-white/5 last:border-b-0">
-                      <button
-                        onClick={() => toggleExpanded(branchKey)}
-                        className="w-full flex items-center justify-between p-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 transition-all"
-                      >
-                        <div className="flex flex-col items-start gap-0.5 overflow-hidden text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600 dark:text-gray-300">by {firmware.user}</span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {firmware.artifacts.length} artifact{firmware.artifacts.length !== 1 ? 's' : ''}
-                            </span>
-                            {buildDate && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                • {buildDate}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 w-full">
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-                              {shortSha || "unknown"}
-                            </span>
-                            <span
-                              className="text-xs text-gray-600 dark:text-gray-300 truncate"
-                              title={firmware.commitMessage || ""}
-                            >
-                              {commitMsg || "No commit message"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs transition-transform ${expandedBranches[branchKey] ? 'rotate-180' : ''}`}>
-                            ▼
-                          </span>
-                        </div>
-                      </button>
-                      
-                      {expandedBranches[branchKey] && (
-                        <div className="px-3 pb-2">
-                          <div className="space-y-1">
-                            {firmware.artifacts.map((artifact, artifactIndex) => (
-                              <div
-                                key={artifactIndex}
-                                className="flex items-center gap-2 min-w-0 p-2 bg-gray-50 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 rounded border border-gray-200 dark:border-white/10 transition-colors"
-                              >
-                                <div className="flex-1 min-w-0 flex items-center gap-2">
-                                  <span
-                                    className="min-w-0 text-xs text-gray-700 dark:text-gray-300 font-mono truncate"
-                                    title={artifact.name}
-                                  >
-                                    {getDisplayName(artifact.name)}
-                                  </span>
-                                  {getBuildType(artifact.name) && (
-                                    <span
-                                      className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-medium ${
-                                        getBuildType(artifact.name) === 'release'
-                                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'
-                                          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                                      }`}
-                                    >
-                                      {getBuildType(artifact.name) === 'release' ? 'Release' : 'Debug'}
-                                    </span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => onDownloadFirmware(firmware.runId, artifact.id)}
-                                  className="shrink-0 bg-zswatch-primary text-black px-2 py-1 rounded text-xs font-medium hover:bg-zswatch-primary/90 transition-all"
-                                >
-                                  Download
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+  return <div className={styles.catalog}>
+    <div role="tablist" aria-label="Firmware source" className={styles.tabs}>
+      {sources.map(([key, label], index) => <button key={key} ref={(node) => { tabRefs.current[index] = node; }} id={`firmware-${key}-tab`} role="tab" aria-selected={source === key} aria-controls="firmware-source-panel" tabIndex={source === key ? 0 : -1} className={`${styles.tab} ${source === key ? styles.selectedTab : ""}`} onClick={() => selectSource(key)} onKeyDown={(event) => tabKeyDown(event, index)}>
+        <span className={styles.tabTitle}>{label}</span>
+      </button>)}
     </div>
-  );
-};
-
-export default PrebuiltFirmwares;
+    {demoMode && <p className={styles.hint} role="status">Demo data · no firmware downloads</p>}
+    <div className={styles.filters}>
+      <label className={styles.field}>Hardware<select aria-label="Hardware" value={board} onChange={(event) => setBoardOverride(event.target.value)}><option value="">All hardware</option>{boards.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+      <label className={styles.field}>Build type<select aria-label="Build type" value={buildType} onChange={(event) => setBuildType(event.target.value)}><option value="">All builds</option><option value="release">Release</option><option value="debug">Debug</option></select></label>
+      <button disabled={fetching || disabled} className={styles.button} onClick={() => refresh(source)}>{fetching ? "Refreshing…" : "↻ Refresh"}</button>
+    </div>
+    <p className={styles.hint}>{detectedBoard ? `Detected: ${detectedBoard}` : "Hardware is detected on connection."}</p>
+    {errors[source] && <div role="alert" className={styles.error}>{errors[source]}{process.env.NODE_ENV === "development" && <a href="?githubDemo=1">Use sample GitHub data for UI testing</a>}</div>}
+    {downloadStatus && <div role="status" className={styles.notice}><p>{downloadStatus}</p>{isDownloading && <button className={styles.button} onClick={cancelDownload}>Cancel download</button>}{fallbackAsset && <a href={fallbackAsset.browser_download_url} target="_blank" rel="noopener noreferrer">Download {fallbackAsset.name} ↗</a>}</div>}
+    <div id="firmware-source-panel" role="tabpanel" aria-labelledby={`firmware-${source}-tab`}>
+      {fetching && <p role="status">Loading {source === "releases" ? "releases" : "CI builds"}…</p>}
+      {!fetching && !current && <div className={styles.notice}>No matching {source === "releases" ? "releases" : "CI builds"}. Change the filters or refresh.</div>}
+      {current && <>
+        <label className={styles.field}>{source === "releases" ? "Firmware version" : "Branch / build"}<select aria-label={source === "releases" ? "Firmware version" : "Branch / build"} value={keyOf(current)} onChange={(event) => setSelectedVersion(event.target.value)}>{versions.map((item) => <option key={keyOf(item)} value={keyOf(item)}>{source === "releases" ? `${item.name || item.tag_name} · ${date(item.published_at)}` : `${item.branch} · ${item.sha.slice(0, 7)} · ${date(item.createdAt)}`}</option>)}</select></label>
+        <div className={styles.version}>
+          {current.html_url && <a className={styles.releaseNotes} href={current.html_url} target="_blank" rel="noopener noreferrer">Release notes ↗</a>}
+          {current.commitMessage && <p className={styles.commit} title={current.commitMessage}>{current.sha.slice(0, 7)} · {current.commitMessage.split("\n")[0]}</p>}
+          <div className={styles.imageList} aria-label="Firmware images">
+          {filtered(current.assets || current.artifacts).map((asset) => <div key={asset.id} className={`${styles.image} ${selectedAssetId === asset.id ? styles.selectedImage : ""}`}>
+            <div className={styles.imageInfo}><div className={styles.imageTitle}><strong>{boardFromAsset(asset.name) || "Firmware"}</strong><span className={styles.badge}>{buildTypeOf(asset.name)}</span>{selectedAssetId === asset.id && <span className={styles.imageSelected}>✓ Selected</span>}{!!(asset.size || asset.size_in_bytes) && <span className={styles.hint}>{((asset.size || asset.size_in_bytes) / 1048576).toFixed(1)} MB</span>}</div><span className={styles.filename} title={asset.name}>{asset.name}</span></div>
+            {source === "builds" && !asset.demo ? <a className={styles.selectImage} href={artifactUrl(githubConfig, current.runId, asset.id)} target="_blank" rel="noopener noreferrer">Download ZIP ↗</a> : <button className={styles.selectImage} disabled={disabled || isDownloading} onClick={() => selectRelease(asset)}>{asset.demo ? "Select (demo)" : selectedAssetId === asset.id ? "Reselect" : "Select"}</button>}
+          </div>)}
+          </div>
+        </div>
+      </>}
+    </div>
+    {source === "builds" && !demoMode && <p className={styles.hint}>CI ZIPs require GitHub sign-in. Open the download in Firmware Package.</p>}
+  </div>;
+}
