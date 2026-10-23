@@ -54,6 +54,14 @@ if ZSW_BMI270
     config ZSW_BMI270_TRIGGER
         bool
 
+    config ZSW_BMI270_STEP_DEBUG
+        bool "Step counter interrupt diagnostics"
+        depends on ZSW_BMI270_TRIGGER
+        help
+            Count step counter interrupts, log the step counter configuration and
+            interrupt mapping on every reconfiguration, and only report
+            SENSOR_TRIG_STEP when the step counter interrupt bit is set.
+
 module = ZSW_BOSCH_BMI270
 module-str = ZSW_BOSCH_BMI270
 source "subsys/logging/Kconfig.template.log_config"

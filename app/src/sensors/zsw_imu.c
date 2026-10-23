@@ -25,6 +25,7 @@
 
 #include "events/accel_event.h"
 #include "sensors/zsw_imu.h"
+#include "sensors/zsw_imu_step_debug.h"
 
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
@@ -76,6 +77,8 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
     zsw_imu_evt_t evt;
 
     LOG_DBG("BMI270 trigger handler. Type: %u", trig->type);
+
+    zsw_imu_step_debug_on_trigger(trig->type);
 
     switch ((int)trig->type) {
         case SENSOR_TRIG_SIG_MOTION: {
@@ -162,6 +165,8 @@ int zsw_imu_init(void)
     bmi270_trigger.chan = SENSOR_CHAN_ALL;
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
+
+    zsw_imu_step_debug_start(bmi270);
 
     // Always track whether the watch is moving or stationary.
     k_work_reschedule(&motion_tracking_work, K_NO_WAIT);

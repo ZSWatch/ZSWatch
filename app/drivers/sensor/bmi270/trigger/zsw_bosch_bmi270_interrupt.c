@@ -17,6 +17,7 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/atomic.h>
 
 #include "../zsw_bosch_bmi270.h"
 #include "../private/zsw_bosch_bmi270_config.h"
@@ -26,6 +27,19 @@ LOG_MODULE_REGISTER(zsw_bosch_bmi270_trigger, CONFIG_ZSW_BOSCH_BMI270_LOG_LEVEL)
 #ifdef CONFIG_ZSW_BMI270_TRIGGER_OWN_THREAD
 static K_KERNEL_STACK_DEFINE(bmi2_thread_stack, CONFIG_ZSW_BMI270_THREAD_STACK_SIZE);
 static struct k_thread bmi2_thread;
+#endif
+
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+static atomic_t dbg_gpio_irqs;
+static atomic_t dbg_processed_irqs;
+static atomic_t dbg_step_irqs;
+
+void zsw_bmi270_step_debug_get(struct zsw_bmi270_step_debug *p_out)
+{
+    p_out->gpio_irqs = atomic_get(&dbg_gpio_irqs);
+    p_out->processed_irqs = atomic_get(&dbg_processed_irqs);
+    p_out->step_irqs = atomic_get(&dbg_step_irqs);
+}
 #endif
 
 /** @brief
@@ -69,6 +83,10 @@ static void bmi2_gpio_on_interrupt_callback(const struct device *p_dev, struct g
 
     struct bmi270_data *data = CONTAINER_OF(p_cb, struct bmi270_data, gpio_handler);
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    atomic_inc(&dbg_gpio_irqs);
+#endif
+
     bmi2_handle_int(data->dev);
 }
 
@@ -92,6 +110,17 @@ static void bmi2_process_int(const struct device *p_dev)
 
     LOG_DBG("Status: %u", status);
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    atomic_inc(&dbg_processed_irqs);
+    if (status & BMI270_STEP_CNT_STATUS_MASK) {
+        atomic_inc(&dbg_step_irqs);
+        sensor_data.type = BMI2_STEP_COUNTER;
+        bmi270_get_feature_data(&sensor_data, 1, &data->bmi2);
+        LOG_INF("Step INT, status 0x%04x steps %u", status, sensor_data.sens_data.step_counter_output);
+        memset(&sensor_data, 0, sizeof(sensor_data));
+    }
+#endif
+
     if (status & BMI270_SIG_MOT_STATUS_MASK) {
         LOG_DBG("BMI270_SIG_MOT_STATUS_MASK");
 
@@ -103,8 +132,8 @@ static void bmi2_process_int(const struct device *p_dev)
     }
 
     // TODO: For some reason step count ISR is nor firing, for now
-    // just poll it whenever there is another event.
-    if (true || status & BMI270_STEP_CNT_STATUS_MASK) {
+    // just poll it whenever there is another event. The debug build only reports real step INTs.
+    if (!IS_ENABLED(CONFIG_ZSW_BMI270_STEP_DEBUG) || (status & BMI270_STEP_CNT_STATUS_MASK)) {
         if (status & BMI270_STEP_CNT_STATUS_MASK) {
             LOG_DBG("BMI270_STEP_CNT_STATUS_MASK");
 

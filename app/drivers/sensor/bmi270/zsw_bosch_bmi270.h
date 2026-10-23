@@ -127,6 +127,20 @@
 */
 #define BOSCH_BMI270_GESTURE_FLICK_OUT  5
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+#include <stdint.h>
+
+struct zsw_bmi270_step_debug {
+    uint32_t gpio_irqs;
+    uint32_t processed_irqs;
+    uint32_t step_irqs;
+};
+
+/** @brief Read the interrupt counters since boot.
+*/
+void zsw_bmi270_step_debug_get(struct zsw_bmi270_step_debug *p_out);
+#endif
+
 #define BOSCH_BMI270_ACC_ODR_25D32_HZ   0x01
 #define BOSCH_BMI270_ACC_ODR_25D16_HZ   0x02
 #define BOSCH_BMI270_ACC_ODR_25D8_HZ    0x03
