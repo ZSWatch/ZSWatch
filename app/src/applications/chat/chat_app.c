@@ -170,7 +170,6 @@ static void build_answer_view(lv_obj_t *parent, int top, int bottom_space)
     lv_obj_set_style_pad_bottom(text, 20, 0);
 }
 
-
 static void popup_close(void)
 {
     if (state == STATE_RECORDING) {
