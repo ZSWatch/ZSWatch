@@ -205,5 +205,7 @@ static void popup_close(void)
     }
 
     // Only a dismissal removes the notification, a timeout keeps it.
-    on_close_cb(dismissed ? active_notif_id : 0);
+    if (dismissed) {
+        on_close_cb(active_notif_id);
+    }
 }
