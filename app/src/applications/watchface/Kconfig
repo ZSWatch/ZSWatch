@@ -18,4 +18,19 @@ menu "Watchface"
         bool
         prompt "Add minimal watchface"
         default y
+
+    config WATCHFACE_LIVING_SKY
+        bool
+        prompt "Add Living Sky watchface (animated weather and sky tint)"
+        default y
+
+    config WATCHFACE_LIVING_SKY_ANIMATION_SECONDS
+        int "Living Sky animation burst length in seconds"
+        depends on WATCHFACE_LIVING_SKY
+        range 1 30
+        default 6
+        help
+          The weather effects animate for this long after the face is shown,
+          the display turns on or the face is tapped. Then they stop and the
+          last frame stays as a static image.
 endmenu
