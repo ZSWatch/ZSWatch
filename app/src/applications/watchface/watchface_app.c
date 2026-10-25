@@ -306,6 +306,11 @@ void watchface_change(int index)
     }
 
     watchfaces[watchface_settings.watchface_index]->remove();
+    if (watchface_views_created) {
+        // Changed while the watchface is shown, OPEN_WATCHFACE below adds the dropdown again.
+        zsw_watchface_dropdown_ui_remove();
+        watchface_views_created = false;
+    }
 
     // Make sure we have the latest settings
     int err = settings_load_subtree_direct(ZSW_SETTINGS_WATCHFACE, settings_load_handler_watchface, &watchface_settings);
