@@ -102,7 +102,9 @@ typedef struct delayed_work_item {
 static void general_work(struct k_work *item);
 
 static void check_notifications(void);
+static void notify_weather(void);
 static void update_ui_from_event(struct k_work *item);
+static void display_active_work_handler(struct k_work *item);
 static void watchface_gesture_cb(lv_event_t *e);
 
 static void connected(struct bt_conn *conn, uint8_t err);
@@ -121,6 +123,8 @@ static delayed_work_item_t general_work_item;
 static struct k_work_sync cancel_work_sync;
 
 static K_WORK_DEFINE(update_ui_work, update_ui_from_event);
+static K_WORK_DEFINE(display_active_work, display_active_work_handler);
+static bool display_active = true;
 static ble_comm_data_type_t last_data_update_type;
 static ble_comm_weather_t last_weather_data;
 static ble_comm_music_info_t last_music_info;
@@ -364,8 +368,7 @@ static void refresh_ui(void)
     zsw_watchface_dropdown_ui_set_battery_info(last_batt_evt.percent, last_batt_evt.is_charging, last_batt_evt.tte,
                                                last_batt_evt.ttf);
     if (strlen(last_weather_data.report_text) > 0) {
-        watchfaces[watchface_settings.watchface_index]->set_weather(
-            last_weather_data.temperature_c, last_weather_data.weather_code, last_weather_data.humidity);
+        notify_weather();
     }
     if (zsw_imu_fetch_num_steps(&steps) == 0) {
         // TODO: Add calculation for distance and kcal
@@ -448,6 +451,36 @@ static void general_work(struct k_work *item)
     }
 }
 
+static void notify_weather(void)
+{
+    watchface_ui_api_t *wf = watchfaces[watchface_settings.watchface_index];
+
+    if (wf->set_weather) {
+        wf->set_weather(last_weather_data.temperature_c, last_weather_data.weather_code, last_weather_data.humidity);
+    }
+
+    if (wf->set_weather_detailed) {
+        const watchface_weather_t weather = {
+            .temperature_c = last_weather_data.temperature_c,
+            .humidity = last_weather_data.humidity,
+            .wind = last_weather_data.wind,
+            .wind_direction = last_weather_data.wind_direction,
+            .weather_code = last_weather_data.weather_code,
+        };
+        wf->set_weather_detailed(&weather);
+    }
+}
+
+// Runs on the system workqueue, same as LVGL rendering, so the face may touch LVGL here.
+static void display_active_work_handler(struct k_work *item)
+{
+    ARG_UNUSED(item);
+
+    if (running && watchface_views_created && watchfaces[watchface_settings.watchface_index]->set_display_active) {
+        watchfaces[watchface_settings.watchface_index]->set_display_active(display_active);
+    }
+}
+
 static void check_notifications(void)
 {
     uint32_t num_unread = zsw_notification_manager_get_num();
@@ -485,8 +518,7 @@ static void update_ui_from_event(struct k_work *item)
                     last_weather_data.weather_code,
                     last_weather_data.wind,
                     last_weather_data.wind_direction);
-            watchfaces[watchface_settings.watchface_index]->set_weather(
-                last_weather_data.temperature_c, last_weather_data.weather_code, last_weather_data.humidity);
+            notify_weather();
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_SET_TIME) {
             k_work_reschedule(&date_work.work, K_NO_WAIT);
         } else if (last_data_update_type == BLE_COMM_DATA_TYPE_MUSIC_INFO) {
@@ -587,6 +619,8 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
             k_work_cancel_delayable_sync(&clock_work.work, &cancel_work_sync);
             k_work_cancel_delayable_sync(&date_work.work, &cancel_work_sync);
             k_work_cancel_delayable_sync(&update_work.work, &cancel_work_sync);
+            display_active = false;
+            k_work_submit(&display_active_work);
         } else if (event->state == ZSW_ACTIVITY_STATE_ACTIVE) {
             is_suspended = false;
             watchfaces[watchface_settings.watchface_index]->ui_invalidate_cached();
@@ -594,6 +628,8 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan)
             __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL clock_work");
             __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL clock_work");
+            display_active = true;
+            k_work_submit(&display_active_work);
         }
     }
 }
