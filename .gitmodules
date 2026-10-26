@@ -31,3 +31,6 @@
 [submodule "app/src/ext_drivers/opus"]
 	path = app/src/ext_drivers/opus
 	url = https://github.com/xiph/opus.git
+[submodule "hardware/Watch-3D"]
+	path = hardware/Watch-3D
+	url = https://github.com/ZSWatch/Watch-3D.git

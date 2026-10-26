@@ -2,27 +2,69 @@
 sidebar_position: 1
 ---
 
-# WatchDK Quick Start
-
-![ZSWatch Development Kit (WatchDK)](../../blog/2025-12-05-dk-and-hr/watchdk.jpg)
-
-This guide walks you through setting up your **ZSWatch Development Kit (WatchDK)** for the first time - from powering on to having a fully working smartwatch UI with icons and images.
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-:::warning Known Issues from Early Shipments
-- **Back button not working**: On some early DKs the RTC does not work reliably when powered from USB, which can cause the back button to stop responding. Latest firmware detects this at runtime and falls back automatically. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the required hardware config.
+# Quick Start
 
-- **Production test firmware still running (bootloader not flashed):** If your watch does not boot into the normal ZSWatch UI and appears to be running test firmware, the bootloader may not have been programmed during production. If this is the case you need to follow the debugger instructions below.
-- **Missing jumper:** Before starting, check that a jumper is present on the flash chip header (marked by the arrow tip in the image below). If it is missing, place a spare jumper there. If you do not have a spare, you can take the one from the vibration motor header. The vibration motor will stop working, but it is the least essential function.
+This guide walks you through setting up your **ZSWatch** or **ZSWatch Development Kit (WatchDK)** for the first time, from powering on to having a fully working smartwatch UI with icons and images.
 
-  ![WatchDK jumper location](/img/watchdk_elecrow_jumper.png)
+Pick your hardware below. The choice applies to every tab on this page.
 
-**If you have any further issue or question please reach out to us on [Discord](https://discord.gg/8XfNBmDfbY) (preferred) or send an email to [mail@zswatch.dev](mailto:mail@zswatch.dev) and we will help you resolve it.**
-:::
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+  {/* TODO: replace with a photo of the assembled zswatch@1 */}
+  <img src="/img/real_photos/stainless_front_no_bg.png" alt="ZSWatch" width="220" />
+
+  The watch form factor (`zswatch@1`). If you built the watch yourself, start with the [Assembly guide](./assembly.md).
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
+
+  ![ZSWatch Development Kit (WatchDK)](../../blog/2025-12-05-dk-and-hr/watchdk.jpg)
+
+  The development kit (`watchdk@1`). It ships assembled and tested, with the display and vibration motor connected.
+
+  </TabItem>
+</Tabs>
+
+## Before You Start
+
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+  Make sure the watch is fully assembled and the battery is connected. See the [Assembly guide](./assembly.md).
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
+
+  :::warning Known Issues from Early Shipments
+  - **Back button not working**: On some early DKs the RTC does not work reliably when powered from USB, which can cause the back button to stop responding. Latest firmware detects this at runtime and falls back automatically. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the required hardware config.
+  - **Production test firmware still running (bootloader not flashed):** If your watch does not boot into the normal ZSWatch UI and appears to be running test firmware, the bootloader may not have been programmed during production. If this is the case you need to follow the debugger instructions below.
+  - **Missing jumper:** Before starting, check that a jumper is present on the flash chip header (marked by the arrow tip in the image below). If it is missing, place a spare jumper there. If you do not have a spare, you can take the one from the vibration motor header. The vibration motor will stop working, but it is the least essential function.
+
+    ![WatchDK jumper location](/img/watchdk_elecrow_jumper.png)
+  :::
+
+  </TabItem>
+</Tabs>
+
+**If you have any issue or question, reach out on [Discord](https://discord.gg/8XfNBmDfbY) (preferred) or email [mail@zswatch.dev](mailto:mail@zswatch.dev) and we will help you resolve it.**
 
 ## What You Need
+
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+| Item | Required? | Notes |
+|------|-----------|-------|
+| **USB-C cable** | Yes | For charging and optional USB firmware updates |
+| **ZSWatch** (assembled, battery connected) | Yes | See the [Assembly guide](./assembly.md) |
+| **Debugger** + **ZSWatch Minimal Dock** or USB-C breakout board | Optional | Only needed to flash via SWD or read UART logs. See [Debugger Setup](#optional-debugger-setup) |
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
 
 | Item | Required? | Notes |
 |------|-----------|-------|
@@ -32,22 +74,71 @@ import TabItem from '@theme/TabItem';
 | **10-pin 1.27mm SWD cable** | Optional | Needed to connect the debugger to the WatchDK. Example cables: [Adafruit](https://www.adafruit.com/product/1675), [Amazon](https://www.amazon.com/Treedix-Ribbon-Connector-1-27mm-Connecting/dp/B09JK5HD3X) |
 | **Battery** (LiPo) | Optional | The DK runs fine from USB power alone. See more at [Battery & RTC Jumper](#battery--rtc-jumper) section at the end |
 
-## Optional: Debugger Setup (nRF54L15 DK)
+  </TabItem>
+</Tabs>
 
-If you plan to develop firmware or flash via SWD, connect a Nordic **nRF54L15 DK** as a debugger. For full wiring details (SWD cable, GND, UART log pin connections, and RTT alternative), see the **[Debugger Hardware Setup](../development/debugging.md#debugger-hardware-setup-nrf54l15-dk)** section in the Debugging guide.
+## Optional: Debugger Setup
+
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+  The watch routes SWD, reset and UART out through its USB-C connector. To reach them, plug the watch into a small board that breaks out the USB-C pins:
+
+  - **[ZSWatch Minimal Dock](https://github.com/ZSWatch/ZSWatch-Minimal-Dock-HW)** (recommended): has a standard 10-pin SWD header, a UART header, and provides the 1.8 V VTref the debugger needs. A second USB-C port passes USB through to your computer.
+  - **Any USB-C breakout board** with a plug and all pins broken out (search for "USB-C test board" or "USB-C breakout"). Connect the pins from the pinout below to the debugger yourself, and give the debugger a **1.8 V VTref**.
+
+  ![ZSWatch Minimal Dock](/img/minimal_dock.jpg)
+
+  <details>
+  <summary>USB-C pinout (only needed with a USB-C breakout board)</summary>
+
+  | Signal | USB-C pins |
+  |--------|------------|
+  | SWDIO | A10, B10 |
+  | SWDCLK | A11, B11 |
+  | RESET | A8 (SBU1), B8 (SBU2) |
+  | UART TX (logs from the watch) | A3, B3 |
+  | USB D+ | A6, B6 |
+  | USB D- | A7, B7 |
+  | GND | A1, A12, B1, B12 |
+
+  </details>
+
+  For wiring the nRF54L15 DK and reading logs, see the **[Debugger Hardware Setup](../development/debugging.md#debugger-hardware-setup-nrf54l15-dk)** section in the Debugging guide.
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
+
+  If you plan to develop firmware or flash via SWD, connect a Nordic **nRF54L15 DK** as a debugger. For full wiring details (SWD cable, GND, UART log pin connections, and RTT alternative), see the **[Debugger Hardware Setup](../development/debugging.md#debugger-hardware-setup-nrf54l15-dk)** section in the Debugging guide.
+
+  </TabItem>
+</Tabs>
 
 ## Step 1 - Power On
 
-1. Connect the USB-C cable to the WatchDK.
-2. The watch should boot into the ZSWatch UI.
-3. Try pressing the top right button to open the application picker.
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+  1. Connect the USB-C cable to charge the watch. It also starts if the battery is charged.
+  2. The watch should boot into the ZSWatch UI.
+  3. Try pressing the top right button to open the application picker.
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
+
+  1. Connect the USB-C cable to the WatchDK.
+  2. The watch should boot into the ZSWatch UI.
+  3. Try pressing the top right button to open the application picker.
+
+  :::warning Back button not responding?
+  Some DKs have an RTC power issue that can cause the back button to stop working when no battery is connected. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the fix.
+  :::
+
+  </TabItem>
+</Tabs>
 
 :::info No icons yet?
 The watch ships with firmware but **without image resources**. The UI will work, but icons and graphics will be missing until you upload them in [Step 3](#step-3---upload-image-resources).
-:::
-
-:::warning Back button not responding?
-Some DKs have an RTC power issue that can cause the back button to stop working when no battery is connected. See the [Battery & RTC Jumper](#battery--rtc-jumper) section for the fix.
 :::
 
 ## Step 2 - Update Firmware
@@ -103,16 +194,17 @@ See the full [Image Resources](../development/image_resources.md) guide for more
 :::tip Alternatively with debugger
 If you have a debugger connected, you can upload images from VS Code by pressing `Ctrl+Shift+P` and running the task **Upload Raw FS**, or from the terminal:
 ```bash
-west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
+west upload_fs --type raw --ini_file app/boards/zswatch/zswatch/support/qspi_mx25u51245.ini
 ```
 Or directly using `nrfjprog`
-```
+```bash
 nrfjprog -f nrf53 \
   --program lvgl_resources_raw.hex \
   --qspisectorerase --verify --reset \
-  --qspiini app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini \
+  --qspiini app/boards/zswatch/zswatch/support/qspi_mx25u51245.ini \
   --coprocessor CP_APPLICATION
 ```
+The QSPI `.ini` file is the same for the ZSWatch and the WatchDK.
 :::
 
 ## Step 4 - Connect Your Phone
@@ -126,7 +218,7 @@ See [Phone Setup](./phone_setup.md) for detailed pairing instructions.
 
 ## Step 5 - Done!
 
-Your WatchDK should now be running the latest firmware with all icons and images visible.
+Your watch should now be running the latest firmware with all icons and images visible.
 
 ### Navigation Controls
 
@@ -145,6 +237,10 @@ The watch can be navigated using:
 If you want to view logs or debug the firmware, see the **[Debugging guide](../development/debugging.md)**, including how to connect the nRF54L15 DK for UART logs or use RTT.
 
 ## Battery & RTC Jumper
+
+:::note WatchDK only
+This section only applies to the WatchDK. On the ZSWatch the RTC always runs from the battery.
+:::
 
 The board has a jumper that selects whether the real-time clock (RTC) is powered from USB (VSYS) or from a battery (VBAT). The two positions are shown below:
 

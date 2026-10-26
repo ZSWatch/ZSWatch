@@ -16,6 +16,7 @@ ZSWatch supports different **board targets** and **logging transports**. You com
 
 | Target | Board string | Description |
 |--------|-------------|-------------|
+| **ZSWatch** | `zswatch@1/nrf5340/cpuapp` | Current watch |
 | **WatchDK** | `watchdk@1/nrf5340/cpuapp` | Current development kit |
 | **ZSWatch Legacy v5** | `zswatch_legacy@5/nrf5340/cpuapp` | Legacy ZSWatch v5 hardware |
 | **ZSWatch Legacy v4** | `zswatch_legacy@4/nrf5340/cpuapp` | Legacy ZSWatch v4 hardware |

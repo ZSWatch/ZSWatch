@@ -7,7 +7,7 @@ sidebar_position: 2
 If the watch firmware is not working (crash loop, frozen screen, etc.), normal BLE firmware updates won't work. You can recover using the built-in MCUboot bootloader.
 
 :::tip
-For a full guide on initial setup and firmware updates, see the [WatchDK Quick Start](../getting-started/watchdk-quickstart.md).
+For a full guide on initial setup and firmware updates, see the [Quick Start](../getting-started/quickstart.md).
 :::
 
 ## Recovery Without a Debugger
