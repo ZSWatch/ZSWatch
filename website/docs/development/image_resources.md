@@ -50,6 +50,8 @@ import TabItem from '@theme/TabItem';
   west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
   ```
 
+  The ZSWatch and the WatchDK use the same `.ini` file (also in `app/boards/zswatch/zswatch/support/`).
+
   If you want to upload using only `nrfjprog` (no `west upload_fs`), use the generated hex images:
 
   ```sh
@@ -93,7 +95,7 @@ Images in ZSWatch exist in two places:
 | File type | Location | Used by | Purpose |
 |-----------|----------|---------|---------|
 | `.c` files | `app/src/images/` (and subdirectories like `icons/`, `weather_icons/`, etc.) | **Native simulator** and as source for `.bin` conversion | Compiled into the binary for native_sim; also used to generate `.bin` files |
-| `.bin` files | `app/src/images/binaries/S/` | **Real hardware** (WatchDK) | Stored in external flash, loaded at runtime via the `S:` storage prefix |
+| `.bin` files | `app/src/images/binaries/S/` | **Real hardware** (ZSWatch, WatchDK) | Stored in external flash, loaded at runtime via the `S:` storage prefix |
 
 When you build for the **native simulator**, the `.c` files are compiled directly into the binary, so images just work. When you build for **hardware**, the firmware references images from external flash. The `.bin` files in `binaries/S/` are packaged into the `lvgl_resources_raw.bin` blob that you upload to the watch.
 

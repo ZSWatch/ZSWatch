@@ -77,6 +77,12 @@ west build --build-dir app/build_dbg_dk app \
 <summary>More build examples</summary>
 
 ```bash
+# ZSWatch with UART debug logging
+west build --build-dir app/build_dbg_zswatch app \
+  --board zswatch@1/nrf5340/cpuapp -- \
+  -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf" \
+  -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay"
+
 # WatchDK with RTT debug (no overlay needed)
 west build --build-dir app/build_dbg_dk app \
   --board watchdk@1/nrf5340/cpuapp -- \
@@ -94,6 +100,8 @@ west build --build-dir app/build app \
 ```
 
 </details>
+
+For the heart rate extension board, see [Heart Rate Extension](../getting-started/heart-rate-extension.md#building-the-firmware).
 
   </TabItem>
 </Tabs>

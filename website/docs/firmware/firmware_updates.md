@@ -2,9 +2,12 @@
 sidebar_position: 1
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Firmware Updates
 
-This page describes how to update ZSWatch firmware on WatchDK.
+This page describes how to update the firmware on the ZSWatch and the WatchDK.
 
 ## Enable Updates on the Watch
 
@@ -31,7 +34,7 @@ GitHub requires you to be logged in to download **GitHub Actions** artifacts. If
 | File | Description |
 |------|-------------|
 | `dfu_application.zip` | Firmware images (zip, for USB/BLE update) |
-| `watchdk@1_nrf5340_cpuapp_debug.hex` | Firmware image (hex, for SWD flashing) |
+| `<board>_nrf5340_cpuapp_debug.hex` | Firmware image (hex, for SWD flashing) |
 | `zswatch_nrf5340_CPUNET.hex` | Network core image (hex, for SWD flashing) |
 | `lvgl_resources_raw.bin` | Image resources (icons, graphics) for USB/BLE upload |
 | `lvgl_resources_raw.hex` | RAW filesystem image for `nrfjprog` flashing |
@@ -67,21 +70,40 @@ The updater and Watch Tools share the same connection toolbar. **Device details*
 
 ### Firmware file naming
 
-The WatchDK firmware build is named:
+Firmware builds are named after the board:
 
-- `watchdk@1_nrf5340_cpuapp_debug`
+| Hardware | Firmware build |
+|----------|----------------|
+| ZSWatch | `zswatch@1_nrf5340_cpuapp_debug` |
+| WatchDK | `watchdk@1_nrf5340_cpuapp_debug` |
+
+Builds ending in `_rotated` are for a display mounted rotated (`clockwise_rotation.overlay`).
 
 ## Method B: Flash via Debugger (SWD)
 
-Use this method if you have a debugger connected (for example J-Link, or Nordic nRF54L15 DK) and a 10-pin 1.27mm SWD cable.
+Use this method if you have a debugger connected (for example J-Link, or Nordic nRF54L15 DK) and a 10-pin 1.27mm SWD cable. The ZSWatch has no SWD header of its own; connect the debugger through the Minimal Dock or a USB-C breakout board, see [Debugger Setup](../getting-started/quickstart.md#optional-debugger-setup).
 
 ### Option B1: Flash a pre-built firmware (nrfjprog)
 
 1. Download the latest firmware hex from one of:
    - https://github.com/ZSWatch/ZSWatch/releases
    - https://github.com/ZSWatch/ZSWatch/actions
-2. Connect the debugger to the WatchDK SWD header.
+2. Connect the debugger to the WatchDK SWD header, or to the Minimal Dock with the ZSWatch in it.
 3. Flash the application core (and external flash configuration):
+
+<Tabs groupId="hardware" queryString>
+  <TabItem value="zswatch" label="ZSWatch" default>
+
+```bash
+nrfjprog -f nrf53 \
+  --program zswatch@1_nrf5340_cpuapp_debug.hex \
+  --chiperase --qspisectorerase --verify --reset \
+  --qspiini qspi_mx25u51245.ini \
+  --coprocessor CP_APPLICATION
+```
+
+  </TabItem>
+  <TabItem value="watchdk" label="WatchDK">
 
 ```bash
 nrfjprog -f nrf53 \
@@ -90,6 +112,9 @@ nrfjprog -f nrf53 \
   --qspiini qspi_mx25u51245.ini \
   --coprocessor CP_APPLICATION
 ```
+
+  </TabItem>
+</Tabs>
 
 The `--qspiini` flag expects the `qspi_mx25u51245.ini` file included in the downloaded zip.
 

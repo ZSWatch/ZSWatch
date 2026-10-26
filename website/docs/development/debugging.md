@@ -21,6 +21,7 @@ The recommended debugger is the Nordic **nRF54L15 DK** (~$35), connected via a 1
 - **SWD cable**: Connect the 10-pin cable between the nRF54L15DK's Debug Out connector and the WatchDK's SWD header.
 - **UART logs**: Connect the WatchDK's **UART TxD** pin to **P0.00** on the nRF54L15 DK. This routes log output to **VCOM0** on the nRF54L15 DK. All pre-built firmwares use UART logging, open a serial terminal on VCOM0 at **115200 baud**.
 - **GND**: If no SWD cable is connected, also connect a GND wire between the two boards.
+- **ZSWatch**: The watch has no SWD or UART header itself. Put it in the [Minimal Dock](../getting-started/quickstart.md#optional-debugger-setup) and connect the SWD cable and the UART TxD wire to the dock's headers instead.
 
 :::tip No hardware for UART logs?
 If you don't have a debugger or serial adapter, compile the firmware with **RTT** enabled and view logs over the SWD connection instead. See [Compiling the Software](./compiling.md) for build options.
