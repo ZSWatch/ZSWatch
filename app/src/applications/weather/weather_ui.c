@@ -201,6 +201,8 @@ void weather_ui_set_refreshing(bool refreshing)
         return;
     }
     if (refreshing && !has_weather_data) {
+        // Drop a previous error; weather_ui_set_error() sets it after refreshing ends.
+        lv_label_set_text(ui_status_label, "");
         if (!ui_loading_spinner) {
             ui_loading_spinner = create_spinner(60, LV_ALIGN_CENTER, 0, 0);
         }

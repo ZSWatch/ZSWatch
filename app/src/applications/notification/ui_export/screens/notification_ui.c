@@ -179,7 +179,7 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     active_notifications[index].timestamp = not->timestamp;
 
     // Tapping opens the notification, where it can be answered.
-    if (not->can_reply) {
+    if (not->can_reply && IS_ENABLED(CONFIG_ZSW_NOTIFICATION_REPLY)) {
         lv_obj_t *ui_ImageReply = zsw_ui_utils_create_icon(ui_Panel, ZSW_LV_IMG_USE(mic_icon), 16, zsw_color_blue());
         lv_obj_set_align(ui_ImageReply, LV_ALIGN_CENTER);
         lv_obj_set_pos(ui_ImageReply, 42, -30);

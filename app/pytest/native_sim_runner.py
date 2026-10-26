@@ -84,6 +84,8 @@ class NativeSimDevice:
             exe = os.path.join(self.workdir, exe)
         if not os.path.isfile(exe):
             raise FileNotFoundError(f"Executable not found: {exe}")
+        exe = os.path.abspath(exe)
+        self._exe = exe
 
         # Ensure executable permission (CI artifacts may lack it)
         try:
@@ -152,7 +154,14 @@ class NativeSimDevice:
                 self._proc.kill()
                 self._proc.wait(timeout=2)
             if self.sudo:
-                subprocess.run(["sudo", "kill", "-TERM", "--", f"-{self._proc.pid}"], capture_output=True)
+                # With sudo's use_pty the firmware runs in its own session, so
+                # sudo's process group does not contain it. Match its command
+                # line, anchored so the sudo and pkill commands do not match.
+                try:
+                    subprocess.run(["sudo", "pkill", "-TERM", "-f", "--", "^" + re.escape(self._exe)],
+                                   capture_output=True, timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
             self._proc = None
 
         if self._xvfb:

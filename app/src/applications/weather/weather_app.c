@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/bluetooth/conn.h>
@@ -305,7 +306,15 @@ static void periodic_fetch_weather_data(struct k_work *work)
     k_spin_unlock(&weather_state_lock, key);
     k_work_submit(&weather_ui_work);
     int ret = ble_comm_request_gps_status(true);
-    if (ret != 0) {
+    if (ret == -ENOTCONN) {
+        // No retry: phone_connected() and the phone's time sync restart the fetch.
+        LOG_DBG("Phone not connected, waiting for it");
+        atomic_clear(&weather_refresh_pending);
+        key = k_spin_lock(&weather_state_lock);
+        weather_error = "Phone unavailable";
+        k_spin_unlock(&weather_state_lock, key);
+        k_work_submit(&weather_ui_work);
+    } else if (ret != 0) {
         LOG_DBG("Phone GPS request unavailable (%d), will retry", ret);
         refresh_failed("Phone unavailable");
     } else {
