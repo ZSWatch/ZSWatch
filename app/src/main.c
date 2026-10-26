@@ -212,7 +212,7 @@ static void open_notification_popup(void *data)
     zsw_not_mngr_notification_t *not = zsw_notification_manager_get_newest();
     if (not != NULL) {
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_NOTIFICATION);
-        zsw_notification_popup_show(not->sender, not->body, not->src, not->id, on_close_popup_notification, 10);
+        zsw_notification_popup_show(not, on_close_popup_notification, 10);
     }
     pending_not_open = false;
 }

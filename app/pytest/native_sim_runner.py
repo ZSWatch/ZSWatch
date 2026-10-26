@@ -21,6 +21,7 @@ Usage as a module::
 """
 
 import os
+import codecs
 import re
 import select
 import signal
@@ -51,14 +52,8 @@ class NativeSimDevice:
 
     def start(self):
         """Start Xvfb and zephyr.exe, find the shell PTY."""
-        # Kill leftovers
-        if self.sudo:
-            subprocess.run(["sudo", "pkill", "-f", "zephyr.exe"], capture_output=True)
-        else:
-            subprocess.run(["pkill", "-f", "zephyr.exe"], capture_output=True)
-        subprocess.run(["pkill", "-f", f"Xvfb {self.display}"], capture_output=True)
-        time.sleep(0.3)
-
+        # Only manage processes started by this instance. Another developer may
+        # have a simulator or X server running on the same machine.
         # Start Xvfb. The SDL window is 480x480 (240x240 display at 200% zoom
         # per CONFIG_SDL_DISPLAY_ZOOM_PCT=200). The virtual framebuffer must be
         # at least that large or the window gets clipped and screenshots are gray.
@@ -118,6 +113,7 @@ class NativeSimDevice:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env,
+            start_new_session=True,
         )
 
         # Background readers for stdout and stderr
@@ -131,7 +127,7 @@ class NativeSimDevice:
                 # PTY is owned by root when running with sudo, make it accessible
                 subprocess.run(["sudo", "chmod", "666", self._pty_path], capture_output=True)
             try:
-                self._pty_fd = os.open(self._pty_path, os.O_RDWR | os.O_NONBLOCK)
+                self._pty_fd = os.open(self._pty_path, os.O_RDWR | os.O_NONBLOCK | os.O_NOCTTY)
                 self._start_reader(self._pty_fd, self._pty_chunks)
                 time.sleep(0.5)  # let shell init
             except OSError:
@@ -156,7 +152,7 @@ class NativeSimDevice:
                 self._proc.kill()
                 self._proc.wait(timeout=2)
             if self.sudo:
-                subprocess.run(["sudo", "pkill", "-f", "zephyr.exe"], capture_output=True)
+                subprocess.run(["sudo", "kill", "-TERM", "--", f"-{self._proc.pid}"], capture_output=True)
             self._proc = None
 
         if self._xvfb:
@@ -235,6 +231,7 @@ class NativeSimDevice:
 
     def screenshot(self, path="/tmp/zswatch_screenshot.png"):
         """Capture the Xvfb display to a PNG file."""
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         env = os.environ.copy()
         env["DISPLAY"] = self.display
         subprocess.run(
@@ -242,6 +239,7 @@ class NativeSimDevice:
             env=env,
             capture_output=True,
             timeout=5,
+            check=True,
         )
         return path
 
@@ -253,6 +251,7 @@ class NativeSimDevice:
         self._threads.append(t)
 
     def _reader(self, fd, chunks):
+        decoder = codecs.getincrementaldecoder("utf-8")("replace")
         while not self._stop.is_set():
             try:
                 r, _, _ = select.select([fd], [], [], 0.1)
@@ -260,7 +259,7 @@ class NativeSimDevice:
                     data = os.read(fd, 8192)
                     if not data:
                         break
-                    chunks.append(data.decode("utf-8", errors="replace"))
+                    chunks.append(decoder.decode(data))
             except (OSError, ValueError):
                 break
 

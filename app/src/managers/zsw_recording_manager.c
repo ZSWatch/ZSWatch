@@ -32,7 +32,8 @@ LOG_MODULE_REGISTER(zsw_recording_manager, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 #define CODEC_RING_BUF_SIZE    2048
 // Opus encoder uses ~8-10 KB stack during opus_encode() on ARM.
 #define CODEC_THREAD_STACK     12288
-#define CODEC_THREAD_PRIO      K_PRIO_PREEMPT(5)
+// Share microphone priority so its yield lets us encode queued PCM before it overflows.
+#define CODEC_THREAD_PRIO      K_PRIO_COOP(8)
 #define MAX_OPUS_FRAME_BYTES   160
 #define OVERFLOW_LOG_INTERVAL_MS 1000
 

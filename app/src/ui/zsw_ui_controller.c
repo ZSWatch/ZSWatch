@@ -199,6 +199,24 @@ static void async_turn_off_buttons_allocation(void *unused)
     is_buttons_for_lvgl = false;
 }
 
+static void on_touch_long_pressed(lv_event_t *e)
+{
+    lv_obj_t *pressed = lv_event_get_param(e);
+
+    if (pressed && (lv_obj_check_type(pressed, &lv_slider_class) || lv_obj_check_type(pressed, &lv_button_class) ||
+                    lv_obj_check_type(pressed, &lv_arc_class))) {
+        return;
+    }
+    if (watch_state == WATCHFACE_STATE && !zsw_overlay_active()) {
+        zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
+        lv_indev_t *indev = lv_indev_active();
+        if (indev) {
+            lv_indev_wait_release(indev);
+        }
+        open_application_manager_page("Face");
+    }
+}
+
 static void on_root_screen_gesture(lv_event_t *e)
 {
     lv_indev_t *indev = lv_indev_active();
@@ -262,7 +280,7 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 break;
             }
             case LV_DIR_RIGHT: {
-                open_application_manager_page("Face");
+                open_application_manager_page(IS_ENABLED(CONFIG_APPLICATIONS_USE_TILES) ? "Tiles" : "Face");
                 break;
             }
             case LV_DIR_TOP: {
@@ -470,6 +488,7 @@ int zsw_ui_controller_init(void)
             // Clicking anywhere with this below added right now will cause a vibration, which
             // is not what we want
             // touch_indev->driver->feedback_cb = click_feedback;
+            lv_indev_add_event_cb(touch_indev, on_touch_long_pressed, LV_EVENT_LONG_PRESSED, NULL);
             break;
         }
         touch_indev = lv_indev_get_next(touch_indev);

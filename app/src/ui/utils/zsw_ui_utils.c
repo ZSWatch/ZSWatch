@@ -91,144 +91,36 @@ ZSW_LV_IMG_DECLARE(thunderstorm);
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color)
 {
-    int code_group = code / 100;
-
+    zsw_weather_condition_t condition = zsw_weather_classify(code);
     *icon_color = lv_color_white();
 
-    switch (code_group) {
-        case 2:
+    switch (condition.type) {
+        case ZSW_WEATHER_THUNDER:
             *icon_color = lv_color_hex(0xD5DFE7);
             return &stormy;
-        case 3:
+        case ZSW_WEATHER_DRIZZLE:
             *icon_color = lv_color_hex(0xD5DFE7);
             return &cloudy;
-        case 5:
-            switch (code) {
-                case 511:
-                    *icon_color = lv_color_white();
-                    return &snowy;
-                default:
-                    *icon_color = lv_color_hex(0x5275A2);
-                    return &rainy;
-            }
-        case 6:
-            *icon_color = lv_color_white();
+        case ZSW_WEATHER_RAIN:
+            *icon_color = lv_color_hex(0x5275A2);
+            return &rainy;
+        case ZSW_WEATHER_SNOW:
             return &snowy;
-        case 7:
+        case ZSW_WEATHER_FOG:
             *icon_color = lv_color_hex(0x5275A2);
             return &foggy;
-        case 8:
-            switch (code) {
-                case 800:
-                    // TODO if day sunny else moon
-                    *icon_color = lv_color_hex(0xFBD92A);
-                    return &sunny;
-                case 801:
-                    *icon_color = lv_color_white();
-                    return &partly_cloudy;
-                case 802:
-                    *icon_color = lv_color_hex(0xD5DFE7);
-                    return &partly_cloudy;
-                default:
-                    *icon_color = lv_color_hex(0xD5DFE7);
-                    return &cloudy;
+        case ZSW_WEATHER_CLEAR:
+            *icon_color = lv_color_hex(0xFBD92A);
+            return &sunny;
+        case ZSW_WEATHER_CLOUDS:
+            if (condition.intensity > 1) {
+                *icon_color = lv_color_hex(0xD5DFE7);
             }
-        default: {
+            return condition.intensity < 3 ? &partly_cloudy : &cloudy;
+        default:
             printk("Unhandled weather code: %d", code);
             return &unknown;
-        }
     }
-}
-
-int wmo_code_to_weather_code(int wmo_code)
-{
-    switch (wmo_code) {
-        case 0: {
-            return 800;
-        }
-        case 1: {
-            return 800;
-        }
-        case 2: {
-            return 800;
-        }
-        case 3: {
-            return 803;
-        }
-        case 45: {
-            return 700;
-        }
-        case 48: {
-            return 700;
-        }
-        case 51: {
-            return 700;
-        }
-        case 53: {
-            return 512;
-        }
-        case 55: {
-            return 512;
-        }
-        case 80: {
-            return 512;
-        }
-        case 81: {
-            return 512;
-        }
-        case 82: {
-            return 512;
-        }
-        case 61: {
-            return 512;
-        }
-        case 63: {
-            return 512;
-        }
-        case 65: {
-            return 512;
-        }
-        case 56: {
-            return 512;
-        }
-        case 57: {
-            return 512;
-        }
-        case 66: {
-            return 512;
-        }
-        case 67: {
-            return 512;
-        }
-        case 71: {
-            return 511;
-        }
-        case 73: {
-            return 511;
-        }
-        case 75: {
-            return 511;
-        }
-        case 77: {
-            return 511;
-        }
-        case 85: {
-            return 511;
-        }
-        case 86: {
-            return 511;
-        }
-        case 95: {
-            return 200;
-        }
-        case 96: {
-            return 200;
-        }
-        case 99: {
-            return 200;
-        }
-    }
-    return -1;
 }
 
 const void *zsw_ui_utils_icon_from_wmo_weather_code(int code, lv_color_t *color, char **text)
@@ -527,4 +419,16 @@ const char *zsw_ui_utils_month_name(int month)
         return "???";
     }
     return names[month];
+}
+
+lv_obj_t *zsw_ui_utils_create_icon(lv_obj_t *parent, const void *src, int32_t size, lv_color_t color)
+{
+    lv_obj_t *icon = lv_image_create(parent);
+    lv_image_set_src(icon, src);
+    lv_obj_set_size(icon, size, size);
+    lv_image_set_inner_align(icon, LV_IMAGE_ALIGN_CONTAIN);
+    lv_obj_set_style_image_recolor(icon, color, 0);
+    lv_obj_set_style_image_recolor_opa(icon, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(icon, LV_OBJ_FLAG_CLICKABLE);
+    return icon;
 }

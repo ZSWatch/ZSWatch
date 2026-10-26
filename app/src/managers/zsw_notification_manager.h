@@ -21,9 +21,13 @@
 
 #include "ble/ble_comm.h"
 
-/** @brief
+/** @brief Size of the sender and title fields, including the terminator.
 */
 #define ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN      50
+
+/** @brief Size of the body field, including the terminator.
+*/
+#define ZSW_NOTIFICATION_MGR_MAX_BODY_LEN       160
 
 /** @brief Maximum number of notification stored at a time.
 */
@@ -53,8 +57,9 @@ typedef struct not_mngr_notification {
     uint32_t timestamp;                                         /**< Active notification time in seconds. */
     char sender[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];            /**< Contains the notification sender (e-mail address or name in WhatsApp). */
     char title[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];             /**< */
-    char body[ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN];              /**< */
+    char body[ZSW_NOTIFICATION_MGR_MAX_BODY_LEN];               /**< */
     zsw_notification_src_t src;                                 /**< */
+    bool can_reply;                                             /**< The phone can send a dictated reply to it. */
 } zsw_not_mngr_notification_t;
 
 /** @brief Why a notification left the watch. Only a user dismissal is reported to the phone.
@@ -81,18 +86,25 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
 */
 int32_t zsw_notification_manager_remove(uint32_t id);
 
-/** @brief
+/** @brief                  Copy a stored notification.
  *  @param id               Notification ID
- *  @param notification
- *  @return
+ *  @param notification     Output
+ *  @return                 0 when found, -ENOENT otherwise
 */
-int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notifcation);
+int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notification);
 
-/** @brief
- *  @param notifications
- *  @param num_notifications
+/** @brief              Called by zsw_notification_manager_foreach().
+ *  @param notification Only valid during the call
+ *  @param user_data
 */
-void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *notifcations, uint32_t *num_notifications);
+typedef void (*zsw_notification_manager_foreach_cb_t)(const zsw_not_mngr_notification_t *notification,
+                                                      void *user_data);
+
+/** @brief          Call cb for every stored notification, oldest first, without copying them.
+ *  @param cb
+ *  @param user_data
+*/
+void zsw_notification_manager_foreach(zsw_notification_manager_foreach_cb_t cb, void *user_data);
 
 /** @brief
  *  @return

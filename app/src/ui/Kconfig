@@ -8,5 +8,18 @@ menu "UI"
         source "subsys/logging/Kconfig.template.log_config"
     endmenu
 
+    config ZSW_NOTIFICATION_REPLY
+        bool "Reply to notifications by voice"
+        default y
+        depends on APPLICATIONS_USE_VOICE_MEMO
+        help
+          Shows a Reply button on notifications the phone can answer. The reply is
+          recorded on the watch, transcribed by the phone and shown for review before
+          the phone sends it.
+
+    module = ZSW_NOTIFICATION_REPLY
+    module-str = ZSW_NOTIFICATION_REPLY
+    source "subsys/logging/Kconfig.template.log_config"
+
     rsource "utils/Kconfig"
 endmenu

@@ -21,8 +21,11 @@
 
 typedef void (*on_close_notif_cb_t)(uint32_t id);
 
-void zsw_notification_popup_show(char *title, char *body, zsw_notification_src_t icon, uint32_t id,
-                                 on_close_notif_cb_t close_cb,
+/** @brief  Show a notification, copied as the popup may wait behind another overlay.
+ *  @param close_cb             Called when the user dismissed it
+ *  @param close_after_seconds  Auto close time, 0 to stay until dismissed
+*/
+void zsw_notification_popup_show(const zsw_not_mngr_notification_t *notification, on_close_notif_cb_t close_cb,
                                  uint32_t close_after_seconds);
 
 void zsw_notification_popup_remove(void);

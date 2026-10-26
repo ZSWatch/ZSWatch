@@ -55,6 +55,14 @@ typedef struct watchface_app_evt_t {
 
 typedef void(*watchface_app_evt_listener)(watchface_app_evt_t);
 
+typedef struct watchface_weather_t {
+    int8_t temperature_c;
+    uint16_t humidity;
+    uint16_t wind;              // As reported by the phone (Gadgetbridge: km/h)
+    uint16_t wind_direction;    // Degrees, direction the wind comes from (0 = north)
+    uint16_t weather_code;      // OpenWeatherMap condition code
+} watchface_weather_t;
+
 // Most callbacks are optional
 typedef struct watchface_ui_api_t {
     void (*show)(lv_obj_t *root_screen, watchface_app_evt_listener, zsw_settings_watchface_t *settings);
@@ -65,6 +73,10 @@ typedef struct watchface_ui_api_t {
     void (*set_ble_connected)(bool connected);
     void (*set_num_notifcations)(int32_t number);
     void (*set_weather)(int8_t temperature, int weather_code, uint16_t humidity);
+    // Optional. Called in addition to set_weather, with all weather fields (wind etc.).
+    void (*set_weather_detailed)(const watchface_weather_t *weather);
+    // Optional. Face shown/display on (true), or display off (false).
+    void (*set_display_active)(bool active);
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int pressure);

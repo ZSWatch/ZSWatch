@@ -17,6 +17,8 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/logging/log.h>
 #include "cJSON.h"
@@ -33,19 +35,23 @@
 
 LOG_MODULE_REGISTER(weather_app, LOG_LEVEL_DBG);
 
-#define HTTP_REQUEST_URL_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=wind_speed_10m,temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,rain_sum,precipitation_probability_max&wind_speed_unit=ms&timezone=auto&forecast_days=%d"
+#define HTTP_REQUEST_URL_FMT "https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=wind_speed_10m,wind_direction_10m,relative_humidity_2m,temperature_2m,apparent_temperature,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&wind_speed_unit=ms&timezone=auto&forecast_days=%d"
 
-#define MAX_GPS_AGED_TIME_MS 30 * 60 * 1000
 #define WEATHER_BACKGROUND_FETCH_INTERVAL_S (30 * 60)
+#define WEATHER_RETRY_INTERVAL_S 30
 
 // Functions needed for all applications
 static void weather_app_start(lv_obj_t *root, lv_group_t *group);
 static void weather_app_stop(void);
+static void weather_app_on_ui_available(void);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
 static void periodic_fetch_weather_data(struct k_work *work);
 static void publish_weather_data(struct k_work *work);
 static void weather_data_timeout(struct k_work *work);
-static void fetch_cached_weather_data(struct k_work *work);
+static void fetch_weather_data_work_handler(struct k_work *work);
+static void update_weather_ui(struct k_work *work);
+static void show_cached_weather(void);
+static void refresh_failed(const char *error);
 
 ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 ZBUS_LISTENER_DEFINE(weather_ble_comm_lis, on_zbus_ble_data_callback);
@@ -54,24 +60,55 @@ ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, weather_ble_comm_lis, 1);
 K_WORK_DELAYABLE_DEFINE(weather_app_fetch_work, periodic_fetch_weather_data);
 K_WORK_DEFINE(weather_app_publish, publish_weather_data);
 K_WORK_DELAYABLE_DEFINE(weather_data_timeout_work, weather_data_timeout);
-K_WORK_DEFINE(weather_cached_fetch_work, fetch_cached_weather_data);
+K_WORK_DEFINE(weather_http_work, fetch_weather_data_work_handler);
+K_WORK_DEFINE(weather_ui_work, update_weather_ui);
 
 #define WEATHER_DATA_TIMEOUT_S  20
 
 ZSW_LV_IMG_DECLARE(weather_app_icon);
 
-static uint64_t last_update_gps_time;
 static uint64_t last_update_weather_time;
-static double last_lat;
-static double last_lon;
+static double pending_lat;
+static double pending_lon;
 
 static ble_comm_weather_t last_weather;
+static struct k_spinlock weather_state_lock;
+static atomic_t weather_http_pending;
+static atomic_t weather_refresh_pending;
+static const char *weather_error;
+static struct {
+    weather_ui_current_weather_data_t current;
+    weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS];
+    int num_forecasts;
+} weather_cache;
+
+static bool weather_is_stale(void)
+{
+    k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+    uint64_t updated = last_update_weather_time;
+    k_spin_unlock(&weather_state_lock, key);
+    return updated == 0 || k_uptime_get() - updated >= WEATHER_BACKGROUND_FETCH_INTERVAL_S * 1000;
+}
+
+static void phone_connected(struct bt_conn *conn, uint8_t err)
+{
+    ARG_UNUSED(conn);
+    if (!err && weather_is_stale()) {
+        // Fetch after discovery; phone time sync can start it sooner.
+        k_work_reschedule(&weather_app_fetch_work, K_SECONDS(2));
+    }
+}
+
+BT_CONN_CB_DEFINE(weather_conn_callbacks) = {
+    .connected = phone_connected,
+};
 
 static application_t app = {
     .name = "Weather",
     .icon = ZSW_LV_IMG_USE(weather_app_icon),
     .start_func = weather_app_start,
     .stop_func = weather_app_stop,
+    .ui_available_func = weather_app_on_ui_available,
     .category = ZSW_APP_CATEGORY_ROOT
 };
 
@@ -80,7 +117,6 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
     zsw_timeval_t time_now;
     weather_ui_current_weather_data_t current_weather = {0};
     weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS] = {0};
-    // TODO: We should cache the last successful weather data and populate it when app opens.
 
     if (status == BLE_HTTP_STATUS_OK) {
         zsw_clock_get_time(&time_now);
@@ -93,6 +129,8 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
         cJSON *current_temperature_2m = cJSON_GetObjectItem(current, "temperature_2m");
         cJSON *current_weather_code = cJSON_GetObjectItem(current, "weather_code");
         cJSON *current_wind_speed = cJSON_GetObjectItem(current, "wind_speed_10m");
+        cJSON *humidity = cJSON_GetObjectItem(current, "relative_humidity_2m");
+        cJSON *wind_direction = cJSON_GetObjectItem(current, "wind_direction_10m");
         cJSON *apparent_temperature = cJSON_GetObjectItem(current, "apparent_temperature");
 
         cJSON *daily_forecasts = cJSON_GetObjectItem(parsed_response, "daily");
@@ -138,36 +176,79 @@ static void http_rsp_cb(ble_http_status_code_t status, char *response)
             snprintf(forecasts[i].day, sizeof(forecasts[i].day), "%s",
                      zsw_ui_utils_day_name((time_now.tm.tm_wday + i) % 7));
         }
-        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-            weather_ui_set_weather_data(current_weather, forecasts, num_forecasts);
-            LOG_INF("Weather UI updated (%d forecasts)", num_forecasts);
-        }
 
         ble_comm_request_gps_status(false);
         last_weather.temperature_c = current_weather.temperature;
-        last_weather.humidity = 0;
-        last_weather.wind = current_weather.wind_speed;
-        last_weather.wind_direction = 0;
+        last_weather.humidity = cJSON_IsNumber(humidity) ? CLAMP(humidity->valueint, 0, 100) : 0;
+        // The Weather UI uses m/s; the shared companion weather event uses km/h.
+        last_weather.wind = CLAMP(current_weather.wind_speed * 3.6, 0, UINT16_MAX);
+        last_weather.wind_direction = cJSON_IsNumber(wind_direction) ? CLAMP(wind_direction->valueint, 0, 360) : 0;
         last_weather.weather_code = wmo_code_to_weather_code(current_weather_code->valueint);
-        strncpy(last_weather.report_text, current_weather.text, sizeof(last_weather.report_text));
+        snprintf(last_weather.report_text, sizeof(last_weather.report_text), "%s", current_weather.text);
 
         cJSON_Delete(parsed_response);
+        k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+        weather_cache.current = current_weather;
+        memcpy(weather_cache.forecasts, forecasts, sizeof(forecasts));
+        weather_cache.num_forecasts = num_forecasts;
         last_update_weather_time = k_uptime_get();
+        weather_error = NULL;
+        k_spin_unlock(&weather_state_lock, key);
+        atomic_clear(&weather_http_pending);
+        atomic_clear(&weather_refresh_pending);
+        k_work_submit(&weather_ui_work);
+        k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_BACKGROUND_FETCH_INTERVAL_S));
+        LOG_INF("Weather received and cached");
 
         k_work_submit(&weather_app_publish);
     } else {
-        LOG_ERR("HTTP request failed\n");
-        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-            weather_ui_set_error(status == BLE_HTTP_STATUS_TIMEOUT ? "Timeout" : "Failed");
-        }
+        LOG_ERR("HTTP request failed, retrying in %d s", WEATHER_RETRY_INTERVAL_S);
+        refresh_failed(status == BLE_HTTP_STATUS_TIMEOUT ? "Refresh timed out" : "Refresh failed");
     }
     return;
 
 invalid_response:
     LOG_ERR("Invalid weather response");
-    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-        weather_ui_set_error("Invalid weather data");
+    refresh_failed("Invalid weather response");
+}
+
+static void show_cached_weather(void)
+{
+    weather_ui_current_weather_data_t current;
+    weather_ui_forecast_data_t forecasts[WEATHER_UI_NUM_FORECASTS];
+    k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+    int count = weather_cache.num_forecasts;
+    current = weather_cache.current;
+    memcpy(forecasts, weather_cache.forecasts, sizeof(forecasts));
+    const char *error = weather_error;
+    k_spin_unlock(&weather_state_lock, key);
+
+    if (count) {
+        weather_ui_set_weather_data(current, forecasts, count);
     }
+    weather_ui_set_refreshing(atomic_get(&weather_refresh_pending));
+    if (error) {
+        weather_ui_set_error(error);
+    }
+}
+
+static void update_weather_ui(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
+        show_cached_weather();
+    }
+}
+
+static void refresh_failed(const char *error)
+{
+    atomic_clear(&weather_http_pending);
+    atomic_clear(&weather_refresh_pending);
+    k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+    weather_error = error;
+    k_spin_unlock(&weather_state_lock, key);
+    k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_RETRY_INTERVAL_S));
+    k_work_submit(&weather_ui_work);
 }
 
 static void publish_weather_data(struct k_work *work)
@@ -180,38 +261,63 @@ static void publish_weather_data(struct k_work *work)
 
 static void fetch_weather_data(double lat, double lon)
 {
+    if (!atomic_cas(&weather_http_pending, 0, 1)) {
+        return;
+    }
     char weather_url[512];
     snprintf(weather_url, sizeof(weather_url), HTTP_REQUEST_URL_FMT, lat, lon, WEATHER_UI_NUM_FORECASTS);
     int ret = zsw_ble_http_get(weather_url, http_rsp_cb);
     if (ret != 0) {
         LOG_ERR("Failed to send HTTP request: %d", ret);
-        if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-            weather_ui_set_error("Failed fetching weather");
-        }
+        refresh_failed("Refresh failed");
     }
 }
 
-static void fetch_cached_weather_data(struct k_work *work)
+static void fetch_weather_data_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
-    fetch_weather_data(last_lat, last_lon);
+    if (!weather_is_stale()) {
+        return;
+    }
+    k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+    double lat = pending_lat;
+    double lon = pending_lon;
+    k_spin_unlock(&weather_state_lock, key);
+    fetch_weather_data(lat, lon);
 }
 
 static void periodic_fetch_weather_data(struct k_work *work)
 {
-    int ret = ble_comm_request_gps_status(true);
-    if (ret == -ENOTCONN) {
-        LOG_DBG("No phone connected for GPS request");
-    } else if (ret != 0) {
-        LOG_ERR("Failed to request phone GPS: %d", ret);
+    ARG_UNUSED(work);
+    if (!weather_is_stale()) {
+        k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+        uint64_t updated = last_update_weather_time;
+        k_spin_unlock(&weather_state_lock, key);
+        int64_t remaining = WEATHER_BACKGROUND_FETCH_INTERVAL_S * 1000 - (k_uptime_get() - updated);
+        k_work_reschedule(&weather_app_fetch_work, K_MSEC(MAX(remaining, 1)));
+        return;
     }
-    k_work_reschedule(&weather_app_fetch_work, K_SECONDS(WEATHER_BACKGROUND_FETCH_INTERVAL_S));
+    if (!atomic_cas(&weather_refresh_pending, 0, 1)) {
+        return;
+    }
+    k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+    weather_error = NULL;
+    k_spin_unlock(&weather_state_lock, key);
+    k_work_submit(&weather_ui_work);
+    int ret = ble_comm_request_gps_status(true);
+    if (ret != 0) {
+        LOG_DBG("Phone GPS request unavailable (%d), will retry", ret);
+        refresh_failed("Phone unavailable");
+    } else {
+        k_work_reschedule(&weather_data_timeout_work, K_SECONDS(WEATHER_DATA_TIMEOUT_S));
+    }
 }
 
 static void weather_data_timeout(struct k_work *work)
 {
-    if (app.current_state == ZSW_APP_STATE_UI_VISIBLE) {
-        weather_ui_set_error("No data received\nMake sure phone is connected");
+    ARG_UNUSED(work);
+    if (atomic_get(&weather_refresh_pending) && !atomic_get(&weather_http_pending)) {
+        refresh_failed("Location unavailable");
     }
 }
 
@@ -226,37 +332,43 @@ static void on_zbus_ble_data_callback(const struct zbus_channel *chan)
             return;
         }
         k_work_cancel_delayable(&weather_data_timeout_work);
-        last_update_gps_time = k_uptime_get();
-        LOG_DBG("Got GPS data, fetch weather");
-        last_lat = lat;
-        last_lon = lon;
-        fetch_weather_data(lat, lon);
+        k_spinlock_key_t key = k_spin_lock(&weather_state_lock);
+        pending_lat = lat;
+        pending_lon = lon;
+        k_spin_unlock(&weather_state_lock, key);
+        LOG_DBG("Got GPS data, queue weather");
+        // Send HTTP from the workqueue.
+        if (weather_is_stale()) {
+            key = k_spin_lock(&weather_state_lock);
+            weather_error = NULL;
+            k_spin_unlock(&weather_state_lock, key);
+            atomic_set(&weather_refresh_pending, 1);
+            k_work_submit(&weather_ui_work);
+            k_work_submit(&weather_http_work);
+        }
         int ret = ble_comm_request_gps_status(false);
         if (ret != 0) {
             LOG_ERR("Failed to stop GPS data: %d", ret);
         }
+    } else if (event->data.type == BLE_COMM_DATA_TYPE_SET_TIME && weather_is_stale()) {
+        // Unlike the raw BLE connect callback, a phone time sync proves the
+        // companion protocol is ready. Fill an empty cache after reset/reconnect.
+        k_work_reschedule(&weather_app_fetch_work, K_NO_WAIT);
+    }
+}
+
+static void weather_app_on_ui_available(void)
+{
+    show_cached_weather();
+    if (weather_is_stale()) {
+        k_work_reschedule(&weather_app_fetch_work, K_NO_WAIT);
     }
 }
 
 static void weather_app_start(lv_obj_t *root, lv_group_t *group)
 {
     weather_ui_show(root);
-    if (last_update_gps_time == 0 || k_uptime_get() - last_update_gps_time > MAX_GPS_AGED_TIME_MS) {
-        LOG_DBG("GPS data is too old, request GPS\n");
-        int res = ble_comm_request_gps_status(true);
-        if (res != 0) {
-            LOG_ERR("Failed to request GPS data: %d", res);
-            weather_ui_set_error("Failed to get GPS data");
-        } else {
-            k_work_reschedule(&weather_data_timeout_work, K_SECONDS(WEATHER_DATA_TIMEOUT_S));
-        }
-        // TODO Show GPS fetching in progress in app
-    } else {
-        /* App startup runs inside the LVGL timer handler. Do not put the URL
-         * buffer and Bluetooth send on top of that rendering stack.
-         */
-        k_work_submit(&weather_cached_fetch_work);
-    }
+    weather_app_on_ui_available();
 
     zsw_timeval_t time;
     zsw_clock_get_time(&time);
@@ -265,9 +377,7 @@ static void weather_app_start(lv_obj_t *root, lv_group_t *group)
 
 static void weather_app_stop(void)
 {
-    k_work_cancel_delayable(&weather_data_timeout_work);
     weather_ui_remove();
-    ble_comm_request_gps_status(false);
 }
 
 static int weather_app_add(void)

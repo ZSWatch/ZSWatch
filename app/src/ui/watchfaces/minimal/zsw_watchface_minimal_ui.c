@@ -23,6 +23,7 @@
 #include "ui/utils/zsw_ui_utils.h"
 #include "applications/watchface/watchface_app.h"
 #include "ui/watchfaces/zsw_ui_notification_area.h"
+#include "ui/watchfaces/zsw_watchface_anim.h"
 
 LOG_MODULE_REGISTER(watchface_minimal, LOG_LEVEL_WRN);
 
@@ -49,6 +50,7 @@ static int last_hour = -1;
 static int last_minute = -1;
 static int last_second = -1;
 static int last_num_not = -1;
+static bool wake_pending;
 
 static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
 {
@@ -194,11 +196,32 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
     last_hour = hour_minute_offset + hour * (3600 / 12);
     last_minute = minute * (3600 / 60);
     last_second = second * (3600 / 60);
-    lv_image_set_rotation(ui_hour_img, last_hour);
-    lv_image_set_rotation(ui_min_img, last_minute);
-
     last_second += lv_map(usec, 0, 999999, 0, 3600 / 60);
-    lv_image_set_rotation(ui_second_img, last_second);
+
+    if (wake_pending) {
+        wake_pending = false;
+        zsw_watchface_anim_sweep(ui_hour_img, last_hour, 0);
+        zsw_watchface_anim_sweep(ui_min_img, last_minute, 80);
+        zsw_watchface_anim_sweep(ui_second_img, last_second, 160);
+        return;
+    }
+    zsw_watchface_anim_set_rotation(ui_hour_img, last_hour);
+    zsw_watchface_anim_set_rotation(ui_min_img, last_minute);
+    zsw_watchface_anim_set_rotation(ui_second_img, last_second);
+}
+
+static void watchface_set_display_active(bool active)
+{
+    if (!active) {
+        return;
+    }
+    if (!root_page) {
+        return;
+    }
+    wake_pending = true;
+    zsw_watchface_anim_reset_hand(ui_hour_img);
+    zsw_watchface_anim_reset_hand(ui_min_img);
+    zsw_watchface_anim_reset_hand(ui_second_img);
 }
 
 static void watchface_set_watch_env_sensors(int pressure)
@@ -239,6 +262,7 @@ static watchface_ui_api_t ui_api = {
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .set_watchface_bg = watchface_set_bg,
     .get_preview_img = watchface_get_preview_img,
+    .set_display_active = watchface_set_display_active,
     .name = "Analog Minimal",
 };
 

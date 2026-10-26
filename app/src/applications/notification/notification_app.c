@@ -24,6 +24,7 @@
 #include "events/zsw_notification_event.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
+#include "ui/notification/zsw_popup_notification.h"
 
 LOG_MODULE_REGISTER(notification_app, CONFIG_NOTIFICATION_APP_LOG_LEVEL);
 
@@ -78,6 +79,21 @@ static void on_notification_page_notification_close(uint32_t not_id)
     zsw_notification_manager_remove(not_id);
 }
 
+static void on_notification_page_notification_open(uint32_t not_id)
+{
+    zsw_not_mngr_notification_t not;
+
+    if (zsw_notification_manager_get(not_id, &not) == 0) {
+        // Stays until closed, dismissing it removes the notification like a long press.
+        zsw_notification_popup_show(&not, on_notification_page_notification_close, 0);
+    }
+}
+
+static void add_notification_to_page(const zsw_not_mngr_notification_t *not, void *user_data)
+{
+    notifications_ui_add_notification(not, user_data);
+}
+
 static void notification_app_on_ui_available(void)
 {
     // When screen turns off and UI is not available, we miss notifications being added or removed.
@@ -88,21 +104,13 @@ static void notification_app_on_ui_available(void)
 
 static void notification_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    static uint32_t num_notifications;
-
-    // TODO: Can we remove this buffer in some way because we already have one notification buffer?
-    static zsw_not_mngr_notification_t notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
-
     notification_group = group;
     root_obj = root;
 
-    zsw_notification_manager_get_all(notifications, &num_notifications);
-    notifications_ui_page_init(on_notification_page_notification_close);
+    notifications_ui_page_init(on_notification_page_notification_close, on_notification_page_notification_open);
     notifications_ui_page_create(root_obj, notification_group);
 
-    for (uint32_t i = 0; i < num_notifications; i++) {
-        notifications_ui_add_notification(&notifications[i], notification_group);
-    }
+    zsw_notification_manager_foreach(add_notification_to_page, notification_group);
 }
 
 static void notification_app_stop(void)

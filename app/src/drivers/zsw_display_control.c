@@ -28,6 +28,7 @@
 #include <zephyr/drivers/display.h>
 #include <zephyr/logging/log.h>
 #include "lvgl.h"
+#include <display/lv_display_private.h>
 #include <lvgl_zephyr.h>
 
 #include <zephyr/drivers/counter.h>
@@ -69,7 +70,7 @@ static struct k_work_sync cancel_work_sync;
 static display_state_t display_state;
 static atomic_t render_enabled = ATOMIC_INIT(0);
 static uint8_t render_block_count;
-static bool first_render_since_poweron;
+static bool first_render_since_wake;
 static uint8_t last_brightness = 1;
 static struct counter_alarm_cfg bri_alarm_start, bri_alarm_run, bri_alarm_stop;
 
@@ -163,12 +164,10 @@ int zsw_display_control_sleep_ctrl(bool on)
                 if (device_is_ready(touch_dev)) {
                     pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
                 }
-                // Turn backlight on, unless the display was off,
-                // then wait to show content until rendering completes.
-                // This avoids user seeing random pixel data for ~500ms
-                if (!first_render_since_poweron) {
-                    zsw_display_control_set_brightness(last_brightness);
-                }
+                // The panel can retain the previous frame even after sleep.
+                // Keep it dark until a complete fresh frame has reached it,
+                // just as after a full regulator power-on.
+                first_render_since_wake = true;
                 display_blanking_off(display_dev);
                 if (schedule_render_locked(K_MSEC(250)) != 0) {
                     atomic_set(&render_enabled, 0);
@@ -252,7 +251,7 @@ int zsw_display_control_pwr_ctrl(bool on)
                         pm_device_action_run(touch_dev, PM_DEVICE_ACTION_RESUME);
                         pm_device_action_run(touch_dev, PM_DEVICE_ACTION_SUSPEND);
                     }
-                    first_render_since_poweron = true;
+                    first_render_since_wake = true;
                     current_driver_brightness_level = DISPLAY_BRIGHTNESS_LEVELS;
                     res = 0;
                 }
@@ -338,6 +337,11 @@ void zsw_display_control_set_brightness(uint8_t percent)
     if (percent > 0) {
         level = MAX(((double)percent / (double)100.0) * DISPLAY_BRIGHTNESS_LEVELS, 1);
         last_brightness = percent;
+        if (first_render_since_wake) {
+            // A settings/brightness update must not expose the retained frame.
+            k_mutex_unlock(&display_mutex);
+            return;
+        }
     }
     set_brightness_level(level);
 
@@ -363,10 +367,22 @@ static void lvgl_render(struct k_work *item)
 
     lvgl_lock();
     const int64_t next_update_in_ms = lv_task_handler();
+    if (first_render_since_wake) {
+        // lv_task_handler can return with the final SPI flush still queued in
+        // Zephyr's LVGL flush thread. LVGL has no public wait-for-flush API;
+        // use its configured wait callback and clear the flags as its refresh
+        // code does, before exposing the first frame with the backlight.
+        lv_display_t *display = lv_display_get_default();
+        if (display->flushing && display->flush_wait_cb) {
+            display->flush_wait_cb(display);
+            display->flushing = 0;
+            display->flushing_last = 0;
+        }
+    }
     lvgl_unlock();
-    if (first_render_since_poweron) {
+    if (first_render_since_wake) {
+        first_render_since_wake = false;
         zsw_display_control_set_brightness(last_brightness);
-        first_render_since_poweron = false;
     }
     if (atomic_get(&render_enabled)) {
         k_work_schedule(&lvgl_work, K_MSEC(next_update_in_ms));

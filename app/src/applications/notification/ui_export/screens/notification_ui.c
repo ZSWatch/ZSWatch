@@ -5,8 +5,10 @@
 #include "ui/zsw_ui.h"
 
 LV_FONT_DECLARE(lv_font_montserrat_14_full)
+ZSW_LV_IMG_DECLARE(mic_icon);
 
 static on_notification_remove_cb_t notification_removed_callback;
+static on_notification_open_cb_t notification_open_callback;
 static lv_obj_t *main_page;
 static lv_obj_t *empty_label;
 static lv_timer_t *timer;
@@ -36,7 +38,7 @@ static void notification_delta2char(uint32_t delta, char *buf)
 static bool any_notifiction(void)
 {
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification != NULL) {
+        if (active_notifications[i].used) {
             return true;
         }
     }
@@ -54,7 +56,7 @@ static void label_on_timer_callback(lv_timer_t *timer)
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
         // Make sure that the notification exists and prevent exceptions because of a fragmented array.
         if ((active_notifications[i].panel != NULL) && (active_notifications[i].deltaLabel != NULL)) {
-            delta = time(NULL) - active_notifications[i].notification->timestamp;
+            delta = time(NULL) - active_notifications[i].timestamp;
             notification_delta2char(delta, buf);
 
             lv_label_set_text(active_notifications[i].deltaLabel, buf);
@@ -65,14 +67,14 @@ static void label_on_timer_callback(lv_timer_t *timer)
 /** @brief
  *  @param event
 */
-static void notification_on_clicked_callback(lv_event_t *event)
+static void notification_on_long_pressed_callback(lv_event_t *event)
 {
     uint32_t id;
 
-    id = (uint32_t)lv_event_get_user_data(event);
+    id = (uint32_t)(uintptr_t)lv_event_get_user_data(event);
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
+        if (active_notifications[i].used && (active_notifications[i].id == id)) {
             notification_removed_callback(id);
             break;
         }
@@ -83,12 +85,20 @@ static void notification_on_clicked_callback(lv_event_t *event)
     }
 }
 
+/** @brief  A tap shows the whole notification, with Reply when the phone can send one.
+ *  @param event
+*/
+static void notification_on_short_clicked_callback(lv_event_t *event)
+{
+    notification_open_callback((uint32_t)(uintptr_t)lv_event_get_user_data(event));
+}
+
 /** @brief
  *  @param parent
  *  @param not
  *  @param group
 */
-static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification_t *not, lv_group_t *group)
+static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     lv_obj_t *ui_Panel;
     lv_obj_t *ui_LabelSource;
@@ -107,7 +117,7 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     // TODO: Make me better
     index = 0xFFFFFFFF;
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (active_notifications[i].notification == NULL) {
+        if (!active_notifications[i].used) {
             index = i;
 
             break;
@@ -129,7 +139,9 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_set_style_bg_color(ui_Panel, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_side(ui_Panel, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(ui_Panel, notification_on_clicked_callback, LV_EVENT_LONG_PRESSED, (void *)not->id);
+    lv_obj_add_event_cb(ui_Panel, notification_on_long_pressed_callback, LV_EVENT_LONG_PRESSED, (void *)(uintptr_t)not->id);
+    lv_obj_add_event_cb(ui_Panel, notification_on_short_clicked_callback, LV_EVENT_SHORT_CLICKED,
+                        (void *)(uintptr_t)not->id);
 
     ui_LabelSource = lv_label_create(ui_Panel);
     lv_obj_set_width(ui_LabelSource, LV_SIZE_CONTENT);
@@ -162,7 +174,16 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
 
     active_notifications[index].panel = ui_Panel;
     active_notifications[index].deltaLabel = ui_LabelTimeDelta;
-    active_notifications[index].notification = not;
+    active_notifications[index].used = true;
+    active_notifications[index].id = not->id;
+    active_notifications[index].timestamp = not->timestamp;
+
+    // Tapping opens the notification, where it can be answered.
+    if (not->can_reply) {
+        lv_obj_t *ui_ImageReply = zsw_ui_utils_create_icon(ui_Panel, ZSW_LV_IMG_USE(mic_icon), 16, zsw_color_blue());
+        lv_obj_set_align(ui_ImageReply, LV_ALIGN_CENTER);
+        lv_obj_set_pos(ui_ImageReply, 42, -30);
+    }
 
     ui_ImageIcon = lv_img_create(ui_Panel);
     lv_obj_set_width(ui_ImageIcon, 16);
@@ -223,9 +244,10 @@ static void build_notification_entry(lv_obj_t *parent, zsw_not_mngr_notification
     lv_obj_clear_state(ui_LabelBody, LV_STATE_CHECKED | LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
 }
 
-void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb)
+void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb, on_notification_open_cb_t not_open_cb)
 {
     notification_removed_callback = not_removed_cb;
+    notification_open_callback = not_open_cb;
     memset(active_notifications, 0, sizeof(active_notifications));
 }
 
@@ -280,7 +302,7 @@ void notifications_ui_page_close(void)
     timer = NULL;
 }
 
-void notifications_ui_add_notification(zsw_not_mngr_notification_t *not, lv_group_t *group)
+void notifications_ui_add_notification(const zsw_not_mngr_notification_t *not, lv_group_t *group)
 {
     if (main_page == NULL) {
         return;
@@ -302,12 +324,12 @@ void notifications_ui_remove_notification(uint32_t id)
     }
 
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((active_notifications[i].notification != NULL) && (active_notifications[i].notification->id == id)) {
+        if (active_notifications[i].used && (active_notifications[i].id == id)) {
             lv_obj_add_flag(active_notifications[i].panel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_del(active_notifications[i].panel);
             active_notifications[i].panel = NULL;
             active_notifications[i].deltaLabel = NULL;
-            active_notifications[i].notification = NULL;
+            active_notifications[i].used = false;
             if (lv_obj_get_child(main_page, -1)) {
                 lv_obj_scroll_to_view(lv_obj_get_child(main_page, -1), LV_ANIM_ON);
             }

@@ -21,6 +21,7 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_anim.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 LOG_MODULE_REGISTER(watchface_digital_minimal, LOG_LEVEL_WRN);
@@ -39,6 +40,7 @@ static void watchface_set_music(const char *track, const char *artist);
 
 /* ── Root ──────────────────────────────────────────────────────────────── */
 static lv_obj_t *root_page;
+static bool wake_pending;
 
 /* ── Steps outer ring ──────────────────────────────────────────────────── */
 static lv_obj_t *ui_steps_ring;
@@ -416,7 +418,7 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
     }
     (void)distance;
     (void)kcal;
-    lv_arc_set_value(ui_steps_ring, steps);
+    zsw_watchface_anim_set_arc(ui_steps_ring, steps);
     lv_label_set_text_fmt(ui_steps_label, "%d", (int)steps);
 
     if (steps >= 500) {
@@ -517,6 +519,15 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
                                     : lv_color_hex(0xFF8600),
                                     LV_PART_MAIN);
     }
+
+    if (wake_pending) {
+        wake_pending = false;
+        zsw_watchface_anim_rise(ui_hour_label, 0);
+        zsw_watchface_anim_rise(ui_colon_label, 60);
+        zsw_watchface_anim_rise(ui_min_label, 120);
+        zsw_watchface_anim_rise(ui_day_label, 200);
+        zsw_watchface_anim_rise(ui_date_label, 200);
+    }
 }
 
 static void watchface_set_watch_env_sensors(int pressure)
@@ -588,6 +599,23 @@ static void watchface_set_bg(const void *bg_img)
 
 /* ── Registration ──────────────────────────────────────────────────────── */
 
+static void watchface_set_display_active(bool active)
+{
+    if (!active) {
+        return;
+    }
+    if (!root_page) {
+        return;
+    }
+    wake_pending = true;
+    zsw_watchface_anim_reset_label(ui_hour_label);
+    zsw_watchface_anim_reset_label(ui_colon_label);
+    zsw_watchface_anim_reset_label(ui_min_label);
+    zsw_watchface_anim_reset_label(ui_day_label);
+    zsw_watchface_anim_reset_label(ui_date_label);
+    zsw_watchface_anim_fill(ui_steps_ring, 100);
+}
+
 static watchface_ui_api_t ui_api = {
     .show                 = watchface_show,
     .remove               = watchface_remove,
@@ -604,6 +632,7 @@ static watchface_ui_api_t ui_api = {
     .set_watchface_bg     = watchface_set_bg,
     .get_preview_img      = watchface_get_preview_img,
     .set_music            = watchface_set_music,
+    .set_display_active   = watchface_set_display_active,
     .name                 = "Digital Minimal",
 };
 

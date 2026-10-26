@@ -1,0 +1,15 @@
+# Copyright (c) 2026 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+
+menu "Tiles"
+
+config APPLICATIONS_USE_TILES
+    bool
+    prompt "Activate the application 'Tiles', glance cards shown by swiping right on the watchface"
+    default y
+
+module = ZSW_TILES_APP
+module-str = ZSW_TILES_APP
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu

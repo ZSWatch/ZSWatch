@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr/kernel.h>
@@ -9,11 +10,15 @@
 #include <zephyr/settings/settings.h>
 #include <zephyr/input/input.h>
 #include <zephyr/zbus/zbus.h>
+#include <time.h>
+#include <lvgl.h>
+#include <lvgl_zephyr.h>
 #ifdef CONFIG_RETENTION_BOOT_MODE
 #include <zephyr/retention/bootmode.h>
 #endif
 
 #include "zsw_settings.h"
+#include "zsw_clock.h"
 #include <zsw_coredump.h>
 #include <zsw_cpu_freq.h>
 #include "fuel_gauge/zsw_pmic.h"
@@ -22,9 +27,11 @@
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
 #include "ui/zsw_ui_controller.h"
+#include "applications/watchface/watchface_app.h"
 #include "events/battery_event.h"
 #include "events/pressure_event.h"
 #include "events/accel_event.h"
+#include "events/ble_event.h"
 #if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
@@ -33,6 +40,7 @@
 ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
+ZBUS_CHAN_DECLARE(ble_comm_data_chan);
 
 #if defined(CONFIG_THREAD_MONITOR) && defined(CONFIG_THREAD_STACK_INFO) && defined(CONFIG_INIT_STACKS)
 struct stack_query {
@@ -798,15 +806,200 @@ static int cmd_event_pressure(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+static bool parse_long(const char *str, long min, long max, long *out)
+{
+    char *endptr;
+    long val = strtol(str, &endptr, 10);
+
+    if (*endptr != '\0' || endptr == str || val < min || val > max) {
+        return false;
+    }
+    *out = val;
+    return true;
+}
+
+// The ble_data_event is ~4 kB, so fill the channel's own message instead of a copy.
+static ble_comm_cb_data_t *ble_data_claim(void)
+{
+    if (zbus_chan_claim(&ble_comm_data_chan, K_MSEC(250)) != 0) {
+        return NULL;
+    }
+
+    struct ble_data_event *evt = zbus_chan_msg(&ble_comm_data_chan);
+    memset(evt, 0, sizeof(*evt));
+    return &evt->data;
+}
+
+static int ble_data_publish(void)
+{
+    zbus_chan_finish(&ble_comm_data_chan);
+    return zbus_chan_notify(&ble_comm_data_chan, K_MSEC(250));
+}
+
+static int cmd_event_weather(const struct shell *sh, size_t argc, char **argv)
+{
+    long code, temp, wind = 0, wind_dir = 0, humidity = 50;
+
+    if (!parse_long(argv[1], 0, 999, &code) || !parse_long(argv[2], -100, 100, &temp) ||
+        (argc > 3 && !parse_long(argv[3], 0, 500, &wind)) ||
+        (argc > 4 && !parse_long(argv[4], 0, 359, &wind_dir)) ||
+        (argc > 5 && !parse_long(argv[5], 0, 100, &humidity))) {
+        shell_error(sh, "Usage: event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]");
+        return -EINVAL;
+    }
+
+    ble_comm_cb_data_t *data = ble_data_claim();
+    if (data == NULL) {
+        shell_error(sh, "Failed to claim BLE data channel");
+        return -EBUSY;
+    }
+
+    data->type = BLE_COMM_DATA_TYPE_WEATHER;
+    data->data.weather.weather_code = (uint16_t)code;
+    data->data.weather.temperature_c = (int8_t)temp;
+    data->data.weather.wind = (uint16_t)wind;
+    data->data.weather.wind_direction = (uint16_t)wind_dir;
+    data->data.weather.humidity = (uint16_t)humidity;
+    snprintf(data->data.weather.report_text, sizeof(data->data.weather.report_text), "shell %ld", code);
+
+    int ret = ble_data_publish();
+    if (ret != 0) {
+        shell_error(sh, "Failed to publish weather event: %d", ret);
+        return ret;
+    }
+
+    shell_print(sh, "Injected weather: code %ld, %ld C, wind %ld km/h from %ld deg, humidity %ld%%",
+                code, temp, wind, wind_dir, humidity);
+    return 0;
+}
+
+static int cmd_event_time(const struct shell *sh, size_t argc, char **argv)
+{
+    long hour, minute;
+    zsw_timeval_t now;
+
+    ARG_UNUSED(argc);
+
+    if (!parse_long(argv[1], 0, 23, &hour) || !parse_long(argv[2], 0, 59, &minute)) {
+        shell_error(sh, "Usage: event time <hour 0-23> <minute 0-59>");
+        return -EINVAL;
+    }
+
+    // Keep today's date, publish as a phone time sync so the normal path sets the clock.
+    zsw_clock_get_time(&now);
+    struct tm tm = {
+        .tm_year = now.tm.tm_year - 1900,
+        .tm_mon = now.tm.tm_mon,
+        .tm_mday = now.tm.tm_mday,
+        .tm_hour = (int)hour,
+        .tm_min = (int)minute,
+        .tm_isdst = -1,
+    };
+
+    ble_comm_cb_data_t *data = ble_data_claim();
+    if (data == NULL) {
+        shell_error(sh, "Failed to claim BLE data channel");
+        return -EBUSY;
+    }
+
+    data->type = BLE_COMM_DATA_TYPE_SET_TIME;
+    data->data.time.seconds = (uint32_t)mktime(&tm);
+
+    int ret = ble_data_publish();
+    if (ret != 0) {
+        shell_error(sh, "Failed to publish time event: %d", ret);
+        return ret;
+    }
+
+    shell_print(sh, "Injected time: %02ld:%02ld", hour, minute);
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
                                SHELL_CMD_ARG(battery,  NULL, "Inject battery event: event battery <percent> [charging:0|1]",
                                              cmd_event_battery, 2, 1),
                                SHELL_CMD_ARG(pressure, NULL, "Inject pressure event: event pressure <hPa> [temp_C]",
                                              cmd_event_pressure, 2, 1),
+                               SHELL_CMD_ARG(weather, NULL,
+                                             "Inject weather: event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]",
+                                             cmd_event_weather, 3, 3),
+                               SHELL_CMD_ARG(time, NULL, "Inject phone time sync: event time <hour> <minute>",
+                                             cmd_event_time, 3, 0),
                                SHELL_SUBCMD_SET_END
                               );
 
 SHELL_CMD_REGISTER(event, &sub_event, "Event injection commands", NULL);
+
+static int cmd_lv_timers(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    int num_timers = 0;
+    int num_running = 0;
+
+    lvgl_lock();
+    for (lv_timer_t *timer = lv_timer_get_next(NULL); timer != NULL; timer = lv_timer_get_next(timer)) {
+        num_timers++;
+        if (!lv_timer_get_paused(timer)) {
+            num_running++;
+        }
+    }
+    uint32_t num_anims = lv_anim_count_running();
+    lvgl_unlock();
+
+    shell_print(sh, "LVGL timers: %d (%d running), anims: %u", num_timers, num_running, num_anims);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(lv_timers, NULL, "Count LVGL timers and running animations", cmd_lv_timers, 1, 0);
+
+static int cmd_watchface_list(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    const lv_img_dsc_t *preview;
+    const char *name;
+    int current = watchface_app_get_current_face();
+
+    for (int i = 0; i < watchface_app_get_num_faces(); i++) {
+        if (watchface_app_get_face_info(i, &preview, &name) == 0) {
+            shell_print(sh, "%c %d: %s", i == current ? '*' : ' ', i, name);
+        }
+    }
+    return 0;
+}
+
+static void watchface_set_async(void *index)
+{
+    watchface_change((int)(intptr_t)index);
+}
+
+static int cmd_watchface_set(const struct shell *sh, size_t argc, char **argv)
+{
+    long index;
+
+    ARG_UNUSED(argc);
+
+    if (!parse_long(argv[1], 0, watchface_app_get_num_faces() - 1, &index)) {
+        shell_error(sh, "Usage: watchface set <0-%d>", watchface_app_get_num_faces() - 1);
+        return -EINVAL;
+    }
+
+    // Change from the LVGL context, like the watchface picker does.
+    lvgl_lock();
+    lv_async_call(watchface_set_async, (void *)(intptr_t)index);
+    lvgl_unlock();
+    shell_print(sh, "Switching to watchface %ld", index);
+    return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_watchface,
+                               SHELL_CMD_ARG(list, NULL, "List watchfaces, * marks the current one", cmd_watchface_list, 1, 0),
+                               SHELL_CMD_ARG(set, NULL, "Switch watchface: watchface set <index>", cmd_watchface_set, 2, 0),
+                               SHELL_SUBCMD_SET_END
+                              );
+
+SHELL_CMD_REGISTER(watchface, &sub_watchface, "Watchface commands", NULL);
 
 /* --- microphone gain commands --- */
 #if defined(CONFIG_ZSW_MIC)

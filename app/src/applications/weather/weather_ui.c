@@ -43,6 +43,8 @@ static lv_obj_t *ui_today_min_max_temp;
 static lv_obj_t *ui_today_rain;
 static lv_obj_t *ui_water_drop_img;
 static lv_obj_t *ui_loading_spinner;
+static lv_obj_t *ui_refresh_spinner;
+static bool has_weather_data;
 
 static lv_obj_forecasts_t ui_forecasts[WEATHER_UI_NUM_FORECASTS];
 
@@ -74,18 +76,9 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_add_flag(ui_bg_img, LV_OBJ_FLAG_ADV_HITTEST);
     lv_obj_clear_flag(ui_bg_img, LV_OBJ_FLAG_SCROLLABLE);
 
-    ui_loading_spinner = lv_spinner_create(root_page);
-    lv_spinner_set_anim_params(ui_loading_spinner, 5000, 400);
-    lv_obj_set_width(ui_loading_spinner, 60);
-    lv_obj_set_height(ui_loading_spinner, 60);
-    lv_obj_set_align(ui_loading_spinner, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_loading_spinner, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_arc_color(ui_loading_spinner, zsw_color_dark_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_loading_spinner, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_arc_color(ui_loading_spinner, zsw_color_blue(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_arc_opa(ui_loading_spinner, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-
+    ui_loading_spinner = NULL;
+    ui_refresh_spinner = NULL;
+    has_weather_data = false;
     ui_root_container = lv_obj_create(root_page);
     lv_obj_remove_style_all(ui_root_container);
     lv_obj_set_width(ui_root_container, lv_pct(100));
@@ -188,6 +181,43 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_clear_flag(ui_water_drop_img, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static lv_obj_t *create_spinner(int size, lv_align_t align, int x, int y)
+{
+    lv_obj_t *spinner = lv_spinner_create(root_page);
+    lv_spinner_set_anim_params(spinner, 1000, 200);
+    lv_obj_set_size(spinner, size, size);
+    lv_obj_align(spinner, align, x, y);
+    lv_obj_clear_flag(spinner, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_arc_width(spinner, size < 30 ? 3 : 5, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(spinner, size < 30 ? 3 : 5, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(spinner, zsw_color_dark_gray(), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(spinner, zsw_color_blue(), LV_PART_INDICATOR);
+    return spinner;
+}
+
+void weather_ui_set_refreshing(bool refreshing)
+{
+    if (!root_page) {
+        return;
+    }
+    if (refreshing && !has_weather_data) {
+        if (!ui_loading_spinner) {
+            ui_loading_spinner = create_spinner(60, LV_ALIGN_CENTER, 0, 0);
+        }
+    } else if (ui_loading_spinner) {
+        lv_obj_delete(ui_loading_spinner);
+        ui_loading_spinner = NULL;
+    }
+    if (refreshing && has_weather_data) {
+        if (!ui_refresh_spinner) {
+            ui_refresh_spinner = create_spinner(18, LV_ALIGN_TOP_RIGHT, -42, 34);
+        }
+    } else if (ui_refresh_spinner) {
+        lv_obj_delete(ui_refresh_spinner);
+        ui_refresh_spinner = NULL;
+    }
+}
+
 static void add_forecast_day(lv_obj_t *parent, lv_obj_forecasts_t *storage)
 {
     storage->ui_day = lv_obj_create(parent);
@@ -232,14 +262,13 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
         return;
     }
 
-    /* A successful retry replaces the previous error as well as the forecast. */
+    has_weather_data = true;
     lv_label_set_text(ui_status_label, "");
 
     if (lv_obj_has_flag(ui_root_container, LV_OBJ_FLAG_HIDDEN)) {
         lv_obj_clear_flag(ui_root_container, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_today_container, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(ui_time, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(ui_loading_spinner, LV_OBJ_FLAG_HIDDEN);
     }
 
     lv_label_set_text_fmt(ui_today_temp, "%.1f°", current_weather.temperature);
@@ -248,21 +277,26 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
     lv_label_set_text_fmt(ui_today_rain, "%d%%", weather_ui_forecast_data_t[0].rain_percent);
     lv_img_set_src(ui_today_icon, current_weather.icon);
 
-    for (int i = 0; i < num_forecasts; i++) {
+    for (int i = 0; i < WEATHER_UI_NUM_FORECASTS; i++) {
+        if (i >= num_forecasts) {
+            lv_obj_add_flag(ui_forecasts[i].ui_day, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+        lv_obj_clear_flag(ui_forecasts[i].ui_day, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text_fmt(ui_forecasts[i].ui_day_temp, "%.1f°", weather_ui_forecast_data_t[i].temperature);
         lv_label_set_text(ui_forecasts[i].ui_day_day, weather_ui_forecast_data_t[i].day);
         lv_img_set_src(ui_forecasts[i].ui_day_icon, weather_ui_forecast_data_t[i].icon);
     }
 }
 
-void weather_ui_set_error(char *error)
+void weather_ui_set_error(const char *error)
 {
     if (root_page == NULL) {
         return;
     }
 
-    lv_obj_add_flag(ui_loading_spinner, LV_OBJ_FLAG_HIDDEN);
-
+    weather_ui_set_refreshing(false);
+    lv_obj_set_style_text_font(ui_status_label, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_label_set_text(ui_status_label, error);
 }
 

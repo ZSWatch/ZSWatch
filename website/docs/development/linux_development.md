@@ -100,3 +100,16 @@ Once running, a simulated display window should appear.
 | **Backspace** | Back button |
 | **Arrow Up** | Navigate next / up |
 | **Arrow Down** | Navigate previous / down |
+
+## 4. Test from the Shell
+
+Builds with `boards/test_mode.conf` expose the Zephyr shell on a pseudo terminal (printed at boot as `uart connected to pseudotty`). Some commands are handy without a phone or sensors:
+
+| Command | What it does |
+|---------|--------------|
+| `app launch <name>` | Open an app from the watchface |
+| `watchface list` / `watchface set <index>` | List watchfaces or switch to one |
+| `event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]` | Inject a weather update as if it came from the phone. `code` is an [OpenWeatherMap condition code](https://openweathermap.org/weather-conditions), e.g. `800` clear, `803` clouds, `501` rain, `601` snow, `741` fog, `211` thunderstorm |
+| `event time <hour> <minute>` | Inject a phone time sync, keeping today's date |
+| `event battery <percent> [charging]` | Inject a battery sample |
+| `lv_timers` | Count LVGL timers and running animations, to check nothing keeps animating |

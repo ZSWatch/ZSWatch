@@ -30,7 +30,7 @@
 
 LOG_MODULE_REGISTER(app_manager, LOG_LEVEL_INF);
 
-#define MAX_APPS        25
+#define MAX_APPS        32
 #define INVALID_APP_ID  0xFF
 
 static void draw_app_and_folder_view(void);
@@ -306,6 +306,32 @@ void zsw_app_manager_exit_app(void)
     }
     async_app_close_timer = lv_timer_create(async_app_close, 500,  NULL);
     lv_timer_set_repeat_count(async_app_close_timer, 1);
+}
+
+static void async_app_switch(lv_timer_t *timer)
+{
+    int next = (int)(intptr_t)lv_timer_get_user_data(timer);
+
+    if (current_app < num_apps) {
+        apps[current_app]->current_state = ZSW_APP_STATE_STOPPED;
+        apps[current_app]->stop_func();
+    }
+    current_app = next;
+    async_app_start(NULL);
+}
+
+int zsw_app_manager_switch_app(const char *app_name)
+{
+    for (int i = 0; i < num_apps; i++) {
+        if (strcmp(apps[i]->name, app_name) == 0) {
+            // Deferred, the calling app may be handling an event of an object it deletes when stopped.
+            lv_timer_t *timer = lv_timer_create(async_app_switch, 1, (void *)(intptr_t)i);
+            lv_timer_set_repeat_count(timer, 1);
+            return 0;
+        }
+    }
+
+    return -ENOENT;
 }
 
 void zsw_app_manager_app_close_request(application_t *app)
