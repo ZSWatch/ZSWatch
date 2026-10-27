@@ -59,4 +59,5 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
 
 void weather_ui_set_time(int hour, int min, int second);
 
-void weather_ui_set_error(char *error);
+void weather_ui_set_error(const char *error);
+void weather_ui_set_refreshing(bool refreshing);

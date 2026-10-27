@@ -18,4 +18,10 @@ menu "Watchface"
         bool
         prompt "Add minimal watchface"
         default y
+
+    config WATCHFACE_LIVING_SKY
+        bool
+        prompt "Add Living Sky watchface (animated weather and sky tint)"
+        default y
+
 endmenu

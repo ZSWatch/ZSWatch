@@ -96,6 +96,13 @@ void zsw_app_manager_app_close_request(application_t *app);
 */
 void zsw_app_manager_exit_app(void);
 
+/** @brief          Close the running app and open another in its place. Back from it
+ *                  goes where back from the closed app would have gone.
+ *  @param app_name Name of the app to open
+ *  @return         0 when found, -ENOENT otherwise
+*/
+int zsw_app_manager_switch_app(const char *app_name);
+
 /** @brief Get number of registrated applications
 */
 int zsw_app_manager_get_num_apps(void);

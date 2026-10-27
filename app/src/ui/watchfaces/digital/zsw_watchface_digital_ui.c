@@ -21,6 +21,7 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_anim.h"
 #include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_digital, LOG_LEVEL_WRN);
@@ -29,6 +30,7 @@ static void watchface_ui_invalidate_cached(void);
 static void arc_event_pressed(lv_event_t *e);
 
 static lv_obj_t *root_page = NULL;
+static bool wake_pending;
 static lv_obj_t *ui_digital_watchface;
 static lv_obj_t *ui_pressure_arc;
 static lv_obj_t *ui_pressure_image;
@@ -480,10 +482,10 @@ static void watchface_set_battery_percent(int32_t percent, int32_t battery)
     }
 
     if (use_relative_battery) {
-        lv_arc_set_value(ui_battery_arc, percent);
+        zsw_watchface_anim_set_arc(ui_battery_arc, percent);
         lv_label_set_text_fmt(ui_battery_percent_label, "%d%%", percent);
     } else {
-        lv_arc_set_value(ui_battery_arc, battery);
+        zsw_watchface_anim_set_arc(ui_battery_arc, battery);
         lv_label_set_text_fmt(ui_battery_percent_label, "%d", battery);
     }
 }
@@ -500,7 +502,7 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
     if (!root_page) {
         return;
     }
-    lv_arc_set_value(ui_step_arc, steps);
+    zsw_watchface_anim_set_arc(ui_step_arc, steps);
     lv_label_set_text_fmt(ui_step_arc_label, "%d", steps);
 }
 
@@ -566,6 +568,16 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
         lv_label_set_text_fmt(ui_sec_label, "%02d", second);
         last_second = second;
     }
+
+    if (wake_pending) {
+        wake_pending = false;
+        zsw_watchface_anim_rise(ui_min_label, 0);
+        zsw_watchface_anim_rise(ui_colon_label, 60);
+        zsw_watchface_anim_rise(ui_hour_label, 120);
+        zsw_watchface_anim_rise(ui_sec_label, 180);
+        zsw_watchface_anim_rise(ui_day_label, 240);
+        zsw_watchface_anim_rise(ui_date_label, 240);
+    }
 }
 
 static void watchface_set_watch_env_sensors(int pressure)
@@ -628,6 +640,25 @@ static void watchface_set_bg(const void *bg_img)
     }
 }
 
+static void watchface_set_display_active(bool active)
+{
+    if (!active) {
+        return;
+    }
+    if (!root_page) {
+        return;
+    }
+    wake_pending = true;
+    zsw_watchface_anim_reset_label(ui_min_label);
+    zsw_watchface_anim_reset_label(ui_colon_label);
+    zsw_watchface_anim_reset_label(ui_hour_label);
+    zsw_watchface_anim_reset_label(ui_sec_label);
+    zsw_watchface_anim_reset_label(ui_day_label);
+    zsw_watchface_anim_reset_label(ui_date_label);
+    zsw_watchface_anim_fill(ui_battery_arc, 100);
+    zsw_watchface_anim_fill(ui_step_arc, 200);
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -643,6 +674,7 @@ static watchface_ui_api_t ui_api = {
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .set_watchface_bg = watchface_set_bg,
     .get_preview_img = watchface_get_preview_img,
+    .set_display_active = watchface_set_display_active,
     .name = "ZSWatch Digital",
 };
 

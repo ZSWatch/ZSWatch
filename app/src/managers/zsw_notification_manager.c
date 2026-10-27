@@ -29,7 +29,6 @@
 
 LOG_MODULE_REGISTER(notification_mgr, LOG_LEVEL_DBG);
 
-#define ZSW_NOTIFICATION_MGR_INVALID_ID         0xFFFFFFFF
 #define NOTIFICATION_INVALID_INDEX              0xFFFFFFFF
 
 static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_channel *chan);
@@ -38,6 +37,8 @@ static int32_t remove_notification(uint32_t id, zsw_notification_remove_reason_t
 
 static uint8_t num_notifications;
 static zsw_not_mngr_notification_t notifications[ZSW_NOTIFICATION_MGR_MAX_STORED];
+static bool notification_used[ZSW_NOTIFICATION_MGR_MAX_STORED];
+static uint8_t notification_order[ZSW_NOTIFICATION_MGR_MAX_STORED];
 
 static K_WORK_DEFINE(notification_work, notification_mgr_update_worker);
 ZBUS_LISTENER_DEFINE(notification_mgr_ble_comm_lis, notification_mgr_zbus_ble_comm_data_callback);
@@ -51,7 +52,7 @@ ZBUS_CHAN_DECLARE(zsw_notification_mgr_remove_chan);
 static uint32_t find_notification_idx(uint32_t id)
 {
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id == id) {
+        if (notification_used[i] && notifications[i].id == id) {
             return i;
         }
     }
@@ -65,7 +66,7 @@ static uint32_t find_notification_idx(uint32_t id)
 static uint32_t find_free_notification_idx(void)
 {
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id == ZSW_NOTIFICATION_MGR_INVALID_ID) {
+        if (!notification_used[i]) {
             return i;
         }
     }
@@ -78,17 +79,7 @@ static uint32_t find_free_notification_idx(void)
 */
 static uint32_t find_oldest_notification_idx(void)
 {
-    uint32_t oldest_idx = ZSW_NOTIFICATION_MGR_INVALID_ID;
-    uint32_t oldest_id = NOTIFICATION_INVALID_INDEX;
-
-    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) && (notifications[i].id < oldest_id)) {
-            oldest_idx = i;
-            oldest_id = notifications[i].id;
-        }
-    }
-
-    return oldest_idx;
+    return num_notifications ? notification_order[0] : NOTIFICATION_INVALID_INDEX;
 }
 
 /** @brief  Find the newest notification.
@@ -96,27 +87,18 @@ static uint32_t find_oldest_notification_idx(void)
 */
 static uint32_t find_newest_notification_idx(void)
 {
-    uint32_t newest_idx = ZSW_NOTIFICATION_MGR_INVALID_ID;
-    uint32_t newest_id = 0;
-
-    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if ((notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) && (notifications[i].id > newest_id)) {
-            newest_idx = i;
-            newest_id = notifications[i].id;
-        }
-    }
-
-    return newest_idx;
+    return num_notifications ? notification_order[num_notifications - 1] : NOTIFICATION_INVALID_INDEX;
 }
 
 /** @brief          Copy a field into a zeroed notification field, never splitting a UTF-8 character.
- *  @param dst      Destination field of ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN bytes, already zeroed
+ *  @param dst      Destination field, already zeroed
+ *  @param dst_size Size of dst in bytes, including the terminator
  *  @param src      Source text, not required to be null terminated
  *  @param src_len  Source length in bytes
 */
-static void copy_field_utf8(char *dst, const char *src, int src_len)
+static void copy_field_utf8(char *dst, size_t dst_size, const char *src, int src_len)
 {
-    size_t len = MIN((size_t)MAX(src_len, 0), ZSW_NOTIFICATION_MGR_MAX_FIELD_LEN - 1);
+    size_t len = MIN((size_t)MAX(src_len, 0), dst_size - 1);
 
     if (src == NULL || len == 0) {
         return;
@@ -181,9 +163,8 @@ static void notification_mgr_zbus_ble_comm_data_callback(const struct zbus_chann
 void zsw_notification_manager_init(void)
 {
     memset(notifications, 0, sizeof(notifications));
-    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        notifications[i].id = ZSW_NOTIFICATION_MGR_INVALID_ID;
-    }
+    memset(notification_used, 0, sizeof(notification_used));
+    memset(notification_order, 0, sizeof(notification_order));
     num_notifications = 0;
 }
 
@@ -193,7 +174,7 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
 
     // Prevent double notifications with the same ID.
     for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id == not->id) {
+        if (notification_used[i] && notifications[i].id == not->id) {
             LOG_DBG("Duplicate notification ID %u, ignoring", not->id);
             return NULL;
         }
@@ -216,80 +197,85 @@ zsw_not_mngr_notification_t *zsw_notification_manager_add(const ble_comm_notify_
     if (strncmp(not->src, "Messenger", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_FB_MESSENGER;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "WhatsApp", not->src_len) == 0) {
         // {"t":"notify","id":1700974318,"src":"WhatsApp","title":"Daniel Kampert","subject":"","body":"H","sender":""}
 
         notifications[idx].src = NOTIFICATION_SRC_WHATSAPP;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
     } else if (strncmp(not->src, "Gmail", not->src_len) == 0) {
         // {t:"notify",id:1670967782,src:"Gmail",title:"Jakob Krantz",body:"Nytt test\nDetta YR NÖTT"
 
         // TODO Subject is before first \n in body so extract that into title field.
         notifications[idx].src = NOTIFICATION_SRC_GMAIL;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "Home Assistant", not->src_len) == 0) {
         // {"t":"notify","id":1701847200,"src":"Home Assistant","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
 
         notifications[idx].src = NOTIFICATION_SRC_HOME_ASSISTANT;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "Discord", not->src_len) == 0) {
         // {"t":"notify","id":1701847200,"src":"Discord","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
 
         notifications[idx].src = NOTIFICATION_SRC_DISCORD;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "LinkedIn", not->src_len) == 0) {
         // {"t":"notify","id":1701847200,"src":"LinkedIn","title":"Message.","subject":"","body":"Gute Nacht","sender":""}
 
         notifications[idx].src = NOTIFICATION_SRC_LINKEDIN;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "Reddit", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_REDDIT;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "YouTube", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_YOUTUBE;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "Messages", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_COMMON_MESSENGER;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else if (strncmp(not->src, "Calendar", not->src_len) == 0 || strncmp(not->src, "Kalender", not->src_len) == 0) {
         notifications[idx].src = NOTIFICATION_SRC_CALENDAR;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->title, not->title_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
     } else {
         // TODO add more
         // For example debug notfication
         // {t:"notify",id:1670967783,src:"Bangle.js Gadgetbridge",subject:"Testar",body:"Testar",sender:"Testar",tel:"Testar"}
         notifications[idx].src = NOTIFICATION_SRC_NONE;
         notifications[idx].id = not->id;
-        copy_field_utf8(notifications[idx].title, not->src, not->src_len);
-        copy_field_utf8(notifications[idx].body, not->body, not->body_len);
-        copy_field_utf8(notifications[idx].sender, not->sender, not->sender_len);
+        copy_field_utf8(notifications[idx].title, sizeof(notifications[idx].title), not->src, not->src_len);
+        copy_field_utf8(notifications[idx].body, sizeof(notifications[idx].body), not->body, not->body_len);
+        // Android companions send who wrote the message as the title, not as the sender.
+        if (not->sender_len > 0) {
+            copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->sender, not->sender_len);
+        } else {
+            copy_field_utf8(notifications[idx].sender, sizeof(notifications[idx].sender), not->title, not->title_len);
+        }
     }
 
+    notifications[idx].can_reply = not->can_reply;
     notifications[idx].timestamp = time(NULL);
 
-    if (num_notifications < ZSW_NOTIFICATION_MGR_MAX_STORED) {
-        num_notifications++;
-    }
+    notification_used[idx] = true;
+    notification_order[num_notifications++] = idx;
 
     LOG_DBG("Notifications: %u", num_notifications);
 
@@ -306,21 +292,31 @@ static int32_t remove_notification(uint32_t id, zsw_notification_remove_reason_t
     uint32_t idx = find_notification_idx(id);
 
     if (idx != NOTIFICATION_INVALID_INDEX) {
-        struct zsw_notification_remove_event evt;
-
         LOG_DBG("Remove notification on place %u with ID: %u", idx, notifications[idx].id);
 
         // NOTE: We pass a copy of the notification into the ZBUS event. This help the listeners to
         // handle the notification, because the data in the notification buffer can change before
         // the listeners have ececuted their operations.
-        memcpy(&evt.notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
-        evt.reason = reason;
-        zbus_chan_pub(&zsw_notification_mgr_remove_chan, &evt, K_NO_WAIT);
+        // Written straight into the channel, a copy on the stack is too large for the BLE thread.
+        if (zbus_chan_claim(&zsw_notification_mgr_remove_chan, K_NO_WAIT) == 0) {
+            struct zsw_notification_remove_event *evt = zbus_chan_msg(&zsw_notification_mgr_remove_chan);
 
-        notifications[idx].id = ZSW_NOTIFICATION_MGR_INVALID_ID;
+            memcpy(&evt->notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
+            evt->reason = reason;
+            zbus_chan_finish(&zsw_notification_mgr_remove_chan);
+            zbus_chan_notify(&zsw_notification_mgr_remove_chan, K_NO_WAIT);
+        } else {
+            LOG_WRN("Removal of %u not published", id);
+        }
 
-        if (num_notifications > 0) {
-            num_notifications--;
+        notification_used[idx] = false;
+        for (uint32_t i = 0; i < num_notifications; i++) {
+            if (notification_order[i] == idx) {
+                memmove(&notification_order[i], &notification_order[i + 1],
+                        (num_notifications - i - 1) * sizeof(notification_order[0]));
+                num_notifications--;
+                break;
+            }
         }
 
         LOG_DBG("Notifications: %u", num_notifications);
@@ -331,17 +327,24 @@ static int32_t remove_notification(uint32_t id, zsw_notification_remove_reason_t
     return -ENOENT;
 }
 
-void zsw_notification_manager_get_all(zsw_not_mngr_notification_t *nots, uint32_t *num_notifications)
+void zsw_notification_manager_foreach(zsw_notification_manager_foreach_cb_t cb, void *user_data)
 {
-    uint32_t num_stored = 0;
-    for (uint32_t i = 0; i < ZSW_NOTIFICATION_MGR_MAX_STORED; i++) {
-        if (notifications[i].id != ZSW_NOTIFICATION_MGR_INVALID_ID) {
-            nots[num_stored] = notifications[i];
-            num_stored++;
-        }
+    for (uint32_t i = 0; i < num_notifications; i++) {
+        cb(&notifications[notification_order[i]], user_data);
+    }
+}
+
+int32_t zsw_notification_manager_get(uint32_t id, zsw_not_mngr_notification_t *notification)
+{
+    uint32_t idx = find_notification_idx(id);
+
+    if (idx == NOTIFICATION_INVALID_INDEX) {
+        return -ENOENT;
     }
 
-    *num_notifications = num_stored;
+    memcpy(notification, &notifications[idx], sizeof(zsw_not_mngr_notification_t));
+
+    return 0;
 }
 
 int32_t zsw_notification_manager_get_num(void)
@@ -351,8 +354,8 @@ int32_t zsw_notification_manager_get_num(void)
 
 zsw_not_mngr_notification_t *zsw_notification_manager_get_newest(void)
 {
-    int idx = find_newest_notification_idx();
-    if (idx != ZSW_NOTIFICATION_MGR_INVALID_ID) {
+    uint32_t idx = find_newest_notification_idx();
+    if (idx != NOTIFICATION_INVALID_INDEX) {
         return &notifications[idx];
     }
 

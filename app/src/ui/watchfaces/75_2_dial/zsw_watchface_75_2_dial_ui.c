@@ -12,11 +12,13 @@
 
 #include "ui/zsw_ui.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_anim.h"
 #include "ui/watchfaces/zsw_ui_notification_area.h"
 
 LOG_MODULE_REGISTER(watchface_75_2_dial, LOG_LEVEL_WRN);
 
 static lv_obj_t *face_75_2_dial = NULL;
+static bool wake_pending;
 static watchface_app_evt_listener ui_75_2_dial_evt_cb;
 static zsw_ui_notification_area_t *zsw_ui_notifications_area;
 
@@ -137,9 +139,18 @@ static void watchface_75_2_dial_set_datetime(int day_of_week, int date, int day,
     if (getPlaceValue(last_weekday, 1) != getPlaceValue(weekday, 1)) {
         lv_image_set_src(face_75_2_dial_2_216824, face_75_2_dial_2_216824_group[((weekday + 6) / 1) % 7]);
     }
-    lv_image_set_rotation(face_75_2_dial_3_59132, hour * 300 + (minute * 5));
-    lv_image_set_rotation(face_75_2_dial_19_89191, minute * 60);
-    lv_image_set_rotation(face_75_2_dial_35_138999, second * 60);
+    int32_t hour_rotation = (hour % 12) * 300 + (minute * 5);
+
+    if (wake_pending) {
+        wake_pending = false;
+        zsw_watchface_anim_sweep(face_75_2_dial_3_59132, hour_rotation, 0);
+        zsw_watchface_anim_sweep(face_75_2_dial_19_89191, minute * 60, 80);
+        zsw_watchface_anim_sweep(face_75_2_dial_35_138999, second * 60, 160);
+    } else {
+        zsw_watchface_anim_set_rotation(face_75_2_dial_3_59132, hour_rotation);
+        zsw_watchface_anim_set_rotation(face_75_2_dial_19_89191, minute * 60);
+        zsw_watchface_anim_set_rotation(face_75_2_dial_35_138999, second * 60);
+    }
 
     last_weekday = weekday;
 }
@@ -280,6 +291,20 @@ void watchface_75_2_dial_show(lv_obj_t *parent, watchface_app_evt_listener evt_c
     lv_obj_set_pos(zsw_ui_notifications_area->ui_notifications_container, 0, 70);
 }
 
+static void watchface_75_2_dial_set_display_active(bool active)
+{
+    if (!active) {
+        return;
+    }
+    if (!face_75_2_dial) {
+        return;
+    }
+    wake_pending = true;
+    zsw_watchface_anim_reset_hand(face_75_2_dial_3_59132);
+    zsw_watchface_anim_reset_hand(face_75_2_dial_19_89191);
+    zsw_watchface_anim_reset_hand(face_75_2_dial_35_138999);
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_75_2_dial_show,
     .remove = watchface_75_2_dial_remove,
@@ -293,6 +318,7 @@ static watchface_ui_api_t ui_api = {
     .set_watch_env_sensors = watchface_75_2_dial_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_75_2_dial_invalidate_cached,
     .get_preview_img = watchface_75_2_dial_get_preview_img,
+    .set_display_active = watchface_75_2_dial_set_display_active,
     .name = "Analog Blue",
 };
 

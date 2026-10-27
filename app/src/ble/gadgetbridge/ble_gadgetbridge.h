@@ -24,6 +24,15 @@ void ble_gadgetbridge_send_version_info(void);
 void ble_gadgetbridge_send_notification_action(uint32_t id, ble_comm_notify_action_t action);
 
 /**
+ * @brief Send a reply to a notification, as Gadgetbridge's REPLY action with a message.
+ *
+ * @param id Notification ID to reply to
+ * @param text Reply text, UTF-8
+ * @return 0 when the message was handed to BLE, negative on error
+ */
+int ble_gadgetbridge_send_notification_reply(uint32_t id, const char *text);
+
+/**
  * @brief Send activity data to Gadgetbridge.
  *
  * Maps step_activity and power_state to Gadgetbridge activities:

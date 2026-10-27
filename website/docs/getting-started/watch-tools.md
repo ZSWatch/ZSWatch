@@ -14,6 +14,8 @@ The connection is shared with the firmware updater. Use the site links to switch
 
 Pick a background or open your own image, adjust the crop and click **Apply to watch**. Images are processed locally, and **Restore default background** returns to the firmware's default. If the watch does not send a confirmation, Watch Tools checks the active background file before reporting success. Older firmware may need an [update](../firmware/firmware_updates.md) to support custom backgrounds.
 
+The **Living Sky** watchface draws the current weather (rain, snow, fog, clouds, stars, lightning) and a time of day sky tint on top of your background. It animates for a few seconds when the screen turns on or when you tap it, then stays still to save power.
+
 ## Live Logs
 
 Open **Logs** and click **Start capture** to stream firmware logs, with filtering, search and export. The **Bluetooth traffic** view shows the raw NUS and SMP packets. Logs are kept in memory only, and file transfers stop the capture.

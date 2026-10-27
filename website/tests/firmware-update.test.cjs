@@ -445,30 +445,45 @@ test("hardware filters distinguish boards, and release results exclude unrelated
   } finally { global.fetch = previousFetch; }
 });
 
-test("CI discovery uses the PR and main firmware workflows and deduplicates runs and branches", async () => {
+test("CI discovery uses the PR and main firmware workflows, keeps failed runs and deduplicates runs and branches", async () => {
   const previousFetch = global.fetch;
   try {
-    const run = (id, branch) => ({ id, head_branch: branch, conclusion: "success", actor: { login: "dev" } });
+    const run = (id, branch) => ({ id, head_branch: branch, status: "completed", conclusion: "success", actor: { login: "dev" } });
     const requests = [];
     global.fetch = async (url) => { requests.push(url); return { ok: true, json: async () => {
       if (url.includes("/artifacts")) return { artifacts: url.includes("/10/") ? [] : [{ id: 1, name: "watchdk@1_debug", expired: false }, { id: 2, name: "zswatch@1_release", expired: true }] };
       if (url.includes("/workflows/build-main.yml/runs?")) return { workflow_runs: [run(10, "main"), run(9, "main")] };
-      return { workflow_runs: [run(10, "main"), run(8, "feature"), run(7, "feature"), run(6, "main"), { ...run(5, "failed"), conclusion: "failure" }, run(4, "gh-pages")] };
+      return { workflow_runs: [run(10, "main"), run(8, "feature"), run(7, "feature"), run(6, "main"), { ...run(5, "failed"), conclusion: "failure" }, run(4, "gh-pages"), { ...run(3, "running"), status: "in_progress", conclusion: null }] };
     } }; };
     const builds = await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" });
-    assert.deepEqual(builds.map((run) => [run.branch, run.runId]), [["main", 9], ["feature", 8]]);
+    assert.deepEqual(builds.map((run) => [run.branch, run.runId]), [["main", 9], ["feature", 8], ["failed", 5]]);
     assert.equal(builds[0].artifacts.length, 1);
     const discovery = requests.filter((url) => !url.includes("/artifacts"));
     assert.equal(discovery.length, 2);
     assert.ok(discovery.some((url) => url.includes("/actions/workflows/ci.yml/runs?per_page=50")));
     assert.ok(discovery.some((url) => url.includes("/actions/workflows/build-main.yml/runs?branch=main")));
-    assert.ok(discovery.every((url) => url.includes("status=success")));
+    assert.ok(discovery.some((url) => url.includes("ci.yml") && url.includes("status=completed")));
+    assert.ok(discovery.some((url) => url.includes("build-main.yml") && url.includes("status=success")));
     assert.ok(discovery.some((url) => url.includes("branch=main") && url.includes("per_page=10")));
     assert.ok(discovery.some((url) => url.includes("per_page=50")));
-    assert.deepEqual(requests.filter((url) => url.includes("/artifacts")).map((url) => Number(url.match(/runs\/(\d+)/)[1])), [10, 9, 8]);
+    assert.deepEqual(requests.filter((url) => url.includes("/artifacts")).map((url) => Number(url.match(/runs\/(\d+)/)[1])), [10, 9, 8, 5]);
     requests.length = 0;
     assert.equal((await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" }, 1)).length, 1);
     assert.equal(requests.filter((url) => url.includes("/artifacts")).length, 2);
+  } finally { global.fetch = previousFetch; }
+});
+
+test("CI discovery stops looking up artifacts after a budget of runs without firmware", async () => {
+  const previousFetch = global.fetch;
+  try {
+    let lookups = 0;
+    global.fetch = async (url) => ({ ok: true, json: async () => {
+      if (url.includes("/artifacts")) { lookups++; return { artifacts: [] }; }
+      if (url.includes("build-main.yml")) return { workflow_runs: [] };
+      return { workflow_runs: Array.from({ length: 50 }, (_, i) => ({ id: i + 1, head_branch: `b${i}`, status: "completed", conclusion: "failure" })) };
+    } });
+    assert.deepEqual(await fetchArtifacts({ owner: "ZSWatch", repo: "ZSWatch" }, 3), []);
+    assert.equal(lookups, 6);
   } finally { global.fetch = previousFetch; }
 });
 

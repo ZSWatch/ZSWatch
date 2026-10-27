@@ -37,3 +37,13 @@ ZBUS_CHAN_DEFINE(zsw_notification_mgr_remove_chan,
                  ZBUS_OBSERVERS(notification_app_remove_lis),
                  ZBUS_MSG_INIT()
                 );
+
+/** @brief  Drafts and send results for dictated replies, see zsw_notification_reply.h.
+*/
+ZBUS_CHAN_DEFINE(zsw_notification_reply_chan,
+                 struct zsw_notification_reply_event,
+                 NULL,
+                 NULL,
+                 ZBUS_OBSERVERS_EMPTY,
+                 ZBUS_MSG_INIT()
+                );

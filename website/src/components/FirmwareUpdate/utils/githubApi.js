@@ -23,14 +23,19 @@ export async function fetchReleases(config) {
 
 export async function fetchArtifacts(config, numRuns = 10) {
   const [recent, main] = await Promise.all([
-    githubJson(config, "actions/workflows/ci.yml/runs?per_page=50&status=success"),
+    // Failed or cancelled CI runs still keep their firmware build artifacts.
+    githubJson(config, "actions/workflows/ci.yml/runs?per_page=50&status=completed"),
     githubJson(config, "actions/workflows/build-main.yml/runs?branch=main&status=success&per_page=10"),
   ]);
   const seenRuns = new Set();
   const seenBranches = new Set();
   const firmwares = [];
+  // Unauthenticated GitHub allows 60 requests per hour; runs without firmware
+  // must not use them all up.
+  let lookups = numRuns * 2;
   for (const run of [...(main.workflow_runs || []), ...(recent.workflow_runs || [])]) {
-    if (run.conclusion !== "success" || run.head_branch === "gh-pages" || seenRuns.has(run.id) || seenBranches.has(run.head_branch)) continue;
+    if (run.status !== "completed" || run.head_branch === "gh-pages" || seenRuns.has(run.id) || seenBranches.has(run.head_branch)) continue;
+    if (lookups-- <= 0) break;
     seenRuns.add(run.id);
     const data = await githubJson(config, `actions/runs/${run.id}/artifacts?per_page=100`);
     const artifacts = (data.artifacts || []).filter((artifact) => !artifact.expired && isFirmwareAsset(artifact.name));

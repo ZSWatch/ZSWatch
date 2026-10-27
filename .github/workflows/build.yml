@@ -101,6 +101,7 @@ jobs:
           mv lvgl_resources_raw.hex fw_images/lvgl_resources_raw.hex
 
       - name: Build firmware
+        id: firmware
         if: ${{ matrix.board != 'native_sim/native/64' }}
         working-directory: ZSWatch
         run: |
@@ -220,22 +221,40 @@ jobs:
           dont_fail_on_alerts: true
 
       - name: Build heart rate addon variant
-        if: ${{ matrix.build_type == 'debug' && (matrix.board == 'zswatch@1/nrf5340/cpuapp' || matrix.board == 'watchdk@1/nrf5340/cpuapp') }}
+        id: hr
+        if: ${{ matrix.board == 'zswatch@1/nrf5340/cpuapp' || matrix.board == 'watchdk@1/nrf5340/cpuapp' }}
         working-directory: ZSWatch
         run: |
-          # Build only, to catch regressions in the optional HR code.
+          # Uploaded as its own artifact so the app and website list it as a
+          # separate firmware with a standard dfu_application.zip.
           if [ "${{ matrix.board }}" = "watchdk@1/nrf5340/cpuapp" ]; then
             HR=boards/zswatch/watchdk/watchdk_nrf5340_cpuapp_hr
           else
             HR=boards/zswatch/zswatch/zswatch_nrf5340_cpuapp_hr
           fi
+          if [ "${{ matrix.build_type }}" = "debug" ]; then
+            CONF="boards/debug.conf;boards/log_on_uart.conf;${HR}.conf"
+            OVERLAY="boards/log_on_uart.overlay;${HR}.overlay"
+          else
+            CONF="${HR}.conf"
+            OVERLAY="${HR}.overlay"
+          fi
           west build app --build-dir "${{ env.BUILD_DIR }}_hr" -p -b "${{ matrix.board }}" -- \
-            -DEXTRA_CONF_FILE="boards/debug.conf;boards/log_on_uart.conf;${HR}.conf" \
-            -DEXTRA_DTC_OVERLAY_FILE="boards/log_on_uart.overlay;${HR}.overlay" \
+            -DEXTRA_CONF_FILE="$CONF" \
+            -DEXTRA_DTC_OVERLAY_FILE="$OVERLAY" \
             -DSB_CONF_FILE="sysbuild.conf" \
             -DBOARD_ROOT="${PWD}/app"
 
+          mkdir -p fw_images_hr
+          cp fw_images/lvgl_resources_* fw_images_hr/
+          mv "${{ env.BUILD_DIR }}_hr/merged.hex" "fw_images_hr/${{ env.BUILD_DIR }}_hr.hex"
+          mv "${{ env.BUILD_DIR }}_hr/app/zephyr/zephyr.elf" "fw_images_hr/${{ env.BUILD_DIR }}_hr.elf"
+          mv "${{ env.BUILD_DIR }}_hr/dfu_application.zip" fw_images_hr/dfu_application.zip
+          # Keep the build type last: the website filters on the name suffix.
+          echo "HR_ARTIFACT=${BUILD_DIR%_${{ matrix.build_type }}}_hr_${{ matrix.build_type }}" >> "$GITHUB_ENV"
+
       - name: Build native_posix
+        id: native
         if: ${{ matrix.board == 'native_sim/native/64' }}
         working-directory: ZSWatch
         run: |
@@ -288,7 +307,17 @@ jobs:
           rm -rf "${{ env.BUILD_DIR }}" "${{ env.BUILD_DIR }}_rotated" "${{ env.BUILD_DIR }}_hr" "production_test/${{ env.BUILD_DIR }}" "production_test/${{ env.BUILD_DIR }}_production"
           df -h
 
+      # Uploads run even if a later step failed, as long as their build passed.
+      - name: Upload heart rate firmware
+        if: ${{ !cancelled() && steps.hr.outcome == 'success' }}
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: ${{ env.HR_ARTIFACT }}
+          path: ZSWatch/fw_images_hr
+          if-no-files-found: error
+
       - name : Upload Firmware
+        if: ${{ !cancelled() && (steps.firmware.outcome == 'success' || steps.native.outcome == 'success') }}
         uses: actions/upload-artifact@v4.3.3
         with:
           name: ${{ env.BUILD_DIR }}

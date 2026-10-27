@@ -48,6 +48,8 @@ typedef struct ble_comm_notify {
     int src_len;
     char *subject;
     int subject_len;
+    /* The phone can send a typed reply to it. */
+    bool can_reply;
 } ble_comm_notify_t;
 
 typedef struct ble_comm_notify_remove {

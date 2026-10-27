@@ -18,6 +18,7 @@
 #pragma once
 
 #include <lvgl.h>
+#include "zsw_weather.h"
 #include <string.h>
 #include "managers/zsw_notification_manager.h"
 
@@ -38,8 +39,6 @@
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color);
 
 const void *zsw_ui_utils_icon_from_wmo_weather_code(int code, lv_color_t *color, char **text);
-
-int wmo_code_to_weather_code(int wmo_code);
 
 const void *zsw_ui_utils_icon_from_notification(zsw_notification_src_t src);
 
@@ -64,3 +63,9 @@ const char *zsw_ui_utils_day_name(int day_of_week);
  * e.g. "JAN", "FEB", ...
  */
 const char *zsw_ui_utils_month_name(int month);
+
+/**
+ * Creates an image of size x size, scaled to fit and drawn in one color.
+ * For single color icons, like the Material icons in images/icons.
+ */
+lv_obj_t *zsw_ui_utils_create_icon(lv_obj_t *parent, const void *src, int32_t size, lv_color_t color);

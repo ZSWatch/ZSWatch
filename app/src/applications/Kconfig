@@ -61,4 +61,5 @@ menu "Applications"
     rsource "sensors_summary/Kconfig"
     rsource "voice_memo/Kconfig"
     rsource "chat/Kconfig"
+    rsource "tiles/Kconfig"
 endmenu

@@ -5,6 +5,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
+#include <zephyr/shell/shell.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -30,6 +31,7 @@
 #ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
 #include "managers/zsw_recording_manager.h"
 #include "events/zsw_voice_memo_event.h"
+#include "events/zsw_notification_event.h"
 #include "ble_voice_recording_list.h"
 #endif
 
@@ -94,6 +96,35 @@ static bool is_json_safe_string(const cJSON *item)
     return true;
 }
 #endif /* CONFIG_APPLICATIONS_USE_VOICE_MEMO */
+
+#ifdef CONFIG_ZSW_NOTIFICATION_REPLY
+ZBUS_CHAN_DECLARE(zsw_notification_reply_chan);
+
+static int publish_notification_reply(enum zsw_notification_reply_event_type type, uint32_t id, bool ok,
+                                      const char *filename, const char *text)
+{
+    int rc = zbus_chan_claim(&zsw_notification_reply_chan, K_MSEC(100));
+    if (rc != 0) {
+        LOG_WRN("Reply event dropped: %d", rc);
+        return rc;
+    }
+
+    struct zsw_notification_reply_event *evt = zbus_chan_msg(&zsw_notification_reply_chan);
+    memset(evt, 0, sizeof(*evt));
+    evt->type = type;
+    evt->id = id;
+    evt->ok = ok;
+    if (filename) {
+        strncpy(evt->filename, filename, sizeof(evt->filename) - 1);
+    }
+    if (text) {
+        strncpy(evt->text, text, sizeof(evt->text) - 1);
+    }
+    zbus_chan_finish(&zsw_notification_reply_chan);
+
+    return zbus_chan_notify(&zsw_notification_reply_chan, K_MSEC(100));
+}
+#endif
 
 static void send_ble_data_event(struct ble_data_event *evt)
 {
@@ -578,6 +609,10 @@ static int parse_notify(char *data, int len)
     char *title = find_js_value(data, "\"title\":");
     char *subject = find_js_value(data, "\"subject\":");
     char *body = find_js_value(data, "\"body\":");
+    char *reply = find_js_value(data, "\"reply\":");
+
+    // Only the ZSWatch companion sends this, Gadgetbridge has no dictated replies.
+    cb.data.data.notify.can_reply = reply != NULL && strncmp(reply, "true", strlen("true")) == 0;
 
     cb.data.data.notify.src = decode_js_value_in_place(src, &cb.data.data.notify.src_len);
     cb.data.data.notify.sender = decode_js_value_in_place(sender, &cb.data.data.notify.sender_len);
@@ -1088,7 +1123,15 @@ static int parse_voice_memo_command(char *data, int len)
                 cJSON_IsString(atype_obj) ? atype_obj->valuestring : "?",
                 cJSON_IsString(dt_obj) ? dt_obj->valuestring : "?");
 
-        if (cJSON_IsString(atype_obj) && strcmp(atype_obj->valuestring, "chat") == 0) {
+        if (cJSON_IsString(atype_obj) && (strcmp(atype_obj->valuestring, "reply") == 0 ||
+                                          strcmp(atype_obj->valuestring, "reply_error") == 0)) {
+#ifdef CONFIG_ZSW_NOTIFICATION_REPLY
+            publish_notification_reply(strcmp(atype_obj->valuestring, "reply") == 0 ?
+                                       ZSW_NOTIFICATION_REPLY_DRAFT : ZSW_NOTIFICATION_REPLY_DRAFT_FAILED,
+                                       0, false, cJSON_IsString(fn_obj) ? fn_obj->valuestring : NULL,
+                                       title_obj->valuestring);
+#endif
+        } else if (cJSON_IsString(atype_obj) && strcmp(atype_obj->valuestring, "chat") == 0) {
 #ifdef CONFIG_APPLICATIONS_USE_CHAT
             ZBUS_CHAN_DECLARE(chat_answer_chan);
             /* Too large for the BLE thread stack. */
@@ -1255,6 +1298,33 @@ static int parse_find_command(char *data, int len)
     return 0;
 }
 
+// {"t":"notify_reply","id":1700974318,"ok":false,"err":"The message is gone from the phone"}
+static int parse_notify_reply(char *data, int len)
+{
+#ifdef CONFIG_ZSW_NOTIFICATION_REPLY
+    cJSON *root = cJSON_Parse(data);
+    if (root == NULL) {
+        return -EINVAL;
+    }
+
+    cJSON *id = cJSON_GetObjectItem(root, "id");
+    cJSON *ok = cJSON_GetObjectItem(root, "ok");
+    cJSON *err = cJSON_GetObjectItem(root, "err");
+    int rc = -EINVAL;
+
+    if (cJSON_IsNumber(id) && cJSON_IsBool(ok)) {
+        rc = publish_notification_reply(ZSW_NOTIFICATION_REPLY_SENT, (uint32_t)id->valuedouble, cJSON_IsTrue(ok),
+                                        NULL, cJSON_IsString(err) ? err->valuestring : NULL);
+    }
+    cJSON_Delete(root);
+    return rc;
+#else
+    ARG_UNUSED(data);
+    ARG_UNUSED(len);
+    return -ENOTSUP;
+#endif
+}
+
 static int parse_data_utf8(char *data, int len)
 {
     int type_len;
@@ -1271,6 +1341,10 @@ static int parse_data_utf8(char *data, int len)
 
     if (strlen("notify-") == type_len && strncmp(type, "notify-", type_len) == 0) {
         return parse_notify_delete(data, len);
+    }
+
+    if (strlen("notify_reply") == type_len && strncmp(type, "notify_reply", type_len) == 0) {
+        return parse_notify_reply(data, len);
     }
 
     if (strlen("weather") == type_len && strncmp(type, "weather", type_len) == 0) {
@@ -1505,6 +1579,42 @@ void ble_gadgetbridge_send_notification_action(uint32_t id, ble_comm_notify_acti
     }
 }
 
+int ble_gadgetbridge_send_notification_reply(uint32_t id, const char *text)
+{
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return -ENOMEM;
+    }
+
+    int rc = -ENOMEM;
+    char *json = NULL;
+    if (cJSON_AddStringToObject(root, "t", "notify") && cJSON_AddNumberToObject(root, "id", id) &&
+        cJSON_AddStringToObject(root, "n", "REPLY") && cJSON_AddStringToObject(root, "msg", text)) {
+        // Escapes quotes and control characters, the text is the user's own words.
+        json = cJSON_PrintUnformatted(root);
+    }
+    cJSON_Delete(root);
+
+    if (json != NULL) {
+        size_t len = strlen(json);
+
+        // The trailing newline ends the message like the other watch messages.
+        char *msg = k_malloc(len + 3);
+        if (msg != NULL) {
+            memcpy(msg, json, len);
+            memcpy(&msg[len], " \n", 3);
+            rc = ble_comm_send((const uint8_t *)msg, len + 2);
+            k_free(msg);
+        }
+        cJSON_free(json);
+    }
+
+    if (rc < 0) {
+        LOG_WRN("Failed to send reply to %u: %d", id, rc);
+    }
+    return rc;
+}
+
 void ble_gadgetbridge_send_activity_state(zsw_power_manager_state_t activity_state)
 {
     char activity_msg[100];
@@ -1634,3 +1744,39 @@ void ble_gadgetbridge_send_voice_memo_undo(const char *filename)
     cJSON_free(json_str);
     LOG_INF("voice_memo: sent undo command for: %s", filename);
 }
+
+#ifdef CONFIG_SHELL
+static char *gb_shell_msg;
+static int gb_shell_len;
+
+static void gb_shell_work_fn(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    ble_gadgetbridge_input((const uint8_t *)gb_shell_msg, gb_shell_len);
+}
+
+static K_WORK_DEFINE(gb_shell_work, gb_shell_work_fn);
+
+/* For testing without a phone, races with real BLE input. Parsed on the system work queue,
+ * shell threads have too little stack for the parser. */
+static int cmd_gb(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    struct k_work_sync sync;
+    size_t size = strlen(argv[1]) + sizeof("GB()\n");
+    char *msg = k_malloc(size);
+
+    if (msg == NULL) {
+        return -ENOMEM;
+    }
+    gb_shell_len = snprintf(msg, size, "GB(%s)\n", argv[1]);
+    gb_shell_msg = msg;
+    k_work_submit(&gb_shell_work);
+    k_work_flush(&gb_shell_work, &sync);
+    k_free(msg);
+    shell_print(sh, "Parsed %d bytes", gb_shell_len);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(gb, NULL, "Parse a message as if the phone sent it: gb '<json>'", cmd_gb, 2, 0);
+#endif
