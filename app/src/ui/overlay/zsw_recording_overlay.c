@@ -21,7 +21,7 @@
 #include "zsw_recording_overlay.h"
 #include "managers/zsw_recording_manager.h"
 #include "ui/zsw_ui.h"
-#include "ui/zsw_ui_controller.h"
+#include "ui/zsw_overlay_manager.h"
 
 LOG_MODULE_REGISTER(zsw_recording_overlay, LOG_LEVEL_INF);
 
@@ -37,12 +37,20 @@ static lv_timer_t *update_timer;
 static bool dot_visible;
 static uint32_t blink_counter;
 
+static void overlay_show(lv_obj_t *parent, lv_group_t *group);
+static void overlay_close(void);
+
+static zsw_overlay_t overlay = {
+    .name = "Recording",
+    .priority = 30,
+    .blocks_input = true,
+    .show = overlay_show,
+    .close = overlay_close,
+};
+
 static void stop_btn_cb(lv_event_t *e)
 {
     LV_UNUSED(e);
-    if (zsw_recording_manager_is_recording()) {
-        zsw_recording_manager_stop();
-    }
     zsw_recording_overlay_hide();
 }
 
@@ -77,9 +85,13 @@ void zsw_recording_overlay_show(void)
     if (overlay_container) {
         return;
     }
+    zsw_overlay_show(&overlay);
+}
 
+static void overlay_show(lv_obj_t *parent, lv_group_t *group)
+{
     /* Full-screen container on lv_layer_top — blocks all input to underlying UI */
-    overlay_container = lv_obj_create(lv_layer_top());
+    overlay_container = lv_obj_create(parent);
     lv_obj_set_size(overlay_container, DISP_SIZE, DISP_SIZE);
     lv_obj_center(overlay_container);
     lv_obj_set_style_bg_color(overlay_container, lv_color_make(0x1a, 0x1a, 0x2e), 0);
@@ -139,9 +151,7 @@ void zsw_recording_overlay_show(void)
     lv_obj_set_style_text_color(stop_label, lv_color_white(), 0);
     lv_obj_center(stop_label);
 
-    /* Capture all button input via notification mode */
-    zsw_ui_controller_set_notification_mode();
-    lv_group_add_obj(lv_group_get_default(), stop_btn);
+    lv_group_add_obj(group, stop_btn);
     lv_group_focus_obj(stop_btn);
 
     /* Periodic update timer */
@@ -152,6 +162,16 @@ void zsw_recording_overlay_show(void)
 
 void zsw_recording_overlay_hide(void)
 {
+    zsw_overlay_close(&overlay);
+}
+
+static void overlay_close(void)
+{
+    /* Closing the overlay, e.g. with back, ends the recording. */
+    if (zsw_recording_manager_is_recording()) {
+        zsw_recording_manager_stop();
+    }
+
     if (update_timer) {
         lv_timer_delete(update_timer);
         update_timer = NULL;
@@ -164,13 +184,7 @@ void zsw_recording_overlay_hide(void)
         time_label = NULL;
         level_bar = NULL;
         stop_btn = NULL;
-        zsw_ui_controller_clear_notification_mode();
     }
 
     LOG_INF("Recording overlay hidden");
-}
-
-bool zsw_recording_overlay_is_shown(void)
-{
-    return overlay_container != NULL;
 }

@@ -1088,19 +1088,33 @@ static int parse_voice_memo_command(char *data, int len)
                 cJSON_IsString(atype_obj) ? atype_obj->valuestring : "?",
                 cJSON_IsString(dt_obj) ? dt_obj->valuestring : "?");
 
-        ZBUS_CHAN_DECLARE(voice_memo_result_chan);
-        struct zsw_voice_memo_result_event result_evt = {0};
-        strncpy(result_evt.title, title_obj->valuestring, sizeof(result_evt.title) - 1);
-        if (cJSON_IsString(fn_obj)) {
-            strncpy(result_evt.filename, fn_obj->valuestring, sizeof(result_evt.filename) - 1);
+        if (cJSON_IsString(atype_obj) && strcmp(atype_obj->valuestring, "chat") == 0) {
+#ifdef CONFIG_APPLICATIONS_USE_CHAT
+            ZBUS_CHAN_DECLARE(chat_answer_chan);
+            /* Too large for the BLE thread stack. */
+            static struct zsw_chat_answer_event answer_evt;
+            memset(&answer_evt, 0, sizeof(answer_evt));
+            strncpy(answer_evt.text, title_obj->valuestring, sizeof(answer_evt.text) - 1);
+            if (cJSON_IsString(fn_obj)) {
+                strncpy(answer_evt.filename, fn_obj->valuestring, sizeof(answer_evt.filename) - 1);
+            }
+            zbus_chan_pub(&chat_answer_chan, &answer_evt, K_MSEC(100));
+#endif
+        } else {
+            ZBUS_CHAN_DECLARE(voice_memo_result_chan);
+            struct zsw_voice_memo_result_event result_evt = {0};
+            strncpy(result_evt.title, title_obj->valuestring, sizeof(result_evt.title) - 1);
+            if (cJSON_IsString(fn_obj)) {
+                strncpy(result_evt.filename, fn_obj->valuestring, sizeof(result_evt.filename) - 1);
+            }
+            if (cJSON_IsString(atype_obj)) {
+                strncpy(result_evt.action_type, atype_obj->valuestring, sizeof(result_evt.action_type) - 1);
+            }
+            if (cJSON_IsString(dt_obj)) {
+                strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
+            }
+            zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
         }
-        if (cJSON_IsString(atype_obj)) {
-            strncpy(result_evt.action_type, atype_obj->valuestring, sizeof(result_evt.action_type) - 1);
-        }
-        if (cJSON_IsString(dt_obj)) {
-            strncpy(result_evt.datetime, dt_obj->valuestring, sizeof(result_evt.datetime) - 1);
-        }
-        zbus_chan_pub(&voice_memo_result_chan, &result_evt, K_MSEC(100));
 
         /* ACK so the phone stops resending. A resend after a lost ACK shows the popup again. */
         cJSON *generation = cJSON_GetObjectItem(root, "generation");

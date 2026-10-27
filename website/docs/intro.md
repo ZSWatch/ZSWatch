@@ -6,8 +6,8 @@ sidebar_position: 1
 
 Welcome to the **ZSWatch** documentation. ZSWatch is an open-source smartwatch built on the [Zephyr RTOS](https://www.zephyrproject.org/) using the [nRF Connect SDK](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/index.html).
 
-:::tip Got a WatchDK?
-If you just received a **ZSWatch Development Kit (WatchDK)**, head to the **[WatchDK Quick Start](./getting-started/watchdk-quickstart.md)** to set up the watch.
+:::tip Got a ZSWatch or WatchDK?
+If you just received a **ZSWatch** or a **ZSWatch Development Kit (WatchDK)**, head to the **[Quick Start](./getting-started/quickstart.md)** to set it up. Building the watch yourself? Start with the **[Assembly guide](./getting-started/assembly.md)**.
 :::
 
 ## What Is ZSWatch?
@@ -18,7 +18,8 @@ ZSWatch is a fully open-source smartwatch, covering both hardware and software. 
 
 | Goal | Guide |
 |------|-------|
-| **Just got a WatchDK?** | [WatchDK Quick Start](./getting-started/watchdk-quickstart.md) |
+| **Just got a ZSWatch or WatchDK?** | [Quick Start](./getting-started/quickstart.md) |
+| **Assemble the watch** | [Assembly](./getting-started/assembly.md) |
 | **Set up the dev environment** | [Toolchain Setup](./development/toolchain.md) |
 | **Build and flash firmware** | [Compiling the Software](./development/compiling.md) |
 | **Write a custom app** | [Writing Apps](./development/writing_apps.md) |

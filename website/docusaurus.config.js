@@ -48,6 +48,20 @@ const config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  plugins: [
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/docs/getting-started/watchdk-quickstart',
+            to: '/docs/getting-started/quickstart',
+          },
+        ],
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',

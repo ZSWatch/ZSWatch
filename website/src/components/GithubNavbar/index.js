@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import styles from './styles.module.css';
 import GithubIcon from '@site/static/icons/github.svg';
+import { githubDemoEnabled } from '../FirmwareUpdate/utils/githubDemo';
 
 
 const GitHubStars = (props) => {
   const [stars, setStars] = useState(null);
 
   useEffect(() => {
+    if (githubDemoEnabled()) return;
     const fetchStars = async () => {
       try {
         const response = await axios.get(`https://api.github.com/repos/${props.repoOrg}/${props.repoName}`);

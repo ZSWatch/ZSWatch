@@ -13,7 +13,7 @@ require.extensions[".js"] = (module, filename) => {
 };
 const { WatchStreamReader, default: WatchBluetooth } = require("../src/components/FirmwareUpdate/utils/watchBluetooth");
 const Manager = require("../src/components/WatchTools/WatchToolsManager").default;
-const { parseCrash, makeReport, addReport, reportBytes, loadHistory, saveHistory, crashFrequencies, logLines, HISTORY_KEY } = require("../src/components/WatchTools/diagnostics");
+const { parseCrash, makeReport, addReport, reportBytes, loadHistory, saveHistory, crashFrequencies, logLines, LogLineReader, HISTORY_KEY } = require("../src/components/WatchTools/diagnostics");
 const CBOR = require("../src/mcumgr-web/js/cbor");
 
 function dump({ binary = true, file = "", line = 0, timestamp = "14:37 11/08", data = "5a45020003000500" } = {}) {
@@ -64,6 +64,27 @@ test("log severities and ANSI escapes preserve unknown messages", () => {
   ]);
 });
 
+test("log lines span multiple BLE output frames without losing severity or ANSI parsing", () => {
+  const reader = new LogLineReader();
+  assert.deepEqual(reader.push("\x1b[3", "first"), []);
+  assert.deepEqual(reader.push("1m[123] <er", "second"), []);
+  const entries = reader.push("r> long message\x1b[0m\r\nnext", "third");
+  assert.deepEqual(entries, [{ text: "[123] <err> long message", level: "error", receivedAt: "first" }]);
+  assert.deepEqual(reader.flush(), [{ text: "next", level: "unknown", receivedAt: "third", partial: true }]);
+  assert.deepEqual(reader.flush(), []);
+  reader.push("old partial"); reader.reset();
+  assert.equal(reader.push("new\n")[0].text, "new");
+});
+
+test("log line assembly bounds malformed data without discarding it", () => {
+  const reader = new LogLineReader();
+  const entries = reader.push("x".repeat(40000));
+  assert.equal(entries.length, 2);
+  assert.ok(entries.every((entry) => entry.partial));
+  assert.ok(reader.pending.length <= 16384);
+  assert.equal(entries.map((entry) => entry.text).join("").length + reader.flush()[0].text.length, 40000);
+});
+
 test("legacy binary and newer text dumps parse without inventing missing metadata", () => {
   const old = parseCrash(dump());
   assert.equal(old.timestamp, "14:37 11/08"); assert.equal(old.file, ""); assert.equal(old.line, null); assert.equal(old.dataBytes, 8);
@@ -78,10 +99,10 @@ test("legacy binary and newer text dumps parse without inventing missing metadat
 test("browser history deduplicates text exports, preserves originals and counts unique locations", async () => {
   const original = dump({ file: "test.c", line: 20 });
   const report = await makeReport(original, { firmwareVersion: "0.8.1" }, "/lvgl_lfs/coredump.txt");
-  const imported = await makeReport(new TextEncoder().encode(report.text));
-  assert.equal(report.id, imported.id);
+  const textReport = await makeReport(new TextEncoder().encode(report.text));
+  assert.equal(report.id, textReport.id);
   assert.deepEqual(reportBytes(report), original);
-  const history = addReport(addReport([], report), imported);
+  const history = addReport(addReport([], report), textReport);
   assert.equal(history.length, 1);
   assert.deepEqual(crashFrequencies(history), [["test.c:20", 1]]);
   const saved = new Map(), storage = { getItem: (key) => saved.get(key), setItem: (key, value) => saved.set(key, value) };
@@ -100,7 +121,7 @@ function transport({ path = "/lvgl_lfs/coredump.txt", data = dump(), malformed =
   manager._buffer = new Uint8Array(); manager.sleep = async () => {};
   const commands = [], requests = [], traffic = [];
   let erased = false, raw = [];
-  manager._watch = { send: async (command) => commands.push(command), cleanup() {} };
+  manager._watch = { send: async (command) => commands.push(command), subscribeCommands: async () => {}, cleanup() {} };
   manager.ensureSmp = async () => { manager.connectionGeneration++; commands.push({ t: "smp", status: true }); };
   manager.onTraffic((entry) => traffic.push(entry));
   manager._characteristic = { removeEventListener() {}, async writeValueWithoutResponse(bytes) {
@@ -226,4 +247,61 @@ test("live capture is confirmed by a frame rather than the command write and sto
   assert.equal(mock.manager.logState, "streaming"); assert.equal(logs.length, 1);
   await mock.manager._disconnected(); assert.equal(mock.manager.logState, "off");
   mock.manager._watchOptions.onLog("late"); assert.equal(logs.length, 1);
+});
+
+test("capture waits past the firmware connection grace period and respects stop during startup", async () => {
+  const mock = transport(); mock.manager._watch.write = {};
+  mock.manager._bleReadyAt = Date.now();
+  let resume, waited;
+  mock.manager.sleep = (delay) => { waited = delay; return new Promise((resolve) => { resume = resolve; }); };
+  const start = mock.manager.setLogCapture(true);
+  assert.ok(waited > 2900 && waited <= 3000);
+  assert.equal(mock.commands.filter((command) => command.t === "log").length, 0);
+  await mock.manager.setLogCapture(false);
+  resume(); await start;
+  assert.deepEqual(mock.commands.filter((command) => command.t === "log"), [{ t: "log", status: false }]);
+  assert.equal(mock.manager.logState, "off");
+});
+
+test("a fresh log frame recovers a truncated frame without treating its JSON as an acknowledgement", () => {
+  const messages = [], logs = [];
+  const reader = new WatchStreamReader((message) => messages.push(message), (text) => logs.push(text));
+  reader.push(new TextEncoder().encode('<BLELOG>damaged {"t":"watchface_bg","ok":true}'));
+  reader.push(new TextEncoder().encode('<BLELOG>[123] <inf> recovered\n</BLELOG>{"t":"watchface_bg","action":"apply_result","ok":true}'));
+  assert.deepEqual(logs, ['[123] <inf> recovered\n']);
+  assert.deepEqual(messages, [{ t: "watchface_bg", action: "apply_result", ok: true }]);
+});
+
+test("renewing cached NUS notifications clears a stale log frame and receives the real background acknowledgement", async () => {
+  const watch = new WatchBluetooth(() => {}, async () => {});
+  let cached = true, subscribed = false;
+  const order = [];
+  watch.notify = {
+    async stopNotifications() { order.push("stop"); cached = false; subscribed = false; },
+    async startNotifications() { order.push("start"); if (!cached) subscribed = true; cached = true; },
+  };
+  watch.reader.push(new TextEncoder().encode("<BLELOG>unfinished log"));
+  await watch.subscribeCommands();
+  watch.write = { properties: { write: true, writeWithoutResponse: true },
+    async writeValueWithoutResponse() { assert.fail("Commands should use acknowledged writes when available"); },
+    async writeValueWithResponse(chunk) {
+      if (new TextDecoder().decode(chunk).endsWith(")") && subscribed) watch.onNotification({ target: { value: new DataView(new TextEncoder().encode('{"t":"watchface_bg","action":"apply_result","ok":true}').buffer) } });
+    },
+  };
+  const result = await watch.request({ t: "watchface_bg", action: "apply" }, (message) => message.t === "watchface_bg" && message.action === "apply_result", 50);
+  assert.equal(result.ok, true);
+  assert.deepEqual(order, ["stop", "start"]);
+});
+
+test("a service-change ATT rejection retries that packet once, while other write failures remain failures", async () => {
+  const watch = new WatchBluetooth(() => {}, async () => {});
+  let attempts = 0;
+  watch.write = { properties: { write: true }, async writeValueWithResponse() {
+    if (++attempts === 1) throw new Error("ATT error: 0x12 (Database Out Of Sync)");
+  } };
+  await watch.send({ t: "ver" });
+  assert.equal(attempts, 2);
+  watch.write.writeValueWithResponse = async () => { attempts++; throw new Error("Connection lost"); };
+  await assert.rejects(watch.send({ t: "ver" }), /Connection lost/);
+  assert.equal(attempts, 3);
 });

@@ -33,11 +33,13 @@ import TabItem from '@theme/TabItem';
   <TabItem value="ble" label="Over BLE / USB (Web)">
   :::note Prerequisites
   - ZSWatch must be flashed with functional firmware.
-  - On the watch, go to **Apps → Update** and enable **USB** and/or **BLE** before starting.
+  - For USB, open **Apps → Update** on the watch and enable **USB**.
+  - The web updater enables Bluetooth updates automatically. For a first connection to the computer, enable **Pairable** in **Settings → Bluetooth** on the watch and accept pairing on the computer.
+  - On older firmware that does not support automatic Bluetooth setup, enable **BLE** in **Apps → Update** manually.
   - The image resources file (`lvgl_resources_raw.bin`) is bundled in every firmware download from [GitHub Releases](https://github.com/ZSWatch/ZSWatch/releases) and [GitHub Actions](https://github.com/ZSWatch/ZSWatch/actions).
   - Downloading from **GitHub Actions** requires you to be logged in to GitHub.
   :::
-  Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions.
+  Go to [https://zswatch.dev/update](https://zswatch.dev/update) and follow the instructions. You can select the complete firmware package and use **Update firmware + resources** to upload both firmware and resources, or select `lvgl_resources_raw.bin` in **File System** to upload resources separately.
 
   </TabItem>
   <TabItem value="terminal" label="From terminal">
@@ -47,6 +49,8 @@ import TabItem from '@theme/TabItem';
   ```sh
   west upload_fs --type raw --ini_file app/boards/zswatch/watchdk/support/qspi_mx25u51245.ini
   ```
+
+  The ZSWatch and the WatchDK use the same `.ini` file (also in `app/boards/zswatch/zswatch/support/`).
 
   If you want to upload using only `nrfjprog` (no `west upload_fs`), use the generated hex images:
 
@@ -91,7 +95,7 @@ Images in ZSWatch exist in two places:
 | File type | Location | Used by | Purpose |
 |-----------|----------|---------|---------|
 | `.c` files | `app/src/images/` (and subdirectories like `icons/`, `weather_icons/`, etc.) | **Native simulator** and as source for `.bin` conversion | Compiled into the binary for native_sim; also used to generate `.bin` files |
-| `.bin` files | `app/src/images/binaries/S/` | **Real hardware** (WatchDK) | Stored in external flash, loaded at runtime via the `S:` storage prefix |
+| `.bin` files | `app/src/images/binaries/S/` | **Real hardware** (ZSWatch, WatchDK) | Stored in external flash, loaded at runtime via the `S:` storage prefix |
 
 When you build for the **native simulator**, the `.c` files are compiled directly into the binary, so images just work. When you build for **hardware**, the firmware references images from external flash. The `.bin` files in `binaries/S/` are packaged into the `lvgl_resources_raw.bin` blob that you upload to the watch.
 

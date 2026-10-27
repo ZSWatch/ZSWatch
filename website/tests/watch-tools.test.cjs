@@ -2,6 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+globalThis.crypto ??= require("node:crypto").webcrypto;
 const babel = require("@babel/core");
 const loader = require.extensions[".js"];
 const sourceRoot = path.resolve(__dirname, "../src") + path.sep;
@@ -76,10 +77,10 @@ test("preview drawing and binary export use the same crop and round mask", () =>
   assert.equal(new DataView(binary.buffer).getUint16(12 + (120 * 240 + 120) * 2, true), 0xffff);
 });
 
-function realProtocolMock({ uploadError = false, applyError = false, resetError = false, noReply = false } = {}) {
+function realProtocolMock({ uploadError = false, applyError = false, resetError = false, noReply = false, corruptApplied = false } = {}) {
   const manager = new WatchToolsManager({ logger: { info() {}, error() {} } });
   manager.sleep = async () => {};
-  const listeners = new Set(), commands = [], uploads = [];
+  const listeners = new Set(), commands = [], uploads = [], files = new Map();
   let connectedWithSmp = false, smp = false, connects = 0, nusBuffer = "", packetBuffer = [];
   let registration = 0, notificationRegistration = -1, notificationConnection = -1;
   const makeChar = (extra = {}) => {
@@ -99,8 +100,14 @@ function realProtocolMock({ uploadError = false, applyError = false, resetError 
       smp = command.status;
     }
     else if (command.t === "ver") notify.emit(new TextEncoder().encode('{"t":"ver","hw":"watchdk@1/nrf5340/cpuapp","fw":"0.8.1"}'));
-    else if (command.t === "watchface_bg" && !noReply) {
+    else if (command.t === "watchface_bg") {
       const error = command.action === "apply" ? applyError : resetError;
+      if (!error && command.action === "apply") {
+        const bytes = files.get("/user/bg_new.bin").slice();
+        if (corruptApplied) bytes[bytes.length - 1] ^= 1;
+        files.set("/user/bg.bin", bytes); files.delete("/user/bg_new.bin");
+      } else if (!error && command.action === "reset") files.delete("/user/bg.bin");
+      if (noReply) return;
       // An unrelated result and a fragmented real result must be handled correctly.
       notify.emit(new TextEncoder().encode('{"t":"watchface_bg","action":"unrelated_result","ok":true}'));
       const response = new TextEncoder().encode(JSON.stringify({ t: "watchface_bg", action: `${command.action}_result`, ok: !error, ...(error ? { error: "operation_failed", rc: -22 } : {}) }));
@@ -120,11 +127,27 @@ function realProtocolMock({ uploadError = false, applyError = false, resetError 
     assert.equal(smp, true); packetBuffer.push(...bytes);
     if (packetBuffer.length < 8 || packetBuffer.length < 8 + packetBuffer[2] * 256 + packetBuffer[3]) return;
     const packet = Uint8Array.from(packetBuffer); packetBuffer = [];
-    assert.equal(packet[0], 2); assert.equal(packet[5], 8); assert.equal(packet[7], 0);
-    const body = CBOR.decode(packet.slice(8).buffer); uploads.push(body);
-    const response = new Uint8Array(CBOR.encode(uploadError ? { rc: 9 } : { off: body.off + body.data.length }));
+    assert.equal(packet[5], 8);
+    const body = CBOR.decode(packet.slice(8).buffer);
+    let result;
+    if (packet[0] === 2) {
+      assert.equal(packet[7], 0); uploads.push(body);
+      if (body.off === 0) files.set(body.name, new Uint8Array(body.len));
+      if (!uploadError) files.get(body.name).set(body.data, body.off);
+      result = uploadError ? { rc: 9 } : { off: body.off + body.data.length };
+    } else {
+      assert.equal(packet[0], 0);
+      const bytes = files.get(body.name);
+      if (!bytes) result = { rc: 5 };
+      else if (packet[7] === 1) result = { len: bytes.length };
+      else {
+        assert.equal(packet[7], 2); assert.equal(body.type, "sha256");
+        result = { len: bytes.length, output: new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)) };
+      }
+    }
+    const response = new Uint8Array(CBOR.encode(result));
     if (notificationRegistration !== registration) return;
-    smpChar.emit([3, 0, response.length >> 8, response.length & 255, 0, 8, packet[6], 0, ...response]);
+    smpChar.emit([packet[0] + 1, 0, response.length >> 8, response.length & 255, 0, 8, packet[6], packet[7], ...response]);
   } });
   const battery = makeChar({ readValue: async () => new DataView(Uint8Array.of(88).buffer) });
   const device = { name: "ZSWatch", addEventListener: (_, fn) => listeners.add(fn), removeEventListener: (_, fn) => listeners.delete(fn),
@@ -248,6 +271,71 @@ test("consecutive background uploads renew notifications after dynamic SMP re-re
     await mock.manager.applyBackground(bytes);
     assert.equal(mock.connects, connected + 2);
     assert.equal(mock.commands.filter(command => command.t === "watchface_bg" && command.action === "apply").length, 2);
+    assert.equal(mock.smp, false);
+  } finally { await mock.manager.disconnect(); }
+});
+
+
+test("missing background acknowledgements verify applied bytes and default restoration over SMP", async () => {
+  const mock = realProtocolMock({ noReply: true });
+  try {
+    await mock.manager.connect({ transport: "ble" });
+    const request = mock.manager._watch.request.bind(mock.manager._watch);
+    mock.manager._watch.request = (message, match) => request(message, match, 10);
+    await mock.manager.applyBackground(sampleBackground());
+    assert.equal(mock.smp, false);
+    assert.equal((await mock.manager.restoreDefault()).ok, true);
+    assert.equal(mock.smp, false);
+  } finally { await mock.manager.disconnect(); }
+});
+
+test("a missing acknowledgement cannot hide an unapplied or corrupted background", async () => {
+  for (const options of [{ applyError: true }, { corruptApplied: true }]) {
+    const mock = realProtocolMock({ noReply: true, ...options });
+    try {
+      await mock.manager.connect({ transport: "ble" });
+      const request = mock.manager._watch.request.bind(mock.manager._watch);
+      mock.manager._watch.request = (message, match) => request(message, match, 10);
+      await assert.rejects(mock.manager.applyBackground(sampleBackground()), /did not confirm/);
+      assert.equal(mock.smp, false);
+    } finally { await mock.manager.disconnect(); }
+  }
+});
+
+test("both managers filter the Bluetooth picker by prefix and preserve service permissions", async () => {
+  const MCUManager = require("../src/components/FirmwareUpdate/utils/UpdateMCUManager").default;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const device = { name: "ZSWatch AA:BB:CC" };
+  let requested;
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { bluetooth: {
+    requestDevice: async (options) => { requested = options; return device; },
+  } } });
+  try {
+    for (const manager of [new MCUManager(), new WatchToolsManager()]) {
+      assert.equal(await manager._requestDevice([{ namePrefix: "ZSWatch" }]), device);
+      assert.deepEqual(requested.filters, [{ namePrefix: "ZSWatch" }]);
+      assert.equal(requested.acceptAllDevices, undefined);
+      assert.ok(requested.optionalServices.includes(manager.SERVICE_UUID));
+      assert.ok(requested.optionalServices.includes(NUS_SERVICE));
+      await manager._requestDevice(null);
+      assert.equal(requested.acceptAllDevices, true);
+      assert.equal(requested.filters, undefined);
+    }
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor);
+    else delete globalThis.navigator;
+  }
+});
+
+
+test("missing restore acknowledgement fails when the active background remains", async () => {
+  const mock = realProtocolMock({ noReply: true, resetError: true });
+  try {
+    await mock.manager.connect({ transport: "ble" });
+    const request = mock.manager._watch.request.bind(mock.manager._watch);
+    mock.manager._watch.request = (message, match) => request(message, match, 10);
+    await mock.manager.applyBackground(sampleBackground());
+    await assert.rejects(mock.manager.restoreDefault(), /did not confirm/);
     assert.equal(mock.smp, false);
   } finally { await mock.manager.disconnect(); }
 });

@@ -187,6 +187,8 @@ Incoming BLE data is parsed and published to `ble_comm_data_chan` with a **type 
 
 Outbound commands (e.g., music play/pause) flow in reverse: the app publishes to `music_control_data_chan`, and the BLE module picks it up and sends it to the phone.
 
+After the MTU exchange, discovery, sensor streaming and SMP transfers request a 15 ms BLE connection interval while their short-interval reasons are active. When no reason is active, the watch requests the idle interval configured by `CONFIG_BT_PERIPHERAL_PREF_MIN_INT` and `CONFIG_BT_PERIPHERAL_PREF_MAX_INT` (currently 400–500 ms). Both modes use `CONFIG_BT_PERIPHERAL_PREF_LATENCY`. The central decides whether to accept these parameters.
+
 :::tip Custom Watchface Backgrounds
 Custom watchface backgrounds can be uploaded via BLE. See the [Watch Tools background guide](../getting-started/watch-tools.md#background) for instructions.
 :::

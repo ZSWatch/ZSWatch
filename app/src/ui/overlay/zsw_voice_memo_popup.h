@@ -18,4 +18,3 @@
 #pragma once
 
 void zsw_voice_memo_popup_init(void);
-bool zsw_voice_memo_popup_is_shown(void);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addReport, loadHistory, saveHistory, logLines, makeReport, LOG_LIMIT, TRAFFIC_LIMIT } from "./diagnostics";
+import { addReport, loadHistory, saveHistory, LogLineReader, makeReport, LOG_LIMIT, TRAFFIC_LIMIT } from "./diagnostics";
 
 export default function useDiagnostics(tools) {
   const [logs, setLogs] = useState([]);
@@ -10,6 +10,7 @@ export default function useDiagnostics(tools) {
   const [crashStatus, setCrashStatus] = useState("");
   const [localError, setLocalError] = useState("");
   const currentCrash = useRef(null);
+  const logReader = useRef(new LogLineReader());
   const historyRef = useRef([]);
   const buffers = useRef({ logs: [], traffic: [], logDrops: 0, trafficDrops: 0, dirty: false });
   const [dropped, setDropped] = useState({ logs: 0, traffic: 0 });
@@ -24,9 +25,12 @@ export default function useDiagnostics(tools) {
       if (excess) { buffer[key].splice(0, excess); buffer[key === "logs" ? "logDrops" : "trafficDrops"] += excess; }
       buffer.dirty = true;
     };
-    connection.onFirmwareLog((text) => append("logs", logLines(text), LOG_LIMIT));
+    connection.onFirmwareLog((text) => append("logs", logReader.current.push(text), LOG_LIMIT));
     connection.onTraffic((entry) => append("traffic", [{ ...entry, receivedAt: new Date().toISOString() }], TRAFFIC_LIMIT));
-    connection.onLogState(setLogState);
+    connection.onLogState((state) => {
+      if (state === "off") append("logs", logReader.current.flush(), LOG_LIMIT);
+      setLogState(state);
+    });
     const timer = setInterval(() => {
       const buffer = buffers.current;
       if (!buffer.dirty) return;
@@ -64,16 +68,6 @@ export default function useDiagnostics(tools) {
     } catch (error) { setLocalError(error.message); }
   }
 
-  async function importCrash(file) {
-    if (!file) return;
-    setLocalError("");
-    try {
-      if (file.size > 1024 * 1024) throw new Error("Choose a crash dump smaller than 1 MB.");
-      remember(await makeReport(new Uint8Array(await file.arrayBuffer()), {}, file.name));
-      setCrashStatus("Crash dump imported.");
-    } catch (error) { setLocalError(error.message); }
-  }
-
   async function eraseCrash() {
     const expected = currentCrash.current;
     if (!expected || expected.id !== selected?.id || expected.generation !== tools.manager.current.connectionGeneration) return;
@@ -85,11 +79,11 @@ export default function useDiagnostics(tools) {
   function clearBuffer(key) {
     const buffer = buffers.current;
     buffer[key] = []; buffer[key === "logs" ? "logDrops" : "trafficDrops"] = 0; buffer.dirty = true;
-    if (key === "logs") setLogs([]); else setTraffic([]);
+    if (key === "logs") { logReader.current.reset(); setLogs([]); } else setTraffic([]);
   }
 
   return { logs, traffic, dropped, logState, history, selected, setSelected, crashStatus, localError, setLocalError,
-    checkCrash, importCrash, eraseCrash, clearBuffer,
+    checkCrash, eraseCrash, clearBuffer,
     canErase: tools.connected && selected?.id === currentCrash.current?.id && currentCrash.current?.generation === tools.manager.current?.connectionGeneration,
     removeReport: (id) => { persist(historyRef.current.filter((report) => report.id !== id)); if (selected?.id === id) setSelected(null); },
     toggleLogs: () => tools.perform("log-control", "Changing live log capture…", (manager) => manager.setLogCapture(!["waiting", "streaming", "no-data"].includes(logState))),

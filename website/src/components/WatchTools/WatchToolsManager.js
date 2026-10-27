@@ -3,10 +3,12 @@ import { validateBackground } from "./imageProcessing";
 import { MAX_CRASH_BYTES, parseCrash } from "./diagnostics";
 
 export const BACKGROUND_PATH = "/user/bg_new.bin";
+const ACTIVE_BACKGROUND_PATH = "/user/bg.bin";
 
 export default class WatchToolsManager extends UpdateMCUManager {
   constructor(options) {
     super(options);
+    this.keepSmpEnabled = Boolean(options?.keepSmpEnabled);
     this.connectionGeneration = 0;
     this.logState = "off";
     this._watchOptions = {
@@ -31,6 +33,15 @@ export default class WatchToolsManager extends UpdateMCUManager {
     this._logRequested = enabled;
     this.setLogState(enabled ? "waiting" : "off");
     try {
+      if (enabled) {
+        // Main firmware drops log output during the first 3 seconds after connecting.
+        const delay = Math.max(0, (this._bleReadyAt || 0) + 3000 - Date.now());
+        if (delay) await this.sleep(delay);
+        if (!this._logRequested || !this.isConnected()) return;
+        await this._watch.send({ t: "smp", status: false });
+        await this._watch.subscribeCommands();
+        if (!this._logRequested || !this.isConnected()) return;
+      }
       await this._watch.send({ t: "log", status: enabled });
       if (enabled && this._logRequested && this.logState === "waiting") this._logTimer = setTimeout(() => {
         if (this._logRequested && this.logState === "waiting") this.setLogState("no-data");
@@ -49,39 +60,101 @@ export default class WatchToolsManager extends UpdateMCUManager {
     return super._notification(event);
   }
 
-  async _openBle(device, reconnecting) {
+  async _openBle(device, reconnecting = false) {
     await super._openBle(device, reconnecting);
     this.connectionGeneration++;
-    if (this._watch.write) await this._watch.send({ t: "smp", status: false });
+    if (!this.keepSmpEnabled) await this._watch.send({ t: "smp", status: false });
     this.status("Connected. Watch tools are ready.");
+  }
+
+  async ensureUpdateReady() {
+    if (this._transport !== "ble") return super.ensureUpdateReady();
+    await this.ensureSmp();
+    await this._watch.readBattery(this._device.gatt);
+  }
+
+  shouldKeepSmpAlive() {
+    return this._transport === "ble" && this.isConnected() && this._watch?.smpEnabled && !this._logRequested && !this._request && !this._transfer && !this._rediscovering && !this._preparingSmp;
+  }
+
+  async keepSmpAlive() {
+    if (!this.shouldKeepSmpAlive()) return;
+    // Hidden tabs may suspend timers. Re-registering an expired service requires
+    // renewed GATT subscriptions, not just another enable command.
+    if (Date.now() - this._watch.smpActivityAt >= 120000) await this.ensureUpdateReady();
+    else await this._watch.enableSmp();
   }
 
   async ensureSmp() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
-    if (this._logRequested) await this.setLogCapture(false);
+    this._preparingSmp = true;
     try {
-      await this._watch.prepare(this._device.gatt);
-      await this._watch.enableSmp();
-      // Disabling SMP unregisters its GATT service, so always reconnect.
-      await this._reconnectSmp();
+      if (this._logRequested) await this.setLogCapture(false);
+      const device = this._device;
+      try {
+        // Keep metadata already read on this connection; repeated optional reads
+        // make the slow idle interval particularly expensive.
+        await this._watch.enableSmp();
+        // Disabling SMP unregisters its GATT service. A cached characteristic can
+        // still be discoverable while its notification subscription no longer
+        // exists on the watch. Reconnect before subscribing to the new service.
+        this._rediscovering = true;
+        try {
+          device.gatt.disconnect();
+          await this.sleep(500);
+          const server = await device.gatt.connect();
+          this._bleReadyAt = Date.now();
+          this.connectionGeneration++;
+          await this._watch.prepare(server, { enableUpdates: true, readInfo: false });
+          await this._discoverSmp(server);
+        } finally { this._rediscovering = false; }
+      } catch (error) {
+        if (this.isConnected()) {
+          try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
+        } else await this._disconnected();
+        throw error;
+      }
+    } finally { this._preparingSmp = false; }
+  }
+
+  async backgroundFileSize(path) {
+    try {
+      const result = await this.request(0, 8, 1, { name: path });
+      if (!Number.isInteger(result.len) || result.len < 0) throw new Error("The watch reported an invalid background size.");
+      return result.len;
     } catch (error) {
-      if (this.isConnected()) {
-        try { await this._watch?.send({ t: "smp", status: false }); } catch { /* Already disconnected. */ }
-      } else await this._disconnected();
+      if ((error.smpError?.rc === 5 && error.smpError.group === undefined) || (error.smpError?.group === 8 && error.smpError.rc === 3)) return null;
       throw error;
     }
   }
 
-  async _reconnectSmp() {
-    try { await super._reconnectSmp(); }
-    finally { this.connectionGeneration++; }
+  async verifyBackground(bytes, checkCancelled) {
+    // Applying renames the staged file. Its disappearance alone is insufficient:
+    // confirm the active file matches this upload using its SHA-256 hash.
+    checkCancelled();
+    if (await this.backgroundFileSize(BACKGROUND_PATH) !== null) return false;
+    if (await this.backgroundFileSize(ACTIVE_BACKGROUND_PATH) !== bytes.length) return false;
+    const expected = new Uint8Array(await this._hash(bytes));
+    const result = await this.request(0, 8, 2, { name: ACTIVE_BACKGROUND_PATH, type: "sha256" });
+    checkCancelled();
+    return result.len === bytes.length && result.output instanceof Uint8Array && result.output.length === expected.length
+      && result.output.every((byte, i) => byte === expected[i]);
   }
 
-  async backgroundCommand(action) {
-    const result = await this._watch.request(
-      { t: "watchface_bg", action },
-      (message) => message.t === "watchface_bg" && message.action === `${action}_result`,
-    );
+  async backgroundCommand(action, verify) {
+    await this._watch.subscribeCommands();
+    let result;
+    try {
+      result = await this._watch.request(
+        { t: "watchface_bg", action },
+        (message) => message.t === "watchface_bg" && message.action === `${action}_result`,
+      );
+    } catch (error) {
+      // Some firmware applies the change without delivering a NUS result. Use
+      // SMP to verify the resulting state; never infer success from a timeout.
+      if (error.code !== "WATCH_RESPONSE_TIMEOUT" || !verify || !await verify()) throw error;
+      return { t: "watchface_bg", action: `${action}_result`, ok: true };
+    }
     if (result.ok !== true) throw new Error(`The watch could not ${action === "apply" ? "apply" : "restore"} the background: ${result.error || "operation failed"}${result.rc == null ? "" : ` (${result.rc})`}.`);
     return result;
   }
@@ -101,7 +174,7 @@ export default class WatchToolsManager extends UpdateMCUManager {
       await this.upload(data, 0, true, onProgress, BACKGROUND_PATH);
       checkCancelled();
       onApplying();
-      await this.backgroundCommand("apply");
+      await this.backgroundCommand("apply", () => this.verifyBackground(bytes, checkCancelled));
     } finally {
       signal?.removeEventListener("abort", cancel);
       if (generation === this.connectionGeneration && watch === this._watch && this.isConnected()) {
@@ -112,11 +185,11 @@ export default class WatchToolsManager extends UpdateMCUManager {
 
   async restoreDefault() {
     if (!this.isConnected()) throw new Error("Connect to the watch first.");
-    await this._watch.prepare(this._device.gatt);
-    return this.backgroundCommand("reset");
+    if (this._logRequested) await this.setLogCapture(false);
+    return this.backgroundCommand("reset", () => this.withSmp(async () => await this.backgroundFileSize(ACTIVE_BACKGROUND_PATH) === null));
   }
 
-  cancelUpload() { this._finishTransfer(new Error("Background upload cancelled. Your current background was kept.")); }
+  cancelUpload() { if (this.keepSmpEnabled) return super.cancelUpload(); this._finishTransfer(new Error("Background upload cancelled. Your current background was kept.")); }
 
   async withSmp(action, signal) {
     const cancelled = () => { if (signal?.aborted) throw new Error("Operation cancelled."); };

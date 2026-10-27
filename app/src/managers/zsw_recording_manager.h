@@ -38,6 +38,9 @@ int zsw_recording_manager_init(void);
 /** @brief Start a new recording. Returns 0 on success, negative on error. */
 int zsw_recording_manager_start(void);
 
+/** @brief Start a recording whose filename begins with prefix (max 8 chars, [a-z_]). */
+int zsw_recording_manager_start_prefixed(const char *prefix);
+
 /** @brief Stop recording, finalize file, and publish zbus event. */
 int zsw_recording_manager_stop(void);
 

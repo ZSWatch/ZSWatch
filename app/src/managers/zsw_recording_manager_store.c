@@ -145,8 +145,12 @@ static void write_persistent_counter(int value)
     }
 }
 
-static void generate_filename(char *buf, size_t buflen)
+static void generate_filename(char *buf, size_t buflen, const char *prefix)
 {
+    int used = snprintf(buf, buflen, "%s", prefix ? prefix : "");
+
+    buf += used;
+    buflen -= used;
     if (is_time_valid()) {
         zsw_timeval_t ztm;
         struct tm tm;
@@ -295,7 +299,7 @@ int zsw_recording_manager_store_init(void)
     return 0;
 }
 
-int zsw_recording_manager_store_start_recording(void)
+int zsw_recording_manager_store_start_recording(const char *prefix)
 {
     int ret;
     zsw_recording_manager_store_header_t hdr;
@@ -315,7 +319,7 @@ int zsw_recording_manager_store_start_recording(void)
         return -ENOSPC;
     }
 
-    generate_filename(current_filename, sizeof(current_filename));
+    generate_filename(current_filename, sizeof(current_filename), prefix);
     snprintf(current_filepath, sizeof(current_filepath),
              "%s/%s.zsw_opus", VOICE_MEMO_DIR, current_filename);
 
