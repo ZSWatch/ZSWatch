@@ -131,6 +131,8 @@ jobs:
                 append_var EXTRA_CONF_FILE "boards/debug.conf;boards/log_on_rtt.conf"
                 ;;
             esac
+          else
+            append_var EXTRA_CONF_FILE "boards/release.conf"
           fi
 
           west build app --build-dir "${{ env.BUILD_DIR }}" -p -b "${{ matrix.board }}" -- \
