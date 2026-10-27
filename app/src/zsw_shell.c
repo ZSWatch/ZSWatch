@@ -790,8 +790,9 @@ static int cmd_event_pressure(const struct shell *sh, size_t argc, char **argv)
         return -EINVAL;
     }
 
+    float pressure_hpa = strtof(argv[1], NULL);
     struct pressure_event evt = {
-        .pressure = strtof(argv[1], NULL),
+        .pressure = pressure_hpa * 100.0f,
         .temperature = (argc > 2) ? strtof(argv[2], NULL) : 25.0f,
     };
 
@@ -802,7 +803,37 @@ static int cmd_event_pressure(const struct shell *sh, size_t argc, char **argv)
     }
 
     shell_print(sh, "Injected pressure: %.2f hPa, temp: %.1f C",
-                (double)evt.pressure, (double)evt.temperature);
+                (double)pressure_hpa, (double)evt.temperature);
+    return 0;
+}
+
+static int cmd_event_step(const struct shell *sh, size_t argc, char **argv)
+{
+    if (argc < 2) {
+        shell_error(sh, "Usage: event step <cumulative_count>");
+        return -EINVAL;
+    }
+
+    char *end;
+    errno = 0;
+    unsigned long long count = strtoull(argv[1], &end, 10);
+    if (*end != '\0' || errno == ERANGE || count > UINT32_MAX) {
+        shell_error(sh, "Step count must be between 0 and %lu", (unsigned long)UINT32_MAX);
+        return -EINVAL;
+    }
+
+    struct accel_event evt = {
+        .data.type = ZSW_IMU_EVT_TYPE_STEP,
+        .data.data.step.count = (uint32_t)count,
+    };
+
+    int ret = zbus_chan_pub(&accel_data_chan, &evt, K_MSEC(100));
+    if (ret != 0) {
+        shell_error(sh, "Failed to publish step event: %d", ret);
+        return ret;
+    }
+
+    shell_print(sh, "Injected cumulative step count: %llu", count);
     return 0;
 }
 
@@ -925,6 +956,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
                                              cmd_event_weather, 3, 3),
                                SHELL_CMD_ARG(time, NULL, "Inject phone time sync: event time <hour> <minute>",
                                              cmd_event_time, 3, 0),
+                               SHELL_CMD_ARG(step, NULL, "Inject cumulative step count: event step <count>",
+                                             cmd_event_step, 2, 0),
                                SHELL_SUBCMD_SET_END
                               );
 

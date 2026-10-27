@@ -66,6 +66,7 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
 
+#include "applications/altimeter/altimeter_app.h"
 #include "applications/watchface/watchface_app.h"
 
 #include <filesystem/zsw_rtt_flash_loader.h>
@@ -106,6 +107,7 @@ static void run_init_work(struct k_work *item)
     zsw_notification_manager_init();
 
     enable_bluetooth();
+    zsw_altimeter_calibration_start();
     if (IS_ENABLED(CONFIG_ZSW_HR_MANAGER)) {
         int hr_rc = zsw_hr_manager_init();
         if (hr_rc) {
