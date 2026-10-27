@@ -17,8 +17,25 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 int _zsw_xip_enable(const char *requester);
 int _zsw_xip_disable(const char *requester);
+
+/**
+ * @brief Take an XIP reference only if XIP is already enabled.
+ *
+ * Lets a reader use memory mapped external flash without powering up XIP
+ * itself. XIP stays enabled until the reference is returned with zsw_xip_put().
+ *
+ * @return true if a reference was taken, false if XIP is off.
+ */
+bool zsw_xip_try_get(void);
+
+/**
+ * @brief Return a reference taken with zsw_xip_try_get().
+ */
+void zsw_xip_put(void);
 
 #ifdef CONFIG_ZSW_XIP
 #define zsw_xip_enable() _zsw_xip_enable(__FUNCTION__)
@@ -26,4 +43,6 @@ int _zsw_xip_disable(const char *requester);
 #else
 #define zsw_xip_enable() (0)
 #define zsw_xip_disable() (0)
+#define zsw_xip_try_get() (false)
+#define zsw_xip_put()
 #endif
