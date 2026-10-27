@@ -8,6 +8,8 @@ This guide shows how to assemble the ZSWatch PCB and parts in the 3D-printed cas
 
 Not applicable to the WatchDK.
 
+<img src="/img/zswatch/zswatch_front.jpg" alt="Assembled ZSWatch" width="400" />
+
 ## What You Need
 
 | Item | Notes |
@@ -143,3 +145,5 @@ Glue the center cover (`bottom_hr_center.stl`) into the hole in the heart rate b
 ## Step 11 - Attach the Strap and Power On
 
 Attach the strap to the lugs. Connect USB-C to charge and power on the watch, then follow the [Quick Start](/docs/getting-started/quickstart?hardware=zswatch) to update the firmware and upload image resources.
+
+![The finished ZSWatch](/img/zswatch/zswatch_angled.jpg)
