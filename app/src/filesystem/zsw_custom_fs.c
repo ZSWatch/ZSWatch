@@ -621,19 +621,22 @@ int zsw_filesytem_get_total_size(void)
 
 int zsw_filesytem_erase(void)
 {
+    int num_opened_files = 0;
+    for (int i = 0; i < MAX_OPENED_FILES; i++) {
+        if (opened_files[i].header != NULL) {
+            num_opened_files++;
+            // Clearing the slot below would otherwise leak its XIP reference.
+            lvgl_fs_close(NULL, &opened_files[i]);
+        }
+    }
+    LOG_WRN("Number of opened files: %d", num_opened_files);
+
     memset(opened_files, 0, sizeof(opened_files));
     memset(&file_table, 0, sizeof(file_table));
     current_cached_file = NULL;
     full_fs_file.len = 0;
     full_fs_file.index = 0;
     full_fs_stream_active = false;
-    int num_opened_files = 0;
-    for (int i = 0; i < MAX_OPENED_FILES; i++) {
-        if (opened_files[i].header != NULL) {
-            num_opened_files++;
-        }
-    }
-    LOG_WRN("Number of opened files: %d", num_opened_files);
 
     LOG_INF("Erasing full fs image");
     int rc = flash_area_erase(flash_area, 0, flash_area->fa_size);
