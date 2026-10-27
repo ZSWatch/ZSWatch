@@ -20,8 +20,13 @@
 #include <zephyr/drivers/flash/nrf_qspi_nor.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
+#include "managers/zsw_xip_manager.h"
 
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
+
+// Mirrors the driver's XIP user count, which it does not expose.
+static uint32_t xip_users;
+static K_MUTEX_DEFINE(xip_mutex);
 
 LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 
@@ -64,7 +69,10 @@ int _zsw_xip_enable(const char *requester)
         return -ENODEV;
     }
 
+    k_mutex_lock(&xip_mutex, K_FOREVER);
+    xip_users++;
     nrf_qspi_nor_xip_enable(qspi_dev, true);
+    k_mutex_unlock(&xip_mutex);
     return 0;
 }
 
@@ -81,6 +89,44 @@ int _zsw_xip_disable(const char *requester)
         return -ENODEV;
     }
 
-    nrf_qspi_nor_xip_enable(qspi_dev, false);
+    k_mutex_lock(&xip_mutex, K_FOREVER);
+    if (xip_users == 0) {
+        LOG_ERR("Unbalanced XIP disable from: %s", requester);
+    } else {
+        xip_users--;
+        nrf_qspi_nor_xip_enable(qspi_dev, false);
+    }
+    k_mutex_unlock(&xip_mutex);
     return 0;
+}
+
+bool zsw_xip_try_get(void)
+{
+    bool enabled = false;
+
+    if (!qspi_dev || !device_is_ready(qspi_dev)) {
+        return false;
+    }
+
+    k_mutex_lock(&xip_mutex, K_FOREVER);
+    if (xip_users > 0) {
+        xip_users++;
+        nrf_qspi_nor_xip_enable(qspi_dev, true);
+        enabled = true;
+    }
+    k_mutex_unlock(&xip_mutex);
+
+    return enabled;
+}
+
+void zsw_xip_put(void)
+{
+    k_mutex_lock(&xip_mutex, K_FOREVER);
+    if (xip_users == 0) {
+        LOG_ERR("Unbalanced XIP put");
+    } else {
+        xip_users--;
+        nrf_qspi_nor_xip_enable(qspi_dev, false);
+    }
+    k_mutex_unlock(&xip_mutex);
 }
