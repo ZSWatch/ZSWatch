@@ -43,7 +43,8 @@ typedef enum zsw_imu_evt_type_t {
     ZSW_IMU_EVT_TYPE_SIGNIFICANT_MOTION,
     ZSW_IMU_EVT_TYPE_WRIST_WAKEUP,
     ZSW_IMU_EVT_TYPE_NO_MOTION,
-    ZSW_IMU_EVT_TYPE_ANY_MOTION
+    ZSW_IMU_EVT_TYPE_ANY_MOTION,
+    ZSW_IMU_EVT_TYPE_STEP_SNAPSHOT,
 } zsw_imu_evt_type_t;
 
 typedef enum zsw_imu_data_step_activity_t {
@@ -69,7 +70,7 @@ typedef struct zsw_imu_data_xyz_t {
 } zsw_imu_data_xyz_t;
 
 typedef struct zsw_imu_data_step_t {
-    int16_t count;
+    uint32_t count;
 } zsw_imu_data_step_t;
 
 typedef struct zsw_imu_evt_t {
