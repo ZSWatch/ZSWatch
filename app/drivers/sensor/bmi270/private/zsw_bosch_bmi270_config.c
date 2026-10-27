@@ -289,7 +289,9 @@ int bmi2_configure_enable_all(const struct device *p_dev, struct bmi270_data *p_
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     bmi2_step_debug_dump(p_dev, "init", 0);
+#endif
 
     return 0;
 }
@@ -412,7 +414,9 @@ int bmi2_set_accel_odr(const struct device *p_dev, const struct sensor_value *p_
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     bmi2_step_debug_dump(p_dev, "acc_odr", p_odr->val1);
+#endif
 
     return 0;
 }
@@ -624,7 +628,9 @@ int bmi2_disable_feature(const struct device *p_dev, uint8_t feature)
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     bmi2_step_debug_dump(p_dev, "feat_dis", feature);
+#endif
 
     return 0;
 }
@@ -668,7 +674,9 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     bmi2_step_debug_dump(p_dev, "feat_en", feature);
+#endif
 
     return 0;
 }
@@ -691,7 +699,9 @@ int bmi2_reset_step_counter(const struct device* p_dev)
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     bmi2_step_debug_dump(p_dev, "reset", 0);
+#endif
 
     return 0;
 }

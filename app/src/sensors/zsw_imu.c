@@ -25,7 +25,9 @@
 
 #include "events/accel_event.h"
 #include "sensors/zsw_imu.h"
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
 #include "sensors/zsw_imu_step_debug.h"
+#endif
 
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
@@ -78,7 +80,9 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
 
     LOG_DBG("BMI270 trigger handler. Type: %u", trig->type);
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     zsw_imu_step_debug_on_trigger(trig->type);
+#endif
 
     switch ((int)trig->type) {
         case SENSOR_TRIG_SIG_MOTION: {
@@ -89,13 +93,14 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         case SENSOR_TRIG_STEP: {
             struct sensor_value sensor_val;
 
-            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) == 0) {
-
-                evt.type = ZSW_IMU_EVT_TYPE_STEP;
-                evt.data.step.count = sensor_val.val1;
-
-                LOG_DBG("No of steps counted  = %u", evt.data.step.count);
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) != 0) {
+                return;
             }
+
+            evt.type = ZSW_IMU_EVT_TYPE_STEP;
+            evt.data.step.count = sensor_val.val1;
+
+            LOG_DBG("No of steps counted  = %u", evt.data.step.count);
 
             break;
         }
@@ -166,7 +171,9 @@ int zsw_imu_init(void)
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     zsw_imu_step_debug_start(bmi270);
+#endif
 
     // Always track whether the watch is moving or stationary.
     k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
@@ -352,9 +359,18 @@ int zsw_imu_reset_step_count(void)
     value.val1 = 0;
     value.val2 = 0;
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    zsw_imu_step_debug_reset_begin();
+#endif
     if (sensor_attr_set(bmi270, SENSOR_CHAN_STEPS, SENSOR_ATTR_OFFSET, &value) != 0) {
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+        zsw_imu_step_debug_reset_end(false);
+#endif
         return -EFAULT;
     }
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    zsw_imu_step_debug_reset_end(true);
+#endif
 
     return 0;
 }

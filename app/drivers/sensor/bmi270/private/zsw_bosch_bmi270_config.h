@@ -151,11 +151,4 @@ int bmi2_reset_step_counter(const struct device *p_dev);
 /** @brief Log the step counter config and INT mapping read back from the IMU.
 */
 void bmi2_step_debug_dump(const struct device *p_dev, const char *p_reason, int arg);
-#else
-static inline void bmi2_step_debug_dump(const struct device *p_dev, const char *p_reason, int arg)
-{
-    ARG_UNUSED(p_dev);
-    ARG_UNUSED(p_reason);
-    ARG_UNUSED(arg);
-}
 #endif

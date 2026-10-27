@@ -34,19 +34,37 @@ static K_WORK_DELAYABLE_DEFINE(step_debug_work, step_debug_work_handler);
 
 static const struct device *imu;
 static atomic_t trig_total;
-static atomic_t trig_step;
-static uint32_t last_steps;
-static uint32_t expected_step_irqs;
+static atomic_t step_refreshes;
+static struct k_spinlock epoch_lock;
+static uint32_t epoch_revision;
+static uint32_t resets_pending;
+static uint32_t reset_count;
+static uint32_t baseline_step_irqs;
 static uint32_t reported_gap;
 
 static void step_debug_work_handler(struct k_work *work)
 {
     struct zsw_bmi270_step_debug drv;
     struct sensor_value val;
+    k_spinlock_key_t key;
+    uint32_t revision;
+    uint32_t resets;
     uint32_t steps;
+    uint32_t nominal_step_irqs;
+    uint32_t epoch_step_irqs;
     uint32_t gap;
+    bool warn_gap;
 
+    ARG_UNUSED(work);
     k_work_reschedule(&step_debug_work, STEP_DEBUG_INTERVAL);
+
+    key = k_spin_lock(&epoch_lock);
+    revision = epoch_revision;
+    if (resets_pending != 0) {
+        k_spin_unlock(&epoch_lock, key);
+        return;
+    }
+    k_spin_unlock(&epoch_lock, key);
 
     if (sensor_channel_get(imu, SENSOR_CHAN_STEPS, &val) != 0) {
         LOG_WRN("Step read failed");
@@ -55,23 +73,27 @@ static void step_debug_work_handler(struct k_work *work)
     steps = val.val1;
     zsw_bmi270_step_debug_get(&drv);
 
-    // A lower count means the counter was reset since the last check.
-    if (steps < last_steps) {
-        last_steps = 0;
+    key = k_spin_lock(&epoch_lock);
+    if (resets_pending != 0 || revision != epoch_revision) {
+        k_spin_unlock(&epoch_lock, key);
+        return;
     }
-    expected_step_irqs += (steps / STEPS_PER_WATERMARK) - (last_steps / STEPS_PER_WATERMARK);
-    last_steps = steps;
-
-    LOG_INF("steps %u exp_step_int %u step_int %u int %u gpio %u trig %u trig_step %u",
-            steps, expected_step_irqs, drv.step_irqs, drv.processed_irqs, drv.gpio_irqs,
-            (uint32_t)atomic_get(&trig_total), (uint32_t)atomic_get(&trig_step));
-
-    // Allow one interrupt of slack, it can land just after this check.
-    gap = expected_step_irqs > drv.step_irqs ? expected_step_irqs - drv.step_irqs : 0;
-    if ((gap > 1) && (gap > reported_gap)) {
-        LOG_WRN("Missed step INT: expected %u, got %u", expected_step_irqs, drv.step_irqs);
-    }
+    resets = reset_count;
+    nominal_step_irqs = steps / STEPS_PER_WATERMARK;
+    epoch_step_irqs = drv.step_irqs - baseline_step_irqs;
+    gap = nominal_step_irqs > epoch_step_irqs ? nominal_step_irqs - epoch_step_irqs : 0;
+    warn_gap = gap > 1 && gap > reported_gap;
     reported_gap = gap;
+    k_spin_unlock(&epoch_lock, key);
+
+    LOG_INF("steps %u resets %u nominal_int %u epoch_int %u step_int %u int %u gpio %u trig %u step_refresh %u",
+            steps, resets, nominal_step_irqs, epoch_step_irqs, drv.step_irqs, drv.processed_irqs, drv.gpio_irqs,
+            (uint32_t)atomic_get(&trig_total), (uint32_t)atomic_get(&step_refreshes));
+
+    if (warn_gap) {
+        LOG_WRN("Possible step IRQ gap: nominal %u, observed %u since reset %u",
+                nominal_step_irqs, epoch_step_irqs, resets);
+    }
 }
 
 void zsw_imu_step_debug_start(const struct device *p_imu)
@@ -84,6 +106,32 @@ void zsw_imu_step_debug_on_trigger(int type)
 {
     atomic_inc(&trig_total);
     if (type == SENSOR_TRIG_STEP) {
-        atomic_inc(&trig_step);
+        atomic_inc(&step_refreshes);
     }
+}
+
+void zsw_imu_step_debug_reset_begin(void)
+{
+    k_spinlock_key_t key = k_spin_lock(&epoch_lock);
+
+    epoch_revision++;
+    resets_pending++;
+    k_spin_unlock(&epoch_lock, key);
+}
+
+void zsw_imu_step_debug_reset_end(bool success)
+{
+    struct zsw_bmi270_step_debug drv;
+    k_spinlock_key_t key;
+
+    zsw_bmi270_step_debug_get(&drv);
+    key = k_spin_lock(&epoch_lock);
+    if (success) {
+        reset_count++;
+        baseline_step_irqs = drv.step_irqs;
+        reported_gap = 0;
+    }
+    resets_pending--;
+    epoch_revision++;
+    k_spin_unlock(&epoch_lock, key);
 }

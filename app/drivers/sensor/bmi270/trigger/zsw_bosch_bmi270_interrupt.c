@@ -17,7 +17,9 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
 #include <zephyr/sys/atomic.h>
+#endif
 
 #include "../zsw_bosch_bmi270.h"
 #include "../private/zsw_bosch_bmi270_config.h"
@@ -112,13 +114,6 @@ static void bmi2_process_int(const struct device *p_dev)
 
 #ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
     atomic_inc(&dbg_processed_irqs);
-    if (status & BMI270_STEP_CNT_STATUS_MASK) {
-        atomic_inc(&dbg_step_irqs);
-        sensor_data.type = BMI2_STEP_COUNTER;
-        bmi270_get_feature_data(&sensor_data, 1, &data->bmi2);
-        LOG_INF("Step INT, status 0x%04x steps %u", status, sensor_data.sens_data.step_counter_output);
-        memset(&sensor_data, 0, sizeof(sensor_data));
-    }
 #endif
 
     if (status & BMI270_SIG_MOT_STATUS_MASK) {
@@ -131,19 +126,17 @@ static void bmi2_process_int(const struct device *p_dev)
         }
     }
 
-    // TODO: For some reason step count ISR is nor firing, for now
-    // just poll it whenever there is another event. The debug build only reports real step INTs.
-    if (!IS_ENABLED(CONFIG_ZSW_BMI270_STEP_DEBUG) || (status & BMI270_STEP_CNT_STATUS_MASK)) {
-        if (status & BMI270_STEP_CNT_STATUS_MASK) {
-            LOG_DBG("BMI270_STEP_CNT_STATUS_MASK");
+    if (status & BMI270_STEP_CNT_STATUS_MASK) {
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+        atomic_inc(&dbg_step_irqs);
+#endif
+        LOG_DBG("BMI270_STEP_CNT_STATUS_MASK");
+    }
 
-        }
+    trigger->type = SENSOR_TRIG_STEP;
 
-        trigger->type = SENSOR_TRIG_STEP;
-
-        if (data->step) {
-            data->step(p_dev, trigger);
-        }
+    if (data->step) {
+        data->step(p_dev, trigger);
     }
 
     if (status & BMI270_STEP_ACT_STATUS_MASK) {
