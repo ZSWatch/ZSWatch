@@ -32,7 +32,7 @@ For debug builds, you need a base config (`debug.conf`) plus a **log transport**
 | **RTT** | `debug.conf`, `log_on_rtt.conf` | *(none)* | Logs via SEGGER RTT (needs J-Link) |
 | **USB** | `debug.conf`, `log_on_usb.conf` | `log_on_usb.overlay` | Logs via USB CDC ACM |
 
-For **release builds** (no logging, optimized), use `release.conf` instead of `debug.conf`.
+For **release builds**, use `release.conf` instead of `debug.conf`. It turns off the UART and RTT log backends and keeps logging only for BLE logging (Settings > BLE logging). CI builds release firmware this way.
 
 ---
 
