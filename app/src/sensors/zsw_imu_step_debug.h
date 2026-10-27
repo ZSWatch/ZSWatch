@@ -17,20 +17,12 @@
 
 #pragma once
 
-#include <zephyr/device.h>
-#include <zephyr/sys/util.h>
-
 #ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+#include <stdbool.h>
+#include <zephyr/device.h>
+
 void zsw_imu_step_debug_start(const struct device *p_imu);
 void zsw_imu_step_debug_on_trigger(int type);
-#else
-static inline void zsw_imu_step_debug_start(const struct device *p_imu)
-{
-    ARG_UNUSED(p_imu);
-}
-
-static inline void zsw_imu_step_debug_on_trigger(int type)
-{
-    ARG_UNUSED(type);
-}
+void zsw_imu_step_debug_reset_begin(void);
+void zsw_imu_step_debug_reset_end(bool success);
 #endif

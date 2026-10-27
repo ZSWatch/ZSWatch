@@ -59,8 +59,9 @@ if ZSW_BMI270
         depends on ZSW_BMI270_TRIGGER
         help
             Count step counter interrupts, log the step counter configuration and
-            interrupt mapping on every reconfiguration, and only report
-            SENSOR_TRIG_STEP when the step counter interrupt bit is set.
+            interrupt mapping on every reconfiguration, and periodically log
+            step refreshes and nominal watermark crossings. Diagnostics do not
+            change step event delivery.
 
 module = ZSW_BOSCH_BMI270
 module-str = ZSW_BOSCH_BMI270
