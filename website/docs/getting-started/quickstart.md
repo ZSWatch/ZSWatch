@@ -14,8 +14,7 @@ Pick your hardware below. The choice applies to every tab on this page.
 <Tabs groupId="hardware" queryString>
   <TabItem value="zswatch" label="ZSWatch" default>
 
-  {/* TODO: replace with a photo of the assembled zswatch@1 */}
-  <img src="/img/real_photos/stainless_front_no_bg.png" alt="ZSWatch" width="220" />
+  <img src="/img/zswatch/zswatch_stand.jpg" alt="ZSWatch on a stand" width="400" />
 
   The watch form factor (`zswatch@1`). If you built the watch yourself, start with the [Assembly guide](./assembly.md).
 
