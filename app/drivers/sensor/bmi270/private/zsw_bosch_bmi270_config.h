@@ -146,9 +146,3 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
  *  @return         0 when successful
 */
 int bmi2_reset_step_counter(const struct device *p_dev);
-
-#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
-/** @brief Log the step counter config and INT mapping read back from the IMU.
-*/
-void bmi2_step_debug_dump(const struct device *p_dev, const char *p_reason, int arg);
-#endif

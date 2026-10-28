@@ -18,13 +18,12 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/sensor.h>
-#include <zephyr/sys/atomic.h>
 
 #include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 #include "sensors/zsw_imu_step_debug.h"
 
-LOG_MODULE_REGISTER(zsw_imu_step_dbg, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(zsw_imu_step_dbg, CONFIG_ZSW_BOSCH_BMI270_LOG_LEVEL);
 
 #define STEP_DEBUG_INTERVAL     K_SECONDS(10)
 #define STEPS_PER_WATERMARK     20
@@ -33,14 +32,11 @@ static void step_debug_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(step_debug_work, step_debug_work_handler);
 
 static const struct device *imu;
-static atomic_t trig_total;
-static atomic_t step_refreshes;
 static struct k_spinlock epoch_lock;
 static uint32_t epoch_revision;
 static uint32_t resets_pending;
 static uint32_t reset_count;
 static uint32_t baseline_step_irqs;
-static uint32_t reported_gap;
 
 static void step_debug_work_handler(struct k_work *work)
 {
@@ -53,7 +49,6 @@ static void step_debug_work_handler(struct k_work *work)
     uint32_t nominal_step_irqs;
     uint32_t epoch_step_irqs;
     uint32_t gap;
-    bool warn_gap;
 
     ARG_UNUSED(work);
     k_work_reschedule(&step_debug_work, STEP_DEBUG_INTERVAL);
@@ -67,7 +62,7 @@ static void step_debug_work_handler(struct k_work *work)
     k_spin_unlock(&epoch_lock, key);
 
     if (sensor_channel_get(imu, SENSOR_CHAN_STEPS, &val) != 0) {
-        LOG_WRN("Step read failed");
+        LOG_DBG("Step diagnostic read failed");
         return;
     }
     steps = val.val1;
@@ -82,32 +77,16 @@ static void step_debug_work_handler(struct k_work *work)
     nominal_step_irqs = steps / STEPS_PER_WATERMARK;
     epoch_step_irqs = drv.step_irqs - baseline_step_irqs;
     gap = nominal_step_irqs > epoch_step_irqs ? nominal_step_irqs - epoch_step_irqs : 0;
-    warn_gap = gap > 1 && gap > reported_gap;
-    reported_gap = gap;
     k_spin_unlock(&epoch_lock, key);
 
-    LOG_INF("steps %u resets %u nominal_int %u epoch_int %u step_int %u int %u gpio %u trig %u step_refresh %u",
-            steps, resets, nominal_step_irqs, epoch_step_irqs, drv.step_irqs, drv.processed_irqs, drv.gpio_irqs,
-            (uint32_t)atomic_get(&trig_total), (uint32_t)atomic_get(&step_refreshes));
-
-    if (warn_gap) {
-        LOG_WRN("Possible step IRQ gap: nominal %u, observed %u since reset %u",
-                nominal_step_irqs, epoch_step_irqs, resets);
-    }
+    LOG_DBG("Steps %u IRQs gpio=%u processed=%u step=%u gap=%u resets=%u",
+            steps, drv.gpio_irqs, drv.processed_irqs, drv.step_irqs, gap, resets);
 }
 
 void zsw_imu_step_debug_start(const struct device *p_imu)
 {
     imu = p_imu;
     k_work_reschedule(&step_debug_work, STEP_DEBUG_INTERVAL);
-}
-
-void zsw_imu_step_debug_on_trigger(int type)
-{
-    atomic_inc(&trig_total);
-    if (type == SENSOR_TRIG_STEP) {
-        atomic_inc(&step_refreshes);
-    }
 }
 
 void zsw_imu_step_debug_reset_begin(void)
@@ -129,7 +108,6 @@ void zsw_imu_step_debug_reset_end(bool success)
     if (success) {
         reset_count++;
         baseline_step_irqs = drv.step_irqs;
-        reported_gap = 0;
     }
     resets_pending--;
     epoch_revision++;
