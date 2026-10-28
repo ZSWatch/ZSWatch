@@ -359,12 +359,30 @@ static int schedule_render_locked(k_timeout_t delay)
     return 0;
 }
 
+#ifdef CONFIG_LV_Z_FLUSH_THREAD
+// Rendering runs on the cooperative system workqueue, so the flush thread only gets
+// the CPU when rendering blocks. Yield after each flush request so the higher
+// priority flush thread starts the SPI transfer now, while the next part renders.
+static void on_flush_request(lv_event_t *e)
+{
+    ARG_UNUSED(e);
+    k_yield();
+}
+#endif
+
 static void lvgl_render(struct k_work *item)
 {
     if (!atomic_get(&render_enabled)) {
         return;
     }
 
+#ifdef CONFIG_LV_Z_FLUSH_THREAD
+    static bool flush_yield_added;
+    if (!flush_yield_added) {
+        lv_display_add_event_cb(lv_display_get_default(), on_flush_request, LV_EVENT_FLUSH_FINISH, NULL);
+        flush_yield_added = true;
+    }
+#endif
     lvgl_lock();
     const int64_t next_update_in_ms = lv_task_handler();
     if (first_render_since_wake) {
