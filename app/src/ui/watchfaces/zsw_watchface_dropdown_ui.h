@@ -17,7 +17,13 @@
 
 #include "applications/watchface/watchface_app.h"
 
-void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page, watchface_app_evt_listener evt_cb, int brightness);
+/**
+ * @brief Add the dropdown to the watchface root page.
+ *
+ * @param shown_cb Optional, called with true when the dropdown opens and false when it closes.
+ */
+void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page, watchface_app_evt_listener evt_cb, int brightness,
+                                   void (*shown_cb)(bool shown));
 void zsw_watchface_dropdown_ui_set_music_info(char *track_name, char *artist);
 void zsw_watchface_dropdown_ui_set_battery_info(uint8_t battery_percent, bool is_charging, int tte, int ttf);
 void zsw_watchface_dropdown_ui_remove(void);
