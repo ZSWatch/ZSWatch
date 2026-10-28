@@ -18,6 +18,7 @@
 #include "zsw_ui.h"
 #include "lvgl.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
 static lv_obj_t *ui_down_bg_panel;
 static lv_obj_t *ui_up_bg_Panel;
@@ -113,9 +114,9 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
         dir = lv_indev_get_gesture_dir(lv_indev_get_act());
         switch (dir) {
             case LV_DIR_TOP: {
-                if (is_shown) {
-                    lv_obj_add_flag(ui_down_bg_panel, LV_OBJ_FLAG_HIDDEN);
-                    is_shown = false;
+                if (zsw_watchface_dropdown_ui_close()) {
+                    // Don't let the watchface root also handle this swipe up and open the app picker.
+                    lv_event_stop_bubbling(e);
                 }
                 break;
             }
@@ -123,6 +124,16 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
                 break;
         }
     }
+}
+
+bool zsw_watchface_dropdown_ui_close(void)
+{
+    if (!is_shown || ui_down_bg_panel == NULL) {
+        return false;
+    }
+    lv_obj_add_flag(ui_down_bg_panel, LV_OBJ_FLAG_HIDDEN);
+    is_shown = false;
+    return true;
 }
 
 void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
