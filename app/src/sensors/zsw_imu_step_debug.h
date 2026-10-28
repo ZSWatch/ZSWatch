@@ -22,7 +22,6 @@
 #include <zephyr/device.h>
 
 void zsw_imu_step_debug_start(const struct device *p_imu);
-void zsw_imu_step_debug_on_trigger(int type);
 void zsw_imu_step_debug_reset_begin(void);
 void zsw_imu_step_debug_reset_end(bool success);
 #endif

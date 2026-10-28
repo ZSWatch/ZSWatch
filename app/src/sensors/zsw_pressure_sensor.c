@@ -39,8 +39,10 @@ ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_tracking_lis, tracking_request_callback
 ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, zsw_pressure_sensor_tracking_lis, 1);
 static const struct device *const bmp581 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmp581));
 static bool tracking_active;
+static bool odr_valid;
+static const struct zbus_channel *sampling_chan;
 static atomic_t tracking_requested;
-static K_WORK_DEFINE(tracking_work, tracking_work_handler);
+static K_WORK_DELAYABLE_DEFINE(tracking_work, tracking_work_handler);
 
 static void publish_pressure_sample(void)
 {
@@ -50,8 +52,6 @@ static void publish_pressure_sample(void)
     if (zsw_pressure_sensor_get_sample(&pressure, &temperature) != 0) {
         return;
     }
-
-    LOG_DBG("Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
 
     struct pressure_event evt = {
         .pressure = pressure,
@@ -71,46 +71,56 @@ static void tracking_request_callback(const struct zbus_channel *chan)
     const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
 
     atomic_set(&tracking_requested, event->active);
-    k_work_submit(&tracking_work);
+    k_work_reschedule(&tracking_work, K_NO_WAIT);
 }
 
 static void tracking_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
+    if (!device_is_ready(bmp581)) {
+        return;
+    }
+
     bool requested = atomic_get(&tracking_requested) != 0;
-    if (requested == tracking_active) {
-        return;
-    }
-
-    const struct zbus_channel *current_chan = tracking_active ?
-                                               &periodic_event_1s_chan : &periodic_event_10s_chan;
     const struct zbus_channel *requested_chan = requested ?
-                                                 &periodic_event_1s_chan : &periodic_event_10s_chan;
-
-    int ret = zsw_periodic_chan_rm_obs(current_chan, &zsw_pressure_sensor_periodic_lis);
-    if (ret != 0) {
-        LOG_ERR("Failed to remove pressure periodic observer: %d", ret);
+                                                    &periodic_event_1s_chan : &periodic_event_10s_chan;
+    if (requested == tracking_active && sampling_chan == requested_chan && odr_valid) {
         return;
     }
 
-    ret = zsw_periodic_chan_add_obs(requested_chan, &zsw_pressure_sensor_periodic_lis);
-    if (ret != 0) {
-        LOG_ERR("Failed to add pressure periodic observer: %d", ret);
-        int rollback_ret = zsw_periodic_chan_add_obs(current_chan, &zsw_pressure_sensor_periodic_lis);
-        if (rollback_ret != 0) {
-            LOG_ERR("Failed to restore pressure periodic observer: %d", rollback_ret);
+    int ret;
+    if (sampling_chan != requested_chan) {
+        if (sampling_chan != NULL) {
+            ret = zsw_periodic_chan_rm_obs(sampling_chan, &zsw_pressure_sensor_periodic_lis);
+            if (ret < 0 && ret != -ENODATA) {
+                goto retry;
+            }
+            sampling_chan = NULL;
         }
-        return;
+
+        ret = zsw_periodic_chan_add_obs(requested_chan, &zsw_pressure_sensor_periodic_lis);
+        if (ret < 0 && ret != -EALREADY) {
+            goto retry;
+        }
+        sampling_chan = requested_chan;
     }
 
-    tracking_active = requested;
-    if (zsw_pressure_sensor_set_odr(requested ? BOSCH_BMP581_ODR_160_HZ : BOSCH_BMP581_ODR_DEFAULT) != 0) {
-        LOG_ERR("Failed to set pressure ODR");
+    odr_valid = false;
+    ret = zsw_pressure_sensor_set_odr(requested ? BOSCH_BMP581_ODR_160_HZ : BOSCH_BMP581_ODR_DEFAULT);
+    if (ret != 0) {
+        goto retry;
     }
+    odr_valid = true;
+    tracking_active = requested;
     if (requested) {
         publish_pressure_sample();
     }
+    return;
+
+retry:
+    LOG_DBG("Pressure tracking update failed: %d", ret);
+    k_work_reschedule(&tracking_work, K_SECONDS(1));
 }
 
 int zsw_pressure_sensor_init(void)
@@ -120,12 +130,14 @@ int zsw_pressure_sensor_init(void)
     }
 
     int ret = zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pressure_sensor_periodic_lis);
-    if (ret != 0) {
+    if (ret < 0) {
         return ret;
     }
+    sampling_chan = &periodic_event_10s_chan;
 
-    return zsw_pressure_sensor_set_odr(BOSCH_BMP581_ODR_DEFAULT);
-
+    ret = zsw_pressure_sensor_set_odr(BOSCH_BMP581_ODR_DEFAULT);
+    odr_valid = ret == 0;
+    return ret;
 }
 
 int zsw_pressure_sensor_set_odr(uint8_t odr)

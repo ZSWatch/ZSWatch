@@ -62,7 +62,7 @@ static void step_snapshot_periodic_callback(const struct zbus_channel *chan);
 static void publish_step_snapshot(void);
 static int fetch_raw_step_count(uint32_t *num_steps);
 static K_WORK_DELAYABLE_DEFINE(motion_tracking_work, motion_tracking_work_handler);
-static K_WORK_DEFINE(step_snapshot_work, step_snapshot_work_handler);
+static K_WORK_DELAYABLE_DEFINE(step_snapshot_work, step_snapshot_work_handler);
 
 ZBUS_LISTENER_DEFINE(imu_tracking_lis, tracking_request_callback);
 ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, imu_tracking_lis, 1);
@@ -94,7 +94,6 @@ static void publish_step_snapshot(void)
 {
     uint32_t step_count;
     if (fetch_raw_step_count(&step_count) != 0) {
-        LOG_WRN("Failed to poll cumulative step count");
         return;
     }
 
@@ -105,7 +104,7 @@ static void publish_step_snapshot(void)
 
     int ret = zbus_chan_pub(&accel_data_chan, &event, K_MSEC(100));
     if (ret != 0) {
-        LOG_WRN("Failed to publish step snapshot: %d", ret);
+        LOG_DBG("Step snapshot publication failed: %d", ret);
     }
 }
 
@@ -119,12 +118,16 @@ static void tracking_request_callback(const struct zbus_channel *chan)
 {
     const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
     atomic_set(&step_snapshot_requested, event->active);
-    k_work_submit(&step_snapshot_work);
+    k_work_reschedule(&step_snapshot_work, K_NO_WAIT);
 }
 
 static void step_snapshot_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
+
+    if (!device_is_ready(bmi270)) {
+        return;
+    }
 
     bool requested = atomic_get(&step_snapshot_requested) != 0;
     if (requested == step_snapshot_active) {
@@ -134,19 +137,22 @@ static void step_snapshot_work_handler(struct k_work *work)
     int ret;
     if (requested) {
         ret = zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
-        if (ret == 0) {
+        if (ret >= 0 || ret == -EALREADY) {
             step_snapshot_active = true;
             publish_step_snapshot();
+            ret = 0;
         }
     } else {
         ret = zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
-        if (ret == 0) {
+        if (ret >= 0 || ret == -ENODATA) {
             step_snapshot_active = false;
+            ret = 0;
         }
     }
 
     if (ret != 0) {
-        LOG_ERR("Failed to %s step snapshot polling: %d", requested ? "start" : "stop", ret);
+        LOG_DBG("Step polling update failed: %d", ret);
+        k_work_reschedule(&step_snapshot_work, K_SECONDS(1));
     }
 }
 
@@ -155,10 +161,6 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
     zsw_imu_evt_t evt;
 
     LOG_DBG("BMI270 trigger handler. Type: %u", trig->type);
-
-#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
-    zsw_imu_step_debug_on_trigger(trig->type);
-#endif
 
     switch ((int)trig->type) {
         case SENSOR_TRIG_SIG_MOTION: {
@@ -200,7 +202,6 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
                     .data.data.step.count = (uint32_t)steps_val.val1,
                 };
                 zbus_chan_pub(&accel_data_chan, &snapshot, K_MSEC(100));
-                LOG_INF("Step activity: %d, steps=%d", (int)evt.data.step_activity, (int)steps_val.val1);
             }
 
             break;
@@ -265,7 +266,7 @@ int zsw_imu_init(void)
     k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
 
     if (zsw_imu_feature_enable(ZSW_IMU_FEATURE_STEP_ACTIVITY, true) != 0) {
-        LOG_WRN("Failed to enable step activity");
+        LOG_DBG("Failed to enable step activity");
     }
 
     return 0;

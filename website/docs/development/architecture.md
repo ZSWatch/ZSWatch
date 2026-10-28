@@ -108,10 +108,11 @@ Key rules:
 | `battery_sample_data_chan` | mV, %, temp, charging | Sensor → Apps | Battery status updates |
 | `ble_comm_data_chan` | Typed BLE payload | BLE → Apps | Notifications, music info, weather, time, etc. |
 | `environment_data_chan` | Temp, humidity, pressure, IAQ | Sensor → Apps | Environmental sensor readings |
+| `elevation_tracking_chan` | Tracking active flag | Floor Counter → Sensors | Requests 1-second pressure samples and cumulative step snapshots during walking episodes |
 | `light_data_chan` | Lux value | Sensor → Apps | Ambient light level |
 | `magnetometer_data_chan` | x/y/z components | Sensor → Apps | Magnetometer heading data |
 | `music_control_data_chan` | Play/pause/next/prev | App → BLE | Music UI commands sent to phone |
-| `pressure_data_chan` | Pressure, temperature | Sensor → Apps | Barometric pressure readings |
+| `pressure_data_chan` | Pressure (Pa), temperature (Celsius) | Sensor → Apps | Barometric pressure readings |
 | `periodic_event_100ms_chan` | Tick | Timer → Subscribers | 100 ms periodic event |
 | `periodic_event_1s_chan` | Tick | Timer → Subscribers | 1-second periodic event |
 | `periodic_event_10s_chan` | Tick | Timer → Subscribers | 10-second periodic event |
@@ -149,6 +150,33 @@ Periodic Timer → Sensor Driver → zbus channel → App Listener → k_work �
 ```
 
 Sensor modules (IMU, magnetometer, pressure, environment, light) are abstracted behind simple APIs in `app/src/sensors/`. The IMU is an exception: it is primarily **interrupt-driven** (gestures, step events) rather than polled. The **Heart Rate (HR) driver** (`app/src/drivers/zsw_hr.c/h`) provides periodic or continuous heart rate measurements via callback, supporting modes for real-time biometric monitoring.
+
+### Floor Counter
+
+`app/src/sensors/zsw_floor_counter.c/h` owns floor counting: pressure/step fusion,
+episode settling, daily count reset, and the 30-second inactivity timeout. It starts
+after sensor initialization and remains active when the Altimeter UI is closed.
+Listeners copy events into a bounded queue; the system workqueue owns mutable
+fusion state. Readers obtain both floor counts as one atomic snapshot.
+
+During an episode, `elevation_tracking_chan` requests 1-second pressure samples
+and raw cumulative step snapshots. The pressure sensor uses a 160 Hz hardware
+ODR during tracking, but publishes only once per second; idle publication returns
+to 10 seconds. Failed tracking transitions are retried. Late step snapshots do
+not start an episode by themselves.
+
+The Altimeter app retains GPS/HTTP calibration, altitude calculation and smoothing,
+chart history, UI updates, and `altitude_data_chan` publication. Accepted ambient
+temperature is queued to the floor counter; floor counting does not use sea-level
+reference-pressure changes as height gain.
+
+Shell commands: `floors` reads today's up/down counts; `event pressure <hPa>`
+injects a pressure sample; `event step <count> [snapshot]` injects cumulative steps.
+For optional IRQ diagnostics, add `boards/step_debug.conf`, which enables
+`CONFIG_ZSW_BMI270_STEP_DEBUG` and debug-level BMI270 logging. Diagnostics emit
+one summary every 10 seconds and configuration dumps at initialization/reset.
+Floor-counter debug messages use `CONFIG_ZSW_SENSORS_LOG_LEVEL_DBG`; Altimeter
+debug messages use `CONFIG_ZSW_APP_LOG_LEVEL_DBG`.
 
 ### Heart Rate Manager
 
