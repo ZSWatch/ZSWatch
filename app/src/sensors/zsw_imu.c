@@ -24,7 +24,7 @@
 #include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 #include "events/accel_event.h"
-#include "events/step_snapshot_mode_event.h"
+#include "events/elevation_tracking_event.h"
 #include "events/zsw_periodic_event.h"
 #include "sensors/zsw_imu.h"
 #ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
@@ -34,7 +34,7 @@
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(step_snapshot_mode_chan);
+ZBUS_CHAN_DECLARE(elevation_tracking_chan);
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
@@ -47,8 +47,8 @@ static bool tracking_any_motion;
 static bool tracking_no_motion;
 static bool low_power_requested;
 static bool low_power_applied;
-static atomic_t step_snapshot_mode_requested;
-static bool step_snapshot_mode_active;
+static atomic_t step_snapshot_requested;
+static bool step_snapshot_active;
 // Cleared when a rate write fails, so the next request writes both settings again
 static bool accel_rate_valid = true;
 
@@ -56,16 +56,16 @@ static bool accel_rate_valid = true;
 
 static void motion_tracking_work_handler(struct k_work *work);
 static int apply_accel_rate_locked(void);
-static void step_snapshot_mode_callback(const struct zbus_channel *chan);
-static void step_snapshot_mode_work_handler(struct k_work *work);
+static void tracking_request_callback(const struct zbus_channel *chan);
+static void step_snapshot_work_handler(struct k_work *work);
 static void step_snapshot_periodic_callback(const struct zbus_channel *chan);
 static void publish_step_snapshot(void);
 static int fetch_raw_step_count(uint32_t *num_steps);
 static K_WORK_DELAYABLE_DEFINE(motion_tracking_work, motion_tracking_work_handler);
-static K_WORK_DEFINE(step_snapshot_mode_work, step_snapshot_mode_work_handler);
+static K_WORK_DEFINE(step_snapshot_work, step_snapshot_work_handler);
 
-ZBUS_LISTENER_DEFINE(imu_step_snapshot_mode_lis, step_snapshot_mode_callback);
-ZBUS_CHAN_ADD_OBS(step_snapshot_mode_chan, imu_step_snapshot_mode_lis, 1);
+ZBUS_LISTENER_DEFINE(imu_tracking_lis, tracking_request_callback);
+ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, imu_tracking_lis, 1);
 ZBUS_LISTENER_DEFINE(imu_step_snapshot_periodic_lis, step_snapshot_periodic_callback);
 
 // Follows the motion events on the channel rather than the trigger handler, so injected
@@ -115,19 +115,19 @@ static void step_snapshot_periodic_callback(const struct zbus_channel *chan)
     publish_step_snapshot();
 }
 
-static void step_snapshot_mode_callback(const struct zbus_channel *chan)
+static void tracking_request_callback(const struct zbus_channel *chan)
 {
-    const struct step_snapshot_mode_event *event = zbus_chan_const_msg(chan);
-    atomic_set(&step_snapshot_mode_requested, event->enabled);
-    k_work_submit(&step_snapshot_mode_work);
+    const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
+    atomic_set(&step_snapshot_requested, event->active);
+    k_work_submit(&step_snapshot_work);
 }
 
-static void step_snapshot_mode_work_handler(struct k_work *work)
+static void step_snapshot_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    bool requested = atomic_get(&step_snapshot_mode_requested) != 0;
-    if (requested == step_snapshot_mode_active) {
+    bool requested = atomic_get(&step_snapshot_requested) != 0;
+    if (requested == step_snapshot_active) {
         return;
     }
 
@@ -135,13 +135,13 @@ static void step_snapshot_mode_work_handler(struct k_work *work)
     if (requested) {
         ret = zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
         if (ret == 0) {
-            step_snapshot_mode_active = true;
+            step_snapshot_active = true;
             publish_step_snapshot();
         }
     } else {
         ret = zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
         if (ret == 0) {
-            step_snapshot_mode_active = false;
+            step_snapshot_active = false;
         }
     }
 
@@ -182,15 +182,25 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         }
         case SENSOR_TRIG_ACTIVITY: {
             struct sensor_value sensor_val;
+            struct sensor_value steps_val;
 
-            if (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) == 0) {
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) != 0) {
+                return;
+            }
 
-                evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
-                evt.data.step_activity = sensor_val.val1;
-                last_step_activity = evt.data.step_activity;
+            evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
+            evt.data.step_activity = sensor_val.val1 >= 0 && sensor_val.val1 < ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN ?
+                                     sensor_val.val1 : ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
+            last_step_activity = evt.data.step_activity;
 
-                const char *activity_output[4] = { "BMI2_STILL", "BMI2_WALK", "BMI2_RUN", "BMI2_UNKNOWN" };
-                LOG_DBG("Step activity: %s", activity_output[evt.data.step_activity]);
+            // Count at the activity change lets the elevation engine anchor its step baseline.
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &steps_val) == 0) {
+                struct accel_event snapshot = {
+                    .data.type = ZSW_IMU_EVT_TYPE_STEP_SNAPSHOT,
+                    .data.data.step.count = (uint32_t)steps_val.val1,
+                };
+                zbus_chan_pub(&accel_data_chan, &snapshot, K_MSEC(100));
+                LOG_INF("Step activity: %d, steps=%d", (int)evt.data.step_activity, (int)steps_val.val1);
             }
 
             break;
@@ -225,7 +235,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
             break;
         }
         default: {
-            break;
+            return;
         }
     }
 
@@ -253,6 +263,10 @@ int zsw_imu_init(void)
 
     // Always track whether the watch is moving or stationary.
     k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
+
+    if (zsw_imu_feature_enable(ZSW_IMU_FEATURE_STEP_ACTIVITY, true) != 0) {
+        LOG_WRN("Failed to enable step activity");
+    }
 
     return 0;
 }

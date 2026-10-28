@@ -15,13 +15,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <zephyr/zbus/zbus.h>
 
-typedef enum {
-    PRESSURE_PUBLISH_MODE_SLOW,
-    PRESSURE_PUBLISH_MODE_FAST,
-} pressure_publish_mode_t;
+#include "elevation_tracking_event.h"
 
-struct pressure_publish_mode_event {
-    pressure_publish_mode_t mode;
-};
+ZBUS_CHAN_DEFINE(elevation_tracking_chan,
+                 struct elevation_tracking_event,
+                 NULL,
+                 NULL,
+                 ZBUS_OBSERVERS_EMPTY,
+                 ZBUS_MSG_INIT()
+                );

@@ -28,8 +28,7 @@
 #include "events/accel_event.h"
 #include "events/ble_event.h"
 #include "events/pressure_event.h"
-#include "events/pressure_publish_mode_event.h"
-#include "events/step_snapshot_mode_event.h"
+#include "events/elevation_tracking_event.h"
 #include "events/altitude_event.h"
 #include "altimeter_ui.h"
 #include "history/zsw_history.h"
@@ -50,13 +49,17 @@ LOG_MODULE_REGISTER(altimeter_app, LOG_LEVEL_DBG);
 #define STANDARD_TEMP_K 288.15f
 #define ALTITUDE_DISPLAY_TAU_S 2.0f
 #define REF_SLP_SLEW_HPA_PER_S 0.001f
-#define FLOOR_INTERVAL_MS 10000U
-#define FLOOR_PAUSE_GRACE_MS 30000U
-#define FLOOR_MIN_INTERVAL_STEPS 5U
-#define FLOOR_MIN_STEP_HEIGHT_M 0.10f
-#define FLOOR_MAX_STEP_HEIGHT_M 0.35f
-#define FLOOR_CLIMB_THRESHOLD_M 0.75f
-#define FLOOR_HEIGHT_M 3.0f
+#define ALTIMETER_CHART_INTERVAL_MS 10000U
+#define FLOOR_HEIGHT_M 2.8f
+#define EPISODE_INACTIVITY_MS 30000U
+#define EPISODE_SETTLE_MS 1500U
+#define COMMIT_DEADBAND_M 0.20f
+#define COMMIT_MIN_SPAN_MS 500U
+#define COMMIT_MAX_AGE_MS 30000U
+#define COMMIT_MIN_CADENCE_CPS 0.5f
+#define COMMIT_MAX_SPEED_MPS 1.0f
+// The step counter reads ~0.09 m per count on stairs, so the ramp guard sits below that.
+#define COMMIT_MIN_M_PER_COUNT 0.05f
 #define ALTIMETER_WORK_QUEUE_DEPTH 8
 
 // type definitions for altimeter state, floor count state, and work items
@@ -84,28 +87,28 @@ typedef struct {
 typedef enum {
     ALTIMETER_FSM_IDLE,
     ALTIMETER_FSM_WAIT_BASELINE,
-    ALTIMETER_FSM_ACTIVE_WAIT,
-    ALTIMETER_FSM_INTERVAL_EVAL,
-    ALTIMETER_FSM_PAUSE_WAIT,
+    ALTIMETER_FSM_TRACKING,
 } altimeter_fsm_state_t;
 
 typedef struct {
     altimeter_fsm_state_t state;
-    float interval_start_pressure_pa;
-    float interval_temperature_k;
+    uint32_t episode_start_ms;
+    uint32_t last_progress_ms;
+    uint32_t last_count;
+    uint32_t commit_count;
+    uint32_t commit_ms;
+    float commit_pressure_pa;
+    float commit_temperature_k;
     float latest_pressure_pa;
-    uint16_t interval_steps;
-    uint32_t previous_step_count;
-    bool has_pressure;
-    bool has_previous_step_count;
+    bool has_last_count;
 } altimeter_fsm_t;
 
 typedef enum {
     ALTIMETER_WORK_PRESSURE,
     ALTIMETER_WORK_CALIBRATION,
     ALTIMETER_WORK_STEP,
-    ALTIMETER_WORK_INTERVAL_TIMEOUT,
-    ALTIMETER_WORK_PAUSE_TIMEOUT,
+    ALTIMETER_WORK_ACTIVITY,
+    ALTIMETER_WORK_INACTIVITY_TIMEOUT,
 } altimeter_work_type_t;
 
 typedef struct {
@@ -134,16 +137,18 @@ static void process_altimeter_work(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
 static void check_daily_floor_reset(void);
 static void process_pressure_sample(const altimeter_work_item_t *work_item);
-static void process_step_event(uint32_t step_count, bool step_snapshot);
-static void evaluate_floor_interval(void);
+static void process_step_event(uint32_t step_count, bool step_snapshot, uint32_t now_ms);
+static void process_activity_event(uint32_t now_ms);
+static void start_episode(const char *reason, uint32_t now_ms);
+static void end_episode_if_inactive(uint32_t now_ms);
+static void set_commit_point(uint32_t now_ms);
+static void commit_height(uint32_t now_ms);
 static void publish_altitude_event(void);
 static const char *floor_fsm_state_name(altimeter_fsm_state_t state);
 static void set_floor_fsm_state(altimeter_fsm_state_t state, const char *reason);
 static bool enqueue_altimeter_work(const altimeter_work_item_t *work_item);
-static void request_pressure_publish_mode(pressure_publish_mode_t mode);
-static void request_step_snapshot_mode(bool enabled);
-static void interval_timeout_handler(struct k_work *work);
-static void pause_timeout_handler(struct k_work *work);
+static void request_tracking(bool active);
+static void inactivity_timeout_handler(struct k_work *work);
 static void reschedule_calibration_work(bool success);
 
 // Static variables
@@ -200,12 +205,10 @@ ZBUS_CHAN_ADD_OBS(accel_data_chan, altimeter_accel_lis, 1);
 
 // ZBUS channel this app publishes calibrated altitude to
 ZBUS_CHAN_DECLARE(altitude_data_chan);
-ZBUS_CHAN_DECLARE(pressure_publish_mode_chan);
-ZBUS_CHAN_DECLARE(step_snapshot_mode_chan);
+ZBUS_CHAN_DECLARE(elevation_tracking_chan);
 K_WORK_DELAYABLE_DEFINE(altimeter_calibration_work, periodic_calibration_handler);
 K_WORK_DEFINE(altimeter_work, process_altimeter_work);
-K_WORK_DELAYABLE_DEFINE(altimeter_interval_work, interval_timeout_handler);
-K_WORK_DELAYABLE_DEFINE(altimeter_pause_work, pause_timeout_handler);
+K_WORK_DELAYABLE_DEFINE(altimeter_inactivity_work, inactivity_timeout_handler);
 K_MSGQ_DEFINE(altimeter_work_queue, sizeof(altimeter_work_item_t), ALTIMETER_WORK_QUEUE_DEPTH, 4);
 
 static float get_current_altitude(float pressure_sensor)
@@ -369,26 +372,13 @@ static void process_altimeter_work(struct k_work *work)
             process_pressure_sample(&work_item);
             break;
         case ALTIMETER_WORK_STEP:
-            process_step_event(work_item.step_count, work_item.step_snapshot);
+            process_step_event(work_item.step_count, work_item.step_snapshot, work_item.timestamp_ms);
             break;
-        case ALTIMETER_WORK_INTERVAL_TIMEOUT:
-            if (floor_fsm.state == ALTIMETER_FSM_ACTIVE_WAIT) {
-                evaluate_floor_interval();
-            }
+        case ALTIMETER_WORK_ACTIVITY:
+            process_activity_event(work_item.timestamp_ms);
             break;
-        case ALTIMETER_WORK_PAUSE_TIMEOUT:
-            if (floor_fsm.state == ALTIMETER_FSM_PAUSE_WAIT) {
-                LOG_INF("Floor pause expired: clearing residuals up=%.2f m down=%.2f m",
-                        (double)floor_state.climb_accum, (double)floor_state.descend_accum);
-                floor_state.climb_accum = 0.0f;
-                floor_state.descend_accum = 0.0f;
-                floor_fsm.interval_start_pressure_pa = 0.0f;
-                floor_fsm.interval_steps = 0;
-                set_floor_fsm_state(ALTIMETER_FSM_IDLE, "pause grace expired");
-                request_pressure_publish_mode(PRESSURE_PUBLISH_MODE_SLOW);
-                request_step_snapshot_mode(false);
-                publish_altitude_event();
-            }
+        case ALTIMETER_WORK_INACTIVITY_TIMEOUT:
+            end_episode_if_inactive(work_item.timestamp_ms);
             break;
         }
     }
@@ -420,43 +410,25 @@ static bool enqueue_altimeter_work(const altimeter_work_item_t *work_item)
     return true;
 }
 
-static void request_pressure_publish_mode(pressure_publish_mode_t mode)
+static void request_tracking(bool active)
 {
-    struct pressure_publish_mode_event event = { .mode = mode };
-    LOG_INF("Requesting pressure publication mode: %s",
-            mode == PRESSURE_PUBLISH_MODE_FAST ? "1s" : "10s");
-    int ret = zbus_chan_pub(&pressure_publish_mode_chan, &event, K_MSEC(100));
+    struct elevation_tracking_event event = { .active = active };
+    int ret = zbus_chan_pub(&elevation_tracking_chan, &event, K_MSEC(100));
     if (ret != 0) {
-        LOG_ERR("Failed to request pressure publish mode %d: %d", mode, ret);
+        LOG_ERR("Failed to request tracking %s: %d", active ? "on" : "off", ret);
     }
 }
 
-static void request_step_snapshot_mode(bool enabled)
-{
-    struct step_snapshot_mode_event event = { .enabled = enabled };
-    int ret = zbus_chan_pub(&step_snapshot_mode_chan, &event, K_MSEC(100));
-    if (ret != 0) {
-        LOG_ERR("Failed to request step snapshots %s: %d", enabled ? "on" : "off", ret);
-    }
-}
-
-static void interval_timeout_handler(struct k_work *work)
+static void inactivity_timeout_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    const altimeter_work_item_t event = { .type = ALTIMETER_WORK_INTERVAL_TIMEOUT };
+    const altimeter_work_item_t event = {
+        .type = ALTIMETER_WORK_INACTIVITY_TIMEOUT,
+        .timestamp_ms = (uint32_t)k_uptime_get_32(),
+    };
     if (!enqueue_altimeter_work(&event)) {
-        k_work_reschedule(&altimeter_interval_work, K_MSEC(10));
-    }
-}
-
-static void pause_timeout_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-
-    const altimeter_work_item_t event = { .type = ALTIMETER_WORK_PAUSE_TIMEOUT };
-    if (!enqueue_altimeter_work(&event)) {
-        k_work_reschedule(&altimeter_pause_work, K_MSEC(10));
+        k_work_reschedule(&altimeter_inactivity_work, K_MSEC(10));
     }
 }
 
@@ -468,25 +440,18 @@ static void process_pressure_sample(const altimeter_work_item_t *work_item)
 
     uint32_t timestamp_ms = work_item->timestamp_ms;
     floor_fsm.latest_pressure_pa = work_item->pressure_pa;
-    floor_fsm.has_pressure = true;
-            LOG_DBG("Pressure event: state=%s pressure=%.2f Pa start=%.2f Pa steps=%u queue_delay_ms=%u",
+    LOG_DBG("Pressure event: state=%s pressure=%.2f Pa",
             floor_fsm_state_name(floor_fsm.state),
-            (double)work_item->pressure_pa,
-            (double)floor_fsm.interval_start_pressure_pa,
-                (unsigned)floor_fsm.interval_steps,
-            (uint32_t)(k_uptime_get_32() - timestamp_ms));
+            (double)work_item->pressure_pa);
 
-    if (floor_fsm.state == ALTIMETER_FSM_WAIT_BASELINE) {
-        floor_fsm.interval_start_pressure_pa = work_item->pressure_pa;
-        floor_fsm.interval_temperature_k = alt_state.temperature_k;
-        floor_fsm.interval_steps = 0;
-        set_floor_fsm_state(ALTIMETER_FSM_ACTIVE_WAIT, "pressure baseline received");
-        LOG_INF("Floor interval baseline: P_start=%.2f Pa T_API=%.2f K; 10s timer starts",
-            (double)floor_fsm.interval_start_pressure_pa,
-            (double)floor_fsm.interval_temperature_k);
-        k_work_reschedule(&altimeter_interval_work, K_MSEC(FLOOR_INTERVAL_MS));
-    } else if (floor_fsm.state == ALTIMETER_FSM_ACTIVE_WAIT) {
-        floor_fsm.latest_pressure_pa = work_item->pressure_pa;
+    // The first samples after the ODR switch still carry the slow filter's old state.
+    if (floor_fsm.state == ALTIMETER_FSM_WAIT_BASELINE && floor_fsm.has_last_count &&
+        (uint32_t)(timestamp_ms - floor_fsm.episode_start_ms) >= EPISODE_SETTLE_MS) {
+        set_commit_point(timestamp_ms);
+        set_floor_fsm_state(ALTIMETER_FSM_TRACKING, "pressure settled");
+        LOG_INF("Episode baseline: P=%.2f Pa count=%u T_API=%.2f K",
+                (double)floor_fsm.commit_pressure_pa, (unsigned)floor_fsm.commit_count,
+                (double)floor_fsm.commit_temperature_k);
     }
 
     check_daily_floor_reset();
@@ -501,12 +466,6 @@ static void process_pressure_sample(const altimeter_work_item_t *work_item)
             alt_state.ref_slp = MIN(alt_state.ref_slp + max_slew_hpa, alt_state.target_ref_slp);
         } else if (alt_state.ref_slp > alt_state.target_ref_slp) {
             alt_state.ref_slp = MAX(alt_state.ref_slp - max_slew_hpa, alt_state.target_ref_slp);
-        }
-        if (max_slew_hpa > 0.0f && alt_state.ref_slp != alt_state.target_ref_slp) {
-            LOG_DBG("MSL reference slew: current=%.3f target=%.3f hPa rate=%.4f hPa/s",
-                    (double)alt_state.ref_slp,
-                    (double)alt_state.target_ref_slp,
-                    (double)REF_SLP_SLEW_HPA_PER_S);
         }
         alt_state.last_ref_update_ms = timestamp_ms;
     }
@@ -531,7 +490,7 @@ static void process_pressure_sample(const altimeter_work_item_t *work_item)
     ui_data.floors_down = floor_state.floors_down;
 
     if (!alt_state.has_chart_sample ||
-        (uint32_t)(timestamp_ms - alt_state.last_chart_sample_ms) >= FLOOR_INTERVAL_MS) {
+        (uint32_t)(timestamp_ms - alt_state.last_chart_sample_ms) >= ALTIMETER_CHART_INTERVAL_MS) {
         zsw_history_add(&chart_history, &ui_data.altitude);
         ui_data.start_idx = (uint8_t)chart_history.write_index;
         ui_data.valid_count = (uint8_t)chart_history.num_samples;
@@ -545,157 +504,151 @@ static void process_pressure_sample(const altimeter_work_item_t *work_item)
     publish_altitude_event();
 }
 
-static void process_step_event(uint32_t step_count, bool step_snapshot)
+static void set_commit_point(uint32_t now_ms)
 {
-    uint32_t current_count = step_count;
-    uint32_t step_delta = 0;
-    bool first_step_sample = !floor_fsm.has_previous_step_count;
-
-    if (floor_fsm.has_previous_step_count) {
-        uint32_t previous_count = floor_fsm.previous_step_count;
-        if (current_count < previous_count) {
-            LOG_INF("Step counter reset/rebase: previous=%u current=%u; delta discarded",
-                    (unsigned)previous_count, (unsigned)current_count);
-            floor_fsm.previous_step_count = current_count;
-            return;
-        }
-        step_delta = current_count - previous_count;
-    } else {
-        floor_fsm.has_previous_step_count = true;
-    }
-    floor_fsm.previous_step_count = current_count;
-
-    if (floor_fsm.state == ALTIMETER_FSM_IDLE && step_snapshot) {
-        return;
-    }
-
-    if (floor_fsm.state == ALTIMETER_FSM_IDLE || floor_fsm.state == ALTIMETER_FSM_PAUSE_WAIT) {
-        if (current_count == 0U || (!first_step_sample && step_delta == 0U)) {
-            return;
-        }
-        LOG_INF("Floor episode starts: state=%s cumulative_steps=%u wake_step_excluded",
-            floor_fsm_state_name(floor_fsm.state), (unsigned)current_count);
-        if (floor_fsm.state == ALTIMETER_FSM_PAUSE_WAIT) {
-            k_work_cancel_delayable(&altimeter_pause_work);
-        }
-        floor_fsm.interval_steps = 0;
-        set_floor_fsm_state(ALTIMETER_FSM_WAIT_BASELINE, "step detected");
-        request_step_snapshot_mode(true);
-        request_pressure_publish_mode(PRESSURE_PUBLISH_MODE_FAST);
-        return;
-    }
-
-    if (floor_fsm.state == ALTIMETER_FSM_WAIT_BASELINE || step_delta == 0U) {
-        return;
-    }
-
-    if (floor_fsm.state == ALTIMETER_FSM_ACTIVE_WAIT) {
-        uint32_t total_steps = (uint32_t)floor_fsm.interval_steps + step_delta;
-        floor_fsm.interval_steps = MIN(total_steps, UINT16_MAX);
-        LOG_DBG("Step event: cumulative=%u delta=%u interval_steps=%u state=%s",
-            (unsigned)current_count, (unsigned)step_delta,
-            (unsigned)floor_fsm.interval_steps,
-                floor_fsm_state_name(floor_fsm.state));
-    }
+    floor_fsm.commit_pressure_pa = floor_fsm.latest_pressure_pa;
+    floor_fsm.commit_count = floor_fsm.last_count;
+    floor_fsm.commit_ms = now_ms;
+    floor_fsm.commit_temperature_k = alt_state.temperature_k;
 }
 
-static void evaluate_floor_interval(void)
+static void start_episode(const char *reason, uint32_t now_ms)
 {
-    if (floor_fsm.state != ALTIMETER_FSM_ACTIVE_WAIT) {
+    floor_fsm.episode_start_ms = now_ms;
+    floor_fsm.last_progress_ms = now_ms;
+    set_floor_fsm_state(ALTIMETER_FSM_WAIT_BASELINE, reason);
+    LOG_INF("Floor episode starts (%s): count=%u", reason, (unsigned)floor_fsm.last_count);
+    request_tracking(true);
+    k_work_reschedule(&altimeter_inactivity_work, K_MSEC(EPISODE_INACTIVITY_MS));
+}
+
+static void end_episode_if_inactive(uint32_t now_ms)
+{
+    // A step may have re-armed the timer after this timeout was already queued.
+    if (floor_fsm.state == ALTIMETER_FSM_IDLE ||
+        (uint32_t)(now_ms - floor_fsm.last_progress_ms) < EPISODE_INACTIVITY_MS) {
         return;
     }
 
-    set_floor_fsm_state(ALTIMETER_FSM_INTERVAL_EVAL, "10s timer expired");
-    if (floor_fsm.interval_steps == 0U) {
-        set_floor_fsm_state(ALTIMETER_FSM_PAUSE_WAIT, "zero-step interval");
-        request_pressure_publish_mode(PRESSURE_PUBLISH_MODE_SLOW);
-        k_work_reschedule(&altimeter_pause_work, K_MSEC(FLOOR_PAUSE_GRACE_MS));
-        LOG_INF("Empty interval: P_start=%.2f Pa P_end=%.2f Pa; 30s pause timer starts",
-                (double)floor_fsm.interval_start_pressure_pa,
-                (double)floor_fsm.latest_pressure_pa);
-        publish_altitude_event();
+    LOG_INF("Floor episode ends: residual up=%.2f m down=%.2f m",
+            (double)floor_state.climb_accum, (double)floor_state.descend_accum);
+    floor_state.climb_accum = 0.0f;
+    floor_state.descend_accum = 0.0f;
+    set_floor_fsm_state(ALTIMETER_FSM_IDLE, "inactivity timeout");
+    request_tracking(false);
+    publish_altitude_event();
+}
+
+static void commit_height(uint32_t now_ms)
+{
+    uint32_t span_ms = now_ms - floor_fsm.commit_ms;
+    if (span_ms < COMMIT_MIN_SPAN_MS) {
+        return;
+    }
+
+    float span_s = (float)span_ms / 1000.0f;
+    uint32_t counts = floor_fsm.last_count - floor_fsm.commit_count;
+    float cadence = (float)counts / span_s;
+    float dh_m = 0.0f;
+    const char *skip = NULL;
+
+    if (floor_fsm.commit_pressure_pa > 0.0f && floor_fsm.latest_pressure_pa > 0.0f) {
+        dh_m = (DRY_AIR_GAS_CONSTANT * floor_fsm.commit_temperature_k / GRAVITY_M_S2) *
+               logf(floor_fsm.commit_pressure_pa / floor_fsm.latest_pressure_pa);
+    } else {
+        skip = "no pressure";
+    }
+
+    if (skip == NULL && cadence < COMMIT_MIN_CADENCE_CPS) {
+        skip = "low cadence";
+    } else if (skip == NULL && fabsf(dh_m) < COMMIT_DEADBAND_M) {
+        if (span_ms < COMMIT_MAX_AGE_MS) {
+            return;
+        }
+        skip = "no height change";
+    } else if (skip == NULL && fabsf(dh_m) / span_s > COMMIT_MAX_SPEED_MPS) {
+        skip = "too fast";
+    } else if (skip == NULL && fabsf(dh_m) / (float)counts < COMMIT_MIN_M_PER_COUNT) {
+        skip = "slope too small";
+    }
+
+    if (skip != NULL) {
+        LOG_INF("Height skipped (%s): span=%.1fs counts=%u cadence=%.2f dH=%.3f m",
+                skip, (double)span_s, (unsigned)counts, (double)cadence, (double)dh_m);
+        set_commit_point(now_ms);
         return;
     }
 
     check_daily_floor_reset();
-    float pressure_end_pa = floor_fsm.latest_pressure_pa;
-    float delta_height_m = 0.0f;
-    float delta_pressure_pa = pressure_end_pa - floor_fsm.interval_start_pressure_pa;
-    float average_step_height_m = 0.0f;
-    bool valid_interval = floor_fsm.has_pressure &&
-                          floor_fsm.interval_start_pressure_pa > 0.0f &&
-                          pressure_end_pa > 0.0f;
-    bool enough_steps = floor_fsm.interval_steps >= FLOOR_MIN_INTERVAL_STEPS;
-    bool valid_step_height = false;
-    bool accepted = false;
-    uint16_t floors_up_before = floor_state.floors_up;
-    uint16_t floors_down_before = floor_state.floors_down;
-
-    if (valid_interval) {
-        delta_height_m = (DRY_AIR_GAS_CONSTANT * floor_fsm.interval_temperature_k / GRAVITY_M_S2) *
-                         logf(floor_fsm.interval_start_pressure_pa / pressure_end_pa);
-        if (floor_fsm.interval_steps > 0U) {
-            average_step_height_m = fabsf(delta_height_m) / floor_fsm.interval_steps;
-        }
-        valid_step_height = average_step_height_m >= FLOOR_MIN_STEP_HEIGHT_M &&
-                            average_step_height_m <= FLOOR_MAX_STEP_HEIGHT_M;
-
-        if (enough_steps && valid_step_height && delta_height_m >= FLOOR_CLIMB_THRESHOLD_M) {
-            floor_state.climb_accum += delta_height_m;
-            accepted = true;
-        } else if (enough_steps && valid_step_height && delta_height_m <= -FLOOR_CLIMB_THRESHOLD_M) {
-            floor_state.descend_accum += delta_height_m;
-            accepted = true;
-        }
-
-        while (floor_state.climb_accum >= FLOOR_HEIGHT_M) {
-            floor_state.climb_accum -= FLOOR_HEIGHT_M;
-            floor_state.floors_up++;
-        }
-        while (floor_state.descend_accum <= -FLOOR_HEIGHT_M) {
-            floor_state.descend_accum += FLOOR_HEIGHT_M;
-            floor_state.floors_down++;
-        }
+    if (dh_m > 0.0f) {
+        floor_state.climb_accum += dh_m;
+    } else {
+        floor_state.descend_accum -= dh_m;
     }
 
-    LOG_INF("Interval eval: steps=%u P_start=%.2f Pa P_end=%.2f Pa dP=%.2f Pa dH=%.3f m step_dH=%.3f m accepted=%u accum_up=%.3f m accum_down=%.3f m floors_up=%u floors_down=%u",
-            floor_fsm.interval_steps,
-            (double)floor_fsm.interval_start_pressure_pa,
-            (double)pressure_end_pa,
-            (double)delta_pressure_pa,
-            (double)delta_height_m,
-            (double)average_step_height_m,
-            (unsigned)accepted,
-            (double)floor_state.climb_accum,
-            (double)floor_state.descend_accum,
-            floor_state.floors_up,
-            floor_state.floors_down);
-    if (!valid_interval) {
-        LOG_WRN("Interval rejected: invalid pressure baseline/end sample");
-    } else if (!enough_steps) {
-        LOG_INF("Interval rejected: steps %u < minimum %u",
-            (unsigned)floor_fsm.interval_steps, (unsigned)FLOOR_MIN_INTERVAL_STEPS);
-    } else if (!valid_step_height) {
-        LOG_INF("Interval rejected: per-step displacement %.3f m outside [%.2f, %.2f] m",
-                (double)average_step_height_m,
-                (double)FLOOR_MIN_STEP_HEIGHT_M,
-                (double)FLOOR_MAX_STEP_HEIGHT_M);
-    } else if (fabsf(delta_height_m) < FLOOR_CLIMB_THRESHOLD_M) {
-        LOG_INF("Interval rejected: |dH| %.3f m < threshold %.2f m",
-                (double)delta_height_m, (double)FLOOR_CLIMB_THRESHOLD_M);
+    bool paid = false;
+    while (floor_state.climb_accum >= FLOOR_HEIGHT_M) {
+        floor_state.climb_accum -= FLOOR_HEIGHT_M;
+        floor_state.floors_up++;
+        paid = true;
     }
-    if (floor_state.floors_up != floors_up_before || floor_state.floors_down != floors_down_before) {
-        LOG_INF("Floor payout: up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
+    while (floor_state.descend_accum >= FLOOR_HEIGHT_M) {
+        floor_state.descend_accum -= FLOOR_HEIGHT_M;
+        floor_state.floors_down++;
+        paid = true;
     }
 
-    if (valid_interval) {
-        floor_fsm.interval_start_pressure_pa = pressure_end_pa;
-        floor_fsm.interval_temperature_k = alt_state.temperature_k;
+    LOG_INF("Height commit: span=%.1fs counts=%u cadence=%.2f dH=%.3f m up=%.2f m down=%.2f m floors=%u/%u",
+            (double)span_s, (unsigned)counts, (double)cadence, (double)dh_m,
+            (double)floor_state.climb_accum, (double)floor_state.descend_accum,
+            floor_state.floors_up, floor_state.floors_down);
+    set_commit_point(now_ms);
+    if (paid) {
+        publish_altitude_event();
     }
-    floor_fsm.interval_steps = 0;
-    set_floor_fsm_state(ALTIMETER_FSM_ACTIVE_WAIT, "interval evaluated");
-    k_work_reschedule(&altimeter_interval_work, K_MSEC(FLOOR_INTERVAL_MS));
-    publish_altitude_event();
+}
+
+static void process_step_event(uint32_t step_count, bool step_snapshot, uint32_t now_ms)
+{
+    uint32_t delta = 0;
+    bool first_sample = !floor_fsm.has_last_count;
+
+    if (!first_sample) {
+        if (step_count < floor_fsm.last_count) {
+            LOG_INF("Step counter reset/rebase: %u -> %u", (unsigned)floor_fsm.last_count, (unsigned)step_count);
+            floor_fsm.last_count = step_count;
+            set_commit_point(now_ms);
+            return;
+        }
+        delta = step_count - floor_fsm.last_count;
+    }
+    floor_fsm.last_count = step_count;
+    floor_fsm.has_last_count = true;
+
+    if (floor_fsm.state == ALTIMETER_FSM_IDLE) {
+        // Snapshots only run while tracking, so a late one must not restart an ended episode.
+        if (!step_snapshot && step_count != 0U && (first_sample || delta > 0U)) {
+            start_episode("step event", now_ms);
+        }
+        return;
+    }
+
+    if (delta == 0U) {
+        return;
+    }
+
+    floor_fsm.last_progress_ms = now_ms;
+    k_work_reschedule(&altimeter_inactivity_work, K_MSEC(EPISODE_INACTIVITY_MS));
+    if (floor_fsm.state == ALTIMETER_FSM_TRACKING) {
+        commit_height(now_ms);
+    }
+}
+
+static void process_activity_event(uint32_t now_ms)
+{
+    if (floor_fsm.state == ALTIMETER_FSM_IDLE) {
+        start_episode("activity", now_ms);
+    }
 }
 
 static const char *floor_fsm_state_name(altimeter_fsm_state_t state)
@@ -705,12 +658,8 @@ static const char *floor_fsm_state_name(altimeter_fsm_state_t state)
         return "IDLE";
     case ALTIMETER_FSM_WAIT_BASELINE:
         return "WAIT_BASELINE";
-    case ALTIMETER_FSM_ACTIVE_WAIT:
-        return "ACTIVE_WAIT";
-    case ALTIMETER_FSM_INTERVAL_EVAL:
-        return "INTERVAL_EVAL";
-    case ALTIMETER_FSM_PAUSE_WAIT:
-        return "PAUSE_WAIT";
+    case ALTIMETER_FSM_TRACKING:
+        return "TRACKING";
     default:
         return "UNKNOWN";
     }
@@ -766,6 +715,19 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
 static void on_zbus_accel_callback(const struct zbus_channel *chan)
 {
     const struct accel_event *event = zbus_chan_const_msg(chan);
+
+    if (event->data.type == ZSW_IMU_EVT_TYPE_STEP_ACTIVITY) {
+        if (event->data.data.step_activity == ZSW_IMU_EVT_STEP_ACTIVITY_WALK ||
+            event->data.data.step_activity == ZSW_IMU_EVT_STEP_ACTIVITY_RUN) {
+            const altimeter_work_item_t activity_item = {
+                .type = ALTIMETER_WORK_ACTIVITY,
+                .timestamp_ms = (uint32_t)k_uptime_get_32(),
+            };
+            enqueue_altimeter_work(&activity_item);
+        }
+        return;
+    }
+
     if (event->data.type != ZSW_IMU_EVT_TYPE_STEP &&
         event->data.type != ZSW_IMU_EVT_TYPE_STEP_SNAPSHOT) {
         return;

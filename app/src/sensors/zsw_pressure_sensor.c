@@ -20,27 +20,27 @@
 #include <zephyr/sys/atomic.h>
 
 #include "events/pressure_event.h"
-#include "events/pressure_publish_mode_event.h"
+#include "events/elevation_tracking_event.h"
 #include "events/zsw_periodic_event.h"
 #include "sensors/zsw_pressure_sensor.h"
 
 LOG_MODULE_REGISTER(zsw_pressure_sensor, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
 static void pressure_periodic_callback(const struct zbus_channel *chan);
-static void pressure_mode_request_callback(const struct zbus_channel *chan);
-static void pressure_mode_work_handler(struct k_work *work);
+static void tracking_request_callback(const struct zbus_channel *chan);
+static void tracking_work_handler(struct k_work *work);
 
 ZBUS_CHAN_DECLARE(pressure_data_chan);
-ZBUS_CHAN_DECLARE(pressure_publish_mode_chan);
+ZBUS_CHAN_DECLARE(elevation_tracking_chan);
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
 ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_periodic_lis, pressure_periodic_callback);
-ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_mode_lis, pressure_mode_request_callback);
-ZBUS_CHAN_ADD_OBS(pressure_publish_mode_chan, zsw_pressure_sensor_mode_lis, 1);
+ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_tracking_lis, tracking_request_callback);
+ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, zsw_pressure_sensor_tracking_lis, 1);
 static const struct device *const bmp581 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmp581));
-static pressure_publish_mode_t active_publish_mode = PRESSURE_PUBLISH_MODE_SLOW;
-static atomic_t requested_publish_mode = PRESSURE_PUBLISH_MODE_SLOW;
-static K_WORK_DEFINE(pressure_mode_work, pressure_mode_work_handler);
+static bool tracking_active;
+static atomic_t tracking_requested;
+static K_WORK_DEFINE(tracking_work, tracking_work_handler);
 
 static void publish_pressure_sample(void)
 {
@@ -51,7 +51,7 @@ static void publish_pressure_sample(void)
         return;
     }
 
-    LOG_INF("Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
+    LOG_DBG("Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
 
     struct pressure_event evt = {
         .pressure = pressure,
@@ -66,30 +66,26 @@ static void pressure_periodic_callback(const struct zbus_channel *chan)
     publish_pressure_sample();
 }
 
-static void pressure_mode_request_callback(const struct zbus_channel *chan)
+static void tracking_request_callback(const struct zbus_channel *chan)
 {
-    const struct pressure_publish_mode_event *event = zbus_chan_const_msg(chan);
+    const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
 
-    if (event->mode != PRESSURE_PUBLISH_MODE_SLOW && event->mode != PRESSURE_PUBLISH_MODE_FAST) {
-        return;
-    }
-
-    atomic_set(&requested_publish_mode, event->mode);
-    k_work_submit(&pressure_mode_work);
+    atomic_set(&tracking_requested, event->active);
+    k_work_submit(&tracking_work);
 }
 
-static void pressure_mode_work_handler(struct k_work *work)
+static void tracking_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    pressure_publish_mode_t requested_mode = atomic_get(&requested_publish_mode);
-    if (requested_mode == active_publish_mode) {
+    bool requested = atomic_get(&tracking_requested) != 0;
+    if (requested == tracking_active) {
         return;
     }
 
-    const struct zbus_channel *current_chan = active_publish_mode == PRESSURE_PUBLISH_MODE_FAST ?
+    const struct zbus_channel *current_chan = tracking_active ?
                                                &periodic_event_1s_chan : &periodic_event_10s_chan;
-    const struct zbus_channel *requested_chan = requested_mode == PRESSURE_PUBLISH_MODE_FAST ?
+    const struct zbus_channel *requested_chan = requested ?
                                                  &periodic_event_1s_chan : &periodic_event_10s_chan;
 
     int ret = zsw_periodic_chan_rm_obs(current_chan, &zsw_pressure_sensor_periodic_lis);
@@ -108,8 +104,11 @@ static void pressure_mode_work_handler(struct k_work *work)
         return;
     }
 
-    active_publish_mode = requested_mode;
-    if (active_publish_mode == PRESSURE_PUBLISH_MODE_FAST) {
+    tracking_active = requested;
+    if (zsw_pressure_sensor_set_odr(requested ? BOSCH_BMP581_ODR_160_HZ : BOSCH_BMP581_ODR_DEFAULT) != 0) {
+        LOG_ERR("Failed to set pressure ODR");
+    }
+    if (requested) {
         publish_pressure_sample();
     }
 }
