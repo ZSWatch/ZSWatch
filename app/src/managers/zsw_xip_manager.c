@@ -19,14 +19,14 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/flash/nrf_qspi_nor.h>
 #include <zephyr/init.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/logging/log.h>
 #include "managers/zsw_xip_manager.h"
 
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
 
 // Mirrors the driver's XIP user count, which it does not expose.
-static uint32_t xip_users;
-static K_MUTEX_DEFINE(xip_mutex);
+static atomic_t xip_users;
 
 LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 
@@ -69,10 +69,8 @@ int _zsw_xip_enable(const char *requester)
         return -ENODEV;
     }
 
-    k_mutex_lock(&xip_mutex, K_FOREVER);
-    xip_users++;
+    atomic_inc(&xip_users);
     nrf_qspi_nor_xip_enable(qspi_dev, true);
-    k_mutex_unlock(&xip_mutex);
     return 0;
 }
 
@@ -89,44 +87,42 @@ int _zsw_xip_disable(const char *requester)
         return -ENODEV;
     }
 
-    k_mutex_lock(&xip_mutex, K_FOREVER);
-    if (xip_users == 0) {
+    if (atomic_dec(&xip_users) <= 0) {
+        atomic_inc(&xip_users);
         LOG_ERR("Unbalanced XIP disable from: %s", requester);
-    } else {
-        xip_users--;
-        nrf_qspi_nor_xip_enable(qspi_dev, false);
+        return 0;
     }
-    k_mutex_unlock(&xip_mutex);
+    nrf_qspi_nor_xip_enable(qspi_dev, false);
     return 0;
 }
 
 bool zsw_xip_try_get(void)
 {
-    bool enabled = false;
+    atomic_val_t users;
 
     if (!qspi_dev || !device_is_ready(qspi_dev)) {
         return false;
     }
 
-    k_mutex_lock(&xip_mutex, K_FOREVER);
-    if (xip_users > 0) {
-        xip_users++;
-        nrf_qspi_nor_xip_enable(qspi_dev, true);
-        enabled = true;
-    }
-    k_mutex_unlock(&xip_mutex);
+    // Only add a user while there is one already, so this never powers up XIP.
+    do {
+        users = atomic_get(&xip_users);
+        if (users <= 0) {
+            return false;
+        }
+    } while (!atomic_cas(&xip_users, users, users + 1));
 
-    return enabled;
+    // Even if the last other user disables XIP right now, this re-enables it before returning.
+    nrf_qspi_nor_xip_enable(qspi_dev, true);
+    return true;
 }
 
 void zsw_xip_put(void)
 {
-    k_mutex_lock(&xip_mutex, K_FOREVER);
-    if (xip_users == 0) {
+    if (atomic_dec(&xip_users) <= 0) {
+        atomic_inc(&xip_users);
         LOG_ERR("Unbalanced XIP put");
-    } else {
-        xip_users--;
-        nrf_qspi_nor_xip_enable(qspi_dev, false);
+        return;
     }
-    k_mutex_unlock(&xip_mutex);
+    nrf_qspi_nor_xip_enable(qspi_dev, false);
 }
