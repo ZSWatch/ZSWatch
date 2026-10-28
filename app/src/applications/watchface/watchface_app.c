@@ -101,6 +101,7 @@ typedef struct delayed_work_item {
 
 static void general_work(struct k_work *item);
 static void open_watchface(void);
+static void on_dropdown_shown(bool shown);
 
 static void check_notifications(void);
 static void notify_weather(void);
@@ -395,7 +396,8 @@ static void open_watchface(void)
     is_suspended = false;
     // Dropdown
     watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
-    zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness());
+    zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness(),
+                                  on_dropdown_shown);
     watchface_views_created = true;
     display_active = true;
     display_active_work_handler(NULL);
@@ -476,6 +478,14 @@ static void notify_weather(void)
             .weather_code = last_weather_data.weather_code,
         };
         wf->set_weather_detailed(&weather);
+    }
+}
+
+// Called from the dropdown's LVGL event handlers.
+static void on_dropdown_shown(bool shown)
+{
+    if (running && watchface_views_created && watchfaces[watchface_settings.watchface_index]->set_paused) {
+        watchfaces[watchface_settings.watchface_index]->set_paused(shown);
     }
 }
 

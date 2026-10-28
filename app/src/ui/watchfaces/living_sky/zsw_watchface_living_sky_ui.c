@@ -64,6 +64,8 @@ static lv_timer_t *intro_timer;
 static bool wake_pending;
 static bool datetime_ready;
 static bool face_active;
+// The dropdown covers the face, don't start weather bursts.
+static bool paused;
 
 static int last_minute = -1;
 static int last_hour = -1;
@@ -129,7 +131,7 @@ static void root_clicked_cb(lv_event_t *e)
 {
     ARG_UNUSED(e);
     // Do not interrupt the time intro with a full-screen weather redraw.
-    if (face_active && !wake_pending && !intro_timer) {
+    if (face_active && !paused && !wake_pending && !intro_timer) {
         living_sky_fx_play(BURST_DURATION_MS);
     }
 }
@@ -143,6 +145,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     root_page = lv_obj_create(parent);
     reset_cached_values();
     face_active = true;
+    paused = false;
 
     lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
@@ -248,7 +251,7 @@ static void intro_finished_cb(lv_timer_t *timer)
 {
     intro_timer = NULL;
     lv_timer_delete(timer);
-    if (root_page && face_active) {
+    if (root_page && face_active && !paused) {
         LOG_INF("Wake intro done");
         living_sky_fx_play(BURST_DURATION_MS);
     }
@@ -407,7 +410,7 @@ static void watchface_set_weather(const watchface_weather_t *weather)
     }
 
     // Show off the new weather right away.
-    if (changed && face_active && !wake_pending && !intro_timer && !living_sky_fx_is_playing()) {
+    if (changed && face_active && !paused && !wake_pending && !intro_timer && !living_sky_fx_is_playing()) {
         living_sky_fx_play(BURST_DURATION_MS);
     }
 }
@@ -487,6 +490,14 @@ static void watchface_set_bg(const void *bg_img)
     }
 }
 
+static void watchface_set_paused(bool pause)
+{
+    paused = pause;
+    if (pause) {
+        living_sky_fx_stop();
+    }
+}
+
 static watchface_ui_api_t ui_api = {
     .show = watchface_show,
     .remove = watchface_remove,
@@ -497,6 +508,7 @@ static watchface_ui_api_t ui_api = {
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather_detailed = watchface_set_weather,
     .set_display_active = watchface_set_display_active,
+    .set_paused = watchface_set_paused,
     .set_datetime = watchface_set_datetime,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
