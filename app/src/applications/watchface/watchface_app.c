@@ -100,6 +100,7 @@ typedef struct delayed_work_item {
 } delayed_work_item_t;
 
 static void general_work(struct k_work *item);
+static void open_watchface(void);
 
 static void check_notifications(void);
 static void notify_weather(void);
@@ -273,8 +274,8 @@ void watchface_app_start(lv_obj_t *root_screen, lv_group_t *group, watchface_app
 
     lv_obj_add_event_cb(watchface_root_screen, watchface_gesture_cb, LV_EVENT_GESTURE, NULL);
 
-    general_work_item.type = OPEN_WATCHFACE;
-    __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
+    // Create the watchface now, so the screen is never rendered empty (black) before it.
+    open_watchface();
 }
 
 void watchface_app_stop(void)
@@ -388,6 +389,25 @@ static void refresh_ui(void)
     }
 }
 
+static void open_watchface(void)
+{
+    running = true;
+    is_suspended = false;
+    // Dropdown
+    watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
+    zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness());
+    watchface_views_created = true;
+    display_active = true;
+    display_active_work_handler(NULL);
+    refresh_ui();
+
+    __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
+    __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
+    __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL date_work");
+    general_work_item.type = UPDATE_SLOW_VALUES;
+    __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
+}
+
 static void general_work(struct k_work *item)
 {
     struct k_work_delayable *delayable_work = CONTAINER_OF(item, struct k_work_delayable, work);
@@ -397,21 +417,7 @@ static void general_work(struct k_work *item)
 
     switch (the_work->type) {
         case OPEN_WATCHFACE: {
-            running = true;
-            is_suspended = false;
-            // Dropdown
-            watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
-            zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness());
-            watchface_views_created = true;
-            display_active = true;
-            display_active_work_handler(NULL);
-            refresh_ui();
-
-            __ASSERT(0 <= k_work_schedule(&clock_work.work, K_NO_WAIT), "FAIL clock_work");
-            __ASSERT(0 <= k_work_schedule(&update_work.work, K_SECONDS(1)), "FAIL update_work");
-            __ASSERT(0 <= k_work_schedule(&date_work.work, K_SECONDS(1)), "FAIL date_work");
-            general_work_item.type = UPDATE_SLOW_VALUES;
-            __ASSERT(0 <= k_work_schedule(&general_work_item.work, K_MSEC(100)), "FAIL schedule");
+            open_watchface();
             break;
         }
         case UPDATE_VALUES: {
