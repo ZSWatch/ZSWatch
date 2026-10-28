@@ -19,6 +19,6 @@
 
 #include <stdbool.h>
 
-struct step_snapshot_mode_event {
-    bool enabled;
+struct elevation_tracking_event {
+    bool active;
 };
