@@ -5,7 +5,7 @@ menu "Managers"
     config ZSW_HR_MANAGER
         bool "Manage background heart-rate acquisition"
         default y
-        depends on DT_HAS_MAXIM_MAX32664C_ENABLED && SETTINGS
+        depends on (DT_HAS_MAXIM_MAX32664C_ENABLED || BOARD_NATIVE_SIM) && SETTINGS
         help
           Decides when the heart rate sensor runs: periodic background measurements,
           continuous measurement while moving, or manual one-shot measurements.

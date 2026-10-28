@@ -32,7 +32,7 @@
 #include "events/pressure_event.h"
 #include "events/accel_event.h"
 #include "events/ble_event.h"
-#if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
+#if defined(CONFIG_ZSW_HR_MANAGER)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
 #endif
@@ -196,7 +196,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_power,
 
 SHELL_CMD_REGISTER(power, &sub_power, "Power management commands", NULL);
 
-#if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
+#if defined(CONFIG_ZSW_HR_MANAGER)
 static int cmd_hr_measure(const struct shell *sh, size_t argc, char **argv)
 {
     int rc = zsw_hr_manager_measure_now();
