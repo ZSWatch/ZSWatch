@@ -21,3 +21,9 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page, watchface_app_evt_listen
 void zsw_watchface_dropdown_ui_set_music_info(char *track_name, char *artist);
 void zsw_watchface_dropdown_ui_set_battery_info(uint8_t battery_percent, bool is_charging, int tte, int ttf);
 void zsw_watchface_dropdown_ui_remove(void);
+
+/**
+ * @brief Close the dropdown if it is open.
+ * @return true if it was open.
+ */
+bool zsw_watchface_dropdown_ui_close(void);
