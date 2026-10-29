@@ -38,6 +38,9 @@ static void bmi2_configure_anymotion(struct bmi2_sens_config *p_config, struct b
 static void bmi2_configure_gesture_detect(struct bmi2_sens_config *p_config, struct bmi270_data *p_data);
 static void bmi2_configure_wrist_wakeup(struct bmi2_sens_config *p_config, struct bmi270_data *p_data);
 static void bmi2_configure_no_motion(struct bmi2_sens_config *p_config, struct bmi270_data *p_data);
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+static void bmi2_step_debug_dump(const struct device *p_dev, const char *p_reason);
+#endif
 
 static bosch_bmi270_feature_config_set_t bmi270_enabled_features[] = {
     { .sensor_id = BMI2_ACCEL, .cfg_func = bmi2_configure_accel},
@@ -46,7 +49,8 @@ static bosch_bmi270_feature_config_set_t bmi270_enabled_features[] = {
     { .sensor_id = BMI2_STEP_COUNTER, .cfg_func = bmi2_configure_step_counter},
     { .sensor_id = BMI2_SIG_MOTION, .cfg_func = NULL, .isr_disable = true},
     { .sensor_id = BMI2_ANY_MOTION, .cfg_func = bmi2_configure_anymotion, .isr_disable = true, .skip_enable = true},
-    { .sensor_id = BMI2_STEP_ACTIVITY, .cfg_func = NULL, .skip_enable = true},
+    // Shares the step counter config word, so it must carry the same watermark.
+    { .sensor_id = BMI2_STEP_ACTIVITY, .cfg_func = bmi2_configure_step_counter, .skip_enable = true},
     { .sensor_id = BMI2_WRIST_GESTURE, .cfg_func = bmi2_configure_gesture_detect},
     { .sensor_id = BMI2_WRIST_WEAR_WAKE_UP, .cfg_func = bmi2_configure_wrist_wakeup},
     { .sensor_id = BMI2_NO_MOTION, .cfg_func = bmi2_configure_no_motion},
@@ -288,8 +292,37 @@ int bmi2_configure_enable_all(const struct device *p_dev, struct bmi270_data *p_
         return -EFAULT;
     }
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    bmi2_step_debug_dump(p_dev, "init");
+#endif
+
     return 0;
 }
+
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+static void bmi2_step_debug_dump(const struct device *p_dev, const char *p_reason)
+{
+    struct bmi270_data *data = p_dev->data;
+    struct bmi2_sens_config step_cfg = { .type = BMI2_STEP_COUNTER };
+    uint8_t latch = 0;
+    uint8_t map_feat[2] = { 0 };
+    uint8_t pwr_conf = 0;
+    uint8_t acc_conf = 0;
+
+    if ((bmi270_get_sensor_config(&step_cfg, 1, &data->bmi2) != BMI2_OK) ||
+        (bmi2_get_regs(BOSCH_BMI270_REG_INT_LATCH, &latch, 1, &data->bmi2) != BMI2_OK) ||
+        (bmi2_get_regs(BOSCH_BMI270_REG_INT1_MAP_FEAT, map_feat, 2, &data->bmi2) != BMI2_OK) ||
+        (bmi2_get_regs(BOSCH_BMI270_REG_PWR_CONF, &pwr_conf, 1, &data->bmi2) != BMI2_OK) ||
+        (bmi2_get_regs(BOSCH_BMI270_REG_ACC_CONF, &acc_conf, 1, &data->bmi2) != BMI2_OK)) {
+        LOG_DBG("Step cfg (%s): read failed", p_reason);
+        return;
+    }
+
+    LOG_DBG("Step cfg (%s): wm %u map1 0x%02x map2 0x%02x latch 0x%02x pwr 0x%02x acc 0x%02x",
+            p_reason, step_cfg.cfg.step_counter.watermark_level,
+            map_feat[0], map_feat[1], latch, pwr_conf, acc_conf);
+}
+#endif
 
 int bmi2_set_accel_range(const struct device *p_dev, const struct sensor_value *p_range)
 {
@@ -639,17 +672,27 @@ int bmi2_enable_feature(const struct device *p_dev, uint8_t feature, bool int_en
     return 0;
 }
 
-int bmi2_reset_step_counter(const struct device* p_dev)
+int bmi2_reset_step_counter(const struct device *p_dev)
 {
     struct bmi2_sens_config config[1];
-    struct bmi270_data* data = p_dev->data;
+    struct bmi270_data *data = p_dev->data;
 
     config[0].type = BMI2_STEP_COUNTER;
+
+    // Keep the watermark, it is written together with the reset bit.
+    if (bmi270_get_sensor_config(config, ARRAY_SIZE(config), &data->bmi2) != BMI2_OK) {
+        return -EFAULT;
+    }
+
     config[0].cfg.step_counter.reset_counter = 1;
 
     if (bmi270_set_sensor_config(config, ARRAY_SIZE(config), &data->bmi2) != BMI2_OK) {
         return -EFAULT;
     }
+
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    bmi2_step_debug_dump(p_dev, "reset");
+#endif
 
     return 0;
 }

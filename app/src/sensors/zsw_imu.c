@@ -24,11 +24,18 @@
 #include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 #include "events/accel_event.h"
+#include "events/elevation_tracking_event.h"
+#include "events/zsw_periodic_event.h"
 #include "sensors/zsw_imu.h"
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+#include "sensors/zsw_imu_step_debug.h"
+#endif
 
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
 ZBUS_CHAN_DECLARE(accel_data_chan);
+ZBUS_CHAN_DECLARE(elevation_tracking_chan);
+ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
 static int step_offset = 0;
@@ -40,6 +47,8 @@ static bool tracking_any_motion;
 static bool tracking_no_motion;
 static bool low_power_requested;
 static bool low_power_applied;
+static atomic_t step_snapshot_requested;
+static bool step_snapshot_active;
 // Cleared when a rate write fails, so the next request writes both settings again
 static bool accel_rate_valid = true;
 
@@ -47,7 +56,17 @@ static bool accel_rate_valid = true;
 
 static void motion_tracking_work_handler(struct k_work *work);
 static int apply_accel_rate_locked(void);
+static void tracking_request_callback(const struct zbus_channel *chan);
+static void step_snapshot_work_handler(struct k_work *work);
+static void step_snapshot_periodic_callback(const struct zbus_channel *chan);
+static void publish_step_snapshot(void);
+static int fetch_raw_step_count(uint32_t *num_steps);
 static K_WORK_DELAYABLE_DEFINE(motion_tracking_work, motion_tracking_work_handler);
+static K_WORK_DELAYABLE_DEFINE(step_snapshot_work, step_snapshot_work_handler);
+
+ZBUS_LISTENER_DEFINE(imu_tracking_lis, tracking_request_callback);
+ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, imu_tracking_lis, 1);
+ZBUS_LISTENER_DEFINE(imu_step_snapshot_periodic_lis, step_snapshot_periodic_callback);
 
 // Follows the motion events on the channel rather than the trigger handler, so injected
 // events (shell "hr motion") update the state the same way as real interrupts.
@@ -71,6 +90,72 @@ static void motion_event(const struct zbus_channel *chan)
 ZBUS_LISTENER_DEFINE(imu_motion_listener, motion_event);
 ZBUS_CHAN_ADD_OBS(accel_data_chan, imu_motion_listener, 0);
 
+static void publish_step_snapshot(void)
+{
+    uint32_t step_count;
+    if (fetch_raw_step_count(&step_count) != 0) {
+        return;
+    }
+
+    struct accel_event event = {
+        .data.type = ZSW_IMU_EVT_TYPE_STEP_SNAPSHOT,
+        .data.data.step.count = step_count,
+    };
+
+    int ret = zbus_chan_pub(&accel_data_chan, &event, K_MSEC(100));
+    if (ret != 0) {
+        LOG_DBG("Step snapshot publication failed: %d", ret);
+    }
+}
+
+static void step_snapshot_periodic_callback(const struct zbus_channel *chan)
+{
+    ARG_UNUSED(chan);
+    publish_step_snapshot();
+}
+
+static void tracking_request_callback(const struct zbus_channel *chan)
+{
+    const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
+    atomic_set(&step_snapshot_requested, event->active);
+    k_work_reschedule(&step_snapshot_work, K_NO_WAIT);
+}
+
+static void step_snapshot_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    if (!device_is_ready(bmi270)) {
+        return;
+    }
+
+    bool requested = atomic_get(&step_snapshot_requested) != 0;
+    if (requested == step_snapshot_active) {
+        return;
+    }
+
+    int ret;
+    if (requested) {
+        ret = zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
+        if (ret >= 0 || ret == -EALREADY) {
+            step_snapshot_active = true;
+            publish_step_snapshot();
+            ret = 0;
+        }
+    } else {
+        ret = zsw_periodic_chan_rm_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
+        if (ret >= 0 || ret == -ENODATA) {
+            step_snapshot_active = false;
+            ret = 0;
+        }
+    }
+
+    if (ret != 0) {
+        LOG_DBG("Step polling update failed: %d", ret);
+        k_work_reschedule(&step_snapshot_work, K_SECONDS(1));
+    }
+}
+
 static void bmi270_trigger_handler(const struct device *dev, const struct sensor_trigger *trig)
 {
     zsw_imu_evt_t evt;
@@ -86,27 +171,37 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
         case SENSOR_TRIG_STEP: {
             struct sensor_value sensor_val;
 
-            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) == 0) {
-
-                evt.type = ZSW_IMU_EVT_TYPE_STEP;
-                evt.data.step.count = sensor_val.val1;
-
-                LOG_DBG("No of steps counted  = %u", evt.data.step.count);
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) != 0) {
+                return;
             }
+
+            evt.type = ZSW_IMU_EVT_TYPE_STEP;
+            evt.data.step.count = (uint32_t)sensor_val.val1;
+
+            LOG_DBG("No of steps counted  = %u", evt.data.step.count);
 
             break;
         }
         case SENSOR_TRIG_ACTIVITY: {
             struct sensor_value sensor_val;
+            struct sensor_value steps_val;
 
-            if (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) == 0) {
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_ACTIVITY, &sensor_val) != 0) {
+                return;
+            }
 
-                evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
-                evt.data.step_activity = sensor_val.val1;
-                last_step_activity = evt.data.step_activity;
+            evt.type = ZSW_IMU_EVT_TYPE_STEP_ACTIVITY;
+            evt.data.step_activity = sensor_val.val1 >= 0 && sensor_val.val1 < ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN ?
+                                     sensor_val.val1 : ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
+            last_step_activity = evt.data.step_activity;
 
-                const char *activity_output[4] = { "BMI2_STILL", "BMI2_WALK", "BMI2_RUN", "BMI2_UNKNOWN" };
-                LOG_DBG("Step activity: %s", activity_output[evt.data.step_activity]);
+            // Count at the activity change lets the elevation engine anchor its step baseline.
+            if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &steps_val) == 0) {
+                struct accel_event snapshot = {
+                    .data.type = ZSW_IMU_EVT_TYPE_STEP_SNAPSHOT,
+                    .data.data.step.count = (uint32_t)steps_val.val1,
+                };
+                zbus_chan_pub(&accel_data_chan, &snapshot, K_MSEC(100));
             }
 
             break;
@@ -141,7 +236,7 @@ static void bmi270_trigger_handler(const struct device *dev, const struct sensor
             break;
         }
         default: {
-            break;
+            return;
         }
     }
 
@@ -163,8 +258,16 @@ int zsw_imu_init(void)
 
     sensor_trigger_set(bmi270, &bmi270_trigger, bmi270_trigger_handler);
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    zsw_imu_step_debug_start(bmi270);
+#endif
+
     // Always track whether the watch is moving or stationary.
     k_work_reschedule(&motion_tracking_work, K_NO_WAIT);
+
+    if (zsw_imu_feature_enable(ZSW_IMU_FEATURE_STEP_ACTIVITY, true) != 0) {
+        LOG_DBG("Failed to enable step activity");
+    }
 
     return 0;
 }
@@ -279,22 +382,36 @@ int zsw_imu_fetch_gyro(int16_t *x, int16_t *y, int16_t *z)
 
 int zsw_imu_fetch_num_steps(uint32_t *num_steps)
 {
+    if (num_steps == NULL) {
+        return -EINVAL;
+    }
+
+    int ret = fetch_raw_step_count(num_steps);
+    if (ret == 0) {
+        *num_steps += step_offset;
+    }
+
+    return ret;
+}
+
+static int fetch_raw_step_count(uint32_t *num_steps)
+{
     struct sensor_value sensor_val;
 
+    if (num_steps == NULL) {
+        return -EINVAL;
+    }
     if (!device_is_ready(bmi270)) {
         return -ENODEV;
     }
-
     if (sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ALL) != 0) {
         return -ENODATA;
     }
-
     if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) != 0) {
         return -ENODATA;
     }
 
-    *num_steps = sensor_val.val1 + step_offset;
-
+    *num_steps = (uint32_t)sensor_val.val1;
     return 0;
 }
 
@@ -347,9 +464,18 @@ int zsw_imu_reset_step_count(void)
     value.val1 = 0;
     value.val2 = 0;
 
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    zsw_imu_step_debug_reset_begin();
+#endif
     if (sensor_attr_set(bmi270, SENSOR_CHAN_STEPS, SENSOR_ATTR_OFFSET, &value) != 0) {
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+        zsw_imu_step_debug_reset_end(false);
+#endif
         return -EFAULT;
     }
+#ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
+    zsw_imu_step_debug_reset_end(true);
+#endif
 
     return 0;
 }

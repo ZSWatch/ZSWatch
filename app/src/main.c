@@ -66,6 +66,8 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
 
+#include "applications/altimeter/altimeter_app.h"
+#include "sensors/zsw_floor_counter.h"
 #include "applications/watchface/watchface_app.h"
 
 #include <filesystem/zsw_rtt_flash_loader.h>
@@ -116,6 +118,8 @@ static void run_init_work(struct k_work *item)
     zsw_imu_init();
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
+    zsw_floor_counter_init();
+    zsw_altimeter_calibration_start();
     zsw_light_sensor_init();
 
     zsw_power_manager_init();
