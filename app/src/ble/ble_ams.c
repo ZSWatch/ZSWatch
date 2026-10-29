@@ -391,7 +391,7 @@ int ble_ams_init(void)
         return err;
     }
 
-    LOG_DBG("Start Apple Media Service");
+    LOG_INF("Start Apple Media Service");
 
     return err;
 }
