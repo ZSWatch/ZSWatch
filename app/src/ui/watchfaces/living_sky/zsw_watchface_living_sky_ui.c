@@ -252,7 +252,7 @@ static void intro_finished_cb(lv_timer_t *timer)
     intro_timer = NULL;
     lv_timer_delete(timer);
     if (root_page && face_active && !paused) {
-        LOG_INF("Wake intro done");
+        LOG_DBG("Wake intro done");
         living_sky_fx_play(BURST_DURATION_MS);
     }
 }
@@ -266,7 +266,7 @@ static void frame_ready_cb(lv_event_t *e)
     // The first full-screen redraw is finished. Start the intro's clock here,
     // so panel resume and initial rendering cannot consume its first frames.
     wake_pending = false;
-    LOG_INF("Wake intro start");
+    LOG_DBG("Wake intro start");
     for (int i = 0; i < ARRAY_SIZE(ui_time); i++) {
         lv_anim_t anim;
         lv_anim_init(&anim);

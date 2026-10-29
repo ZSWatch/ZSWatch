@@ -433,7 +433,7 @@ static int update_adv_interval(uint16_t interval_min, uint16_t interval_max)
         return -EINVAL;
     }
 
-    LOG_INF("Updating advertising interval: min=%d, max=%d", interval_min, interval_max);
+    LOG_DBG("Updating advertising interval: min=%d, max=%d", interval_min, interval_max);
 
     adv_param.interval_min = interval_min;
     adv_param.interval_max = interval_max;
@@ -489,7 +489,7 @@ static void request_mtu_exchange(void)
         LOG_ERR("MTU exchange failed (err %d)", err);
         on_mtu_exchange_finished();
     } else {
-        LOG_INF("MTU exchange pending");
+        LOG_DBG("MTU exchange pending");
     }
 }
 
@@ -587,13 +587,13 @@ static const char *phy2str(uint8_t phy)
 
 static void le_data_length_updated(struct bt_conn *conn, struct bt_conn_le_data_len_info *info)
 {
-    LOG_INF("LE data len updated: TX (len: %d time: %d)" " RX (len: %d time: %d)\n", info->tx_max_len, info->tx_max_time,
+    LOG_DBG("LE data len updated: TX (len: %d time: %d)" " RX (len: %d time: %d)\n", info->tx_max_len, info->tx_max_time,
             info->rx_max_len, info->rx_max_time);
 }
 
 static void phy_updated(struct bt_conn *conn, struct bt_conn_le_phy_info *param)
 {
-    LOG_INF("LE PHY updated: TX PHY %s, RX PHY %s", phy2str(param->tx_phy), phy2str(param->rx_phy));
+    LOG_DBG("LE PHY updated: TX PHY %s, RX PHY %s", phy2str(param->tx_phy), phy2str(param->rx_phy));
 }
 
 static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data, uint16_t len)

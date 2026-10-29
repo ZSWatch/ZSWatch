@@ -293,7 +293,7 @@ static void discover_completed_cb(struct bt_gatt_dm *dm, void *ctx)
     int err;
     struct bt_ams_client *ams_c = (struct bt_ams_client *)ctx;
 
-    LOG_INF("The discovery procedure succeeded\n");
+    LOG_DBG("The discovery procedure succeeded\n");
 
     bt_gatt_dm_data_print(dm);
 
@@ -391,7 +391,7 @@ int ble_ams_init(void)
         return err;
     }
 
-    LOG_INF("Start Apple Media Service");
+    LOG_DBG("Start Apple Media Service");
 
     return err;
 }

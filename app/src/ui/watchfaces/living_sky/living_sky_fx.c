@@ -309,7 +309,7 @@ bool living_sky_fx_set_weather(int weather_code, uint16_t wind, uint16_t wind_di
         return false;
     }
 
-    LOG_INF("Weather %d -> effect %d intensity %d wind_x %d", weather_code, weather, intensity, wind_x);
+    LOG_DBG("Weather %d -> effect %d intensity %d wind_x %d", weather_code, weather, intensity, wind_x);
     fx.scene.weather = weather;
     fx.scene.intensity = intensity;
     fx.wind_x = (int16_t)wind_x;
@@ -354,7 +354,7 @@ void living_sky_fx_play(uint32_t duration_ms)
 
     if (!fx.timer) {
         fx.timer = lv_timer_create(fx_timer_cb, FRAME_PERIOD_MS, NULL);
-        LOG_INF("Burst start (%u ms)", duration_ms);
+        LOG_DBG("Burst start (%u ms)", duration_ms);
     }
 }
 
@@ -371,7 +371,7 @@ void living_sky_fx_stop(void)
         // Redraw once without the lightning flash, this frame then stays on screen.
         lv_obj_invalidate(fx.obj);
     }
-    LOG_INF("Burst stop after %u frames", fx.scene.frame);
+    LOG_DBG("Burst stop after %u frames", fx.scene.frame);
 }
 
 bool living_sky_fx_is_playing(void)
