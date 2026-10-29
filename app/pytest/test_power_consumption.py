@@ -118,7 +118,8 @@ async def test_not_worn_stationary(device_config, ppk2_instance):
 
     This test:
     1. Power cycles the device using PPK2
-    2. Waits 180 seconds (160s display timeout + 20s safety margin) watch to go to stationary mode
+    2. Waits 240 seconds for the watch to go to stationary mode. The IMU needs 160 s without
+       any motion, counted from shortly after boot, and any bump restarts the count.
     3. Measures current for 10 seconds while watch is sleeping
     4. Analyzes and reports current consumption statistics
     """
@@ -127,5 +128,5 @@ async def test_not_worn_stationary(device_config, ppk2_instance):
         ppk2_instance,
         test_name="not_worn_stationary",
         measurement_duration_s=10,
-        delay_s=180,  # 160 seconds is the default display timeout, plus 20 seconds for safety
+        delay_s=240,  # 160 s IMU no-motion duration plus boot and margin for a restarted count
     )
