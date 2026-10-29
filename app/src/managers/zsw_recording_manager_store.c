@@ -295,7 +295,7 @@ int zsw_recording_manager_store_init(void)
     }
 
     fs_closedir(&dirp);
-    LOG_INF("Voice memo store initialized");
+    LOG_DBG("Voice memo store initialized");
     return 0;
 }
 

@@ -211,7 +211,7 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
     // Zephyr FS always passes the full path, so we need to strip the mount point.
     char *file_name_ptr = (char *)file_name + strlen(ZSW_FS_MOUNT_POINT) + 1;
 
-    LOG_INF("Opening fs file %s, mode: %d", file_name_ptr, (int)mode);
+    LOG_DBG("Opening fs file %s, mode: %d", file_name_ptr, (int)mode);
 
     if (mode & ~(FS_O_RDWR | FS_O_CREATE)) {
         LOG_ERR("Unsupported mode flags set: %d", mode);
@@ -450,7 +450,7 @@ static ssize_t zsw_fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
         }
 
         if ((full_fs_file.index % (64 * 1024)) < size) {
-            LOG_INF("full_fs write progress: %u bytes", full_fs_file.index);
+            LOG_DBG("full_fs write progress: %u bytes", full_fs_file.index);
         }
 
         return size;

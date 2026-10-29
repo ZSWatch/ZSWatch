@@ -340,5 +340,5 @@ void ble_cts_init(void)
         return;
     }
 
-    LOG_INF("Starting Current Time client");
+    LOG_DBG("Starting Current Time client");
 }
