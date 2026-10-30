@@ -90,11 +90,11 @@ static void zbus_ble_comm_data_callback(const struct zbus_channel *chan)
      */
     if (expired) {
         cb(BLE_HTTP_STATUS_TIMEOUT, NULL);
-    } else if (event->data.data.http_response.err[0] || !event->data.data.http_response.response[0]) {
+    } else if (!event->data.data.http_response.response || !event->data.data.http_response.response[0]) {
         LOG_WRN("HTTP request failed or returned an empty body");
         cb(BLE_HTTP_STATUS_ERROR, NULL);
     } else {
-        cb(BLE_HTTP_STATUS_OK, (char *)event->data.data.http_response.response);
+        cb(BLE_HTTP_STATUS_OK, event->data.data.http_response.response);
     }
 }
 

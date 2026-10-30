@@ -818,7 +818,7 @@ static bool parse_long(const char *str, long min, long max, long *out)
     return true;
 }
 
-// The ble_data_event is ~4 kB, so fill the channel's own message instead of a copy.
+// Fill the channel's own message in place instead of publishing a stack copy.
 static ble_comm_cb_data_t *ble_data_claim(void)
 {
     if (zbus_chan_claim(&ble_comm_data_chan, K_MSEC(250)) != 0) {
