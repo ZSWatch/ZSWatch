@@ -109,6 +109,7 @@ Builds with `boards/test_mode.conf` expose the Zephyr shell on a pseudo terminal
 |---------|--------------|
 | `app launch <name>` | Open an app from the watchface |
 | `watchface list` / `watchface set <index>` | List watchfaces or switch to one |
+| `pairable on` / `pairable off` | Open or close the BLE pairing window, as the Pairable setting does. It closes again after 60 s |
 | `event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]` | Inject a weather update as if it came from the phone. `code` is an [OpenWeatherMap condition code](https://openweathermap.org/weather-conditions), e.g. `800` clear, `803` clouds, `501` rain, `601` snow, `741` fog, `211` thunderstorm |
 | `event time <hour> <minute>` | Inject a phone time sync, keeping today's date |
 | `event battery <percent> [charging]` | Inject a battery sample |
