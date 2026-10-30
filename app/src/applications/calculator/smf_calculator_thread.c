@@ -1,22 +1,14 @@
 /*
     Modifications needed to integrate the sample code into ZSWatch
-    The rest is directly copied from the sample zephyr/samples/subsys/smf/smf_calculator
+    The rest is copied from the sample zephyr/samples/subsys/smf/smf_calculator,
+    except that the state machine runs in the caller (the LVGL button callback)
+    instead of in its own thread.
 */
 #include "calculator_ui.h"
 
 static void update_display(const char *text)
 {
     calculator_ui_update_display(text);
-}
-
-void calculator_smf_init(void)
-{
-    /* Thread is automatically started by K_THREAD_DEFINE */
-}
-
-void calculator_smf_deinit(void)
-{
-    /* Thread cleanup if needed */
 }
 
 /*
@@ -35,8 +27,6 @@ void calculator_smf_deinit(void)
 #include <stdio.h>
 
 LOG_MODULE_REGISTER(smf_thread, LOG_LEVEL_DBG);
-
-K_MSGQ_DEFINE(event_msgq, sizeof(struct calculator_event), 8, 1);
 
 /* In theory can still overflow. A double can be hundreds of characters long */
 #define RESULT_STRING_LENGTH 64
@@ -689,11 +679,6 @@ static const struct smf_state calculator_states[] = {
 };
 /* clang-format on */
 
-int post_calculator_event(struct calculator_event *event, k_timeout_t timeout)
-{
-    return k_msgq_put(&event_msgq, event, timeout);
-}
-
 static void output_display(void)
 {
     char *output;
@@ -717,31 +702,26 @@ static void output_display(void)
     update_display(output);
 }
 
-static void smf_calculator_thread(void *arg1, void *arg2, void *arg3)
+void calculator_smf_init(void)
 {
     smf_set_initial(SMF_CTX(&s_obj), &calculator_states[STATE_ON]);
-    while (1) {
-        int rc;
-
-        rc = k_msgq_get(&event_msgq, &s_obj.event, K_FOREVER);
-        if (rc != 0) {
-            continue;
-        }
-        /* run state machine with given message */
-
-        LOG_INF("Received %c from GUI", s_obj.event.operand);
-        int ret = smf_run_state(SMF_CTX(&s_obj));
-
-        if (ret) {
-            /* State machine was terminated if a non-zero value is returned */
-            break;
-        }
-
-        output_display();
-        LOG_INF("op1=%s, op=%c op2=%s res=%s", s_obj.operand_1.string, s_obj.operator_btn,
-                s_obj.operand_2.string, s_obj.result.string);
-    }
+    output_display();
 }
 
-K_THREAD_DEFINE(smf_calculator, SMF_THREAD_STACK_SIZE, smf_calculator_thread, NULL, NULL, NULL,
-                SMF_THREAD_PRIORITY, 0, 0);
+int post_calculator_event(const struct calculator_event *event)
+{
+    s_obj.event = *event;
+
+    LOG_DBG("Received %c from GUI", s_obj.event.operand);
+    int ret = smf_run_state(SMF_CTX(&s_obj));
+
+    if (ret) {
+        /* State machine was terminated if a non-zero value is returned */
+        return ret;
+    }
+
+    output_display();
+    LOG_DBG("op1=%s, op=%c op2=%s res=%s", s_obj.operand_1.string, s_obj.operator_btn,
+            s_obj.operand_2.string, s_obj.result.string);
+    return 0;
+}

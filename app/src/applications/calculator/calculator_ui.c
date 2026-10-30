@@ -13,13 +13,6 @@ LOG_MODULE_REGISTER(calculator_ui, LOG_LEVEL_INF);
 #define ROW_HEIGHT        38
 #define SIDE_PADDING      20
 
-// Work item for display updates
-static void display_update_work_handler(struct k_work *work);
-static K_WORK_DEFINE(display_update_work, display_update_work_handler);
-
-// Buffer for display text used in work handler
-static char display_text_buffer[CALCULATOR_STRING_LENGTH];
-
 static void calculator_event_handler(lv_event_t *e);
 
 static lv_obj_t *root_page = NULL;
@@ -93,26 +86,11 @@ static void calculator_event_handler(lv_event_t *e)
 
         if (event) {
             LOG_DBG("Posting event: %d, operand: %c", event->event_id, event->operand);
-            int ret = post_calculator_event(event, K_FOREVER);
+            int ret = post_calculator_event(event);
             if (ret != 0) {
                 LOG_ERR("Failed to post event: %d", ret);
             }
         }
-    }
-}
-
-static void display_update_work_handler(struct k_work *work)
-{
-    if (result_label) {
-        const char *text = display_text_buffer;
-        while (*text == ' ' && *(text + 1) != '\0') {
-            text++;
-        }
-        if (*text == '\0') {
-            text = "0";
-        }
-        lv_label_set_text(result_label, text);
-        LOG_DBG("Display updated to: '%s'", text);
     }
 }
 
@@ -206,8 +184,6 @@ void calculator_ui_show(lv_obj_t *root)
 
 void calculator_ui_remove(void)
 {
-    k_work_cancel(&display_update_work);
-
     if (root_page) {
         lv_obj_del(root_page);
         root_page = NULL;
@@ -219,16 +195,15 @@ void calculator_ui_remove(void)
 
 void calculator_ui_update_display(const char *text)
 {
-    if (!text) {
-        LOG_ERR("calculator_ui_update_display: text is NULL");
+    if (!result_label) {
         return;
     }
 
-    LOG_DBG("calculator_ui_update_display called with: '%s'", text);
-
-    strncpy(display_text_buffer, text, CALCULATOR_STRING_LENGTH - 1);
-    display_text_buffer[CALCULATOR_STRING_LENGTH - 1] = '\0';
-
-    // LVGL has to be called from system workqueue
-    k_work_submit(&display_update_work);
+    while (*text == ' ' && *(text + 1) != '\0') {
+        text++;
+    }
+    if (*text == '\0') {
+        text = "0";
+    }
+    lv_label_set_text(result_label, text);
 }

@@ -26,6 +26,7 @@ static application_t app = {
 static void calculator_app_start(lv_obj_t *root, lv_group_t *group)
 {
     calculator_ui_show(root);
+    calculator_smf_init();
 }
 
 static void calculator_app_stop(void)
