@@ -913,12 +913,12 @@ static int parse_httpstate(char *data, int len)
     }
     cb.data.data.http_response.id = request_id;
 
-    if (strstr(data, "\"err\":") ||
-        extract_js_string("\"resp\":", data, cb.data.data.http_response.response,
-                          sizeof(cb.data.data.http_response.response), false) <= 0) {
-        /* Even an error or malformed relay result must finish the matching request. */
-        snprintf(cb.data.data.http_response.err, sizeof(cb.data.data.http_response.err), "HTTP relay error");
-        cb.data.data.http_response.response[0] = '\0';
+    /* Decode the body in place: the decoded string is never longer than the escaped one.
+     * A NULL response (error or malformed relay result) still finishes the matching request.
+     */
+    char *resp = strstr(data, "\"err\":") ? NULL : find_js_value(data, "\"resp\":");
+    if (resp && decode_js_literal(resp, resp, strlen(resp) + 1, false) > 0) {
+        cb.data.data.http_response.response = resp;
     }
     send_ble_data_event(&cb);
     return 0;

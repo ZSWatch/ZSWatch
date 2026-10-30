@@ -92,8 +92,10 @@ typedef struct ble_comm_remote_control {
 } ble_comm_remote_control_t;
 
 typedef struct ble_comm_http_response {
-    char err[MAX_HTTP_FIELD_LENGTH + 1];
-    char response[MAX_HTTP_FIELD_LENGTH + 1];
+    /* Points into the receive buffer and is only valid while the event is dispatched.
+     * NULL when the phone reported an error.
+     */
+    char *response;
     int id;
 } ble_comm_http_response_t;
 
