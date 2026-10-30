@@ -32,6 +32,7 @@
 #include "events/pressure_event.h"
 #include "events/accel_event.h"
 #include "events/ble_event.h"
+#include "ble/ble_comm.h"
 #if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
@@ -481,6 +482,26 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_cpu,
                               );
 
 SHELL_CMD_REGISTER(cpu, &sub_cpu, "CPU frequency commands", cmd_cpu_get_freq);
+
+static int cmd_pairable(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+
+    if (strcmp(argv[1], "on") == 0) {
+        ble_comm_set_pairable(true);
+    } else if (strcmp(argv[1], "off") == 0) {
+        ble_comm_set_pairable(false);
+    } else {
+        shell_error(sh, "Usage: pairable <on|off>");
+        return -EINVAL;
+    }
+
+    shell_print(sh, "Pairable %s", argv[1]);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(pairable, NULL, "Open or close the BLE pairing window: pairable <on|off>",
+                       cmd_pairable, 2, 0);
 
 #ifdef CONFIG_RETENTION_BOOT_MODE
 
