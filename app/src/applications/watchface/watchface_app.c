@@ -44,6 +44,7 @@
 #include "sensors/zsw_pressure_sensor.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_notification_manager.h"
+#include "managers/zsw_xip_manager.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
 LOG_MODULE_REGISTER(watchface_app, LOG_LEVEL_WRN);
@@ -394,10 +395,14 @@ static void open_watchface(void)
 {
     running = true;
     is_suspended = false;
-    // Dropdown
+    // The show functions and the dropdown add are placed in external flash (see
+    // ui/watchfaces/CMakeLists.txt). This can run from a delayed work item after the
+    // display has turned XIP off, so hold it on while they run.
+    zsw_xip_enable();
     watchfaces[watchface_settings.watchface_index]->show(watchface_root_screen, watchface_evt_cb, &watchface_settings);
     zsw_watchface_dropdown_ui_add(watchface_root_screen, watchface_evt_cb, zsw_display_control_get_brightness(),
                                   on_dropdown_shown);
+    zsw_xip_disable();
     watchface_views_created = true;
     display_active = true;
     display_active_work_handler(NULL);
