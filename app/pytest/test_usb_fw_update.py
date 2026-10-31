@@ -10,7 +10,6 @@ from smpclient.requests.image_management import ImageStatesRead, ImageStatesWrit
 
 import utils
 from mcumgr_utils import (
-    enable_ble_fota as _enable_ble_fota,
     enter_serial_recovery as _enter_serial_recovery,
     find_ble_address as _find_ble_address,
     require_usb_port as _require_usb_port,
@@ -135,9 +134,6 @@ async def test_ble_firmware_update(device_config):
     usb_port = _require_usb_port(device_config)
     await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
 
-    await _enable_ble_fota(device_config)
-    await asyncio.sleep(2)
-
     address = await _find_ble_address(device_config)
     _clear_uart_logs(device_config)
     await _with_ble_client(
@@ -186,8 +182,8 @@ async def test_shell_command_over_usb(device_config):
     usb_port = _require_usb_port(device_config)
 
     await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
-    response = await _shell_command_usb(device_config, ["ble_fota", "status"])
-    assert "BLE FOTA is currently" in response.o
+    response = await _shell_command_usb(device_config, ["power", "status"])
+    assert "Power Status" in response.o
 
 
 @pytest.mark.asyncio
@@ -196,9 +192,6 @@ async def test_shell_command_over_ble(device_config):
     usb_port = _require_usb_port(device_config)
 
     await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
-    await _enable_ble_fota(device_config)
-    await asyncio.sleep(2)
 
-    response = await _shell_command_ble(device_config, ["ble_fota", "status"])
-    print(f"BLE FOTA status: {response.o}")
-    assert "enabled" in response.o.lower()
+    response = await _shell_command_ble(device_config, ["power", "status"])
+    assert "Power Status" in response.o

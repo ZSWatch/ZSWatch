@@ -214,7 +214,7 @@ The speaker manager handles codec configuration, I2S setup, and runs a dedicated
 
 The **Recording Manager** (`zsw_recording_manager`) handles voice memo recording and storage. Audio is captured via the microphone driver, encoded using the **Opus codec** (`app/src/codec/`), and stored in the filesystem as `.opus` files.
 
-The **SMP Manager** (`zsw_smp_manager`) provides MCUmgr file system access, allowing the companion app to download recorded voice memos from the watch using standard MCUmgr FS commands.
+The **SMP Manager** (`zsw_smp_manager`) provides MCUmgr file system access, allowing the companion app to download recorded voice memos from the watch using standard MCUmgr FS commands. The SMP service is always registered and only accepts encrypted (bonded) links. MCUmgr code, including callbacks it calls, must stay in internal flash so SMP works while XIP is off.
 
 Key features:
 - Opus audio codec for efficient compression

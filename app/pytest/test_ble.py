@@ -15,9 +15,6 @@ from bench.ble import NUS_RX as _NUS_RX, NUS_TX as _NUS_TX, gb_packet as _gb_pac
 from mcumgr_utils import (
     find_ble_address as _find_ble_address,
     with_ble_client as _with_ble_client,
-    require_usb_port as _require_usb_port,
-    enable_ble_fota as _enable_ble_fota,
-    wait_for_usb_port as _wait_for_usb_port,
 )
 
 log = logging.getLogger()
@@ -51,11 +48,7 @@ async def test_connect(device_config):
 
 @pytest.mark.asyncio
 async def test_smp_echo(device_config):
-    usb_port = _require_usb_port(device_config)
-    await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
-
-    await _enable_ble_fota(device_config)
-    await asyncio.sleep(2)
+    # SMP is always registered; no need to enable it first.
     address = await _find_ble_address(device_config)
     log.info(f"Connecting to SMP server at {address} via helper")
 
