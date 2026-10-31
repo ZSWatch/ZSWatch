@@ -13,6 +13,7 @@
 #include <time.h>
 #include <lvgl.h>
 #include <lvgl_zephyr.h>
+#include <lvgl_mem.h>
 #ifdef CONFIG_RETENTION_BOOT_MODE
 #include <zephyr/retention/bootmode.h>
 #endif
@@ -973,6 +974,22 @@ static int cmd_lv_timers(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_CMD_ARG_REGISTER(lv_timers, NULL, "Count LVGL timers and running animations", cmd_lv_timers, 1, 0);
+
+#if defined(CONFIG_SYS_HEAP_RUNTIME_STATS) && defined(CONFIG_LV_Z_MEM_POOL_SYS_HEAP)
+static int cmd_lv_heap(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    struct sys_memory_stats stats;
+
+    lvgl_heap_stats(&stats);
+    shell_print(sh, "LVGL heap: %zu allocated, %zu max, %zu free", stats.allocated_bytes,
+                stats.max_allocated_bytes, stats.free_bytes);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(lv_heap, NULL, "LVGL heap usage, with the peak since boot", cmd_lv_heap, 1, 0);
+#endif
 
 static int cmd_watchface_list(const struct shell *sh, size_t argc, char **argv)
 {
