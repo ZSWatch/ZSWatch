@@ -29,13 +29,16 @@
 
 LOG_MODULE_REGISTER(zsw_recording_manager, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
-#define CODEC_RING_BUF_SIZE    2048
+// 256 ms of PCM. Covers the codec falling behind while LVGL renders app launches.
+#define CODEC_RING_BUF_SIZE    8192
 // Opus encoder uses ~8-10 KB stack during opus_encode() on ARM.
 #define CODEC_THREAD_STACK     12288
 // Share microphone priority so its yield lets us encode queued PCM before it overflows.
 #define CODEC_THREAD_PRIO      K_PRIO_COOP(8)
 #define MAX_OPUS_FRAME_BYTES   160
 #define OVERFLOW_LOG_INTERVAL_MS 1000
+// fs_statvfs walks the whole LittleFS, so don't run it for every 1 ms mic block.
+#define LIMITS_CHECK_INTERVAL_MS 1000
 
 ZBUS_CHAN_DECLARE(voice_memo_recording_chan);
 
@@ -50,6 +53,7 @@ static uint8_t *pcm_ring_buf_data;
 static struct k_spinlock pcm_ring_buf_lock;
 static uint32_t ring_buf_dropped_bytes;
 static uint32_t last_overflow_log_ms;
+static uint32_t last_limits_check_ms;
 
 /* Codec thread */
 static K_THREAD_STACK_DEFINE(codec_stack, CODEC_THREAD_STACK);
@@ -145,8 +149,15 @@ static void codec_thread_fn(void *p1, void *p2, void *p3)
                 }
                 break;
             }
+            // Let the microphone thread move blocks out of its slab between frames.
+            k_yield();
         }
-        uint32_t elapsed = k_uptime_get_32() - recording_start_time;
+        uint32_t now = k_uptime_get_32();
+        if ((now - last_limits_check_ms) < LIMITS_CHECK_INTERVAL_MS) {
+            continue;
+        }
+        last_limits_check_ms = now;
+        uint32_t elapsed = now - recording_start_time;
         if (!auto_stop_pending &&
             elapsed >= (uint32_t)ZSW_RECORDING_MAX_DURATION_S * 1000) {
             LOG_INF("Voice memo: max duration reached");
@@ -233,6 +244,7 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
     recording_start_time = k_uptime_get_32();
     ring_buf_dropped_bytes = 0;
     last_overflow_log_ms = 0;
+    last_limits_check_ms = recording_start_time;
     k_sem_init(&codec_sem, 0, 1);
 
     codec_thread_id = k_thread_create(&codec_thread_data, codec_stack,

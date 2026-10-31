@@ -29,7 +29,9 @@
 LOG_MODULE_REGISTER(zsw_mic, LOG_LEVEL_INF);
 
 // 1ms of audio buffer per block for more efficient processing
-// With 300 pool size we can record for 300ms
+// With 300 pool size we can record for 300ms. The audio thread can't run while a
+// cooperative thread (LVGL in sysworkq, a slow flash write in the codec thread) holds
+// the CPU; recording while launching apps peaked at 240 blocks, so don't shrink this.
 #define AUDIO_FREQ          16000
 #define CHAN_SIZE           16
 #define PCM_BLK_SIZE_MS     ((AUDIO_FREQ/1000) * sizeof(int16_t))
