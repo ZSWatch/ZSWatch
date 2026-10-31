@@ -22,7 +22,11 @@
 
 //#define CPU_CLOCK_PROFILING
 
-void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait)
+static K_MUTEX_DEFINE(freq_mutex);
+static zsw_cpu_freq_t requested_freq = ZSW_CPU_FREQ_DEFAULT;
+static int fast_holds;
+
+static void apply_freq(zsw_cpu_freq_t freq, bool wait)
 {
 #ifdef CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
     int ret;
@@ -66,6 +70,35 @@ void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait)
 #endif
 }
 
+void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait)
+{
+    k_mutex_lock(&freq_mutex, K_FOREVER);
+    requested_freq = freq;
+    if (freq == ZSW_CPU_FREQ_FAST || fast_holds == 0) {
+        apply_freq(freq, wait);
+    }
+    k_mutex_unlock(&freq_mutex);
+}
+
+void zsw_cpu_hold_fast(void)
+{
+    k_mutex_lock(&freq_mutex, K_FOREVER);
+    if (fast_holds++ == 0 && requested_freq == ZSW_CPU_FREQ_DEFAULT) {
+        apply_freq(ZSW_CPU_FREQ_FAST, true);
+    }
+    k_mutex_unlock(&freq_mutex);
+}
+
+void zsw_cpu_release_fast(void)
+{
+    k_mutex_lock(&freq_mutex, K_FOREVER);
+    __ASSERT(fast_holds > 0, "Unbalanced zsw_cpu_release_fast");
+    if (fast_holds > 0 && --fast_holds == 0 && requested_freq == ZSW_CPU_FREQ_DEFAULT) {
+        apply_freq(ZSW_CPU_FREQ_DEFAULT, true);
+    }
+    k_mutex_unlock(&freq_mutex);
+}
+
 zsw_cpu_freq_t zsw_cpu_get_freq(void)
 {
 #ifdef CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
@@ -80,6 +113,10 @@ zsw_cpu_freq_t zsw_cpu_get_freq(void)
 }
 #else
 void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait) {}
+
+void zsw_cpu_hold_fast(void) {}
+
+void zsw_cpu_release_fast(void) {}
 
 zsw_cpu_freq_t zsw_cpu_get_freq(void)
 {
