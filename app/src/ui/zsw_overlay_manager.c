@@ -62,7 +62,7 @@ static void enqueue(zsw_overlay_t *overlay)
         if (!queue[i]) {
             queue[i] = overlay;
             overlay->queued = true;
-            LOG_INF("%s queued", overlay->name);
+            LOG_DBG("%s queued", overlay->name);
             return;
         }
     }
@@ -96,7 +96,7 @@ static zsw_overlay_t *next_queued(void)
 
 static void open_overlay(zsw_overlay_t *overlay)
 {
-    LOG_INF("%s shown", overlay->name);
+    LOG_DBG("%s shown", overlay->name);
     active = overlay;
     zsw_ui_controller_set_notification_mode();
     overlay->show(lv_layer_top(), lv_group_get_default());
@@ -113,7 +113,7 @@ static void close_active(void)
     start_timeout(0);
     overlay->close();
     zsw_ui_controller_clear_notification_mode();
-    LOG_INF("%s closed", overlay->name);
+    LOG_DBG("%s closed", overlay->name);
 }
 
 void zsw_overlay_show(zsw_overlay_t *overlay)

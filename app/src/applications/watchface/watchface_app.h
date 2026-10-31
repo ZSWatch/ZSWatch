@@ -77,6 +77,8 @@ typedef struct watchface_ui_api_t {
     void (*set_weather_detailed)(const watchface_weather_t *weather);
     // Optional. Face shown/display on (true), or display off (false).
     void (*set_display_active)(bool active);
+    // Optional. Pause continuous animations while the dropdown covers the face (true).
+    void (*set_paused)(bool paused);
     void (*set_datetime)(int day_of_week, int date, int day, int month, int year, int weekday, int32_t hour, int32_t minute,
                          int32_t second, uint32_t usec, bool am, bool mode);
     void (*set_watch_env_sensors)(int pressure);

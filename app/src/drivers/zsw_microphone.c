@@ -92,7 +92,7 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
         return -EINVAL;
     }
 
-    LOG_INF("Initializing microphone");
+    LOG_DBG("Initializing microphone");
 
     mic_state.recording = false;
     mic_state.audio_callback = audio_callback;
@@ -118,7 +118,7 @@ int zsw_microphone_init(zsw_mic_audio_cb_t audio_callback)
 
     zsw_microphone_set_gain(CONFIG_ZSW_MIC_DEFAULT_GAIN);
 
-    LOG_INF("Microphone initialized successfully");
+    LOG_DBG("Microphone initialized successfully");
 
     return 0;
 }
@@ -137,7 +137,7 @@ int zsw_microphone_driver_start(void)
         return -EALREADY;
     }
 
-    LOG_INF("Starting microphone recording");
+    LOG_DBG("Starting microphone recording");
 
     ret = power_on_microphone();
     if (ret < 0) {
@@ -207,7 +207,7 @@ int zsw_microphone_driver_stop(void)
         return -EINVAL;
     }
 
-    LOG_INF("Stopping microphone recording");
+    LOG_DBG("Stopping microphone recording");
 
     // Flag to the audio thread to exit loop
     mic_state.recording = false;
@@ -255,7 +255,7 @@ static void audio_thread_entry(void *p1, void *p2, void *p3)
     size_t rx_size = PCM_BLK_SIZE_MS;
     int ret;
 
-    LOG_INF("Audio processing thread started");
+    LOG_DBG("Audio processing thread started");
 
     while (mic_state.recording) {
         ret = dmic_read(mic_state.mic_dev, 0, &rx_block_ptr, &rx_size, 100);
@@ -302,7 +302,7 @@ static void audio_thread_entry(void *p1, void *p2, void *p3)
     LOG_INF("Recording session complete. Processed: %d blocks. Buffer failures: %d",
             mic_state.total_blocks_processed, mic_state.buffer_allocation_failures);
 
-    LOG_INF("Audio processing thread exiting");
+    LOG_DBG("Audio processing thread exiting");
 }
 
 static int power_on_microphone(void)

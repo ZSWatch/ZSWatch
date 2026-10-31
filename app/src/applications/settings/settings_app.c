@@ -301,7 +301,13 @@ static lv_settings_item_t controls_page_items[] = {
         LV_SYMBOL_UP " Swipe up: Apps\n"
         LV_SYMBOL_DOWN " Swipe down: Quick panel\n"
         LV_SYMBOL_LEFT " Swipe left: Notifications\n"
-        LV_SYMBOL_RIGHT " Swipe right: Watch faces",
+#ifdef CONFIG_APPLICATIONS_USE_TILES
+        LV_SYMBOL_RIGHT " Swipe right: Tiles\n"
+        LV_SYMBOL_IMAGE " Long press: Watch faces",
+#else
+        LV_SYMBOL_RIGHT " Swipe right: Watch faces\n"
+        LV_SYMBOL_IMAGE " Long press: Watch faces",
+#endif
     },
 };
 

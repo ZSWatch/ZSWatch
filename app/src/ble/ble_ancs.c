@@ -125,7 +125,7 @@ static void discover_ancs_completed_cb(struct bt_gatt_dm *dm, void *ctx)
     struct bt_ancs_client *ancs_c = (struct bt_ancs_client *)ctx;
     struct bt_conn *conn = bt_gatt_dm_conn_get(dm);
 
-    LOG_INF("The discovery procedure for ANCS succeeded");
+    LOG_DBG("The discovery procedure for ANCS succeeded");
 
     bt_gatt_dm_data_print(dm);
 
@@ -196,7 +196,7 @@ static void discover_gattp_completed_cb(struct bt_gatt_dm *dm, void *ctx)
      * Discovery Manager handles empty services.
      */
     if (bt_gatt_dm_attr_cnt(dm) > 1) {
-        LOG_INF("The discovery procedure for GATT Service succeeded");
+        LOG_DBG("The discovery procedure for GATT Service succeeded");
 
         bt_gatt_dm_data_print(dm);
 
@@ -595,7 +595,7 @@ int ble_ancs_init(void)
         return err;
     }
 
-    LOG_INF("Started Apple Notification Center Service client");
+    LOG_DBG("Started Apple Notification Center Service client");
 
     return err;
 }

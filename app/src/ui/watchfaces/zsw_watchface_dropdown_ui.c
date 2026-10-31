@@ -18,6 +18,7 @@
 #include "zsw_ui.h"
 #include "lvgl.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
 static lv_obj_t *ui_down_bg_panel;
 static lv_obj_t *ui_up_bg_Panel;
@@ -43,6 +44,7 @@ static uint8_t ui_light_slider_value = 30;
 
 static bool is_shown;
 static watchface_app_evt_listener evt_cb;
+static void (*dropdown_shown_cb)(bool shown);
 
 LV_FONT_DECLARE(lv_font_montserrat_14_full);
 
@@ -72,6 +74,9 @@ static void on_lvgl_screen_gesture_event_callback(lv_event_t *e)
                 if (!is_shown) {
                     lv_obj_clear_flag(ui_down_bg_panel, LV_OBJ_FLAG_HIDDEN);
                     is_shown = true;
+                    if (dropdown_shown_cb) {
+                        dropdown_shown_cb(true);
+                    }
                 }
                 break;
             }
@@ -113,9 +118,9 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
         dir = lv_indev_get_gesture_dir(lv_indev_get_act());
         switch (dir) {
             case LV_DIR_TOP: {
-                if (is_shown) {
-                    lv_obj_add_flag(ui_down_bg_panel, LV_OBJ_FLAG_HIDDEN);
-                    is_shown = false;
+                if (zsw_watchface_dropdown_ui_close()) {
+                    // Don't let the watchface root also handle this swipe up and open the app picker.
+                    lv_event_stop_bubbling(e);
                 }
                 break;
             }
@@ -125,12 +130,27 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
     }
 }
 
+bool zsw_watchface_dropdown_ui_close(void)
+{
+    if (!is_shown || ui_down_bg_panel == NULL) {
+        return false;
+    }
+    lv_obj_add_flag(ui_down_bg_panel, LV_OBJ_FLAG_HIDDEN);
+    is_shown = false;
+    if (dropdown_shown_cb) {
+        dropdown_shown_cb(false);
+    }
+    return true;
+}
+
 void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
-                                   watchface_app_evt_listener callback, int brightness)
+                                   watchface_app_evt_listener callback, int brightness,
+                                   void (*shown_cb)(bool shown))
 {
     __ASSERT(dropdown_root == NULL, "dropdown_root is not NULL");
 
     evt_cb = callback;
+    dropdown_shown_cb = shown_cb;
     dropdown_root = root_page;
     ui_light_slider_value = brightness;
 

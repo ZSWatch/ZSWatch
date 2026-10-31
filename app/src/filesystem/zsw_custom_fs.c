@@ -23,6 +23,7 @@
 #include <zephyr/storage/stream_flash.h>
 #include <zephyr/sys/util.h>
 #include <filesystem/zsw_filesystem.h>
+#include <managers/zsw_xip_manager.h>
 #include <lvgl.h>
 #include "lv_conf.h"
 
@@ -51,9 +52,14 @@ LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
 #define FLASH_PARTITION_DEVICE  FIXED_PARTITION_DEVICE(FLASH_PARTITION_NAME)
 #define FLASH_PARTITION_OFFSET  FIXED_PARTITION_OFFSET(FLASH_PARTITION_NAME)
 
+#ifdef CONFIG_ZSW_XIP
+// External flash is memory mapped here while XIP is enabled.
+#define XIP_PARTITION_BASE      (DT_REG_ADDR_BY_IDX(DT_NODELABEL(qspi), 1) + FLASH_PARTITION_OFFSET)
+#endif
+
 #define FILE_TABLE_MAX_LEN  32000
 #define MAX_FILE_NAME_LEN   32
-#define MAX_OPENED_FILES    64
+#define MAX_OPENED_FILES    48
 
 #define IS_SPECIAL_FULL_FS_FILE_PATH(name) \
     (strncmp(name, FULL_FS_SPECIAL_FILE_NAME, sizeof(FULL_FS_SPECIAL_FILE_NAME) - 1) == 0)
@@ -78,6 +84,7 @@ typedef struct opened_file_t {
     file_header_t  *header;
     uint32_t        index;
     bool            is_cached;
+    bool            use_xip;
     uint32_t        cache_start;
     uint32_t        cache_end;
 } opened_file_t;
@@ -189,6 +196,9 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
 
     open_file->header = file;
     open_file->index = 0;
+    // Reading through the XIP mapping avoids the per-read QSPI driver overhead.
+    // Only used when XIP is already on (display on), so this never powers it up.
+    open_file->use_xip = zsw_xip_try_get();
 
     return open_file;
 }
@@ -201,7 +211,7 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
     // Zephyr FS always passes the full path, so we need to strip the mount point.
     char *file_name_ptr = (char *)file_name + strlen(ZSW_FS_MOUNT_POINT) + 1;
 
-    LOG_INF("Opening fs file %s, mode: %d", file_name_ptr, (int)mode);
+    LOG_DBG("Opening fs file %s, mode: %d", file_name_ptr, (int)mode);
 
     if (mode & ~(FS_O_RDWR | FS_O_CREATE)) {
         LOG_ERR("Unsupported mode flags set: %d", mode);
@@ -251,6 +261,10 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
 static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
 {
     opened_file_t *open_file = (opened_file_t *)file;
+    if (open_file->use_xip) {
+        zsw_xip_put();
+        open_file->use_xip = false;
+    }
     open_file->header = NULL;
     open_file->index = 0;
     open_file->is_cached = false;
@@ -290,6 +304,12 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     uint32_t orig_read_address, read_address;
     opened_file_t *open_file = (opened_file_t *)file;
 
+    // A seek may have moved the index past the end of the file.
+    if (open_file->index >= open_file->header->len) {
+        *br = 0;
+        return LV_FS_RES_OK;
+    }
+
     btr = MIN(btr, open_file->header->len - open_file->index);
     if (btr == 0) {
         *br = 0;
@@ -297,6 +317,23 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     }
 
     orig_read_address = open_file->header->offset + open_file->index + file_table.header_length;
+
+#ifdef CONFIG_ZSW_XIP
+    if (open_file->use_xip) {
+        // flash_area_read() rejects reads outside the partition, a raw XIP access would fault.
+        if (orig_read_address >= flash_area->fa_size || btr > flash_area->fa_size - orig_read_address) {
+            LOG_ERR("Read outside partition: %s offset 0x%x index 0x%x len 0x%x",
+                    open_file->header->filename, open_file->header->offset, open_file->index,
+                    open_file->header->len);
+            *br = 0;
+            return LV_FS_RES_INV_PARAM;
+        }
+        memcpy(buf, (const uint8_t *)(XIP_PARTITION_BASE + orig_read_address), btr);
+        *br = btr;
+        open_file->index += btr;
+        return LV_FS_RES_OK;
+    }
+#endif
 
     if (open_file->is_cached && (orig_read_address >= current_cached_file->cache_start) &&
         ((orig_read_address + btr) < current_cached_file->cache_end)) {
@@ -413,7 +450,7 @@ static ssize_t zsw_fs_write(struct fs_file_t *zfp, const void *ptr, size_t size)
         }
 
         if ((full_fs_file.index % (64 * 1024)) < size) {
-            LOG_INF("full_fs write progress: %u bytes", full_fs_file.index);
+            LOG_DBG("full_fs write progress: %u bytes", full_fs_file.index);
         }
 
         return size;
@@ -584,19 +621,22 @@ int zsw_filesytem_get_total_size(void)
 
 int zsw_filesytem_erase(void)
 {
+    int num_opened_files = 0;
+    for (int i = 0; i < MAX_OPENED_FILES; i++) {
+        if (opened_files[i].header != NULL) {
+            num_opened_files++;
+            // Clearing the slot below would otherwise leak its XIP reference.
+            lvgl_fs_close(NULL, &opened_files[i]);
+        }
+    }
+    LOG_WRN("Number of opened files: %d", num_opened_files);
+
     memset(opened_files, 0, sizeof(opened_files));
     memset(&file_table, 0, sizeof(file_table));
     current_cached_file = NULL;
     full_fs_file.len = 0;
     full_fs_file.index = 0;
     full_fs_stream_active = false;
-    int num_opened_files = 0;
-    for (int i = 0; i < MAX_OPENED_FILES; i++) {
-        if (opened_files[i].header != NULL) {
-            num_opened_files++;
-        }
-    }
-    LOG_WRN("Number of opened files: %d", num_opened_files);
 
     LOG_INF("Erasing full fs image");
     int rc = flash_area_erase(flash_area, 0, flash_area->fa_size);

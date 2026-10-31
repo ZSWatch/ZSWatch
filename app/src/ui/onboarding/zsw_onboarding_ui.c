@@ -177,7 +177,7 @@ static void create_gestures_page(lv_obj_t *tile)
 
     lv_obj_t *container = lv_obj_create(tile);
     lv_obj_remove_style_all(container);
-    lv_obj_set_size(container, 200, 110);
+    lv_obj_set_size(container, LV_SIZE_CONTENT, 110);
     lv_obj_align(container, LV_ALIGN_CENTER, 0, 10);
     lv_obj_set_flex_flow(container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -188,10 +188,15 @@ static void create_gestures_page(lv_obj_t *tile)
         LV_SYMBOL_UP "  Swipe up: Apps",
         LV_SYMBOL_DOWN "  Swipe down: Quick panel",
         LV_SYMBOL_LEFT "  Swipe left: Notifications",
+#ifdef CONFIG_APPLICATIONS_USE_TILES
+        LV_SYMBOL_RIGHT "  Swipe right: Tiles",
+#else
         LV_SYMBOL_RIGHT "  Swipe right: Watch faces",
+#endif
+        LV_SYMBOL_IMAGE "  Long press: Watch faces",
     };
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < ARRAY_SIZE(gesture_texts); i++) {
         lv_obj_t *lbl = lv_label_create(container);
         lv_label_set_text(lbl, gesture_texts[i]);
         lv_obj_set_style_text_color(lbl, lv_color_white(), 0);

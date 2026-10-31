@@ -32,6 +32,7 @@
 #include "filesystem/zsw_filesystem.h"
 #include "zsw_retained_ram_storage.h"
 #include "applications/watchface/watchface_app.h"
+#include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "fuel_gauge/zsw_pmic.h"
@@ -284,7 +285,10 @@ static void handle_screen_gesture(lv_dir_t event_code)
                 break;
             }
             case LV_DIR_TOP: {
-                open_application_manager_page(NULL);
+                // A swipe up closes the dropdown first, the next one opens the app picker.
+                if (!zsw_watchface_dropdown_ui_close()) {
+                    open_application_manager_page(NULL);
+                }
                 break;
             }
             case LV_DIR_BOTTOM: {

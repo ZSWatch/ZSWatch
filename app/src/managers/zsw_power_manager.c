@@ -350,7 +350,7 @@ static void tilt_update_reference(float ax, float ay, float az, float mag)
         tilt.ref_y /= ref_mag;
         tilt.ref_z /= ref_mag;
         tilt.state = TILT_STATE_MONITORING;
-        LOG_INF("Tilt: reference learned (%.3f, %.3f, %.3f)",
+        LOG_DBG("Tilt: reference learned (%.3f, %.3f, %.3f)",
                 tilt.ref_x, tilt.ref_y, tilt.ref_z);
     } else {
         LOG_WRN("Tilt: reference learning failed, reset");
@@ -383,9 +383,9 @@ static void tilt_check_monitoring(float ux, float uy, float uz)
 
         if (tilt.away_start_ms == 0) {
             tilt.away_start_ms = now;
-            LOG_INF("Tilt: away region entered, starting timer");
+            LOG_DBG("Tilt: away region entered, starting timer");
         } else if ((now - tilt.away_start_ms) >= TILT_AWAY_HOLD_MS) {
-            LOG_INF("Tilt: away held for %u ms, entering inactive",
+            LOG_DBG("Tilt: away held for %u ms, entering inactive",
                     (uint32_t)(now - tilt.away_start_ms));
             enter_inactive();
         }

@@ -19,9 +19,14 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/flash/nrf_qspi_nor.h>
 #include <zephyr/init.h>
+#include <zephyr/sys/atomic.h>
 #include <zephyr/logging/log.h>
+#include "managers/zsw_xip_manager.h"
 
 static const struct device *qspi_dev = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(nordic_pm_ext_flash));
+
+// Mirrors the driver's XIP user count, which it does not expose.
+static atomic_t xip_users;
 
 LOG_MODULE_REGISTER(zsw_xip_manager, CONFIG_ZSW_XIP_MANAGER_LOG_LEVEL);
 
@@ -64,6 +69,7 @@ int _zsw_xip_enable(const char *requester)
         return -ENODEV;
     }
 
+    atomic_inc(&xip_users);
     nrf_qspi_nor_xip_enable(qspi_dev, true);
     return 0;
 }
@@ -81,6 +87,42 @@ int _zsw_xip_disable(const char *requester)
         return -ENODEV;
     }
 
+    if (atomic_dec(&xip_users) <= 0) {
+        atomic_inc(&xip_users);
+        LOG_ERR("Unbalanced XIP disable from: %s", requester);
+        return 0;
+    }
     nrf_qspi_nor_xip_enable(qspi_dev, false);
     return 0;
+}
+
+bool zsw_xip_try_get(void)
+{
+    atomic_val_t users;
+
+    if (!qspi_dev || !device_is_ready(qspi_dev)) {
+        return false;
+    }
+
+    // Only add a user while there is one already, so this never powers up XIP.
+    do {
+        users = atomic_get(&xip_users);
+        if (users <= 0) {
+            return false;
+        }
+    } while (!atomic_cas(&xip_users, users, users + 1));
+
+    // Even if the last other user disables XIP right now, this re-enables it before returning.
+    nrf_qspi_nor_xip_enable(qspi_dev, true);
+    return true;
+}
+
+void zsw_xip_put(void)
+{
+    if (atomic_dec(&xip_users) <= 0) {
+        atomic_inc(&xip_users);
+        LOG_ERR("Unbalanced XIP put");
+        return;
+    }
+    nrf_qspi_nor_xip_enable(qspi_dev, false);
 }

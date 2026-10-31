@@ -111,7 +111,7 @@ static void codec_thread_fn(void *p1, void *p2, void *p3)
     int16_t pcm_frame[CONFIG_ZSW_OPUS_FRAME_SIZE_SAMPLES];
     uint8_t opus_frame[MAX_OPUS_FRAME_BYTES];
     const size_t frame_bytes = CONFIG_ZSW_OPUS_FRAME_SIZE_SAMPLES * sizeof(int16_t);
-    LOG_INF("Codec thread started");
+    LOG_DBG("Codec thread started");
     while (codec_thread_running) {
         k_sem_take(&codec_sem, K_MSEC(100));
         if (!is_recording || !codec_thread_running) {
@@ -163,7 +163,7 @@ static void codec_thread_fn(void *p1, void *p2, void *p3)
             }
         }
     }
-    LOG_INF("Codec thread stopped");
+    LOG_DBG("Codec thread stopped");
 }
 
 static void auto_stop_work_fn(struct k_work *work)
@@ -256,7 +256,7 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         return ret;
     }
 
-    LOG_INF("Voice memo pipeline started");
+    LOG_DBG("Voice memo pipeline started");
 
     struct zsw_voice_memo_recording_event evt = {
         .state = ZSW_VOICE_MEMO_RECORDING_STARTED,
