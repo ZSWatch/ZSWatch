@@ -20,31 +20,24 @@
 #include <stdbool.h>
 
 /**
- * @brief Enable SMP BT transport with auto-disable timer.
+ * @brief Announce SMP traffic. The service is always registered; this only
+ * asks for the short BLE connection interval for a while.
  *
- * Takes a XIP reference (required for MCUmgr code), registers the SMP BT service,
- * sets fast BLE advertising and short connection intervals, and starts
- * an inactivity timer that will auto-disable SMP after timeout.
- *
- * @param auto_disable If true, auto-disable after inactivity timeout.
- *                     If false, SMP remains enabled until explicitly disabled.
+ * @param auto_disable Ignored, kept for compatibility.
  * @return 0 on success, negative error code on failure.
  */
 int zsw_smp_manager_enable(bool auto_disable);
 
 /**
- * @brief Disable SMP BT transport.
+ * @brief No-op, kept for compatibility. SMP stays registered.
  *
- * Unregisters the SMP BT service, restores default BLE advertising and
- * connection intervals, releases XIP reference.
- *
- * @return 0 on success, negative error code on failure.
+ * @return 0, or -ENOTSUP on native_sim.
  */
 int zsw_smp_manager_disable(void);
 
 /**
- * @brief Check if SMP is currently enabled.
+ * @brief Check if SMP is available.
  *
- * @return true if SMP is enabled, false otherwise.
+ * @return true when SMP over BLE is available.
  */
 bool zsw_smp_manager_is_enabled(void);
