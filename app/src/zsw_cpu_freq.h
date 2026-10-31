@@ -26,4 +26,10 @@ typedef enum zsw_cpu_freq_t {
 
 void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait);
 
+/** Keep the CPU at ZSW_CPU_FREQ_FAST until the matching zsw_cpu_release_fast(), whatever
+ *  zsw_cpu_set_freq() asks for meanwhile. For work that can't keep up at the default clock. */
+void zsw_cpu_hold_fast(void);
+
+void zsw_cpu_release_fast(void);
+
 zsw_cpu_freq_t zsw_cpu_get_freq(void);

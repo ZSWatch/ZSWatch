@@ -25,6 +25,7 @@
 #include "zsw_recording_manager_store.h"
 #include "zsw_microphone_manager.h"
 #include "zsw_audio_codec.h"
+#include <zsw_cpu_freq.h>
 #include "events/zsw_voice_memo_event.h"
 
 LOG_MODULE_REGISTER(zsw_recording_manager, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
@@ -237,6 +238,9 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         return ret;
     }
 
+    // Opus needs ~75% of the CPU at the default 64 MHz, too little margin with the screen off.
+    zsw_cpu_hold_fast();
+
     ring_buf_reset(&pcm_ring_buf);
     codec_thread_running = true;
     is_recording = true;
@@ -263,6 +267,7 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         is_recording = false;
         codec_thread_running = false;
         k_thread_abort(codec_thread_id);
+        zsw_cpu_release_fast();
         zsw_audio_codec_deinit();
         zsw_recording_manager_store_abort_recording();
         return ret;
@@ -294,6 +299,7 @@ static void shutdown_pipeline(void)
     }
     auto_stop_pending = false;
     zsw_audio_codec_deinit();
+    zsw_cpu_release_fast();
 }
 
 int zsw_recording_manager_stop(void)
