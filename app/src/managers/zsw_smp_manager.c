@@ -21,44 +21,45 @@
 #include <string.h>
 #include "drivers/zsw_display_control.h"
 #include "zsw_smp_manager.h"
-#include "zsw_xip_manager.h"
 #include "ble/ble_comm.h"
 
 #ifndef CONFIG_ARCH_POSIX
 #include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
-#include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 #endif
 
 LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 
 #ifndef CONFIG_ARCH_POSIX
 
-#define SMP_AUTO_DISABLE_TIMEOUT_SEC  180
-// Keep the short connection interval this long after the last SMP command.
-#define SMP_SHORT_INTERVAL_HOLD_MS    5000
-// After enabling SMP, give the phone this long to rediscover services and start.
-#define SMP_ENABLE_SHORT_INTERVAL_MS  15000
+// The SMP service is always registered. Only the short connection interval
+// follows the traffic. No SMP code may be relocated to XIP.
 
-static bool smp_enabled;
-static bool auto_disable_active;
+// Keep the short interval this long after the last SMP command.
+#define SMP_TRAFFIC_HOLD_MS           5000
+// Upper bound if a command never reports done.
+#define SMP_TRAFFIC_MAX_COMMAND_MS    60000
+// When the phone announces SMP use, keep the short interval this long for it to start.
+#define SMP_ANNOUNCE_SHORT_INTERVAL_MS 5000
+
+static K_MUTEX_DEFINE(traffic_mutex);
+static int commands_active;
+static int64_t last_traffic_ms;
 static bool fs_write_render_blocked;
 
-static void smp_auto_disable_work_handler(struct k_work *work);
 static void smp_traffic_done_work_handler(struct k_work *work);
 static void unblock_fs_write_render(void);
-static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return prev_status,
-                                             int32_t *rc, uint16_t *group, bool *abort_more,
-                                             void *data, size_t data_size);
+static enum mgmt_cb_return cmd_callback(uint32_t event, enum mgmt_cb_return prev_status,
+                                        int32_t *rc, uint16_t *group, bool *abort_more,
+                                        void *data, size_t data_size);
 static enum mgmt_cb_return fs_access_callback(uint32_t event, enum mgmt_cb_return prev_status,
                                               int32_t *rc, uint16_t *group, bool *abort_more,
                                               void *data, size_t data_size);
 
-static K_WORK_DELAYABLE_DEFINE(smp_auto_disable_work, smp_auto_disable_work_handler);
 static K_WORK_DELAYABLE_DEFINE(smp_traffic_done_work, smp_traffic_done_work_handler);
 
-static struct mgmt_callback cmd_recv_callback_entry = {
-    .callback = cmd_recv_callback,
-    .event_id = MGMT_EVT_OP_CMD_RECV,
+static struct mgmt_callback cmd_callback_entry = {
+    .callback = cmd_callback,
+    .event_id = MGMT_EVT_OP_CMD_RECV | MGMT_EVT_OP_CMD_DONE,
 };
 
 static struct mgmt_callback fs_access_callback_entry = {
@@ -66,55 +67,28 @@ static struct mgmt_callback fs_access_callback_entry = {
     .event_id = MGMT_EVT_OP_FS_MGMT_FILE_ACCESS | MGMT_EVT_OP_FS_MGMT_FILE_ACCESS_DONE,
 };
 
-static void smp_auto_disable_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-
-    if (!smp_enabled || !auto_disable_active) {
-        return;
-    }
-
-    LOG_INF("SMP auto-disable: no activity for %d s", SMP_AUTO_DISABLE_TIMEOUT_SEC);
-
-    int rc = smp_bt_unregister();
-    if (rc != 0) {
-        LOG_ERR("Failed to unregister SMP BT: %d", rc);
-        return;
-    }
-
-    smp_enabled = false;
-    auto_disable_active = false;
-    k_work_cancel_delayable(&smp_traffic_done_work);
-    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
-    ble_comm_set_default_adv_interval();
-    unblock_fs_write_render();
-    zsw_xip_disable();
-}
-
 static void smp_traffic_done_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
-    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
-}
 
-static void hold_short_interval(int hold_ms)
-{
-    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
-    k_work_reschedule(&smp_traffic_done_work, K_MSEC(hold_ms));
-}
-
-static void reset_auto_disable_timer(void)
-{
-    if (smp_enabled && auto_disable_active) {
-        k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
+    k_mutex_lock(&traffic_mutex, K_FOREVER);
+    // A command may have started or finished after this was scheduled.
+    int64_t elapsed = k_uptime_get() - last_traffic_ms;
+    int64_t limit = commands_active > 0 ? SMP_TRAFFIC_MAX_COMMAND_MS : SMP_TRAFFIC_HOLD_MS;
+    if (elapsed < limit) {
+        k_work_reschedule(&smp_traffic_done_work, K_MSEC(limit - elapsed));
+        k_mutex_unlock(&traffic_mutex);
+        return;
     }
+    commands_active = 0;
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
+    k_mutex_unlock(&traffic_mutex);
 }
 
-static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return prev_status,
-                                             int32_t *rc, uint16_t *group, bool *abort_more,
-                                             void *data, size_t data_size)
+static enum mgmt_cb_return cmd_callback(uint32_t event, enum mgmt_cb_return prev_status,
+                                        int32_t *rc, uint16_t *group, bool *abort_more,
+                                        void *data, size_t data_size)
 {
-    ARG_UNUSED(event);
     ARG_UNUSED(prev_status);
     ARG_UNUSED(rc);
     ARG_UNUSED(group);
@@ -122,11 +96,19 @@ static enum mgmt_cb_return cmd_recv_callback(uint32_t event, enum mgmt_cb_return
     ARG_UNUSED(data);
     ARG_UNUSED(data_size);
 
-    reset_auto_disable_timer();
-
-    // Firmware updates and file transfers both arrive here; keep the interval
-    // short during the traffic and a little after it.
-    hold_short_interval(SMP_SHORT_INTERVAL_HOLD_MS);
+    k_mutex_lock(&traffic_mutex, K_FOREVER);
+    last_traffic_ms = k_uptime_get();
+    if (event == MGMT_EVT_OP_CMD_RECV) {
+        commands_active++;
+        ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
+        k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_TRAFFIC_MAX_COMMAND_MS));
+    } else {
+        if (commands_active > 0) {
+            commands_active--;
+        }
+        k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_TRAFFIC_HOLD_MS));
+    }
+    k_mutex_unlock(&traffic_mutex);
 
     return MGMT_CB_OK;
 }
@@ -170,101 +152,35 @@ static enum mgmt_cb_return fs_access_callback(uint32_t event, enum mgmt_cb_retur
 
 int zsw_smp_manager_enable(bool auto_disable)
 {
-    if (smp_enabled) {
-        LOG_DBG("SMP already enabled");
-        hold_short_interval(SMP_ENABLE_SHORT_INTERVAL_MS);
-        auto_disable_active = auto_disable;
-        if (auto_disable) {
-            k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
-        } else {
-            k_work_cancel_delayable(&smp_auto_disable_work);
-        }
-        return 0;
-    }
+    ARG_UNUSED(auto_disable);
 
-    int rc = zsw_xip_enable();
-    if (rc != 0) {
-        LOG_ERR("Failed to enable XIP for SMP: %d", rc);
-        return rc;
-    }
-
-    rc = smp_bt_register();
-    if (rc != 0) {
-        LOG_ERR("Failed to register SMP BT: %d", rc);
-        zsw_xip_disable();
-        return rc;
-    }
-
-    // Advertise faster so the phone finds the watch quickly, and switch to the
-    // short interval now so the transfer does not start at the idle interval.
-    // SMP commands keep it short after that (cmd_recv_callback).
-    ble_comm_set_fast_adv_interval();
-    hold_short_interval(SMP_ENABLE_SHORT_INTERVAL_MS);
-
-    smp_enabled = true;
-    auto_disable_active = auto_disable;
-
-    if (auto_disable) {
-        k_work_reschedule(&smp_auto_disable_work, K_SECONDS(SMP_AUTO_DISABLE_TIMEOUT_SEC));
-        LOG_INF("SMP enabled (auto-disable in %d s)", SMP_AUTO_DISABLE_TIMEOUT_SEC);
-    } else {
-        LOG_INF("SMP enabled (no auto-disable)");
-    }
-
+    // SMP is always available; treat this as a hint that traffic is coming.
+    k_mutex_lock(&traffic_mutex, K_FOREVER);
+    last_traffic_ms = k_uptime_get();
+    ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
+    k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_ANNOUNCE_SHORT_INTERVAL_MS));
+    k_mutex_unlock(&traffic_mutex);
     return 0;
 }
 
 int zsw_smp_manager_disable(void)
 {
-    if (!smp_enabled) {
-        LOG_DBG("SMP already disabled");
-        return 0;
-    }
-
-    k_work_cancel_delayable(&smp_auto_disable_work);
-
-    int rc = smp_bt_unregister();
-    if (rc != 0) {
-        LOG_ERR("Failed to unregister SMP BT: %d", rc);
-        return rc;
-    }
-
-    smp_enabled = false;
-    auto_disable_active = false;
-    k_work_cancel_delayable(&smp_traffic_done_work);
-    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_SMP);
-    ble_comm_set_default_adv_interval();
-    unblock_fs_write_render();
-
-    zsw_xip_disable();
-
-    LOG_INF("SMP disabled");
     return 0;
 }
 
 bool zsw_smp_manager_is_enabled(void)
 {
-    return smp_enabled;
+    return true;
 }
 
 void zsw_smp_manager_reset_timeout(void)
 {
-    reset_auto_disable_timer();
 }
 
 static int zsw_smp_manager_init(void)
 {
-    mgmt_callback_register(&cmd_recv_callback_entry);
+    mgmt_callback_register(&cmd_callback_entry);
     mgmt_callback_register(&fs_access_callback_entry);
-
-    smp_enabled = false;
-    auto_disable_active = false;
-    fs_write_render_blocked = false;
-
-    int rc = smp_bt_unregister();
-    if (rc != 0) {
-        LOG_WRN("SMP BT already unregistered or failed (init priority): %d", rc);
-    }
 
     return 0;
 }

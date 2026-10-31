@@ -206,54 +206,6 @@ static bool toggle_ble_fota(void)
     }
 }
 
-#ifdef CONFIG_SHELL
-static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
-{
-    if (argc < 2) {
-        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
-        return -EINVAL;
-    }
-
-    if (strcmp(argv[1], "enable") == 0) {
-        if (zsw_smp_manager_is_enabled()) {
-            shell_print(sh, "BLE FOTA is already enabled");
-            return 0;
-        }
-        shell_print(sh, "Enabling BLE FOTA...");
-        int rc = zsw_smp_manager_enable(false);
-        if (rc == 0) {
-            shell_print(sh, "BLE FOTA enabled successfully");
-            return 0;
-        } else {
-            shell_error(sh, "Failed to enable BLE FOTA: %d", rc);
-            return -EIO;
-        }
-    } else if (strcmp(argv[1], "disable") == 0) {
-        if (!zsw_smp_manager_is_enabled()) {
-            shell_print(sh, "BLE FOTA is already disabled");
-            return 0;
-        }
-        shell_print(sh, "Disabling BLE FOTA...");
-        int rc = zsw_smp_manager_disable();
-        if (rc == 0) {
-            shell_print(sh, "BLE FOTA disabled successfully");
-            return 0;
-        } else {
-            shell_error(sh, "Failed to disable BLE FOTA: %d", rc);
-            return -EIO;
-        }
-    } else if (strcmp(argv[1], "status") == 0) {
-        shell_print(sh, "BLE FOTA is currently %s", zsw_smp_manager_is_enabled() ? "enabled" : "disabled");
-        return 0;
-    } else {
-        shell_error(sh, "Unknown command: %s", argv[1]);
-        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
-        return -EINVAL;
-    }
-}
-
-SHELL_CMD_REGISTER(ble_fota, NULL, "Enable/disable BLE FOTA (enable|disable|status)", cmd_ble_fota);
-#endif
 
 #else
 static bool toggle_ble_fota(void)
