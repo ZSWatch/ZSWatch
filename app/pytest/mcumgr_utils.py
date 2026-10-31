@@ -130,10 +130,6 @@ async def shell_command_ble(device_config, argv: list[str], timeout_s: float = 5
     return await with_ble_client(address, run)
 
 
-async def enable_ble_fota(device_config):
-    response = await shell_command_usb(device_config, ["ble_fota", "enable"])
-    assert "BLE FOTA" in response.o
-
 
 async def enter_serial_recovery(device_config):
     usb_port = require_usb_port(device_config)
