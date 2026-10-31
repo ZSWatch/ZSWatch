@@ -23,14 +23,5 @@ menu "Compass Application"
                 prompt "Calibration time in seconds"
                 default 30
         endmenu
-
-        menu "Sensors Summary"
-            depends on APPLICATIONS_USE_SENSORS_SUMMARY
-
-            config APPLICATIONS_CONFIGURATION_SENSORS_SUMMARY_REFRESH_INTERVAL_MS
-                int
-                prompt "Refresh interval in milliseconds"
-                default 100
-        endmenu
     endmenu
 endmenu
