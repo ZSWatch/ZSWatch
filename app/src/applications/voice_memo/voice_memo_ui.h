@@ -44,6 +44,9 @@ void voice_memo_ui_show_recording(void);
 /** Switch back to list screen. */
 void voice_memo_ui_show_list(void);
 
+/** Keep the recording screen up with a saving indication until the recording is stored. */
+void voice_memo_ui_show_saving(void);
+
 /** Update the recording elapsed time display. remaining_s is seconds left until max duration. */
 void voice_memo_ui_update_time(uint32_t elapsed_ms, uint32_t remaining_s);
 

@@ -93,6 +93,7 @@ static int cmd_voice_memo_status(const struct shell *sh, size_t argc, char **arg
 
     bool recording = zsw_recording_manager_is_recording();
     shell_print(sh, "Recording: %s", recording ? "yes" : "no");
+    shell_print(sh, "Saving: %s", zsw_recording_manager_is_saving() ? "yes" : "no");
 
     int count = zsw_recording_manager_get_count();
     shell_print(sh, "Total recordings: %d", count);
