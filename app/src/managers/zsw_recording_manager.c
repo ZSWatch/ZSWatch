@@ -55,8 +55,8 @@ static uint32_t ring_buf_dropped_bytes;
 static uint32_t last_overflow_log_ms;
 static uint32_t last_limits_check_ms;
 
-/* Codec thread */
-static K_THREAD_STACK_DEFINE(codec_stack, CODEC_THREAD_STACK);
+/* Codec thread. The stack is taken from the heap only while recording. */
+static k_thread_stack_t *codec_stack;
 static struct k_thread codec_thread_data;
 static k_tid_t codec_thread_id;
 static struct k_sem codec_sem;
@@ -237,6 +237,14 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         return ret;
     }
 
+    codec_stack = k_aligned_alloc(Z_KERNEL_STACK_OBJ_ALIGN, K_KERNEL_STACK_LEN(CODEC_THREAD_STACK));
+    if (!codec_stack) {
+        LOG_ERR("Failed to allocate %d bytes for codec stack", CODEC_THREAD_STACK);
+        zsw_audio_codec_deinit();
+        zsw_recording_manager_store_abort_recording();
+        return -ENOMEM;
+    }
+
     ring_buf_reset(&pcm_ring_buf);
     codec_thread_running = true;
     is_recording = true;
@@ -263,6 +271,8 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         is_recording = false;
         codec_thread_running = false;
         k_thread_abort(codec_thread_id);
+        k_free(codec_stack);
+        codec_stack = NULL;
         zsw_audio_codec_deinit();
         zsw_recording_manager_store_abort_recording();
         return ret;
@@ -286,7 +296,11 @@ static void shutdown_pipeline(void)
     k_msleep(50);
     codec_thread_running = false;
     k_sem_give(&codec_sem);
-    k_thread_join(codec_thread_id, K_MSEC(500));
+    // Wait for the thread to finish its frame. Aborting it mid-write could leave the file
+    // system locked, and its stack is freed below.
+    k_thread_join(codec_thread_id, K_FOREVER);
+    k_free(codec_stack);
+    codec_stack = NULL;
 
     if (pcm_ring_buf_data) {
         k_free(pcm_ring_buf_data);
