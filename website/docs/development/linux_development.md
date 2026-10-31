@@ -114,3 +114,4 @@ Builds with `boards/test_mode.conf` expose the Zephyr shell on a pseudo terminal
 | `event time <hour> <minute>` | Inject a phone time sync, keeping today's date |
 | `event battery <percent> [charging]` | Inject a battery sample |
 | `lv_timers` | Count LVGL timers and running animations, to check nothing keeps animating |
+| `lv_heap` | LVGL heap use and its peak since boot. Needs `CONFIG_SYS_HEAP_RUNTIME_STATS=y`; `kernel heap` shows the system heap the same way |
