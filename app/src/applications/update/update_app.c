@@ -23,7 +23,6 @@
 #include "update_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_usb_manager.h"
-#include "managers/zsw_smp_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 #include <zephyr/logging/log.h>
@@ -175,46 +174,7 @@ static bool toggle_usb_fota(void)
     return false;
 }
 
-static bool toggle_ble_fota(void)
-{
-    bool is_enabled = zsw_smp_manager_is_enabled();
-
-    if (!is_enabled) {
-        int rc = zsw_smp_manager_enable(false);
-        if (rc != 0) {
-            LOG_ERR("Failed to enable BLE SMP: %d", rc);
-            update_ui_set_status("BLE enable failed");
-            update_ui_update_ble_button_state(false);
-            return false;
-        }
-        update_ui_set_status("BLE FOTA ready " LV_SYMBOL_OK);
-        LOG_INF("BLE FOTA enabled");
-        update_ui_update_ble_button_state(true);
-        return true;
-    } else {
-        int rc = zsw_smp_manager_disable();
-        if (rc != 0) {
-            LOG_ERR("Failed to disable BLE SMP: %d", rc);
-            update_ui_set_status("BLE disable failed");
-            update_ui_update_ble_button_state(true);
-            return false;
-        }
-        update_ui_set_status("BLE disabled");
-        LOG_INF("BLE FOTA disabled");
-        update_ui_update_ble_button_state(false);
-        return true;
-    }
-}
-
-
 #else
-static bool toggle_ble_fota(void)
-{
-    update_ui_set_status("BLE FOTA N/A on POSIX");
-    update_ui_update_ble_button_state(false);
-    return false;
-}
-
 static bool toggle_usb_fota(void)
 {
     update_ui_set_status("USB FOTA N/A on POSIX");
@@ -225,7 +185,7 @@ static bool toggle_usb_fota(void)
 
 static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
+    update_ui_show(root, toggle_usb_fota);
 }
 
 static void update_app_stop(void)
