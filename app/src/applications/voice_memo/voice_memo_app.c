@@ -60,8 +60,8 @@ ZBUS_LISTENER_DEFINE(voice_memo_app_recording_lis, on_recording_event);
 ZBUS_LISTENER_DEFINE(voice_memo_app_result_lis, on_result_event);
 
 static bool recording_screen_shown;
-// The record button sits where the stop button was, so taps meant for stop
-// can land on it once the list is back. Ignore record taps for a moment.
+// Ignore record taps for a moment after a recording stops, so repeated stop
+// taps can't start a new recording.
 #define RECORD_TAP_GUARD_MS 2000
 static int64_t list_shown_after_stop_ms;
 

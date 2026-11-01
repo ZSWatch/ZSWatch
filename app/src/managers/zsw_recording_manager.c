@@ -30,7 +30,7 @@
 
 LOG_MODULE_REGISTER(zsw_recording_manager, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
-// 256 ms of PCM. Covers the codec falling behind while LVGL renders app launches.
+// 256 ms of PCM, so the encoder can fall behind for a while without dropping audio.
 #define CODEC_RING_BUF_SIZE    8192
 // Opus encoder uses ~8-10 KB stack during opus_encode() on ARM.
 #define CODEC_THREAD_STACK     12288
