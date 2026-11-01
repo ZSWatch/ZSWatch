@@ -101,6 +101,7 @@ static zsw_power_manager_state_t state;
 static bool initialized = false;
 static bool any_motion_armed;
 static bool no_motion_armed;
+static bool cpu_fast_requested;
 
 static void set_motion_detection(bool any_motion, bool no_motion)
 {
@@ -244,7 +245,10 @@ static void enter_inactive(void)
 
     zsw_display_control_sleep_ctrl(false);
 
-    zsw_cpu_set_freq(ZSW_CPU_FREQ_DEFAULT, true);
+    if (cpu_fast_requested) {
+        cpu_fast_requested = false;
+        zsw_cpu_release_fast();
+    }
 
     // Screen inactive -> wait for NO_MOTION interrupt in order to power off display regulator.
     set_motion_detection(false, true);
@@ -267,7 +271,10 @@ static void enter_active(void)
     // want to do as fast as possible. Also to use 32MHz SPI, CPU has
     // to be running at 128MHz. Meaning this improves both rendering times
     // and the SPI transmit time.
-    zsw_cpu_set_freq(ZSW_CPU_FREQ_FAST, true);
+    if (!cpu_fast_requested) {
+        cpu_fast_requested = true;
+        zsw_cpu_request_fast();
+    }
 
     ret = zsw_display_control_pwr_ctrl(true);
     zsw_display_control_sleep_ctrl(true);

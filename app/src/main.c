@@ -37,7 +37,6 @@
 
 #include <zsw_clock.h>
 #include "zsw_clock_timezone.h"
-#include <zsw_cpu_freq.h>
 #include <zsw_retained_ram_storage.h>
 #include <zsw_coredump.h>
 

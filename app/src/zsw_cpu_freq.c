@@ -23,10 +23,9 @@
 //#define CPU_CLOCK_PROFILING
 
 static K_MUTEX_DEFINE(freq_mutex);
-static zsw_cpu_freq_t requested_freq = ZSW_CPU_FREQ_DEFAULT;
-static int fast_holds;
+static int fast_requests;
 
-static void apply_freq(zsw_cpu_freq_t freq, bool wait)
+static void apply_freq(bool fast)
 {
 #ifdef CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
     int ret;
@@ -40,19 +39,19 @@ static void apply_freq(zsw_cpu_freq_t freq, bool wait)
 
     // This configures the clock for CPU APP Core
     ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK,
-                                 freq == ZSW_CPU_FREQ_FAST ? NRF_CLOCK_HFCLK_DIV_1 : NRF_CLOCK_HFCLK_DIV_2);
+                                 fast ? NRF_CLOCK_HFCLK_DIV_1 : NRF_CLOCK_HFCLK_DIV_2);
 
     ret -= NRFX_ERROR_BASE_NUM;
     if (ret) {
         return;
     }
 
-    // Wait if requested for the clock to start/stop
-    if (freq == ZSW_CPU_FREQ_FAST && wait) {
+    // Wait for the clock to start/stop
+    if (fast) {
         nrfx_clock_start(NRF_CLOCK_DOMAIN_HFCLK);
         while (!nrfx_clock_is_running(NRF_CLOCK_DOMAIN_HFCLK, NULL)) {
         }
-    } else if (freq == ZSW_CPU_FREQ_DEFAULT && wait) {
+    } else {
         nrfx_clock_stop(NRF_CLOCK_DOMAIN_HFCLK);
         while (nrfx_clock_is_running(NRF_CLOCK_DOMAIN_HFCLK, NULL)) {
         }
@@ -61,7 +60,7 @@ static void apply_freq(zsw_cpu_freq_t freq, bool wait)
     stop_time = k_cycle_get_32();
     cycles_spent = stop_time - start_time;
     nanoseconds_spent = k_cyc_to_ns_ceil32(cycles_spent);
-    if (freq == ZSW_CPU_FREQ_FAST) {
+    if (fast) {
         printk("Start HFCLK took: %dns\n", nanoseconds_spent);
     } else {
         printk("Stop HFCLK took: %dns\n", nanoseconds_spent);
@@ -70,21 +69,11 @@ static void apply_freq(zsw_cpu_freq_t freq, bool wait)
 #endif
 }
 
-void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait)
+void zsw_cpu_request_fast(void)
 {
     k_mutex_lock(&freq_mutex, K_FOREVER);
-    requested_freq = freq;
-    if (freq == ZSW_CPU_FREQ_FAST || fast_holds == 0) {
-        apply_freq(freq, wait);
-    }
-    k_mutex_unlock(&freq_mutex);
-}
-
-void zsw_cpu_hold_fast(void)
-{
-    k_mutex_lock(&freq_mutex, K_FOREVER);
-    if (fast_holds++ == 0 && requested_freq == ZSW_CPU_FREQ_DEFAULT) {
-        apply_freq(ZSW_CPU_FREQ_FAST, true);
+    if (fast_requests++ == 0) {
+        apply_freq(true);
     }
     k_mutex_unlock(&freq_mutex);
 }
@@ -92,34 +81,28 @@ void zsw_cpu_hold_fast(void)
 void zsw_cpu_release_fast(void)
 {
     k_mutex_lock(&freq_mutex, K_FOREVER);
-    __ASSERT(fast_holds > 0, "Unbalanced zsw_cpu_release_fast");
-    if (fast_holds > 0 && --fast_holds == 0 && requested_freq == ZSW_CPU_FREQ_DEFAULT) {
-        apply_freq(ZSW_CPU_FREQ_DEFAULT, true);
+    __ASSERT(fast_requests > 0, "Unbalanced zsw_cpu_release_fast");
+    if (fast_requests > 0 && --fast_requests == 0) {
+        apply_freq(false);
     }
     k_mutex_unlock(&freq_mutex);
 }
 
-zsw_cpu_freq_t zsw_cpu_get_freq(void)
+bool zsw_cpu_is_fast(void)
 {
 #ifdef CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
-    if (nrf_clock_hfclk_div_get(NRF_CLOCK) == NRF_CLOCK_HFCLK_DIV_1) {
-        return ZSW_CPU_FREQ_FAST;
-    } else {
-        return ZSW_CPU_FREQ_DEFAULT;
-    }
+    return nrf_clock_hfclk_div_get(NRF_CLOCK) == NRF_CLOCK_HFCLK_DIV_1;
 #else
-    return ZSW_CPU_FREQ_DEFAULT;
+    return false;
 #endif
 }
 #else
-void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait) {}
-
-void zsw_cpu_hold_fast(void) {}
+void zsw_cpu_request_fast(void) {}
 
 void zsw_cpu_release_fast(void) {}
 
-zsw_cpu_freq_t zsw_cpu_get_freq(void)
+bool zsw_cpu_is_fast(void)
 {
-    return ZSW_CPU_FREQ_DEFAULT;
+    return false;
 }
 #endif

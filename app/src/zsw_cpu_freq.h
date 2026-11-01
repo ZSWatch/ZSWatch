@@ -19,17 +19,14 @@
 
 #include <stdbool.h>
 
-typedef enum zsw_cpu_freq_t {
-    ZSW_CPU_FREQ_DEFAULT,
-    ZSW_CPU_FREQ_FAST,
-} zsw_cpu_freq_t;
+/**
+ * @brief Run the app core at 128 MHz until the matching zsw_cpu_release_fast().
+ * Requests nest. The clock goes back to 64 MHz when the last one is released.
+ */
+void zsw_cpu_request_fast(void);
 
-void zsw_cpu_set_freq(zsw_cpu_freq_t freq, bool wait);
-
-/** Keep the CPU at ZSW_CPU_FREQ_FAST until the matching zsw_cpu_release_fast(), whatever
- *  zsw_cpu_set_freq() asks for meanwhile. For work that can't keep up at the default clock. */
-void zsw_cpu_hold_fast(void);
-
+/** @brief Release a zsw_cpu_request_fast(). */
 void zsw_cpu_release_fast(void);
 
-zsw_cpu_freq_t zsw_cpu_get_freq(void);
+/** @return true when the app core runs at 128 MHz. */
+bool zsw_cpu_is_fast(void);
