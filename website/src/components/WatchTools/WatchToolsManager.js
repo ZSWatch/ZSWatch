@@ -1,4 +1,5 @@
 import UpdateMCUManager from "../FirmwareUpdate/utils/UpdateMCUManager";
+import { smpUnavailableError } from "../FirmwareUpdate/utils/watchBluetooth";
 import { validateBackground } from "./imageProcessing";
 import { MAX_CRASH_BYTES, parseCrash } from "./diagnostics";
 
@@ -106,7 +107,8 @@ export default class WatchToolsManager extends UpdateMCUManager {
           this._bleReadyAt = Date.now();
           this.connectionGeneration++;
           await this._watch.prepare(server, { enableUpdates: true, readInfo: false });
-          await this._discoverSmp(server);
+          try { await this._discoverSmp(server); }
+          catch (error) { throw error.name === "NotFoundError" ? smpUnavailableError(error) : error; }
         } finally { this._rediscovering = false; }
       } catch (error) {
         if (this.isConnected()) {

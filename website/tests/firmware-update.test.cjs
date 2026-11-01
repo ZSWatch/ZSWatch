@@ -163,6 +163,20 @@ test("BLE refreshes cached services; SMP-only and older watches have a fallback"
   });
 });
 
+test("SMP hidden after rediscovery shows the browser error and a re-pair hint", async () => {
+  const hidden = bleWatch({ smp: false });
+  await withBluetooth(hidden, async () => {
+    await assert.rejects(hidden.instance.connect({ transport: "ble" }), (error) => {
+      assert.match(error.message, /firmware update service was not found/);
+      assert.match(error.message, /Bluetooth settings.*pair again/);
+      assert.match(error.message, /Browser error: Service not found/);
+      assert.equal(error.cause.name, "NotFoundError");
+      return true;
+    });
+    assert.equal(hidden.connects, 2);
+  });
+});
+
 test("restart tolerates reset disconnect, reconnects, re-enables SMP, and reads installed images", async () => {
   const watch = bleWatch({ resetDropsLink: true });
   await withBluetooth(watch, async () => {
