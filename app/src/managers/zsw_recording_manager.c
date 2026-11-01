@@ -258,7 +258,7 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
     }
 
     // Opus needs ~75% of the CPU at the default 64 MHz, too little margin with the screen off.
-    zsw_cpu_hold_fast();
+    zsw_cpu_request_fast();
 
     ring_buf_reset(&pcm_ring_buf);
     codec_thread_running = true;

@@ -470,10 +470,7 @@ static int cmd_cpu_get_freq(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    zsw_cpu_freq_t freq = zsw_cpu_get_freq();
-    const char *freq_str = (freq == ZSW_CPU_FREQ_FAST) ? "fast" : "slow";
-
-    shell_print(sh, "CPU frequency profile: %s", freq_str);
+    shell_print(sh, "CPU frequency profile: %s", zsw_cpu_is_fast() ? "fast" : "slow");
     return 0;
 }
 
