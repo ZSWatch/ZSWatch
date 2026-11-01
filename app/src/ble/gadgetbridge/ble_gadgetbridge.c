@@ -1009,14 +1009,11 @@ static int parse_smp_command(char *data, int len)
     cJSON_Delete(root);
 
 #ifdef CONFIG_MCUMGR
-    int rc;
+    // SMP is always registered. Older apps also send "status":false, which needs nothing.
     if (enable) {
-        rc = zsw_smp_manager_enable(true);
-    } else {
-        rc = zsw_smp_manager_disable();
+        zsw_smp_manager_announce_traffic();
     }
-
-    return rc;
+    return 0;
 #else
     ARG_UNUSED(enable);
     LOG_WRN("SMP not available");
