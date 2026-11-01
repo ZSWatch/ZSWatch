@@ -189,6 +189,10 @@ test("restart tolerates reset disconnect, reconnects, re-enables SMP, and reads 
     assert.deepEqual(stages, ["Restarting watch", "Reconnecting to watch", "Verifying installed images"]);
     verifyInstalledImages([{ name: "app.internal.bin", imageNumber: 0, hash: "ab".repeat(32) }], result.images);
     assert.throws(() => verifyInstalledImages([{ name: "app.internal.bin", imageNumber: 0, hash: "cd".repeat(32) }], result.images), /could not be verified/);
+    // The app core never lists the network core image; that is not a failure.
+    const netcore = { name: "ipc_radio.bin", imageNumber: 1, hash: "ef".repeat(32) };
+    assert.deepEqual(verifyInstalledImages([{ name: "app.internal.bin", imageNumber: 0, hash: "ab".repeat(32) }, netcore], result.images), [netcore]);
+    assert.throws(() => verifyInstalledImages([netcore], [...result.images, { image: 1, slot: 0, hash: "00".repeat(32), active: true }]), /ipc_radio.bin/);
   });
 });
 

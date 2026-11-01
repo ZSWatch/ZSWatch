@@ -27,12 +27,16 @@ export async function applyUploadedFirmware({ mcumgr, images, recovery, onStage 
   await mcumgr.request(2, 0, 5);
 }
 
+// Returns the images the watch cannot report. The nRF5340 app core cannot read
+// the network core's flash, so image 1 (ipc_radio.bin) is never listed.
 export function verifyInstalledImages(expected, installed) {
-  const missing = expected.filter((image) => !installed.some((actual) => {
+  const reported = (image) => installed.some((actual) => (actual.image ?? 0) === image.imageNumber);
+  const missing = expected.filter((image) => reported(image) && !installed.some((actual) => {
     const hash = typeof actual.hash === "string" ? actual.hash : Array.from(actual.hash || [], (byte) => byte.toString(16).padStart(2, "0")).join("");
     return (actual.image ?? 0) === image.imageNumber && hash.toLowerCase() === image.hash.toLowerCase() && actual.active === true;
   }));
   if (missing.length) throw new Error(`The watch reconnected, but the new firmware could not be verified: ${missing.map((image) => image.name).join(", ")}. Check the installed images before retrying.`);
+  return expected.filter((image) => !reported(image));
 }
 
 export async function runFirmwareUpdate({ selection, mode, recovery, signal, transfer, applyFirmware, restartFilesystem, onImageUploaded, log, waitForNetCore = waitForNetworkCore }) {

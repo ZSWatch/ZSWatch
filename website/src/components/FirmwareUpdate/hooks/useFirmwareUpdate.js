@@ -126,8 +126,10 @@ export function useFirmwareUpdate(mcumgr, isSerialRecoveryMode, isConnected) {
   const confirmAndReset = async (images) => {
     const result = await applyUploadedFirmware({ mcumgr, images, recovery: isSerialRecoveryMode, onStage });
     if (result?.verified) {
-      verifyInstalledImages(images, result.images);
-      log("Update complete. The watch reconnected and the installed firmware was verified.");
+      const unreported = verifyInstalledImages(images, result.images);
+      if (unreported.length === images.length) log(`Update complete. The watch reconnected; it does not report ${unreported.map((image) => image.name).join(", ")}, so the installed version could not be checked.`);
+      else if (unreported.length) log(`Update complete. The watch reconnected and the installed firmware was verified (the watch does not report ${unreported.map((image) => image.name).join(", ")}).`);
+      else log("Update complete. The watch reconnected and the installed firmware was verified.");
     } else log(result?.message || "Update sent; reconnect to verify the installed images.");
   };
   const restartFilesystem = async () => {
