@@ -17,27 +17,8 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 /**
- * @brief Announce SMP traffic. The service is always registered; this only
- * asks for the short BLE connection interval for a while.
- *
- * @param auto_disable Ignored, kept for compatibility.
- * @return 0 on success, negative error code on failure.
+ * @brief Announce that SMP traffic is coming. Requests the short BLE
+ * connection interval for a while so the transfer starts fast.
  */
-int zsw_smp_manager_enable(bool auto_disable);
-
-/**
- * @brief No-op, kept for compatibility. SMP stays registered.
- *
- * @return 0, or -ENOTSUP on native_sim.
- */
-int zsw_smp_manager_disable(void);
-
-/**
- * @brief Check if SMP is available.
- *
- * @return true when SMP over BLE is available.
- */
-bool zsw_smp_manager_is_enabled(void);
+void zsw_smp_manager_announce_traffic(void);

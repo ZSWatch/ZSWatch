@@ -31,8 +31,8 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 
 #ifndef CONFIG_ARCH_POSIX
 
-// The SMP service is always registered. Only the short connection interval
-// follows the traffic. No SMP code may be relocated to XIP.
+// Only the short connection interval follows the SMP traffic.
+// No SMP code may be relocated to XIP.
 
 // Keep the short interval this long after the last SMP command.
 #define SMP_TRAFFIC_HOLD_MS           5000
@@ -150,31 +150,13 @@ static enum mgmt_cb_return fs_access_callback(uint32_t event, enum mgmt_cb_retur
     return MGMT_CB_OK;
 }
 
-int zsw_smp_manager_enable(bool auto_disable)
+void zsw_smp_manager_announce_traffic(void)
 {
-    ARG_UNUSED(auto_disable);
-
-    // SMP is always available; treat this as a hint that traffic is coming.
     k_mutex_lock(&traffic_mutex, K_FOREVER);
     last_traffic_ms = k_uptime_get();
     ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_SMP);
     k_work_reschedule(&smp_traffic_done_work, K_MSEC(SMP_ANNOUNCE_SHORT_INTERVAL_MS));
     k_mutex_unlock(&traffic_mutex);
-    return 0;
-}
-
-int zsw_smp_manager_disable(void)
-{
-    return 0;
-}
-
-bool zsw_smp_manager_is_enabled(void)
-{
-    return true;
-}
-
-void zsw_smp_manager_reset_timeout(void)
-{
 }
 
 static int zsw_smp_manager_init(void)
@@ -189,25 +171,7 @@ SYS_INIT(zsw_smp_manager_init, APPLICATION, 91);
 
 #else /* CONFIG_ARCH_POSIX */
 
-int zsw_smp_manager_enable(bool auto_disable)
-{
-    ARG_UNUSED(auto_disable);
-    LOG_WRN("SMP not available on POSIX");
-    return -ENOTSUP;
-}
-
-int zsw_smp_manager_disable(void)
-{
-    LOG_WRN("SMP not available on POSIX");
-    return -ENOTSUP;
-}
-
-bool zsw_smp_manager_is_enabled(void)
-{
-    return false;
-}
-
-void zsw_smp_manager_reset_timeout(void)
+void zsw_smp_manager_announce_traffic(void)
 {
 }
 
