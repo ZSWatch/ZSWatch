@@ -12,6 +12,13 @@ async function afterServiceChange(operation) {
   }
 }
 
+// The computer can keep a stale copy of the watch's services. Linux (BlueZ)
+// may cache SMP as a secondary service, which Chrome hides. Re-pairing clears it.
+export function smpUnavailableError(cause) {
+  const detail = cause?.message ? ` Browser error: ${cause.message}` : "";
+  return new Error(`The watch's firmware update service was not found. Your computer may have cached an old list of the watch's services: remove the watch in your computer's Bluetooth settings, enable Pairable in Settings → Bluetooth on the watch, then connect and pair again. Older firmware also needs Bluetooth enabled in its Update app.${detail}`, { cause });
+}
+
 export function boardFromHardwareVersion(hardware) {
   return typeof hardware === "string" ? hardware.trim().split("/")[0] : "";
 }
