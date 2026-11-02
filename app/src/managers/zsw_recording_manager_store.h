@@ -102,5 +102,5 @@ const char *zsw_recording_manager_store_get_current_filename(void);
 /** @brief Check if a recording is currently being written. */
 bool zsw_recording_manager_store_is_recording(void);
 
-/** @brief Get current UNIX timestamp from the RTC. */
-uint32_t zsw_recording_manager_store_get_unix_timestamp(void);
+/** @brief UNIX timestamp in the header of the last started recording, as listed. */
+uint32_t zsw_recording_manager_store_get_current_timestamp(void);

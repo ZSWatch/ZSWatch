@@ -353,7 +353,7 @@ static void save_recording(void)
             .state = ZSW_VOICE_MEMO_RECORDING_STOPPED,
             .duration_ms = duration_ms,
             .size_bytes = size_bytes,
-            .timestamp = zsw_recording_manager_store_get_unix_timestamp(),
+            .timestamp = zsw_recording_manager_store_get_current_timestamp(),
         };
         strncpy(evt.filename, saved_filename, sizeof(evt.filename) - 1);
         evt.filename[sizeof(evt.filename) - 1] = '\0';
