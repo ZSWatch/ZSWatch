@@ -156,6 +156,7 @@ enum ble_comm_short_interval_reason {
     BLE_COMM_SHORT_INTERVAL_DISCOVERY,  /**< The first seconds after connecting */
     BLE_COMM_SHORT_INTERVAL_SENSORS,    /**< GATT sensor notifications are enabled */
     BLE_COMM_SHORT_INTERVAL_SMP,        /**< MCUmgr traffic and a few seconds after it */
+    BLE_COMM_SHORT_INTERVAL_VOICE_MEMO, /**< Recording, until the phone's answer arrives */
 };
 
 /** @brief Keep the short connection interval for a reason; repeated calls are fine. */

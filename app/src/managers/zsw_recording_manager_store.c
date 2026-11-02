@@ -37,6 +37,7 @@ static bool recording_active;
 static uint32_t frame_count;
 static char current_filepath[MAX_PATH_LEN];
 static char current_filename[VOICE_MEMO_MAX_FILENAME];
+static uint32_t current_timestamp;
 
 /* Batched flash write buffer */
 static uint8_t write_buf[FLASH_WRITE_BUF_SIZE];
@@ -108,9 +109,9 @@ static uint32_t get_unix_timestamp(void)
     return (uint32_t)mktime(&tm);
 }
 
-uint32_t zsw_recording_manager_store_get_unix_timestamp(void)
+uint32_t zsw_recording_manager_store_get_current_timestamp(void)
 {
-    return get_unix_timestamp();
+    return current_timestamp;
 }
 
 static int read_persistent_counter(void)
@@ -338,6 +339,7 @@ int zsw_recording_manager_store_start_recording(const char *prefix)
     hdr.frame_size = CONFIG_ZSW_OPUS_FRAME_SIZE_SAMPLES;
     hdr.bitrate = CONFIG_ZSW_OPUS_BITRATE;
     hdr.timestamp = get_unix_timestamp();
+    current_timestamp = hdr.timestamp;
     hdr.total_frames = 0xFFFFFFFF;
     hdr.duration_ms = 0xFFFFFFFF;
 
