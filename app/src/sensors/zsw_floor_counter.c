@@ -25,6 +25,7 @@
 #include "events/accel_event.h"
 #include "events/elevation_tracking_event.h"
 #include "events/pressure_event.h"
+#include "events/zsw_periodic_event.h"
 #include "sensors/zsw_floor_counter.h"
 #include "zsw_clock.h"
 
@@ -49,7 +50,7 @@ typedef struct {
     float descend_accum;
     uint16_t floors_up;
     uint16_t floors_down;
-    int last_reset_yday;
+    uint32_t last_reset_date;
 } floor_count_state_t;
 
 typedef enum {
@@ -77,6 +78,7 @@ typedef enum {
     FLOOR_WORK_ACTIVITY,
     FLOOR_WORK_INACTIVITY_TIMEOUT,
     FLOOR_WORK_TEMPERATURE,
+    FLOOR_WORK_DAY_CHECK,
 } floor_work_type_t;
 
 typedef struct {
@@ -96,8 +98,9 @@ static void process_floor_work(struct k_work *work);
 static void inactivity_timeout_handler(struct k_work *work);
 static void on_pressure_event(const struct zbus_channel *chan);
 static void on_accel_event(const struct zbus_channel *chan);
+static void on_day_check(const struct zbus_channel *chan);
 
-static floor_count_state_t floor_state = { .last_reset_yday = -1 };
+static floor_count_state_t floor_state;
 static floor_fsm_t floor_fsm;
 static float temperature_k = STANDARD_TEMP_K;
 static atomic_t initialized;
@@ -113,6 +116,8 @@ K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPT
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
 ZBUS_CHAN_DECLARE(elevation_tracking_chan);
+ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
+ZBUS_LISTENER_DEFINE(floor_day_lis, on_day_check);
 ZBUS_LISTENER_DEFINE(floor_pressure_lis, on_pressure_event);
 ZBUS_CHAN_ADD_OBS(pressure_data_chan, floor_pressure_lis, 1);
 ZBUS_LISTENER_DEFINE(floor_accel_lis, on_accel_event);
@@ -133,8 +138,11 @@ static void publish_counts(void)
 {
     uint32_t counts = (uint32_t)floor_state.floors_up | ((uint32_t)floor_state.floors_down << 16);
 
-    if ((uint32_t)atomic_set(&published_counts, (atomic_val_t)counts) != counts && changed_callback != NULL) {
-        changed_callback();
+    if ((uint32_t)atomic_set(&published_counts, (atomic_val_t)counts) != counts) {
+        LOG_INF("Floors changed: up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
+        if (changed_callback != NULL) {
+            changed_callback();
+        }
     }
 }
 
@@ -143,12 +151,24 @@ static void check_daily_reset(void)
     zsw_timeval_t time;
 
     zsw_clock_get_time(&time);
-    if (floor_state.last_reset_yday != time.tm.tm_yday) {
+    if (time.tm.tm_year < 1970 || time.tm.tm_mon < 0 || time.tm.tm_mon > 11 ||
+        time.tm.tm_mday < 1 || time.tm.tm_mday > 31) {
+        return;
+    }
+    uint32_t date = (uint32_t)time.tm.tm_year * 10000U + (uint32_t)(time.tm.tm_mon + 1) * 100U +
+                    (uint32_t)time.tm.tm_mday;
+    if (floor_state.last_reset_date != date) {
+        if (floor_state.last_reset_date != 0) {
+            LOG_INF("Floor daily reset: date=%u -> %u, up=%u down=%u",
+                    floor_state.last_reset_date, date,
+                    floor_state.floors_up, floor_state.floors_down);
+        }
         floor_state.floors_up = 0;
         floor_state.floors_down = 0;
         floor_state.climb_accum = 0.0f;
         floor_state.descend_accum = 0.0f;
-        floor_state.last_reset_yday = time.tm.tm_yday;
+        floor_fsm.commit_pressure_pa = 0.0f;
+        floor_state.last_reset_date = date;
     }
 }
 
@@ -164,7 +184,7 @@ static void sync_tracking(void)
 
     if (ret != 0) {
         tracking_valid = false;
-        LOG_DBG("Tracking request failed: %d", ret);
+        LOG_WRN("Floor tracking request failed: %d", ret);
         k_work_reschedule(&floor_inactivity_work, K_SECONDS(1));
         return;
     }
@@ -188,7 +208,7 @@ static void start_episode(uint32_t now_ms)
     floor_fsm.episode_start_ms = now_ms;
     floor_fsm.last_progress_ms = now_ms;
     floor_fsm.state = FLOOR_FSM_WAIT_BASELINE;
-    LOG_DBG("Floor episode started");
+    LOG_INF("Floor episode started: waiting for baseline, steps=%u", floor_fsm.last_count);
     k_work_reschedule(&floor_inactivity_work, K_MSEC(EPISODE_INACTIVITY_MS));
 }
 
@@ -202,7 +222,7 @@ static void end_episode_if_inactive(uint32_t now_ms)
     floor_state.climb_accum = 0.0f;
     floor_state.descend_accum = 0.0f;
     floor_fsm.state = FLOOR_FSM_IDLE;
-    LOG_DBG("Floor episode ended");
+    LOG_INF("Floor episode ended: inactive, up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
 }
 
 static void commit_height(uint32_t now_ms)
@@ -237,7 +257,6 @@ static void commit_height(uint32_t now_ms)
         return;
     }
 
-    check_daily_reset();
     if (dh_m > 0.0f) {
         floor_state.climb_accum += dh_m;
     } else {
@@ -303,8 +322,9 @@ static void process_pressure_sample(float pressure_pa, uint32_t now_ms)
         (uint32_t)(now_ms - floor_fsm.episode_start_ms) >= EPISODE_SETTLE_MS) {
         set_commit_point(now_ms);
         floor_fsm.state = FLOOR_FSM_TRACKING;
+        LOG_INF("Floor baseline ready: tracking, pressure=%d Pa, steps=%u",
+                (int)pressure_pa, floor_fsm.last_count);
     }
-    check_daily_reset();
 }
 
 static void process_floor_work(struct k_work *work)
@@ -313,6 +333,7 @@ static void process_floor_work(struct k_work *work)
 
     ARG_UNUSED(work);
     while (k_msgq_get(&floor_work_queue, &item, K_NO_WAIT) == 0) {
+        check_daily_reset();
         switch (item.type) {
             case FLOOR_WORK_PRESSURE:
                 process_pressure_sample(item.data.pressure_pa, item.timestamp_ms);
@@ -335,6 +356,8 @@ static void process_floor_work(struct k_work *work)
                 break;
             case FLOOR_WORK_TEMPERATURE:
                 temperature_k = item.data.temperature_k;
+                break;
+            case FLOOR_WORK_DAY_CHECK:
                 break;
         }
         publish_counts();
@@ -395,9 +418,25 @@ static void on_accel_event(const struct zbus_channel *chan)
     enqueue_floor_work(&item);
 }
 
+static void on_day_check(const struct zbus_channel *chan)
+{
+    ARG_UNUSED(chan);
+
+    const floor_work_item_t item = {
+        .type = FLOOR_WORK_DAY_CHECK,
+        .timestamp_ms = k_uptime_get_32(),
+    };
+    enqueue_floor_work(&item);
+}
+
 void zsw_floor_counter_init(void)
 {
     atomic_set(&initialized, 1);
+    int ret = zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &floor_day_lis);
+    if (ret < 0 && ret != -EALREADY) {
+        LOG_WRN("Floor daily reset observer failed: %d", ret);
+    }
+    on_day_check(NULL);
 }
 
 void zsw_floor_counter_set_callback(zsw_floor_counter_changed_cb_t callback)

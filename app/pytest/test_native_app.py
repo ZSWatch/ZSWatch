@@ -220,6 +220,16 @@ class TestNativeFloorCounter:
         match = self._command(sim, "floors", r"Floors: up=(\d+) down=(\d+)")
         return int(match[1]), int(match[2])
 
+    def _wait_for_counts(self, sim, expected, timeout=3):
+        deadline = time.monotonic() + timeout
+        actual = None
+        while time.monotonic() < deadline:
+            actual = self._counts(sim)
+            if actual == expected:
+                return
+            time.sleep(0.1)
+        pytest.fail(f"Expected floors {expected}, got {actual}: {sim.get_logs()}")
+
     @pytest.mark.parametrize(
         "direction,reset_counter",
         [(0, False), (1, False), (-1, False), (1, True)],
@@ -267,6 +277,30 @@ class TestNativeFloorCounter:
             self._pressure(sim, pressure)
             self._steps(sim, 110)
         assert self._counts(sim) == (0, 0)
+
+    def test_daily_reset_without_pressure(self, sim):
+        self._command(sim, "event time 12 0", r"Injected time: 12:00")
+        self._steps(sim, 100)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+
+        for sample in range(1, 5):
+            time.sleep(1.3)
+            pressure_hpa = 1000 * math.exp(-sample * 9.80665 / (287.05 * 288.15))
+            self._pressure(sim, pressure_hpa)
+            self._steps(sim, 100 + sample * 10)
+        self._wait_for_counts(sim, (1, 0))
+
+        self._command(sim, "event time 13 0", r"Injected time: 13:00")
+        self._steps(sim, 140, snapshot=True)
+        deadline = time.monotonic() + 11
+        while time.monotonic() < deadline:
+            assert self._counts(sim) == (1, 0), sim.get_logs()
+            time.sleep(0.5)
+
+        self._command(sim, "event time 23 59", r"Injected time: 23:59")
+        self._wait_for_counts(sim, (0, 0), timeout=75)
 
 
 # ── BLE tests ────────────────────────────────────────────────

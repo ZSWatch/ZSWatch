@@ -38,32 +38,95 @@ ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_periodic_lis, pressure_periodic_callbac
 ZBUS_LISTENER_DEFINE(zsw_pressure_sensor_tracking_lis, tracking_request_callback);
 ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, zsw_pressure_sensor_tracking_lis, 1);
 static const struct device *const bmp581 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmp581));
+static const struct {
+    bosch_bmp581_configuration_t configuration;
+    const struct zbus_channel *publication_chan;
+} pressure_profiles[] = {
+    {
+        .configuration = {
+            .mode = BOSCH_BMP581_MODE_NORMAL,
+            .odr = BOSCH_BMP581_ODR_0_250_HZ,
+            .osr_p = BOSCH_BMP581_OSR_4X,
+            .osr_t = BOSCH_BMP581_OSR_64X,
+            .iir_p = BOSCH_BMP581_IIR_63,
+            .iir_t = BOSCH_BMP581_IIR_63,
+            .fifo_enabled = false,
+        },
+        .publication_chan = &periodic_event_10s_chan,
+    },
+    {
+        .configuration = {
+            .mode = BOSCH_BMP581_MODE_NORMAL,
+            .odr = BOSCH_BMP581_ODR_10_HZ,
+            .osr_p = BOSCH_BMP581_OSR_4X,
+            .osr_t = BOSCH_BMP581_OSR_1X,
+            .iir_p = BOSCH_BMP581_IIR_3,
+            .iir_t = BOSCH_BMP581_IIR_BYPASS,
+            .fifo_enabled = false,
+        },
+        .publication_chan = &periodic_event_1s_chan,
+    },
+};
+static K_MUTEX_DEFINE(pressure_lock);
+static K_MUTEX_DEFINE(profile_update_lock);
 static bool tracking_active;
-static bool odr_valid;
+static bool profile_programmed;
+static uint32_t profile_generation;
+static uint32_t published_sequence;
+static atomic_val_t programmed_request;
+static uint8_t missed_samples;
 static const struct zbus_channel *sampling_chan;
 static atomic_t tracking_requested;
+static atomic_t request_revision;
 static K_WORK_DELAYABLE_DEFINE(tracking_work, tracking_work_handler);
-
-static void publish_pressure_sample(void)
-{
-    float pressure;
-    float temperature;
-
-    if (zsw_pressure_sensor_get_sample(&pressure, &temperature) != 0) {
-        return;
-    }
-
-    struct pressure_event evt = {
-        .pressure = pressure,
-        .temperature = temperature
-    };
-    zbus_chan_pub(&pressure_data_chan, &evt, K_MSEC(250));
-}
 
 static void pressure_periodic_callback(const struct zbus_channel *chan)
 {
-    ARG_UNUSED(chan);
-    publish_pressure_sample();
+    bosch_bmp581_sample_t sample;
+    bool retry = false;
+    bool publish = false;
+    atomic_val_t revision = atomic_get(&request_revision);
+
+    k_mutex_lock(&pressure_lock, K_FOREVER);
+    if (!profile_programmed || chan != sampling_chan || revision != programmed_request ||
+        tracking_active != (atomic_get(&tracking_requested) != 0)) {
+        k_mutex_unlock(&pressure_lock);
+        return;
+    }
+
+    int ret = zsw_bmp581_read_sample(bmp581, &sample);
+    if (ret == 0 && sample.generation != profile_generation) {
+        ret = -EIO;
+    }
+    if (ret == -EAGAIN || (ret == 0 && sample.sequence == published_sequence)) {
+        if (++missed_samples >= 2) {
+            ret = -ETIMEDOUT;
+        }
+    } else if (ret == 0) {
+        missed_samples = 0;
+        publish = revision == atomic_get(&request_revision);
+    }
+
+    if (ret != 0 && ret != -EAGAIN) {
+        profile_programmed = false;
+        retry = true;
+        LOG_WRN("Pressure profile sampling failed: %d", ret);
+    }
+    if (publish) {
+        published_sequence = sample.sequence;
+    }
+    k_mutex_unlock(&pressure_lock);
+
+    if (retry) {
+        k_work_reschedule(&tracking_work, K_SECONDS(1));
+    }
+    if (publish && revision == atomic_get(&request_revision)) {
+        struct pressure_event evt = {
+            .pressure = sample.pressure,
+            .temperature = sample.temperature,
+        };
+        zbus_chan_pub(&pressure_data_chan, &evt, K_MSEC(250));
+    }
 }
 
 static void tracking_request_callback(const struct zbus_channel *chan)
@@ -71,56 +134,94 @@ static void tracking_request_callback(const struct zbus_channel *chan)
     const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
 
     atomic_set(&tracking_requested, event->active);
+    atomic_inc(&request_revision);
     k_work_reschedule(&tracking_work, K_NO_WAIT);
+}
+
+static int pressure_apply_profile_locked(bool requested, atomic_val_t revision)
+{
+    const struct zbus_channel *requested_chan = pressure_profiles[requested].publication_chan;
+    const struct zbus_channel *previous_chan;
+    uint32_t generation;
+
+    k_mutex_lock(&pressure_lock, K_FOREVER);
+    if (revision != atomic_get(&request_revision) || requested != (atomic_get(&tracking_requested) != 0)) {
+        k_mutex_unlock(&pressure_lock);
+        return -EAGAIN;
+    }
+    if (profile_programmed && requested == tracking_active && sampling_chan == requested_chan) {
+        programmed_request = revision;
+        k_mutex_unlock(&pressure_lock);
+        return 0;
+    }
+    profile_programmed = false;
+    previous_chan = sampling_chan;
+    k_mutex_unlock(&pressure_lock);
+
+    int ret = zsw_bmp581_apply_config(bmp581, &pressure_profiles[requested].configuration, &generation);
+    if (ret != 0) {
+        return ret;
+    }
+
+    if (previous_chan != requested_chan) {
+        if (previous_chan != NULL) {
+            ret = zsw_periodic_chan_rm_obs(previous_chan, &zsw_pressure_sensor_periodic_lis);
+            if (ret < 0 && ret != -ENODATA) {
+                return ret;
+            }
+            k_mutex_lock(&pressure_lock, K_FOREVER);
+            sampling_chan = NULL;
+            k_mutex_unlock(&pressure_lock);
+        }
+
+        ret = zsw_periodic_chan_add_obs(requested_chan, &zsw_pressure_sensor_periodic_lis);
+        if (ret < 0 && ret != -EALREADY) {
+            return ret;
+        }
+        k_mutex_lock(&pressure_lock, K_FOREVER);
+        sampling_chan = requested_chan;
+        k_mutex_unlock(&pressure_lock);
+    }
+
+    k_mutex_lock(&pressure_lock, K_FOREVER);
+    if (revision != atomic_get(&request_revision) || requested != (atomic_get(&tracking_requested) != 0)) {
+        ret = -EAGAIN;
+    } else {
+        profile_generation = generation;
+        programmed_request = revision;
+        tracking_active = requested;
+        missed_samples = 0;
+        profile_programmed = true;
+        LOG_INF("Pressure profile programmed: %s, generation=%u, publication=%u s",
+                requested ? "TRACKING" : "IDLE", generation, requested ? 1U : 10U);
+        ret = 0;
+    }
+    k_mutex_unlock(&pressure_lock);
+    return ret;
+}
+
+static int pressure_apply_profile(bool requested, atomic_val_t revision)
+{
+    k_mutex_lock(&profile_update_lock, K_FOREVER);
+    int ret = pressure_apply_profile_locked(requested, revision);
+    k_mutex_unlock(&profile_update_lock);
+    return ret;
 }
 
 static void tracking_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    if (!device_is_ready(bmp581)) {
-        return;
-    }
-
+    atomic_val_t revision = atomic_get(&request_revision);
     bool requested = atomic_get(&tracking_requested) != 0;
-    const struct zbus_channel *requested_chan = requested ?
-                                                    &periodic_event_1s_chan : &periodic_event_10s_chan;
-    if (requested == tracking_active && sampling_chan == requested_chan && odr_valid) {
-        return;
-    }
+    int ret = pressure_apply_profile(requested, revision);
 
-    int ret;
-    if (sampling_chan != requested_chan) {
-        if (sampling_chan != NULL) {
-            ret = zsw_periodic_chan_rm_obs(sampling_chan, &zsw_pressure_sensor_periodic_lis);
-            if (ret < 0 && ret != -ENODATA) {
-                goto retry;
-            }
-            sampling_chan = NULL;
-        }
-
-        ret = zsw_periodic_chan_add_obs(requested_chan, &zsw_pressure_sensor_periodic_lis);
-        if (ret < 0 && ret != -EALREADY) {
-            goto retry;
-        }
-        sampling_chan = requested_chan;
+    if (ret == -EAGAIN || revision != atomic_get(&request_revision)) {
+        k_work_reschedule(&tracking_work, K_NO_WAIT);
+    } else if (ret != 0) {
+        LOG_WRN("Pressure profile update failed: %d", ret);
+        k_work_reschedule(&tracking_work, K_SECONDS(1));
     }
-
-    odr_valid = false;
-    ret = zsw_pressure_sensor_set_odr(requested ? BOSCH_BMP581_ODR_160_HZ : BOSCH_BMP581_ODR_DEFAULT);
-    if (ret != 0) {
-        goto retry;
-    }
-    odr_valid = true;
-    tracking_active = requested;
-    if (requested) {
-        publish_pressure_sample();
-    }
-    return;
-
-retry:
-    LOG_DBG("Pressure tracking update failed: %d", ret);
-    k_work_reschedule(&tracking_work, K_SECONDS(1));
 }
 
 int zsw_pressure_sensor_init(void)
@@ -129,59 +230,26 @@ int zsw_pressure_sensor_init(void)
         return -ENODEV;
     }
 
-    int ret = zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &zsw_pressure_sensor_periodic_lis);
-    if (ret < 0) {
-        return ret;
+    atomic_val_t revision = atomic_get(&request_revision);
+    int ret = pressure_apply_profile(atomic_get(&tracking_requested) != 0, revision);
+    if (ret != 0) {
+        k_work_reschedule(&tracking_work, ret == -EAGAIN ? K_NO_WAIT : K_SECONDS(1));
     }
-    sampling_chan = &periodic_event_10s_chan;
-
-    ret = zsw_pressure_sensor_set_odr(BOSCH_BMP581_ODR_DEFAULT);
-    odr_valid = ret == 0;
-    return ret;
-}
-
-int zsw_pressure_sensor_set_odr(uint8_t odr)
-{
-    struct sensor_value value;
-
-    if (!device_is_ready(bmp581)) {
-        return -ENODEV;
-    }
-
-    value.val1 = odr;
-
-    if (sensor_attr_set(bmp581, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &value) != 0) {
-        return -EIO;
-    }
-
-    return 0;
+    return ret == -EAGAIN ? 0 : ret;
 }
 
 int zsw_pressure_sensor_get_pressure(float *pressure)
 {
-    struct sensor_value sensor_val;
-
-    if (!device_is_ready(bmp581)) {
-        return -ENODEV;
+    float temperature;
+    if (pressure == NULL) {
+        return -EINVAL;
     }
-
-    if (sensor_sample_fetch(bmp581) != 0) {
-        return -ENODATA;
-    }
-
-    if (sensor_channel_get(bmp581, SENSOR_CHAN_PRESS, &sensor_val) != 0) {
-        return -ENODATA;
-    }
-
-    *pressure = sensor_value_to_float(&sensor_val);
-
-    return 0;
+    return zsw_pressure_sensor_get_sample(pressure, &temperature);
 }
 
 int zsw_pressure_sensor_get_sample(float *pressure, float *temperature)
 {
-    struct sensor_value pressure_val;
-    struct sensor_value temperature_val;
+    bosch_bmp581_sample_t sample;
 
     if (pressure == NULL || temperature == NULL) {
         return -EINVAL;
@@ -191,38 +259,22 @@ int zsw_pressure_sensor_get_sample(float *pressure, float *temperature)
         return -ENODEV;
     }
 
-    if (sensor_sample_fetch(bmp581) != 0) {
-        return -ENODATA;
+    int ret = zsw_bmp581_read_sample(bmp581, &sample);
+    if (ret != 0) {
+        return ret;
     }
 
-    if (sensor_channel_get(bmp581, SENSOR_CHAN_PRESS, &pressure_val) != 0 ||
-        sensor_channel_get(bmp581, SENSOR_CHAN_AMBIENT_TEMP, &temperature_val) != 0) {
-        return -ENODATA;
-    }
-
-    *pressure = sensor_value_to_float(&pressure_val);
-    *temperature = sensor_value_to_float(&temperature_val);
+    *pressure = sample.pressure;
+    *temperature = sample.temperature;
 
     return 0;
 }
 
 int zsw_pressure_sensor_get_temperature(float *temperature)
 {
-    struct sensor_value sensor_val;
-
-    if (!device_is_ready(bmp581)) {
-        return -ENODEV;
+    float pressure;
+    if (temperature == NULL) {
+        return -EINVAL;
     }
-
-    if (sensor_sample_fetch(bmp581) != 0) {
-        return -ENODATA;
-    }
-
-    if (sensor_channel_get(bmp581, SENSOR_CHAN_AMBIENT_TEMP, &sensor_val) != 0) {
-        return -ENODATA;
-    }
-
-    *temperature = sensor_value_to_float(&sensor_val);
-
-    return 0;
+    return zsw_pressure_sensor_get_sample(&pressure, temperature);
 }
