@@ -307,8 +307,8 @@ static void process_altimeter_work(struct k_work *work)
                 alt_state.target_ref_slp = work_item.data.calibration.pressure_msl_hpa;
                 alt_state.temperature_k = work_item.data.calibration.temperature_2m_c + 273.15f;
                 LOG_INF("Calibration applied: reference=%d Pa target=%d Pa temperature=%d mK",
-                    (int)(alt_state.ref_slp * 100.0f), (int)(alt_state.target_ref_slp * 100.0f),
-                    (int)(alt_state.temperature_k * 1000.0f));
+                        (int)(alt_state.ref_slp * 100.0f), (int)(alt_state.target_ref_slp * 100.0f),
+                        (int)(alt_state.temperature_k * 1000.0f));
                 k_mutex_lock(&ui_data_mutex, K_FOREVER);
                 ui_data.is_calibrated = true;
                 ui_data_pending = true;
