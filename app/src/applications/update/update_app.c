@@ -23,7 +23,6 @@
 #include "update_ui.h"
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_usb_manager.h"
-#include "managers/zsw_smp_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "filesystem/zsw_filesystem.h"
 #include <zephyr/logging/log.h>
@@ -175,94 +174,7 @@ static bool toggle_usb_fota(void)
     return false;
 }
 
-static bool toggle_ble_fota(void)
-{
-    bool is_enabled = zsw_smp_manager_is_enabled();
-
-    if (!is_enabled) {
-        int rc = zsw_smp_manager_enable(false);
-        if (rc != 0) {
-            LOG_ERR("Failed to enable BLE SMP: %d", rc);
-            update_ui_set_status("BLE enable failed");
-            update_ui_update_ble_button_state(false);
-            return false;
-        }
-        update_ui_set_status("BLE FOTA ready " LV_SYMBOL_OK);
-        LOG_INF("BLE FOTA enabled");
-        update_ui_update_ble_button_state(true);
-        return true;
-    } else {
-        int rc = zsw_smp_manager_disable();
-        if (rc != 0) {
-            LOG_ERR("Failed to disable BLE SMP: %d", rc);
-            update_ui_set_status("BLE disable failed");
-            update_ui_update_ble_button_state(true);
-            return false;
-        }
-        update_ui_set_status("BLE disabled");
-        LOG_INF("BLE FOTA disabled");
-        update_ui_update_ble_button_state(false);
-        return true;
-    }
-}
-
-#ifdef CONFIG_SHELL
-static int cmd_ble_fota(const struct shell *sh, size_t argc, char **argv)
-{
-    if (argc < 2) {
-        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
-        return -EINVAL;
-    }
-
-    if (strcmp(argv[1], "enable") == 0) {
-        if (zsw_smp_manager_is_enabled()) {
-            shell_print(sh, "BLE FOTA is already enabled");
-            return 0;
-        }
-        shell_print(sh, "Enabling BLE FOTA...");
-        int rc = zsw_smp_manager_enable(false);
-        if (rc == 0) {
-            shell_print(sh, "BLE FOTA enabled successfully");
-            return 0;
-        } else {
-            shell_error(sh, "Failed to enable BLE FOTA: %d", rc);
-            return -EIO;
-        }
-    } else if (strcmp(argv[1], "disable") == 0) {
-        if (!zsw_smp_manager_is_enabled()) {
-            shell_print(sh, "BLE FOTA is already disabled");
-            return 0;
-        }
-        shell_print(sh, "Disabling BLE FOTA...");
-        int rc = zsw_smp_manager_disable();
-        if (rc == 0) {
-            shell_print(sh, "BLE FOTA disabled successfully");
-            return 0;
-        } else {
-            shell_error(sh, "Failed to disable BLE FOTA: %d", rc);
-            return -EIO;
-        }
-    } else if (strcmp(argv[1], "status") == 0) {
-        shell_print(sh, "BLE FOTA is currently %s", zsw_smp_manager_is_enabled() ? "enabled" : "disabled");
-        return 0;
-    } else {
-        shell_error(sh, "Unknown command: %s", argv[1]);
-        shell_error(sh, "Usage: ble_fota <enable|disable|status>");
-        return -EINVAL;
-    }
-}
-
-SHELL_CMD_REGISTER(ble_fota, NULL, "Enable/disable BLE FOTA (enable|disable|status)", cmd_ble_fota);
-#endif
-
 #else
-static bool toggle_ble_fota(void)
-{
-    update_ui_set_status("BLE FOTA N/A on POSIX");
-    update_ui_update_ble_button_state(false);
-    return false;
-}
-
 static bool toggle_usb_fota(void)
 {
     update_ui_set_status("USB FOTA N/A on POSIX");
@@ -273,7 +185,7 @@ static bool toggle_usb_fota(void)
 
 static void update_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    update_ui_show(root, toggle_ble_fota, toggle_usb_fota);
+    update_ui_show(root, toggle_usb_fota);
 }
 
 static void update_app_stop(void)

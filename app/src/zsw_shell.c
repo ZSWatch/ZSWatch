@@ -13,6 +13,7 @@
 #include <time.h>
 #include <lvgl.h>
 #include <lvgl_zephyr.h>
+#include <lvgl_mem.h>
 #ifdef CONFIG_RETENTION_BOOT_MODE
 #include <zephyr/retention/bootmode.h>
 #endif
@@ -33,6 +34,7 @@
 #include "events/accel_event.h"
 #include "events/ble_event.h"
 #include "sensors/zsw_floor_counter.h"
+#include "ble/ble_comm.h"
 #if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
@@ -469,10 +471,7 @@ static int cmd_cpu_get_freq(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argc);
     ARG_UNUSED(argv);
 
-    zsw_cpu_freq_t freq = zsw_cpu_get_freq();
-    const char *freq_str = (freq == ZSW_CPU_FREQ_FAST) ? "fast" : "slow";
-
-    shell_print(sh, "CPU frequency profile: %s", freq_str);
+    shell_print(sh, "CPU frequency profile: %s", zsw_cpu_is_fast() ? "fast" : "slow");
     return 0;
 }
 
@@ -482,6 +481,26 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_cpu,
                               );
 
 SHELL_CMD_REGISTER(cpu, &sub_cpu, "CPU frequency commands", cmd_cpu_get_freq);
+
+static int cmd_pairable(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+
+    if (strcmp(argv[1], "on") == 0) {
+        ble_comm_set_pairable(true);
+    } else if (strcmp(argv[1], "off") == 0) {
+        ble_comm_set_pairable(false);
+    } else {
+        shell_error(sh, "Usage: pairable <on|off>");
+        return -EINVAL;
+    }
+
+    shell_print(sh, "Pairable %s", argv[1]);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(pairable, NULL, "Open or close the BLE pairing window: pairable <on|off>",
+                       cmd_pairable, 2, 0);
 
 #ifdef CONFIG_RETENTION_BOOT_MODE
 
@@ -867,7 +886,7 @@ static bool parse_long(const char *str, long min, long max, long *out)
     return true;
 }
 
-// The ble_data_event is ~4 kB, so fill the channel's own message instead of a copy.
+// Fill the channel's own message in place instead of publishing a stack copy.
 static ble_comm_cb_data_t *ble_data_claim(void)
 {
     if (zbus_chan_claim(&ble_comm_data_chan, K_MSEC(250)) != 0) {
@@ -1003,6 +1022,22 @@ static int cmd_lv_timers(const struct shell *sh, size_t argc, char **argv)
 }
 
 SHELL_CMD_ARG_REGISTER(lv_timers, NULL, "Count LVGL timers and running animations", cmd_lv_timers, 1, 0);
+
+#if defined(CONFIG_SYS_HEAP_RUNTIME_STATS) && defined(CONFIG_LV_Z_MEM_POOL_SYS_HEAP)
+static int cmd_lv_heap(const struct shell *sh, size_t argc, char **argv)
+{
+    ARG_UNUSED(argc);
+    ARG_UNUSED(argv);
+    struct sys_memory_stats stats;
+
+    lvgl_heap_stats(&stats);
+    shell_print(sh, "LVGL heap: %zu allocated, %zu max, %zu free", stats.allocated_bytes,
+                stats.max_allocated_bytes, stats.free_bytes);
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(lv_heap, NULL, "LVGL heap usage, with the peak since boot", cmd_lv_heap, 1, 0);
+#endif
 
 static int cmd_watchface_list(const struct shell *sh, size_t argc, char **argv)
 {

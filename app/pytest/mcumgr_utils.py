@@ -13,6 +13,7 @@ from smpclient.transport.serial import SMPSerialTransport
 
 
 T = TypeVar("T")
+BLE_CONNECT_TIMEOUT_S = 20.0
 ClientHandler = Callable[[SMPClient], Awaitable[T]]
 
 
@@ -50,10 +51,16 @@ async def with_ble_client(
     """Execute a coroutine with an SMP client over BLE, retrying on transient errors."""
     last_exc: Exception | None = None
     for attempt in range(attempts):
-        transport = SMPBLETransport()
+        client = SMPClient(SMPBLETransport(), address)
         try:
-            async with SMPClient(transport, address) as client:
+            # The default connect timeout is the 2.5 s request timeout. BlueZ reuses the
+            # watch's 500 ms idle interval from the last connection, and the watch only
+            # asks for a short one after the MTU exchange, so connecting takes longer.
+            await client.connect(BLE_CONNECT_TIMEOUT_S)
+            try:
                 return await handler(client)
+            finally:
+                await client.disconnect()
         except (TimeoutError, SMPBadSequence) as exc:
             last_exc = exc
             await asyncio.sleep(1.0 * (attempt + 1))
@@ -122,10 +129,6 @@ async def shell_command_ble(device_config, argv: list[str], timeout_s: float = 5
 
     return await with_ble_client(address, run)
 
-
-async def enable_ble_fota(device_config):
-    response = await shell_command_usb(device_config, ["ble_fota", "enable"])
-    assert "BLE FOTA" in response.o
 
 
 async def enter_serial_recovery(device_config):

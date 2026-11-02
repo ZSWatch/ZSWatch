@@ -29,9 +29,7 @@ static lv_obj_t *root_page = NULL;
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *progress_arc = NULL;
 static lv_obj_t *progress_pct_label = NULL;
-static lv_obj_t *btn_ble_fota = NULL;
 static lv_obj_t *btn_usb_fota = NULL;
-static bool (*ble_toggle_callback)(void) = NULL;
 static bool (*usb_toggle_callback)(void) = NULL;
 
 static void btn_fota_usb_cb(lv_event_t *e)
@@ -39,14 +37,6 @@ static void btn_fota_usb_cb(lv_event_t *e)
     LV_UNUSED(e);
     if (usb_toggle_callback) {
         usb_toggle_callback();
-    }
-}
-
-static void btn_fota_ble_cb(lv_event_t *e)
-{
-    LV_UNUSED(e);
-    if (ble_toggle_callback) {
-        ble_toggle_callback();
     }
 }
 
@@ -70,9 +60,8 @@ static lv_obj_t *create_toggle_btn(lv_obj_t *parent, const char *symbol,
     return btn;
 }
 
-void update_ui_show(lv_obj_t *root, bool (*ble_toggle_cb)(void), bool (*usb_toggle_cb)(void))
+void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
 {
-    ble_toggle_callback = ble_toggle_cb;
     usb_toggle_callback = usb_toggle_cb;
 
     assert(root_page == NULL);
@@ -128,7 +117,7 @@ void update_ui_show(lv_obj_t *root, bool (*ble_toggle_cb)(void), bool (*usb_togg
 
     // Help text
     lv_obj_t *help_label = lv_label_create(root_page);
-    lv_label_set_text(help_label, "Enable BLE or USB, then\nstart update from phone/PC");
+    lv_label_set_text(help_label, "BLE update: always on\nUSB update: tap below");
     lv_obj_set_width(help_label, 180);
     lv_obj_set_style_text_font(help_label, &lv_font_montserrat_12, LV_PART_MAIN);
     lv_obj_set_style_text_color(help_label, zsw_color_gray(), LV_PART_MAIN);
@@ -144,9 +133,6 @@ void update_ui_show(lv_obj_t *root, bool (*ble_toggle_cb)(void), bool (*usb_togg
     lv_obj_set_flex_flow(btn_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    // BLE toggle
-    btn_ble_fota = create_toggle_btn(btn_row, LV_SYMBOL_BLUETOOTH, btn_fota_ble_cb);
-
     // USB toggle
     btn_usb_fota = create_toggle_btn(btn_row, LV_SYMBOL_USB, btn_fota_usb_cb);
 
@@ -157,11 +143,6 @@ void update_ui_show(lv_obj_t *root, bool (*ble_toggle_cb)(void), bool (*usb_togg
     lv_obj_align(label_row, LV_ALIGN_CENTER, 0, 75);
     lv_obj_set_flex_flow(label_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(label_row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    lv_obj_t *ble_label = lv_label_create(label_row);
-    lv_label_set_text(ble_label, "BLE");
-    lv_obj_set_style_text_font(ble_label, &lv_font_montserrat_12, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ble_label, lv_color_white(), LV_PART_MAIN);
 
     lv_obj_t *usb_label = lv_label_create(label_row);
     lv_label_set_text(usb_label, "USB");
@@ -190,20 +171,6 @@ void update_ui_set_progress(int progress)
     if (progress_pct_label) {
         lv_obj_clear_flag(progress_pct_label, LV_OBJ_FLAG_HIDDEN);
         lv_label_set_text_fmt(progress_pct_label, "%d%%", progress);
-    }
-}
-
-void update_ui_update_ble_button_state(bool enabled)
-{
-    if (btn_ble_fota) {
-        lv_obj_t *icon_label = lv_obj_get_child(btn_ble_fota, 0);
-        if (enabled) {
-            lv_obj_set_style_bg_color(btn_ble_fota, zsw_color_blue(), LV_PART_MAIN);
-            lv_obj_set_style_text_color(icon_label, lv_color_white(), LV_PART_MAIN);
-        } else {
-            lv_obj_set_style_bg_color(btn_ble_fota, zsw_color_gray(), LV_PART_MAIN);
-            lv_obj_set_style_text_color(icon_label, lv_color_white(), LV_PART_MAIN);
-        }
     }
 }
 
