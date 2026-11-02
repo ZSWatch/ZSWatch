@@ -1,9 +1,15 @@
 import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Awaitable, Callable, TypeVar
 
 import pytest
 
+from bleak import BleakClient, BleakScanner
+from bleak.exc import BleakDeviceNotFoundError
+from dbus_fast import BusType, Message
+from dbus_fast.aio import MessageBus
+from dbus_fast.service import ServiceInterface, method
 from smpclient import SMPClient
 from smpclient.exceptions import SMPBadSequence
 from smpclient.generics import error, success
@@ -94,6 +100,110 @@ async def wait_for_usb_port(
             state = "present" if present else "absent"
             pytest.fail(f"USB port {usb_port} not {state} within {timeout_s}s")
         await asyncio.sleep(interval_s)
+
+
+class _JustWorksAgent(ServiceInterface):
+    """BlueZ pairing agent that accepts every request.
+
+    BlueZ rejects Just Works pairing when no agent is registered.
+    """
+
+    def __init__(self):
+        super().__init__("org.bluez.Agent1")
+
+    @method()
+    def Release(self):
+        pass
+
+    @method()
+    def RequestConfirmation(self, device: "o", passkey: "u"):
+        pass
+
+    @method()
+    def RequestAuthorization(self, device: "o"):
+        pass
+
+    @method()
+    def AuthorizeService(self, device: "o", uuid: "s"):
+        pass
+
+    @method()
+    def Cancel(self):
+        pass
+
+
+# D-Bus object path BlueZ calls the agent on; any unused path works.
+_AGENT_PATH = "/zswatch/pytest/agent"
+
+
+@asynccontextmanager
+async def _just_works_agent():
+    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    bus.export(_AGENT_PATH, _JustWorksAgent())
+
+    async def agent_manager(member: str, signature: str, body: list) -> None:
+        reply = await bus.call(
+            Message(
+                destination="org.bluez",
+                path="/org/bluez",
+                interface="org.bluez.AgentManager1",
+                member=member,
+                signature=signature,
+                body=body,
+            )
+        )
+        if reply.error_name:
+            raise RuntimeError(f"{member} failed: {reply.error_name} {reply.body}")
+
+    try:
+        await agent_manager("RegisterAgent", "os", [_AGENT_PATH, "NoInputNoOutput"])
+        await agent_manager("RequestDefaultAgent", "o", [_AGENT_PATH])
+        yield
+    finally:
+        await agent_manager("UnregisterAgent", "o", [_AGENT_PATH])
+        bus.disconnect()
+
+
+async def _unpair(address: str) -> None:
+    try:
+        await BleakClient(address).unpair()
+    except BleakDeviceNotFoundError:
+        pass
+
+
+_bonded_addresses: set[str] = set()
+
+
+async def ensure_bonded(device_config, attempts: int = 3) -> None:
+    """Pair this host with the watch once per session; SMP over BLE needs a bond.
+
+    Any old bond is removed first, so a stale key on either side can't break the tests.
+    """
+    address = device_config["mac"]
+    if address in _bonded_addresses:
+        return
+    await _unpair(address)
+    # The window stays open for 60 s, but USB turns off about 20 s after boot,
+    # so open it once and retry only the pairing.
+    await shell_command_usb(device_config, ["pairable", "on"])
+    last_exc: Exception | None = None
+    async with _just_works_agent():
+        for attempt in range(attempts):
+            try:
+                device = await BleakScanner.find_device_by_address(
+                    address, timeout=BLE_CONNECT_TIMEOUT_S
+                )
+                if device is None:
+                    raise TimeoutError(f"No advertisement from {address}")
+                async with BleakClient(device, timeout=BLE_CONNECT_TIMEOUT_S) as client:
+                    await client.pair()
+                _bonded_addresses.add(address)
+                return
+            except Exception as exc:
+                last_exc = exc
+                await _unpair(address)
+                await asyncio.sleep(1.0 * (attempt + 1))
+    pytest.fail(f"Failed to bond with {address}: {last_exc}")
 
 
 async def find_ble_address(device_config) -> str:
