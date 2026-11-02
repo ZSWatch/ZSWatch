@@ -369,6 +369,16 @@ static void process_floor_work(struct k_work *work)
                 temperature_k = item.data.temperature_k;
                 break;
             case FLOOR_WORK_DAY_CHECK:
+                if (floor_fsm.state != FLOOR_FSM_IDLE) {
+                    LOG_INF("Floor status: state=%s steps=%u pressure=%d Pa up=%u down=%u "
+                            "partial_up=%d cm partial_down=%d cm idle=%u ms",
+                            floor_fsm.state == FLOOR_FSM_WAIT_BASELINE ? "WAIT_BASELINE" : "TRACKING",
+                            floor_fsm.last_count, (int)floor_fsm.latest_pressure_pa,
+                            floor_state.floors_up, floor_state.floors_down,
+                            (int)(floor_state.climb_accum * 100.0f),
+                            (int)(floor_state.descend_accum * 100.0f),
+                            (uint32_t)(item.timestamp_ms - floor_fsm.last_progress_ms));
+                }
                 break;
         }
         publish_counts();
