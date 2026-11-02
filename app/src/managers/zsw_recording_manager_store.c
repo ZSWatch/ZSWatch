@@ -511,6 +511,11 @@ int zsw_recording_manager_store_list(zsw_recording_entry_t *entries, size_t max_
         if ((size_t)count >= max_entries) {
             break;
         }
+        // The file being recorded or saved is not complete yet.
+        if (recording_active && strncmp(entry.name, current_filename, ext - entry.name) == 0 &&
+            current_filename[ext - entry.name] == '\0') {
+            continue;
+        }
 
         char path[MAX_PATH_LEN];
         snprintf(path, sizeof(path), "%s/%s", VOICE_MEMO_DIR, entry.name);
@@ -547,6 +552,9 @@ int zsw_recording_manager_store_delete(const char *filename)
         strchr(filename, '/') != NULL ||
         strchr(filename, '\\') != NULL) {
         return -EINVAL;
+    }
+    if (recording_active && strcmp(filename, current_filename) == 0) {
+        return -EBUSY;
     }
 
     char path[MAX_PATH_LEN];

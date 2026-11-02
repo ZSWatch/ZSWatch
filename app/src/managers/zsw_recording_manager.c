@@ -25,22 +25,30 @@
 #include "zsw_recording_manager_store.h"
 #include "zsw_microphone_manager.h"
 #include "zsw_audio_codec.h"
+#include <zsw_cpu_freq.h>
 #include "events/zsw_voice_memo_event.h"
 
 LOG_MODULE_REGISTER(zsw_recording_manager, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
-#define CODEC_RING_BUF_SIZE    2048
+// 256 ms of PCM, so the encoder can fall behind for a while without dropping audio.
+#define CODEC_RING_BUF_SIZE    8192
 // Opus encoder uses ~8-10 KB stack during opus_encode() on ARM.
 #define CODEC_THREAD_STACK     12288
 // Share microphone priority so its yield lets us encode queued PCM before it overflows.
 #define CODEC_THREAD_PRIO      K_PRIO_COOP(8)
 #define MAX_OPUS_FRAME_BYTES   160
 #define OVERFLOW_LOG_INTERVAL_MS 1000
+// fs_statvfs walks the whole LittleFS, so don't run it for every 1 ms mic block.
+#define LIMITS_CHECK_INTERVAL_MS 1000
 
 ZBUS_CHAN_DECLARE(voice_memo_recording_chan);
 
 static bool is_recording;
 static bool codec_thread_running;
+// From start until the codec thread has saved the file or abort has dropped it.
+static bool pipeline_busy;
+// Set by stop: the codec thread saves the file before it exits.
+static bool save_on_exit;
 static uint32_t recording_start_time;
 static uint32_t peak_level;
 static bool auto_stop_pending;
@@ -50,6 +58,7 @@ static uint8_t *pcm_ring_buf_data;
 static struct k_spinlock pcm_ring_buf_lock;
 static uint32_t ring_buf_dropped_bytes;
 static uint32_t last_overflow_log_ms;
+static uint32_t last_limits_check_ms;
 
 /* Codec thread */
 static K_THREAD_STACK_DEFINE(codec_stack, CODEC_THREAD_STACK);
@@ -58,6 +67,9 @@ static k_tid_t codec_thread_id;
 static struct k_sem codec_sem;
 
 static struct k_work auto_stop_work;
+
+static void release_pipeline(void);
+static void save_recording(void);
 
 /** Return audio level 0-100 as peak sample amplitude percentage of full-scale (INT16_MAX). */
 static uint8_t calc_audio_level(const int16_t *samples, size_t count)
@@ -145,8 +157,15 @@ static void codec_thread_fn(void *p1, void *p2, void *p3)
                 }
                 break;
             }
+            // Let the microphone thread move blocks out of its slab between frames.
+            k_yield();
         }
-        uint32_t elapsed = k_uptime_get_32() - recording_start_time;
+        uint32_t now = k_uptime_get_32();
+        if ((now - last_limits_check_ms) < LIMITS_CHECK_INTERVAL_MS) {
+            continue;
+        }
+        last_limits_check_ms = now;
+        uint32_t elapsed = now - recording_start_time;
         if (!auto_stop_pending &&
             elapsed >= (uint32_t)ZSW_RECORDING_MAX_DURATION_S * 1000) {
             LOG_INF("Voice memo: max duration reached");
@@ -164,12 +183,15 @@ static void codec_thread_fn(void *p1, void *p2, void *p3)
         }
     }
     LOG_DBG("Codec thread stopped");
+    if (save_on_exit) {
+        save_recording();
+    }
 }
 
 static void auto_stop_work_fn(struct k_work *work)
 {
     ARG_UNUSED(work);
-    if (!is_recording && !codec_thread_running) {
+    if (!is_recording) {
         auto_stop_pending = false;
         return;
     }
@@ -194,6 +216,15 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
 
     if (is_recording) {
         return -EALREADY;
+    }
+    if (pipeline_busy || k_current_get() == codec_thread_id) {
+        // The previous recording is still being saved.
+        return -EBUSY;
+    }
+    if (codec_thread_id) {
+        // Past saving, the old thread only has the STOPPED event left to publish.
+        k_thread_join(codec_thread_id, K_FOREVER);
+        codec_thread_id = NULL;
     }
 
     if (!pcm_ring_buf_data) {
@@ -226,13 +257,19 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         return ret;
     }
 
+    // Opus needs ~75% of the CPU at the default 64 MHz, too little margin with the screen off.
+    zsw_cpu_request_fast();
+
     ring_buf_reset(&pcm_ring_buf);
     codec_thread_running = true;
+    pipeline_busy = true;
+    save_on_exit = false;
     is_recording = true;
     auto_stop_pending = false;
     recording_start_time = k_uptime_get_32();
     ring_buf_dropped_bytes = 0;
     last_overflow_log_ms = 0;
+    last_limits_check_ms = recording_start_time;
     k_sem_init(&codec_sem, 0, 1);
 
     codec_thread_id = k_thread_create(&codec_thread_data, codec_stack,
@@ -251,8 +288,10 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
         is_recording = false;
         codec_thread_running = false;
         k_thread_abort(codec_thread_id);
-        zsw_audio_codec_deinit();
+        codec_thread_id = NULL;
+        release_pipeline();
         zsw_recording_manager_store_abort_recording();
+        pipeline_busy = false;
         return ret;
     }
 
@@ -266,38 +305,31 @@ int zsw_recording_manager_start_prefixed(const char *prefix)
     return 0;
 }
 
-static void shutdown_pipeline(void)
+static void release_pipeline(void)
 {
-    zsw_microphone_stop_recording();
-    is_recording = false;
-    k_sem_give(&codec_sem);
-    k_msleep(50);
-    codec_thread_running = false;
-    k_sem_give(&codec_sem);
-    k_thread_join(codec_thread_id, K_MSEC(500));
-
     if (pcm_ring_buf_data) {
         k_free(pcm_ring_buf_data);
         pcm_ring_buf_data = NULL;
     }
     auto_stop_pending = false;
     zsw_audio_codec_deinit();
+    zsw_cpu_release_fast();
 }
 
-int zsw_recording_manager_stop(void)
+/* Runs in the codec thread after stop. Rewriting the header at offset 0 makes
+ * LittleFS copy the whole file, about 3 s for 40 s of audio, so stop must not
+ * wait for it: the caller is usually the UI.
+ */
+static void save_recording(void)
 {
     uint32_t duration_ms = 0;
     uint32_t size_bytes = 0;
+    char saved_filename[VOICE_MEMO_MAX_FILENAME];
 
-    if (!is_recording && !codec_thread_running) {
-        return -EINVAL;
-    }
-
-    shutdown_pipeline();
+    release_pipeline();
     zsw_recording_manager_store_flush();
 
     const char *rec_filename = zsw_recording_manager_store_get_current_filename();
-    char saved_filename[VOICE_MEMO_MAX_FILENAME];
     if (rec_filename) {
         strncpy(saved_filename, rec_filename, sizeof(saved_filename) - 1);
         saved_filename[sizeof(saved_filename) - 1] = '\0';
@@ -313,6 +345,9 @@ int zsw_recording_manager_stop(void)
     LOG_INF("Voice memo pipeline stopped, duration=%u ms, size=%u bytes",
             duration_ms, size_bytes);
 
+    // Free the pipeline before publishing so a listener can start the next recording.
+    pipeline_busy = false;
+
     if (store_ret == 0 && saved_filename[0] != '\0' && duration_ms > 0 && size_bytes > 0) {
         struct zsw_voice_memo_recording_event evt = {
             .state = ZSW_VOICE_MEMO_RECORDING_STOPPED,
@@ -323,19 +358,48 @@ int zsw_recording_manager_stop(void)
         strncpy(evt.filename, saved_filename, sizeof(evt.filename) - 1);
         evt.filename[sizeof(evt.filename) - 1] = '\0';
         zbus_chan_pub(&voice_memo_recording_chan, &evt, K_MSEC(50));
+    } else {
+        // Nothing to save, but listeners still need to see the recording end.
+        struct zsw_voice_memo_recording_event evt = {
+            .state = ZSW_VOICE_MEMO_RECORDING_ABORTED,
+        };
+        zbus_chan_pub(&voice_memo_recording_chan, &evt, K_MSEC(50));
     }
+}
+
+int zsw_recording_manager_stop(void)
+{
+    if (!is_recording) {
+        return -EINVAL;
+    }
+
+    zsw_microphone_stop_recording();
+    is_recording = false;
+    save_on_exit = true;
+    codec_thread_running = false;
+    k_sem_give(&codec_sem);
+    LOG_INF("Voice memo stopping, saving in the background");
 
     return 0;
 }
 
 int zsw_recording_manager_abort(void)
 {
-    if (!is_recording && !codec_thread_running) {
+    if (!is_recording) {
         return -EINVAL;
     }
 
-    shutdown_pipeline();
+    zsw_microphone_stop_recording();
+    is_recording = false;
+    save_on_exit = false;
+    codec_thread_running = false;
+    k_sem_give(&codec_sem);
+    // Wait for any frame write in progress before the file is deleted.
+    k_thread_join(codec_thread_id, K_FOREVER);
+    codec_thread_id = NULL;
+    release_pipeline();
     zsw_recording_manager_store_abort_recording();
+    pipeline_busy = false;
 
     LOG_INF("Voice memo recording aborted");
 
@@ -350,6 +414,11 @@ int zsw_recording_manager_abort(void)
 bool zsw_recording_manager_is_recording(void)
 {
     return is_recording;
+}
+
+bool zsw_recording_manager_is_saving(void)
+{
+    return pipeline_busy && !is_recording;
 }
 
 uint8_t zsw_recording_manager_get_audio_level(void)

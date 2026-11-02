@@ -1,0 +1,24 @@
+diff --git a/modules/lvgl/input/lvgl_pointer_input.c b/modules/lvgl/input/lvgl_pointer_input.c
+--- a/modules/lvgl/input/lvgl_pointer_input.c
++++ b/modules/lvgl/input/lvgl_pointer_input.c
+@@ -161,9 +161,17 @@
+ 		point->y = cap->y_resolution - 1;
+ 	}
+ 
+-	if (k_msgq_put(cfg->common_config.event_msgq, &data->common_data.pending_event,
+-		       K_NO_WAIT) != 0) {
+-		LOG_WRN("Could not put input data into queue");
++	/* Each event holds the whole pointer state, so when LVGL falls behind drop the
++	 * oldest one rather than this one: losing the newest could lose a release and
++	 * leave LVGL pressed.
++	 */
++	while (k_msgq_put(cfg->common_config.event_msgq, &data->common_data.pending_event,
++			  K_NO_WAIT) != 0) {
++		lv_indev_data_t dropped;
++
++		if (k_msgq_get(cfg->common_config.event_msgq, &dropped, K_NO_WAIT) == 0) {
++			LOG_DBG("Input queue full, dropped the oldest event");
++		}
+ 	}
+ }
+ 

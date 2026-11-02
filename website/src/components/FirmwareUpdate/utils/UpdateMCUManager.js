@@ -1,6 +1,6 @@
 import MCUManager from "../../../mcumgr-web/js/mcumgr";
 import CBOR from "../../../mcumgr-web/js/cbor";
-import WatchBluetooth, { NUS_SERVICE } from "./watchBluetooth";
+import WatchBluetooth, { NUS_SERVICE, smpUnavailableError } from "./watchBluetooth";
 
 // Keep the shared transport implementation, but expose acknowledged transfers.
 // The upstream cmdUpload promise only waits for the transfer to start.
@@ -72,8 +72,9 @@ export default class UpdateMCUManager extends MCUManager {
         this._bleReadyAt = Date.now();
         await this._watch.prepare(server, { enableUpdates: true, readInfo: false });
         await this._discoverSmp(server);
-      } catch {
-        throw new Error("The watch did not expose its firmware update service. Enable Bluetooth in System → Update App and reconnect; older firmware may require this manual step.");
+      } catch (retryError) {
+        this._logger.error(retryError);
+        throw smpUnavailableError(retryError);
       } finally { this._rediscovering = false; }
     }
     this.status(sentEnable ? "Bluetooth DFU enabled. Reading installed images..." : "Firmware update service ready. Reading installed images...");

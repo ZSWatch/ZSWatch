@@ -913,12 +913,12 @@ static int parse_httpstate(char *data, int len)
     }
     cb.data.data.http_response.id = request_id;
 
-    if (strstr(data, "\"err\":") ||
-        extract_js_string("\"resp\":", data, cb.data.data.http_response.response,
-                          sizeof(cb.data.data.http_response.response), false) <= 0) {
-        /* Even an error or malformed relay result must finish the matching request. */
-        snprintf(cb.data.data.http_response.err, sizeof(cb.data.data.http_response.err), "HTTP relay error");
-        cb.data.data.http_response.response[0] = '\0';
+    /* Decode the body in place: the decoded string is never longer than the escaped one.
+     * A NULL response (error or malformed relay result) still finishes the matching request.
+     */
+    char *resp = strstr(data, "\"err\":") ? NULL : find_js_value(data, "\"resp\":");
+    if (resp && decode_js_literal(resp, resp, strlen(resp) + 1, false) > 0) {
+        cb.data.data.http_response.response = resp;
     }
     send_ble_data_event(&cb);
     return 0;
@@ -1009,14 +1009,11 @@ static int parse_smp_command(char *data, int len)
     cJSON_Delete(root);
 
 #ifdef CONFIG_MCUMGR
-    int rc;
+    // SMP is always registered. Older apps also send "status":false, which needs nothing.
     if (enable) {
-        rc = zsw_smp_manager_enable(true);
-    } else {
-        rc = zsw_smp_manager_disable();
+        zsw_smp_manager_announce_traffic();
     }
-
-    return rc;
+    return 0;
 #else
     ARG_UNUSED(enable);
     LOG_WRN("SMP not available");

@@ -41,7 +41,10 @@ int zsw_recording_manager_start(void);
 /** @brief Start a recording whose filename begins with prefix (max 8 chars, [a-z_]). */
 int zsw_recording_manager_start_prefixed(const char *prefix);
 
-/** @brief Stop recording, finalize file, and publish zbus event. */
+/**
+ * @brief Stop recording. Returns at once; the file is saved in the background and
+ * STOPPED (or ABORTED if saving failed) is published when it is done.
+ */
 int zsw_recording_manager_stop(void);
 
 /** @brief Abort recording and discard the file. */
@@ -49,6 +52,9 @@ int zsw_recording_manager_abort(void);
 
 /** @brief Check if a recording is currently in progress. */
 bool zsw_recording_manager_is_recording(void);
+
+/** @brief Check if a stopped recording is still being saved. Start returns -EBUSY meanwhile. */
+bool zsw_recording_manager_is_saving(void);
 
 /** @brief Get current audio input level (0-100, peak amplitude percentage). */
 uint8_t zsw_recording_manager_get_audio_level(void);

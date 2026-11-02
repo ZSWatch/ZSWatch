@@ -11,17 +11,17 @@ This page describes how to update the firmware on the ZSWatch and the WatchDK.
 
 ## Enable Updates on the Watch
 
-The **ZSWatch companion app** and [web updater](https://zswatch.dev/update)
-enable Bluetooth firmware updates automatically. You do not need to open
-**Apps → Update** or turn on **BLE** when using them.
+Bluetooth firmware updates are always available to a paired device. The
+**ZSWatch companion app**, the [web updater](https://zswatch.dev/update) and
+**nRF Device Manager** need no setup on the watch.
 
-For your first Bluetooth connection to a computer, go to **Settings → Bluetooth**
-on the watch, enable **Pairable**, then connect in the web updater and accept
-pairing on your computer.
+For your first Bluetooth connection to a computer or a phone that is not
+paired yet, go to **Settings → Bluetooth** on the watch, enable **Pairable**,
+then connect and accept pairing on the other device.
 
 For **USB updates**, go to **Apps → Update** on the watch and turn on **USB**.
-For **nRF Device Manager**, turn on **BLE** there manually. Older firmware that
-does not support automatic Bluetooth setup may also require this manual step.
+Older firmware needs **BLE** turned on in **Apps → Update** for nRF Device
+Manager.
 
 ## Firmware Download Contents
 

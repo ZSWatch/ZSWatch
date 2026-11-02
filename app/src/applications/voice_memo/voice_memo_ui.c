@@ -365,12 +365,29 @@ void voice_memo_ui_show_recording(void)
     lv_obj_remove_flag(ui.rec_screen, LV_OBJ_FLAG_HIDDEN);
     ui.recording_screen_active = true;
 
-    /* Reset display */
+    /* Reset display, including what show_saving changed */
+    lv_obj_remove_flag(ui.stop_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(ui.level_bar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(ui.rec_indicator, zsw_color_red(), 0);
+    lv_obj_set_style_opa(ui.rec_indicator, LV_OPA_COVER, 0);
     lv_label_set_text(ui.time_label, "00:00");
     lv_bar_set_value(ui.level_bar, 0, LV_ANIM_OFF);
     if (ui.remaining_label) {
         lv_label_set_text(ui.remaining_label, "");
     }
+}
+
+void voice_memo_ui_show_saving(void)
+{
+    if (!ui.rec_screen) {
+        return;
+    }
+    // Hide the stop button so repeated taps can't land on anything while saving.
+    lv_obj_add_flag(ui.stop_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ui.level_bar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(ui.rec_indicator, zsw_color_gray(), 0);
+    lv_obj_set_style_opa(ui.rec_indicator, LV_OPA_COVER, 0);
+    lv_label_set_text(ui.remaining_label, "Saving...");
 }
 
 void voice_memo_ui_show_list(void)

@@ -60,6 +60,10 @@ ZBUS_LISTENER_DEFINE(voice_memo_app_recording_lis, on_recording_event);
 ZBUS_LISTENER_DEFINE(voice_memo_app_result_lis, on_result_event);
 
 static bool recording_screen_shown;
+// Ignore record taps for a moment after a recording stops, so repeated stop
+// taps can't start a new recording.
+#define RECORD_TAP_GUARD_MS 2000
+static int64_t list_shown_after_stop_ms;
 
 static lv_timer_t *ui_timer;
 static zsw_recording_entry_t *list_entries;
@@ -83,6 +87,9 @@ static void recording_stopped_async(void *data)
 {
     ARG_UNUSED(data);
     if (app.current_state != ZSW_APP_STATE_STOPPED) {
+        if (recording_screen_shown) {
+            list_shown_after_stop_ms = k_uptime_get();
+        }
         recording_screen_shown = false;
         voice_memo_ui_show_list();
         refresh_list();
@@ -122,6 +129,10 @@ static void on_result_event(const struct zbus_channel *chan)
 
 static void on_start_recording(void)
 {
+    if (list_shown_after_stop_ms != 0 && k_uptime_get() - list_shown_after_stop_ms < RECORD_TAP_GUARD_MS) {
+        LOG_DBG("Ignoring record tap right after stop");
+        return;
+    }
     int ret = zsw_recording_manager_start();
     if (ret == 0) {
         recording_screen_shown = true;
@@ -133,7 +144,11 @@ static void on_start_recording(void)
 
 static void on_stop_recording(void)
 {
-    zsw_recording_manager_stop();
+    if (zsw_recording_manager_stop() == 0) {
+        // The list is shown when the STOPPED or ABORTED event arrives.
+        voice_memo_ui_show_saving();
+        return;
+    }
     recording_screen_shown = false;
     voice_memo_ui_show_list();
     refresh_list();
@@ -148,10 +163,10 @@ static void on_delete(const char *filename)
 static void on_back_during_recording(bool save)
 {
     if (save) {
-        zsw_recording_manager_stop();
-    } else {
-        zsw_recording_manager_abort();
+        on_stop_recording();
+        return;
     }
+    zsw_recording_manager_abort();
     recording_screen_shown = false;
     voice_memo_ui_show_list();
     refresh_list();
@@ -159,6 +174,10 @@ static void on_back_during_recording(bool save)
 
 static void refresh_list(void)
 {
+    // Saving holds the filesystem for seconds; the STOPPED event refreshes afterwards.
+    if (zsw_recording_manager_is_saving()) {
+        return;
+    }
     if (!list_entries) {
         list_entries = k_malloc(sizeof(*list_entries) * ZSW_RECORDING_MAX_FILES);
         if (!list_entries) {
@@ -197,7 +216,8 @@ static void ui_timer_cb(lv_timer_t *timer)
     }
 
     if (!zsw_recording_manager_is_recording()) {
-        if (recording_screen_shown) {
+        if (recording_screen_shown && !zsw_recording_manager_is_saving()) {
+            list_shown_after_stop_ms = k_uptime_get();
             recording_screen_shown = false;
             voice_memo_ui_show_list();
             refresh_list();
