@@ -160,8 +160,9 @@ Listeners copy events into a bounded queue; the system workqueue owns mutable
 fusion state. Readers obtain both floor counts as one atomic snapshot.
 Daily totals and partial-floor accumulators reset when the local calendar date
 changes, checked before queued events and on the existing 10-second periodic
-tick even without new pressure samples. The Altimeter receives changed totals
-through the floor-count callback, including resets while its UI is closed.
+tick even without new pressure samples. The counter publishes totals on
+`floor_count_chan`; the Altimeter reads its retained value at startup and
+observes changes, including resets while its UI is closed.
 
 During an episode, `elevation_tracking_chan` requests 1-second pressure samples
 and raw cumulative step snapshots. The pressure service owns two NORMAL-mode,

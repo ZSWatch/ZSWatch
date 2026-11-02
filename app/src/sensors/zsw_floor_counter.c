@@ -24,6 +24,7 @@
 
 #include "events/accel_event.h"
 #include "events/elevation_tracking_event.h"
+#include "events/floor_count_event.h"
 #include "events/pressure_event.h"
 #include "events/zsw_periodic_event.h"
 #include "sensors/zsw_floor_counter.h"
@@ -109,6 +110,8 @@ static zsw_floor_counter_changed_cb_t changed_callback;
 static bool tracking_published;
 static bool tracking_valid = true;
 
+ZBUS_CHAN_DECLARE(floor_count_chan);
+
 K_WORK_DEFINE(floor_work, process_floor_work);
 K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
 K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
@@ -139,6 +142,14 @@ static void publish_counts(void)
     uint32_t counts = (uint32_t)floor_state.floors_up | ((uint32_t)floor_state.floors_down << 16);
 
     if ((uint32_t)atomic_set(&published_counts, (atomic_val_t)counts) != counts) {
+        const struct floor_count_event event = {
+            .floors_up = floor_state.floors_up,
+            .floors_down = floor_state.floors_down,
+        };
+        int ret = zbus_chan_pub(&floor_count_chan, &event, K_FOREVER);
+        if (ret != 0) {
+            LOG_WRN("Floor count publication failed: %d", ret);
+        }
         LOG_INF("Floors changed: up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
         if (changed_callback != NULL) {
             changed_callback();

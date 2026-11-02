@@ -28,6 +28,7 @@
 #include "applications/altimeter/altimeter_app.h"
 #include "events/ble_event.h"
 #include "events/pressure_event.h"
+#include "events/floor_count_event.h"
 #include "events/altitude_event.h"
 #include "sensors/zsw_floor_counter.h"
 #include "altimeter_ui.h"
@@ -66,6 +67,7 @@ typedef struct {
 
 typedef enum {
     ALTIMETER_WORK_PRESSURE,
+    ALTIMETER_WORK_PRESSURE_SNAPSHOT,
     ALTIMETER_WORK_CALIBRATION,
 } altimeter_work_type_t;
 
@@ -96,7 +98,7 @@ static void process_altimeter_work(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
 static void process_pressure_sample(const altimeter_work_item_t *work_item);
 static void publish_altitude_event(void);
-static void on_floor_count_changed(void);
+static void on_floor_count_changed(const struct zbus_channel *chan);
 static bool enqueue_altimeter_work(const altimeter_work_item_t *work_item);
 static void reschedule_calibration_work(bool success);
 
@@ -146,6 +148,10 @@ ZBUS_CHAN_ADD_OBS(ble_comm_data_chan, altimeter_ble_comm_lis, 1);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_LISTENER_DEFINE(altimeter_pressure_lis, on_zbus_pressure_callback);
 ZBUS_CHAN_ADD_OBS(pressure_data_chan, altimeter_pressure_lis, 1);
+
+ZBUS_CHAN_DECLARE(floor_count_chan);
+ZBUS_LISTENER_DEFINE(altimeter_floor_count_lis, on_floor_count_changed);
+ZBUS_CHAN_ADD_OBS(floor_count_chan, altimeter_floor_count_lis, 1);
 
 // ZBUS channel this app publishes calibrated altitude to
 ZBUS_CHAN_DECLARE(altitude_data_chan);
@@ -310,6 +316,18 @@ static void process_altimeter_work(struct k_work *work)
             case ALTIMETER_WORK_PRESSURE:
                 process_pressure_sample(&work_item);
                 break;
+            case ALTIMETER_WORK_PRESSURE_SNAPSHOT: {
+                struct pressure_event event;
+                if (zbus_chan_read(&pressure_data_chan, &event, K_MSEC(250)) == 0) {
+                    altimeter_work_item_t snapshot = {
+                        .type = ALTIMETER_WORK_PRESSURE,
+                        .timestamp_ms = (uint32_t)k_uptime_get_32(),
+                        .data.pressure_pa = event.pressure,
+                    };
+                    process_pressure_sample(&snapshot);
+                }
+                break;
+            }
         }
     }
     if (atomic_set(&floor_update_pending, 0)) {
@@ -328,8 +346,9 @@ static bool enqueue_altimeter_work(const altimeter_work_item_t *work_item)
     return true;
 }
 
-static void on_floor_count_changed(void)
+static void on_floor_count_changed(const struct zbus_channel *chan)
 {
+    ARG_UNUSED(chan);
     atomic_set(&floor_update_pending, 1);
     k_work_submit(&altimeter_work);
 }
@@ -393,17 +412,22 @@ static void process_pressure_sample(const altimeter_work_item_t *work_item)
 static void publish_altitude_event(void)
 {
     struct altitude_event event;
-    zsw_floor_counter_data_t counts = zsw_floor_counter_get_counts();
+    struct floor_count_event counts;
+    bool counts_valid = zbus_chan_read(&floor_count_chan, &counts, K_MSEC(250)) == 0;
 
     k_mutex_lock(&ui_data_mutex, K_FOREVER);
-    ui_data.floors_up = counts.floors_up;
-    ui_data.floors_down = counts.floors_down;
+    if (counts_valid &&
+        (ui_data.floors_up != counts.floors_up || ui_data.floors_down != counts.floors_down)) {
+        LOG_INF("Altimeter floors updated: up=%u down=%u", counts.floors_up, counts.floors_down);
+    }
+    if (counts_valid) {
+        ui_data.floors_up = counts.floors_up;
+        ui_data.floors_down = counts.floors_down;
+    }
     ui_data_pending = true;
     event = (struct altitude_event) {
         .altitude_m = ui_data.altitude,
         .is_calibrated = ui_data.is_calibrated,
-        .floors_up = counts.floors_up,
-        .floors_down = counts.floors_down,
     };
     k_mutex_unlock(&ui_data_mutex);
 
@@ -430,7 +454,17 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
     ARG_UNUSED(group);
 
     altimeter_ui_show(root);
+    const altimeter_work_item_t snapshot_request = {
+        .type = ALTIMETER_WORK_PRESSURE_SNAPSHOT,
+    };
+    enqueue_altimeter_work(&snapshot_request);
+
     k_mutex_lock(&ui_data_mutex, K_FOREVER);
+    struct floor_count_event counts;
+    if (zbus_chan_read(&floor_count_chan, &counts, K_MSEC(250)) == 0) {
+        ui_data.floors_up = counts.floors_up;
+        ui_data.floors_down = counts.floors_down;
+    }
     copy_ui_snapshot();
     ui_data_pending = false;
     ui_refresh_requested = false;
@@ -470,7 +504,6 @@ static void altimeter_app_ui_unavailable(void)
 static int altimeter_app_add(void)
 {
     zsw_history_init(&chart_history, HISTORY_SAMPLES, sizeof(float), chart_samples, "altimeter_hist");
-    zsw_floor_counter_set_callback(on_floor_count_changed);
     zsw_app_manager_add_application(&app);
     return 0;
 }
