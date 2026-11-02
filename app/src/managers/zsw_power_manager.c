@@ -58,6 +58,14 @@ LOG_MODULE_REGISTER(zsw_power_manager, CONFIG_ZSW_PWR_MANAGER_LOG_LEVEL);
 #define TILT_AWAY_DOT_MAX                                           0.45f
 // How long watch must face away before tunning off
 #define TILT_AWAY_HOLD_MS                                           800
+// Samples within this cosine of their running average count as one settled pose (~15 deg)
+#define TILT_SETTLED_DOT_MIN                                        0.966f
+// Watch Z axis points out of the display, so the normalized Z gravity component tells how
+// much the display faces up. A pose needs at least this to count as looking at the watch
+// (display less than ~70 deg from horizontal).
+#define TILT_VIEW_Z_MIN                                             0.35f
+// How much more the display must face up than in the reference to count as raised to view
+#define TILT_RAISE_Z_GAIN                                           0.25f
 
 static void enter_active(void);
 static void enter_inactive(void);
@@ -70,8 +78,8 @@ static void update_last_activity_timestamp(void);
 static void zbus_accel_data_callback(const struct zbus_channel *chan);
 static void zbus_battery_sample_data_callback(const struct zbus_channel *chan);
 static void tilt_detection_work_handler(struct k_work *item);
-static void tilt_update_reference(float ax, float ay, float az, float mag);
-static void tilt_check_monitoring(float ux, float uy, float uz);
+static void tilt_update_reference(float ux, float uy, float uz, float mag);
+static void tilt_check_monitoring(float ux, float uy, float uz, float mag);
 
 K_WORK_DELAYABLE_DEFINE(idle_work, handle_idle_timeout);
 K_WORK_DELAYABLE_DEFINE(tilt_work, tilt_detection_work_handler);
@@ -121,12 +129,22 @@ static void set_motion_detection(bool any_motion, bool no_motion)
     }
 }
 
+typedef struct {
+    float x;
+    float y;
+    float z;
+    uint8_t count;
+} tilt_pose_avg_t;
+
 static struct {
     tilt_state_t state;
     float ref_x;
     float ref_y;
     float ref_z;
-    uint8_t ref_count;
+    // Reference being learned in TILT_STATE_LEARNING
+    tilt_pose_avg_t learn;
+    // Raised pose that may replace the reference in TILT_STATE_MONITORING
+    tilt_pose_avg_t raise;
     uint32_t away_start_ms;
 } tilt;
 
@@ -210,14 +228,60 @@ void zsw_power_manager_on_user_activity(void)
     }
 }
 
+static void tilt_pose_avg_reset(tilt_pose_avg_t *avg)
+{
+    avg->x = 0.0f;
+    avg->y = 0.0f;
+    avg->z = 0.0f;
+    avg->count = 0;
+}
+
+/**
+ * @brief Add a normalized gravity sample to a running pose average.
+ * The average restarts when the sample is far from it, so it only completes once
+ * the watch has held one orientation for TILT_REF_SAMPLES samples.
+ * @return true when the average is complete
+ */
+static bool tilt_pose_avg_add(tilt_pose_avg_t *avg, float ux, float uy, float uz)
+{
+    if (avg->count > 0) {
+        float len = sqrtf(avg->x * avg->x + avg->y * avg->y + avg->z * avg->z);
+        float dot = (ux * avg->x + uy * avg->y + uz * avg->z) / len;
+
+        if (dot < TILT_SETTLED_DOT_MIN) {
+            tilt_pose_avg_reset(avg);
+        }
+    }
+
+    avg->x += ux;
+    avg->y += uy;
+    avg->z += uz;
+    avg->count++;
+
+    return avg->count >= TILT_REF_SAMPLES;
+}
+
+static void tilt_set_reference(const tilt_pose_avg_t *avg)
+{
+    // Samples are unit vectors within ~15 deg of each other, so the sum can't be zero.
+    float len = sqrtf(avg->x * avg->x + avg->y * avg->y + avg->z * avg->z);
+
+    tilt.ref_x = avg->x / len;
+    tilt.ref_y = avg->y / len;
+    tilt.ref_z = avg->z / len;
+    tilt.away_start_ms = 0;
+    tilt_pose_avg_reset(&tilt.raise);
+}
+
 static void tilt_request_reference_update(void)
 {
     tilt.state = TILT_STATE_LEARNING;
     tilt.ref_x = 0.0f;
     tilt.ref_y = 0.0f;
     tilt.ref_z = 0.0f;
-    tilt.ref_count = 0;
     tilt.away_start_ms = 0;
+    tilt_pose_avg_reset(&tilt.learn);
+    tilt_pose_avg_reset(&tilt.raise);
 }
 
 static void update_last_activity_timestamp(void)
@@ -320,69 +384,72 @@ static void handle_idle_timeout(struct k_work *item)
     }
 }
 
-/**
- * @brief Update the tilt reference orientation by averaging samples.
- * @param ax, ay, az Raw accelerometer values in m/s²
- * @param mag Magnitude of the accelerometer vector
- */
-static void tilt_update_reference(float ax, float ay, float az, float mag)
+static bool tilt_is_low_motion(float mag)
 {
     // By checking magnitude we can avoid using samples taken during high motion.
     // 5.0 to 15.0 m/s² (approximately 0.5g to 1.5g) allows for sensor noise, but will
     // reject samples taken during higher motion.
-    if ((mag < 5.0f) || (mag > 15.0f)) {
+    return (mag >= 5.0f) && (mag <= 15.0f);
+}
+
+/**
+ * @brief Learn the tilt reference orientation from a settled pose.
+ * @param ux, uy, uz Normalized gravity vector
+ * @param mag Magnitude of the accelerometer vector
+ */
+static void tilt_update_reference(float ux, float uy, float uz, float mag)
+{
+    if (!tilt_is_low_motion(mag)) {
         LOG_DBG("Tilt: skip ref sample, mag=%.2f", (double)mag);
         return;
     }
 
-    // Accumulate normalized samples
-    tilt.ref_x += ax / mag;
-    tilt.ref_y += ay / mag;
-    tilt.ref_z += az / mag;
-    tilt.ref_count++;
-    LOG_DBG("Tilt: learning ref, count=%u", tilt.ref_count);
-
-    if (tilt.ref_count < TILT_REF_SAMPLES) {
+    if (!tilt_pose_avg_add(&tilt.learn, ux, uy, uz)) {
+        LOG_DBG("Tilt: learning ref, count=%u", tilt.learn.count);
         return;
     }
 
-    // Normalize the accumulated vector
-    float ref_mag_sq = tilt.ref_x * tilt.ref_x +
-                       tilt.ref_y * tilt.ref_y +
-                       tilt.ref_z * tilt.ref_z;
-
-    if (ref_mag_sq > 0.0f) {
-        float ref_mag = sqrtf(ref_mag_sq);
-        tilt.ref_x /= ref_mag;
-        tilt.ref_y /= ref_mag;
-        tilt.ref_z /= ref_mag;
-        tilt.state = TILT_STATE_MONITORING;
-        LOG_DBG("Tilt: reference learned (%.3f, %.3f, %.3f)",
-                tilt.ref_x, tilt.ref_y, tilt.ref_z);
-    } else {
-        LOG_WRN("Tilt: reference learning failed, reset");
-        tilt_request_reference_update();
-    }
+    tilt_set_reference(&tilt.learn);
+    tilt.state = TILT_STATE_MONITORING;
+    LOG_DBG("Tilt: reference learned (%.3f, %.3f, %.3f)",
+            (double)tilt.ref_x, (double)tilt.ref_y, (double)tilt.ref_z);
 }
 
 /**
  * @brief Check if watch is tilted away from user and handle state transitions.
  * @param ux, uy, uz Normalized gravity vector
+ * @param mag Magnitude of the accelerometer vector
  */
-static void tilt_check_monitoring(float ux, float uy, float uz)
+static void tilt_check_monitoring(float ux, float uy, float uz, float mag)
 {
     // Calculate dot product between current gravity vector and reference
     // 1.0 means they’re perfectly aligned (same direction).
     // 0.0 means they’re orthogonal (90° apart).
     float dot = ux * tilt.ref_x + uy * tilt.ref_y + uz * tilt.ref_z;
 
-    LOG_DBG("Tilt: dot=%.3f, away_start=%u", (double)dot, tilt.away_start_ms);
+    LOG_DBG("Tilt: dot=%.3f, z=%.3f, away_start=%u", (double)dot, (double)uz, tilt.away_start_ms);
 
     // Watch is facing user
     if (dot >= TILT_FACE_DOT_MIN) {
         tilt.away_start_ms = 0;
+        tilt_pose_avg_reset(&tilt.raise);
         return;
     }
+
+    // Moved from the reference to a pose where the display faces up more. This is the arm
+    // being raised to look at the watch (e.g. it woke up with the arm hanging down), not
+    // tilted away. Once the raised pose settles it becomes the new reference, so lowering
+    // the arm from there still turns the display off quickly.
+    if ((uz >= TILT_VIEW_Z_MIN) && (uz >= tilt.ref_z + TILT_RAISE_Z_GAIN)) {
+        tilt.away_start_ms = 0;
+        if (tilt_is_low_motion(mag) && tilt_pose_avg_add(&tilt.raise, ux, uy, uz)) {
+            tilt_set_reference(&tilt.raise);
+            LOG_DBG("Tilt: raised to view, new reference (%.3f, %.3f, %.3f)",
+                    (double)tilt.ref_x, (double)tilt.ref_y, (double)tilt.ref_z);
+        }
+        return;
+    }
+    tilt_pose_avg_reset(&tilt.raise);
 
     // Watch is tilted away
     if (dot <= TILT_AWAY_DOT_MAX) {
@@ -425,12 +492,15 @@ static void tilt_detection_work_handler(struct k_work *item)
         return;
     }
     float mag = sqrtf(mag_sq);
+    float ux = ax / mag;
+    float uy = ay / mag;
+    float uz = az / mag;
 
     switch (tilt.state) {
         case TILT_STATE_IDLE:
             break;
         case TILT_STATE_LEARNING:
-            tilt_update_reference(ax, ay, az, mag);
+            tilt_update_reference(ux, uy, uz, mag);
             break;
         case TILT_STATE_MONITORING: {
             // Check if minimum idle time elapsed
@@ -440,8 +510,7 @@ static void tilt_detection_work_handler(struct k_work *item)
                         idle_elapsed_ms, (uint32_t)TILT_MIN_LVGL_IDLE_MS);
                 break;
             }
-            // Normalize and check monitoring
-            tilt_check_monitoring(ax / mag, ay / mag, az / mag);
+            tilt_check_monitoring(ux, uy, uz, mag);
             break;
         }
     }
