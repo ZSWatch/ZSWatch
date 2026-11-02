@@ -129,7 +129,7 @@ async def test_usb_firmware_update(device_config):
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("restore_firmware")
-async def test_ble_firmware_update(device_config):
+async def test_ble_firmware_update(device_config, ble_bond):
     _ensure_watchdk(device_config)
     usb_port = _require_usb_port(device_config)
     await _wait_for_usb_port(usb_port, True, timeout_s=15.0)
@@ -187,7 +187,7 @@ async def test_shell_command_over_usb(device_config):
 
 
 @pytest.mark.asyncio
-async def test_shell_command_over_ble(device_config):
+async def test_shell_command_over_ble(device_config, ble_bond):
     _ensure_watchdk(device_config)
     usb_port = _require_usb_port(device_config)
 

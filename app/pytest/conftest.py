@@ -5,6 +5,7 @@ import serial
 import time
 from ppk2_helper import setup_ppk2
 from bench.devices import load_devices
+from mcumgr_utils import ensure_bonded
 
 logging.basicConfig(level=logging.INFO)
 
@@ -219,6 +220,14 @@ def restore_firmware(device_config):
     if "jlink_serial" in device_config:
         utils.recover(device_config)
         utils.flash(device_config)
+
+@pytest.fixture
+async def ble_bond(device_config):
+    """Bond with the watch, for tests that use SMP over BLE."""
+    if not device_config.get("mac"):
+        pytest.skip("Device MAC address not configured")
+    await ensure_bonded(device_config)
+
 
 # Reset before each test
 @pytest.fixture(autouse=True)

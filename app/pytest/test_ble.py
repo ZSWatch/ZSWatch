@@ -43,7 +43,7 @@ async def test_connect(device_config):
 
 
 @pytest.mark.asyncio
-async def test_smp_echo(device_config):
+async def test_smp_echo(device_config, ble_bond):
     # SMP is always registered; no need to enable it first.
     address = await _find_ble_address(device_config)
     log.info(f"Connecting to SMP server at {address} via helper")
