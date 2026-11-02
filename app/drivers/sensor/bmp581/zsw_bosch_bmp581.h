@@ -17,6 +17,59 @@
 
 #pragma once
 
+#include <zephyr/device.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+enum bosch_bmp581_mode {
+	BOSCH_BMP581_MODE_STANDBY = 0,
+	BOSCH_BMP581_MODE_NORMAL = 1,
+};
+
+enum bosch_bmp581_osr {
+	BOSCH_BMP581_OSR_1X = 0,
+	BOSCH_BMP581_OSR_2X,
+	BOSCH_BMP581_OSR_4X,
+	BOSCH_BMP581_OSR_8X,
+	BOSCH_BMP581_OSR_16X,
+	BOSCH_BMP581_OSR_32X,
+	BOSCH_BMP581_OSR_64X,
+	BOSCH_BMP581_OSR_128X,
+};
+
+enum bosch_bmp581_iir {
+	BOSCH_BMP581_IIR_BYPASS = 0,
+	BOSCH_BMP581_IIR_1,
+	BOSCH_BMP581_IIR_3,
+	BOSCH_BMP581_IIR_7,
+	BOSCH_BMP581_IIR_15,
+	BOSCH_BMP581_IIR_31,
+	BOSCH_BMP581_IIR_63,
+	BOSCH_BMP581_IIR_127,
+};
+
+typedef struct {
+	uint8_t mode;
+	uint8_t odr;
+	uint8_t osr_p;
+	uint8_t osr_t;
+	uint8_t iir_p;
+	uint8_t iir_t;
+	bool fifo_enabled;
+} bosch_bmp581_configuration_t;
+
+typedef struct {
+	float pressure;
+	float temperature;
+	uint32_t generation;
+	uint32_t sequence;
+} bosch_bmp581_sample_t;
+
+int zsw_bmp581_apply_config(const struct device *dev, const bosch_bmp581_configuration_t *configuration,
+						   uint32_t *generation);
+int zsw_bmp581_get_config(const struct device *dev, bosch_bmp581_configuration_t *configuration);
+int zsw_bmp581_read_sample(const struct device *dev, bosch_bmp581_sample_t *sample);
+
 #define BOSCH_BMP581_ODR_240_HZ                         0x00
 #define BOSCH_BMP581_ODR_218_5_HZ                       0x01
 #define BOSCH_BMP581_ODR_199_1_HZ                       0x02
