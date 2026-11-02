@@ -158,12 +158,19 @@ episode settling, daily count reset, and the 30-second inactivity timeout. It st
 after sensor initialization and remains active when the Altimeter UI is closed.
 Listeners copy events into a bounded queue; the system workqueue owns mutable
 fusion state. Readers obtain both floor counts as one atomic snapshot.
+Daily totals and partial-floor accumulators reset when the local calendar date
+changes, checked before queued events and on the existing 10-second periodic
+tick even without new pressure samples. The Altimeter receives changed totals
+through the floor-count callback, including resets while its UI is closed.
 
 During an episode, `elevation_tracking_chan` requests 1-second pressure samples
-and raw cumulative step snapshots. The pressure sensor uses a 160 Hz hardware
-ODR during tracking, but publishes only once per second; idle publication returns
-to 10 seconds. Failed tracking transitions are retried. Late step snapshots do
-not start an episode by themselves.
+and raw cumulative step snapshots. The pressure service owns two NORMAL-mode,
+FIFO-disabled profiles: IDLE uses 0.25 Hz ODR, pressure/temperature OSR 4x/64x,
+IIR 63/63 and 10-second publication; TRACKING uses 10 Hz ODR, OSR 4x/1x,
+IIR 3/bypass and 1-second publication. Transitions apply and read back the full
+configuration; publication waits for fresh data with matching effective OSRs.
+Failed tracking transitions are retried. Late step snapshots do not start an
+episode by themselves.
 
 The Altimeter app retains GPS/HTTP calibration, altitude calculation and smoothing,
 chart history, UI updates, and `altitude_data_chan` publication. Accepted ambient
@@ -173,10 +180,12 @@ reference-pressure changes as height gain.
 Shell commands: `floors` reads today's up/down counts; `event pressure <hPa>`
 injects a pressure sample; `event step <count> [snapshot]` injects cumulative steps.
 For optional IRQ diagnostics, add `boards/step_debug.conf`, which enables
-`CONFIG_ZSW_BMI270_STEP_DEBUG` and debug-level BMI270 logging. Diagnostics emit
-one summary every 10 seconds and configuration dumps at initialization/reset.
-Floor-counter debug messages use `CONFIG_ZSW_SENSORS_LOG_LEVEL_DBG`; Altimeter
-debug messages use `CONFIG_ZSW_APP_LOG_LEVEL_DBG`.
+`CONFIG_ZSW_BMI270_STEP_DEBUG`, debug-level BMI270 logging and
+`CONFIG_LOG_MAX_LEVEL=4`. BMI270 diagnostics emit one summary every 10 seconds
+and configuration dumps at initialization/reset. The fragment also enables
+INFO-level sensor and app logs: floor episode start/baseline/end, changed totals,
+daily resets, successful pressure-profile programming and Altimeter floor-total
+updates. These logs are event-based, not per-step or per-pressure-sample.
 
 ### Heart Rate Manager
 
