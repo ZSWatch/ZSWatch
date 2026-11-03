@@ -78,32 +78,51 @@ static K_WORK_DEFINE(ble_recording_notify_work, ble_recording_notify_work_fn);
 // already when recording starts and keep it until the answer arrives.
 #define VOICE_MEMO_ANSWER_WAIT_MS 30000
 
-static void voice_memo_interval_release_fn(struct k_work *work)
+static K_MUTEX_DEFINE(answer_lock);
+static char answer_filename[sizeof(ble_recording_evt_copy.filename)];
+
+static void answer_wait_end_fn(struct k_work *work)
 {
     ARG_UNUSED(work);
-    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_VOICE_MEMO);
+    ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_ANSWER);
 }
 
-static K_WORK_DELAYABLE_DEFINE(voice_memo_interval_release_work, voice_memo_interval_release_fn);
+static K_WORK_DELAYABLE_DEFINE(answer_wait_work, answer_wait_end_fn);
+
+// Only the latest memo's answer ends the wait; a late answer to an older memo
+// would drop the interval the newer one still needs.
+static void answer_received(const char *filename)
+{
+    k_mutex_lock(&answer_lock, K_FOREVER);
+    if (filename == NULL || strcmp(filename, answer_filename) == 0) {
+        k_work_reschedule(&answer_wait_work, K_NO_WAIT);
+    }
+    k_mutex_unlock(&answer_lock);
+}
 
 static void on_ble_recording_event(const struct zbus_channel *chan)
 {
     const struct zsw_voice_memo_recording_event *evt = zbus_chan_const_msg(chan);
     switch (evt->state) {
-        case ZSW_VOICE_MEMO_RECORDING_STARTED: {
-            // Wait for a release already running, or it would undo this request.
-            struct k_work_sync sync;
-            k_work_cancel_delayable_sync(&voice_memo_interval_release_work, &sync);
-            ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_VOICE_MEMO);
+        case ZSW_VOICE_MEMO_RECORDING_STARTED:
+            ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_RECORDING);
             break;
-        }
-        case ZSW_VOICE_MEMO_RECORDING_STOPPED:
+        case ZSW_VOICE_MEMO_RECORDING_STOPPED: {
             memcpy(&ble_recording_evt_copy, evt, sizeof(ble_recording_evt_copy));
             k_work_submit(&ble_recording_notify_work);
-            k_work_reschedule(&voice_memo_interval_release_work, K_MSEC(VOICE_MEMO_ANSWER_WAIT_MS));
+            k_mutex_lock(&answer_lock, K_FOREVER);
+            // Wait for a release already running, or it would undo this request.
+            struct k_work_sync sync;
+            k_work_cancel_delayable_sync(&answer_wait_work, &sync);
+            strncpy(answer_filename, evt->filename, sizeof(answer_filename) - 1);
+            ble_comm_short_interval_request(BLE_COMM_SHORT_INTERVAL_ANSWER);
+            k_work_schedule(&answer_wait_work, K_MSEC(VOICE_MEMO_ANSWER_WAIT_MS));
+            k_mutex_unlock(&answer_lock);
+            ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_RECORDING);
             break;
+        }
         case ZSW_VOICE_MEMO_RECORDING_ABORTED:
-            k_work_reschedule(&voice_memo_interval_release_work, K_NO_WAIT);
+            ble_comm_short_interval_release(BLE_COMM_SHORT_INTERVAL_RECORDING);
             break;
     }
 }
@@ -1140,8 +1159,7 @@ static int parse_voice_memo_command(char *data, int len)
         cJSON *fn_obj = cJSON_GetObjectItem(root, "filename");
         cJSON *atype_obj = cJSON_GetObjectItem(root, "action_type");
         cJSON *dt_obj = cJSON_GetObjectItem(root, "datetime");
-        // The answer is here; the idle interval is enough again.
-        k_work_reschedule(&voice_memo_interval_release_work, K_NO_WAIT);
+        answer_received(cJSON_IsString(fn_obj) ? fn_obj->valuestring : NULL);
 
         LOG_DBG("voice_memo: result received, file='%s', type='%s', dt='%s'",
                 cJSON_IsString(fn_obj) ? fn_obj->valuestring : "?",
