@@ -1,5 +1,5 @@
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Awaitable, Callable, TypeVar
 
@@ -178,9 +178,10 @@ async def ensure_bonded(device_config, attempts: int = 3) -> None:
     """Pair this host with the watch once per session; SMP over BLE needs a bond.
 
     Any old bond is removed first, so a stale key on either side can't break the tests.
+    Without USB the pairing window can't be opened, so an existing bond is used as is.
     """
     address = device_config["mac"]
-    if address in _bonded_addresses:
+    if address in _bonded_addresses or not device_config.get("usb_cdc_port"):
         return
     await _unpair(address)
     # The window stays open for 60 s, but USB turns off about 20 s after boot,
@@ -201,7 +202,8 @@ async def ensure_bonded(device_config, attempts: int = 3) -> None:
                 return
             except Exception as exc:
                 last_exc = exc
-                await _unpair(address)
+                with suppress(Exception):
+                    await _unpair(address)
                 await asyncio.sleep(1.0 * (attempt + 1))
     pytest.fail(f"Failed to bond with {address}: {last_exc}")
 
