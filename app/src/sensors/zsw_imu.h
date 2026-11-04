@@ -18,8 +18,15 @@
 #pragma once
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/slist.h>
 
 #include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
+
+/** @brief Caller-owned request; zero-initialize and keep alive until released. */
+struct zsw_imu_step_snapshot_request {
+    sys_snode_t node;
+    bool active;
+};
 
 typedef enum zsw_imu_feature_t {
     ZSW_IMU_FEATURE_ACCEL = BOSCH_BMI270_FEAT_ACCEL,
@@ -83,61 +90,62 @@ typedef struct zsw_imu_evt_t {
     } data;
 } zsw_imu_evt_t;
 
-int zsw_imu_init(void);
-
-/*
-* Get the accelerometer data in m/s^2.
-*/
-int zsw_imu_fetch_accel_f(float *x, float *y, float *z);
-
-/*
-* Get the gyroscope data in rad/s.
-*/
-int zsw_imu_fetch_gyro_f(float *x, float *y, float *z);
-
-int zsw_imu_fetch_accel(int16_t *x, int16_t *y, int16_t *z);
-
-int zsw_imu_fetch_gyro(int16_t *x, int16_t *y, int16_t *z);
-
-int zsw_imu_fetch_temperature(float *temperature);
-
-int zsw_imu_fetch_num_steps(uint32_t *num_steps);
-
-/**
- * @brief Get the last detected step activity.
- *
- * @param activity Pointer to store the step activity.
- * @return 0 on success, negative error code on failure.
- */
-int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity);
-
-/*
-* Set an offset when fetching the number of steps.
-* This can be used if zsw_imu_fetch_num_steps should
-* return daily steps.
-*/
-int zsw_imu_set_step_offset(int starting_step_offset);
-
-int zsw_imu_reset_step_count(void);
-
-int zsw_imu_feature_disable(zsw_imu_feature_t feature);
-
-int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
-
-/** @brief Request a lower accelerometer rate while only the motion features are needed.
- *  The full rate is kept while the gyro is enabled.
- *  @param enable true to request low power, false to restore the full rate
- *  @return 0 on success, negative error code otherwise
- */
-int zsw_imu_set_low_power(bool enable);
-
 typedef enum {
     ZSW_IMU_MOTION_UNKNOWN,
     ZSW_IMU_MOTION_MOVING,
     ZSW_IMU_MOTION_STATIONARY,
 } zsw_imu_motion_state_t;
 
-/** @brief Get whether the watch is physically moving, tracked from boot.
- *  @return Motion state, independent of the display power state
+/** @brief Initialize IMU triggers, activity detection, and motion tracking. */
+int zsw_imu_init(void);
+
+/**
+ * @brief Request or release one-second step snapshots. Thread-only and idempotent.
+ *
+ * Polling stops after all requests are released; step interrupts are unaffected.
+ * Do not copy or modify req. Scheduling is asynchronous; failures are retried.
+ * @return 0 if accepted; negative errno leaves the request unchanged.
  */
+int zsw_imu_request_step_snapshots(struct zsw_imu_step_snapshot_request *req, bool enable);
+
+/** @brief Fetch acceleration components in m/s^2. */
+int zsw_imu_fetch_accel_f(float *x, float *y, float *z);
+
+/** @brief Fetch angular velocity components in rad/s. */
+int zsw_imu_fetch_gyro_f(float *x, float *y, float *z);
+
+/** @brief Fetch integer acceleration components in m/s^2; discard fractional parts. */
+int zsw_imu_fetch_accel(int16_t *x, int16_t *y, int16_t *z);
+
+/** @brief Fetch integer angular velocity components in rad/s; discard fractional parts. */
+int zsw_imu_fetch_gyro(int16_t *x, int16_t *y, int16_t *z);
+
+/** @brief Fetch IMU temperature in Celsius. */
+int zsw_imu_fetch_temperature(float *temperature);
+
+/** @brief Fetch the cumulative step count including the configured offset. */
+int zsw_imu_fetch_num_steps(uint32_t *num_steps);
+
+/** @brief Get the last activity reported by the IMU. */
+int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity);
+
+/** @brief Set the fetched step-count offset; raw events and snapshots are unchanged. */
+int zsw_imu_set_step_offset(int starting_step_offset);
+
+/** @brief Reset the hardware step counter and clear the step-count offset. */
+int zsw_imu_reset_step_count(void);
+
+/** @brief Release a feature claim; disable the feature after its last release. */
+int zsw_imu_feature_disable(zsw_imu_feature_t feature);
+
+/** @brief Claim a feature; int_en selects interrupts on the first enable. */
+int zsw_imu_feature_enable(zsw_imu_feature_t feature, bool int_en);
+
+/**
+ * @brief Request 50 Hz acceleration, or restore 100 Hz when enable is false.
+ * An active gyro keeps the full rate. Returns 0 on success or negative errno.
+ */
+int zsw_imu_set_low_power(bool enable);
+
+/** @brief Get the motion state tracked from boot, independent of display power. */
 zsw_imu_motion_state_t zsw_imu_get_motion_state(void);

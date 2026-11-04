@@ -24,7 +24,6 @@
 #include "../../drivers/sensor/bmi270/zsw_bosch_bmi270.h"
 
 #include "events/accel_event.h"
-#include "events/elevation_tracking_event.h"
 #include "events/zsw_periodic_event.h"
 #include "sensors/zsw_imu.h"
 #ifdef CONFIG_ZSW_BMI270_STEP_DEBUG
@@ -33,43 +32,104 @@
 
 LOG_MODULE_REGISTER(zsw_imu, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
+#define MOTION_TRACKING_RETRY_S 30
+
+static void motion_event(const struct zbus_channel *chan);
+static void motion_tracking_work_handler(struct k_work *work);
+static void step_snapshot_work_handler(struct k_work *work);
+static void step_snapshot_periodic_callback(const struct zbus_channel *chan);
+
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(elevation_tracking_chan);
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
+ZBUS_LISTENER_DEFINE(imu_motion_listener, motion_event);
+ZBUS_CHAN_ADD_OBS(accel_data_chan, imu_motion_listener, 0);
+ZBUS_LISTENER_DEFINE(imu_step_snapshot_periodic_lis, step_snapshot_periodic_callback);
+
 static const struct device *const bmi270 = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(bmi270));
 static struct sensor_trigger bmi270_trigger;
+/* Offset affects fetched daily totals, not raw step events or snapshots. */
 static int step_offset = 0;
 static zsw_imu_data_step_activity_t last_step_activity = ZSW_IMU_EVT_STEP_ACTIVITY_UNKNOWN;
-static atomic_t feature_refcount[BOSCH_BMI270_FEAT_WEAR_WAKE_UP + 1];
+
+/* Shared feature claims and accelerometer settings, guarded by feature_lock. */
 static K_MUTEX_DEFINE(feature_lock);
+static atomic_t feature_refcount[BOSCH_BMI270_FEAT_WEAR_WAKE_UP + 1];
+static bool low_power_requested;
+static bool low_power_applied;
+/* A failed write forces both rate settings to be retried. */
+static bool accel_rate_valid = true;
+
+/* Motion events update the atomic state; the motion worker owns feature claims. */
 static atomic_t motion_state;
 static bool tracking_any_motion;
 static bool tracking_no_motion;
-static bool low_power_requested;
-static bool low_power_applied;
-static atomic_t step_snapshot_requested;
+
+/* Snapshot ownership and applied polling state, guarded by step_snapshot_lock. */
+static K_MUTEX_DEFINE(step_snapshot_lock);
+static sys_slist_t step_snapshot_requests = SYS_SLIST_STATIC_INIT(&step_snapshot_requests);
 static bool step_snapshot_active;
-// Cleared when a rate write fails, so the next request writes both settings again
-static bool accel_rate_valid = true;
 
-#define MOTION_TRACKING_RETRY_S 30
-
-static void motion_tracking_work_handler(struct k_work *work);
-static int apply_accel_rate_locked(void);
-static void tracking_request_callback(const struct zbus_channel *chan);
-static void step_snapshot_work_handler(struct k_work *work);
-static void step_snapshot_periodic_callback(const struct zbus_channel *chan);
-static void publish_step_snapshot(void);
-static int fetch_raw_step_count(uint32_t *num_steps);
 static K_WORK_DELAYABLE_DEFINE(motion_tracking_work, motion_tracking_work_handler);
 static K_WORK_DELAYABLE_DEFINE(step_snapshot_work, step_snapshot_work_handler);
 
-ZBUS_LISTENER_DEFINE(imu_tracking_lis, tracking_request_callback);
-ZBUS_CHAN_ADD_OBS(elevation_tracking_chan, imu_tracking_lis, 1);
-ZBUS_LISTENER_DEFINE(imu_step_snapshot_periodic_lis, step_snapshot_periodic_callback);
+static int fetch_raw_step_count(uint32_t *num_steps)
+{
+    struct sensor_value sensor_val;
 
-// Follows the motion events on the channel rather than the trigger handler, so injected
-// events (shell "hr motion") update the state the same way as real interrupts.
+    if (num_steps == NULL) {
+        return -EINVAL;
+    }
+    if (!device_is_ready(bmi270)) {
+        return -ENODEV;
+    }
+    if (sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ALL) != 0) {
+        return -ENODATA;
+    }
+    if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) != 0) {
+        return -ENODATA;
+    }
+
+    *num_steps = (uint32_t)sensor_val.val1;
+    return 0;
+}
+
+/* Motion features support 50 Hz; an active gyro keeps the full accelerometer rate. */
+static int apply_accel_rate_locked(void)
+{
+    bool low_power = low_power_requested && atomic_get(&feature_refcount[ZSW_IMU_FEATURE_GYRO]) == 0;
+    struct sensor_value odr = {.val1 = low_power ? BOSCH_BMI270_ACC_ODR_50_HZ : BOSCH_BMI270_ACC_ODR_100_HZ};
+    struct sensor_value avg = {.val1 = low_power ? BOSCH_BMI270_AVG2 : BOSCH_BMI270_AVG4};
+    int rc;
+
+    if (accel_rate_valid && low_power == low_power_applied) {
+        return 0;
+    }
+
+    rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
+    if (rc == 0) {
+        rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_OVERSAMPLING, &avg);
+    }
+    accel_rate_valid = rc == 0;
+    if (rc == 0) {
+        low_power_applied = low_power;
+    }
+
+    return rc;
+}
+
+static int tracking_feature(zsw_imu_feature_t feature, bool want, bool *held)
+{
+    if (want == *held) {
+        return 0;
+    }
+    int rc = want ? zsw_imu_feature_enable(feature, true) : zsw_imu_feature_disable(feature);
+    if (!rc) {
+        *held = want;
+    }
+    return rc;
+}
+
+/* Follow published motion events so shell-injected events use the same path. */
 static void motion_event(const struct zbus_channel *chan)
 {
     const struct accel_event *event = zbus_chan_const_msg(chan);
@@ -87,8 +147,34 @@ static void motion_event(const struct zbus_channel *chan)
     }
 }
 
-ZBUS_LISTENER_DEFINE(imu_motion_listener, motion_event);
-ZBUS_CHAN_ADD_OBS(accel_data_chan, imu_motion_listener, 0);
+static void motion_tracking_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    zsw_imu_motion_state_t state = atomic_get(&motion_state);
+    bool want_any = state != ZSW_IMU_MOTION_MOVING;
+    bool want_no = state != ZSW_IMU_MOTION_STATIONARY;
+    int rc = 0;
+
+    /* Arm the next transition before dropping the previous claim. */
+    if (want_any) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, true, &tracking_any_motion);
+    }
+    if (!rc && want_no) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, true, &tracking_no_motion);
+    }
+    if (!rc && !want_any) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, false, &tracking_any_motion);
+    }
+    if (!rc && !want_no) {
+        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, false, &tracking_no_motion);
+    }
+    if (rc) {
+        // Keep a newer state from a motion event that arrived meanwhile.
+        atomic_cas(&motion_state, state, ZSW_IMU_MOTION_UNKNOWN);
+        LOG_ERR("Motion tracking configuration failed: %d", rc);
+        k_work_schedule(&motion_tracking_work, K_SECONDS(MOTION_TRACKING_RETRY_S));
+    }
+}
 
 static void publish_step_snapshot(void)
 {
@@ -114,32 +200,26 @@ static void step_snapshot_periodic_callback(const struct zbus_channel *chan)
     publish_step_snapshot();
 }
 
-static void tracking_request_callback(const struct zbus_channel *chan)
-{
-    const struct elevation_tracking_event *event = zbus_chan_const_msg(chan);
-    atomic_set(&step_snapshot_requested, event->active);
-    k_work_reschedule(&step_snapshot_work, K_NO_WAIT);
-}
-
 static void step_snapshot_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
-    if (!device_is_ready(bmi270)) {
-        return;
-    }
-
-    bool requested = atomic_get(&step_snapshot_requested) != 0;
+    k_mutex_lock(&step_snapshot_lock, K_FOREVER);
+    bool requested = !sys_slist_is_empty(&step_snapshot_requests);
+    bool publish = false;
     if (requested == step_snapshot_active) {
+        k_mutex_unlock(&step_snapshot_lock);
         return;
     }
 
     int ret;
-    if (requested) {
+    if (!device_is_ready(bmi270)) {
+        ret = -ENODEV;
+    } else if (requested) {
         ret = zsw_periodic_chan_add_obs(&periodic_event_1s_chan, &imu_step_snapshot_periodic_lis);
         if (ret >= 0 || ret == -EALREADY) {
             step_snapshot_active = true;
-            publish_step_snapshot();
+            publish = true;
             ret = 0;
         }
     } else {
@@ -151,8 +231,12 @@ static void step_snapshot_work_handler(struct k_work *work)
     }
 
     if (ret != 0) {
-        LOG_DBG("Step polling update failed: %d", ret);
+        LOG_WRN("Step polling update failed: %d", ret);
         k_work_reschedule(&step_snapshot_work, K_SECONDS(1));
+    }
+    k_mutex_unlock(&step_snapshot_lock);
+    if (publish) {
+        publish_step_snapshot();
     }
 }
 
@@ -272,6 +356,29 @@ int zsw_imu_init(void)
     return 0;
 }
 
+int zsw_imu_request_step_snapshots(struct zsw_imu_step_snapshot_request *req, bool enable)
+{
+    if (req == NULL) {
+        return -EINVAL;
+    }
+    if (!device_is_ready(bmi270)) {
+        return -ENODEV;
+    }
+
+    k_mutex_lock(&step_snapshot_lock, K_FOREVER);
+    if (enable != req->active) {
+        if (enable) {
+            sys_slist_append(&step_snapshot_requests, &req->node);
+        } else {
+            sys_slist_find_and_remove(&step_snapshot_requests, &req->node);
+        }
+        req->active = enable;
+    }
+    k_work_reschedule(&step_snapshot_work, K_NO_WAIT);
+    k_mutex_unlock(&step_snapshot_lock);
+    return 0;
+}
+
 int zsw_imu_fetch_accel_f(float *x, float *y, float *z)
 {
     struct sensor_value x_temp;
@@ -380,57 +487,6 @@ int zsw_imu_fetch_gyro(int16_t *x, int16_t *y, int16_t *z)
     return 0;
 }
 
-int zsw_imu_fetch_num_steps(uint32_t *num_steps)
-{
-    if (num_steps == NULL) {
-        return -EINVAL;
-    }
-
-    int ret = fetch_raw_step_count(num_steps);
-    if (ret == 0) {
-        *num_steps += step_offset;
-    }
-
-    return ret;
-}
-
-static int fetch_raw_step_count(uint32_t *num_steps)
-{
-    struct sensor_value sensor_val;
-
-    if (num_steps == NULL) {
-        return -EINVAL;
-    }
-    if (!device_is_ready(bmi270)) {
-        return -ENODEV;
-    }
-    if (sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ALL) != 0) {
-        return -ENODATA;
-    }
-    if (sensor_channel_get(bmi270, SENSOR_CHAN_STEPS, &sensor_val) != 0) {
-        return -ENODATA;
-    }
-
-    *num_steps = (uint32_t)sensor_val.val1;
-    return 0;
-}
-
-int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity)
-{
-    if (activity == NULL) {
-        return -EINVAL;
-    }
-
-    *activity = last_step_activity;
-    return 0;
-}
-
-int zsw_imu_set_step_offset(int starting_step_offset)
-{
-    step_offset = starting_step_offset;
-    return 0;
-}
-
 int zsw_imu_fetch_temperature(float *temperature)
 {
     struct sensor_value sensor_val;
@@ -449,6 +505,36 @@ int zsw_imu_fetch_temperature(float *temperature)
 
     *temperature = sensor_value_to_float(&sensor_val);
 
+    return 0;
+}
+
+int zsw_imu_fetch_num_steps(uint32_t *num_steps)
+{
+    if (num_steps == NULL) {
+        return -EINVAL;
+    }
+
+    int ret = fetch_raw_step_count(num_steps);
+    if (ret == 0) {
+        *num_steps += step_offset;
+    }
+
+    return ret;
+}
+
+int zsw_imu_fetch_step_activity(zsw_imu_data_step_activity_t *activity)
+{
+    if (activity == NULL) {
+        return -EINVAL;
+    }
+
+    *activity = last_step_activity;
+    return 0;
+}
+
+int zsw_imu_set_step_offset(int starting_step_offset)
+{
+    step_offset = starting_step_offset;
     return 0;
 }
 
@@ -569,74 +655,6 @@ int zsw_imu_set_low_power(bool enable)
     k_mutex_unlock(&feature_lock);
 
     return rc;
-}
-
-/*
- * The motion features run at 50 Hz, so they keep working at the lower rate with less
- * averaging. The gyro (sensor fusion) needs the full accelerometer rate.
- */
-static int apply_accel_rate_locked(void)
-{
-    bool low_power = low_power_requested && atomic_get(&feature_refcount[ZSW_IMU_FEATURE_GYRO]) == 0;
-    struct sensor_value odr = {.val1 = low_power ? BOSCH_BMI270_ACC_ODR_50_HZ : BOSCH_BMI270_ACC_ODR_100_HZ};
-    struct sensor_value avg = {.val1 = low_power ? BOSCH_BMI270_AVG2 : BOSCH_BMI270_AVG4};
-    int rc;
-
-    if (accel_rate_valid && low_power == low_power_applied) {
-        return 0;
-    }
-
-    rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
-    if (rc == 0) {
-        rc = sensor_attr_set(bmi270, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_OVERSAMPLING, &avg);
-    }
-    accel_rate_valid = rc == 0;
-    if (rc == 0) {
-        low_power_applied = low_power;
-    }
-
-    return rc;
-}
-
-static int tracking_feature(zsw_imu_feature_t feature, bool want, bool *held)
-{
-    if (want == *held) {
-        return 0;
-    }
-    int rc = want ? zsw_imu_feature_enable(feature, true) : zsw_imu_feature_disable(feature);
-    if (!rc) {
-        *held = want;
-    }
-    return rc;
-}
-
-static void motion_tracking_work_handler(struct k_work *work)
-{
-    ARG_UNUSED(work);
-    zsw_imu_motion_state_t state = atomic_get(&motion_state);
-    bool want_any = state != ZSW_IMU_MOTION_MOVING;
-    bool want_no = state != ZSW_IMU_MOTION_STATIONARY;
-    int rc = 0;
-
-    /* Arm the next transition before dropping the previous claim. */
-    if (want_any) {
-        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, true, &tracking_any_motion);
-    }
-    if (!rc && want_no) {
-        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, true, &tracking_no_motion);
-    }
-    if (!rc && !want_any) {
-        rc = tracking_feature(ZSW_IMU_FEATURE_ANY_MOTION, false, &tracking_any_motion);
-    }
-    if (!rc && !want_no) {
-        rc = tracking_feature(ZSW_IMU_FEATURE_NO_MOTION, false, &tracking_no_motion);
-    }
-    if (rc) {
-        // Keep a newer state from a motion event that arrived meanwhile.
-        atomic_cas(&motion_state, state, ZSW_IMU_MOTION_UNKNOWN);
-        LOG_ERR("Motion tracking configuration failed: %d", rc);
-        k_work_schedule(&motion_tracking_work, K_SECONDS(MOTION_TRACKING_RETRY_S));
-    }
 }
 
 zsw_imu_motion_state_t zsw_imu_get_motion_state(void)
