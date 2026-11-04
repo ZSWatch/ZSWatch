@@ -167,9 +167,9 @@ stateDiagram-v2
     WAIT_BASELINE --> IDLE: 30 s without step-count progress
     TRACKING --> IDLE: 30 s without step-count progress
 
-    IDLE: Release floor-owned sensor requests
-    WAIT_BASELINE: Request fast pressure and one-second step snapshots
-    TRACKING: Accumulate accepted height; one floor is 2.8 m
+    IDLE: IDLE - Release floor-owned sensor requests
+    WAIT_BASELINE: WAIT_BASELINE - Request fast pressure and one-second step snapshots
+    TRACKING: TRACKING - Accumulate accepted height. one floor is 2.8 m
 ```
 
 Daily reset clears totals and partial heights without changing the FSM state.
