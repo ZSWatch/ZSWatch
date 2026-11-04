@@ -24,17 +24,23 @@ typedef struct {
     uint16_t floors_down;
 } zsw_floor_counter_data_t;
 
+/** @brief Notification of changed floor totals, including daily resets. */
 typedef void (*zsw_floor_counter_changed_cb_t)(void);
 
+/** @brief Start floor tracking and daily reset checks after sensor initialization. */
 void zsw_floor_counter_init(void);
 
-/** Register at startup, before init. The callback runs on the system workqueue
- *  and must not block or access LVGL.
+/**
+ * @brief Register the count-change callback before initialization.
+ * The callback runs on the system workqueue; it must not block or access LVGL.
  */
 void zsw_floor_counter_set_callback(zsw_floor_counter_changed_cb_t callback);
 
-/** Get a coherent snapshot from any thread, including before initialization. */
+/** @brief Get coherent daily totals from any thread, even before initialization. */
 zsw_floor_counter_data_t zsw_floor_counter_get_counts(void);
 
-/** Queue ambient temperature in kelvin; returns a negative error on failure. */
-int zsw_floor_counter_set_temperature(float temperature_k);
+/**
+ * @brief Queue ambient temperature in kelvin (173.15 to 373.15).
+ * @return 0 if queued, -EINVAL for invalid input, or -ENOMSG if the queue is full.
+ */
+int zsw_floor_counter_set_temperature(float ambient_temperature_k);

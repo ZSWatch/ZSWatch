@@ -23,11 +23,12 @@
 #include <zephyr/zbus/zbus.h>
 
 #include "events/accel_event.h"
-#include "events/elevation_tracking_event.h"
 #include "events/floor_count_event.h"
 #include "events/pressure_event.h"
 #include "events/zsw_periodic_event.h"
 #include "sensors/zsw_floor_counter.h"
+#include "sensors/zsw_imu.h"
+#include "sensors/zsw_pressure_sensor.h"
 #include "zsw_clock.h"
 
 LOG_MODULE_REGISTER(zsw_floor_counter, CONFIG_ZSW_SENSORS_LOG_LEVEL);
@@ -101,30 +102,36 @@ static void on_pressure_event(const struct zbus_channel *chan);
 static void on_accel_event(const struct zbus_channel *chan);
 static void on_day_check(const struct zbus_channel *chan);
 
-static floor_count_state_t floor_state;
-static floor_fsm_t floor_fsm;
-static float temperature_k = STANDARD_TEMP_K;
-static atomic_t initialized;
-static atomic_t published_counts;
-static zsw_floor_counter_changed_cb_t changed_callback;
-static bool tracking_published;
-static bool tracking_valid = true;
-
 ZBUS_CHAN_DECLARE(floor_count_chan);
-
-K_WORK_DEFINE(floor_work, process_floor_work);
-K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
-K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
-
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(elevation_tracking_chan);
 ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
 ZBUS_LISTENER_DEFINE(floor_day_lis, on_day_check);
 ZBUS_LISTENER_DEFINE(floor_pressure_lis, on_pressure_event);
 ZBUS_CHAN_ADD_OBS(pressure_data_chan, floor_pressure_lis, 1);
 ZBUS_LISTENER_DEFINE(floor_accel_lis, on_accel_event);
 ZBUS_CHAN_ADD_OBS(accel_data_chan, floor_accel_lis, 1);
+
+/* Fusion state is owned by the floor worker; listeners only enqueue events. */
+static floor_count_state_t floor_state;
+static floor_fsm_t floor_fsm;
+static float temperature_k = STANDARD_TEMP_K;
+
+/* Worker-owned acceptance state, not confirmation of hardware configuration. */
+static struct zsw_pressure_fast_request pressure_fast_request;
+static struct zsw_imu_step_snapshot_request step_snapshot_request;
+static bool pressure_fast_requested;
+static bool step_snapshots_requested;
+
+static atomic_t initialized;
+/* Cross-thread snapshot: up in the low 16 bits, down in the high 16 bits. */
+static atomic_t published_counts;
+/* Registered before initialization; invoked only by the floor worker. */
+static zsw_floor_counter_changed_cb_t changed_callback;
+
+K_WORK_DEFINE(floor_work, process_floor_work);
+K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
+K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
 
 static bool enqueue_floor_work(const floor_work_item_t *item)
 {
@@ -135,26 +142,6 @@ static bool enqueue_floor_work(const floor_work_item_t *item)
 
     k_work_submit(&floor_work);
     return true;
-}
-
-static void publish_counts(void)
-{
-    uint32_t counts = (uint32_t)floor_state.floors_up | ((uint32_t)floor_state.floors_down << 16);
-
-    if ((uint32_t)atomic_set(&published_counts, (atomic_val_t)counts) != counts) {
-        const struct floor_count_event event = {
-            .floors_up = floor_state.floors_up,
-            .floors_down = floor_state.floors_down,
-        };
-        int ret = zbus_chan_pub(&floor_count_chan, &event, K_FOREVER);
-        if (ret != 0) {
-            LOG_WRN("Floor count publication failed: %d", ret);
-        }
-        LOG_INF("Floors changed: up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
-        if (changed_callback != NULL) {
-            changed_callback();
-        }
-    }
 }
 
 static void check_daily_reset(void)
@@ -180,29 +167,6 @@ static void check_daily_reset(void)
         floor_state.descend_accum = 0.0f;
         floor_fsm.commit_pressure_pa = 0.0f;
         floor_state.last_reset_date = date;
-    }
-}
-
-static void sync_tracking(void)
-{
-    bool active = floor_fsm.state != FLOOR_FSM_IDLE;
-    if (active == tracking_published && tracking_valid) {
-        return;
-    }
-
-    struct elevation_tracking_event event = { .active = active };
-    int ret = zbus_chan_pub(&elevation_tracking_chan, &event, K_MSEC(100));
-
-    if (ret != 0) {
-        tracking_valid = false;
-        LOG_WRN("Floor tracking request failed: %d", ret);
-        k_work_reschedule(&floor_inactivity_work, K_SECONDS(1));
-        return;
-    }
-    tracking_published = active;
-    tracking_valid = true;
-    if (!active) {
-        k_work_cancel_delayable(&floor_inactivity_work);
     }
 }
 
@@ -335,6 +299,54 @@ static void process_pressure_sample(float pressure_pa, uint32_t now_ms)
         floor_fsm.state = FLOOR_FSM_TRACKING;
         LOG_INF("Floor baseline ready: tracking, pressure=%d Pa, steps=%u",
                 (int)pressure_pa, floor_fsm.last_count);
+    }
+}
+
+static void publish_counts(void)
+{
+    uint32_t counts = (uint32_t)floor_state.floors_up | ((uint32_t)floor_state.floors_down << 16);
+
+    if ((uint32_t)atomic_set(&published_counts, (atomic_val_t)counts) != counts) {
+        const struct floor_count_event event = {
+            .floors_up = floor_state.floors_up,
+            .floors_down = floor_state.floors_down,
+        };
+        int ret = zbus_chan_pub(&floor_count_chan, &event, K_FOREVER);
+        if (ret != 0) {
+            LOG_WRN("Floor count publication failed: %d", ret);
+        }
+        LOG_INF("Floors changed: up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
+        if (changed_callback != NULL) {
+            changed_callback();
+        }
+    }
+}
+
+static void sync_tracking(void)
+{
+    bool active = floor_fsm.state != FLOOR_FSM_IDLE;
+    if (active != pressure_fast_requested) {
+        int ret = zsw_pressure_sensor_request_fast(&pressure_fast_request, active);
+        if (ret == 0) {
+            pressure_fast_requested = active;
+        } else {
+            LOG_WRN("Floor pressure request failed: %d", ret);
+        }
+    }
+    if (active != step_snapshots_requested) {
+        int ret = zsw_imu_request_step_snapshots(&step_snapshot_request, active);
+        if (ret == 0) {
+            step_snapshots_requested = active;
+        } else {
+            LOG_WRN("Floor step snapshot request failed: %d", ret);
+        }
+    }
+    if (active != pressure_fast_requested || active != step_snapshots_requested) {
+        k_work_reschedule(&floor_inactivity_work, K_SECONDS(1));
+        return;
+    }
+    if (!active) {
+        k_work_cancel_delayable(&floor_inactivity_work);
     }
 }
 
