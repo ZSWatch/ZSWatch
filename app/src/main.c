@@ -187,12 +187,18 @@ static void enable_bluetooth(void)
     err = bt_enable(NULL);
     if (err != 0) {
         LOG_ERR("Failed to enable Bluetooth, err: %d", err);
-        return;
     }
 
 #ifdef CONFIG_SETTINGS
-    settings_load();
+    int settings_err = settings_load();
+    if (settings_err != 0) {
+        LOG_ERR("Failed to load settings: %d", settings_err);
+    }
 #endif
+
+    if (err != 0) {
+        return;
+    }
 
     __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();
