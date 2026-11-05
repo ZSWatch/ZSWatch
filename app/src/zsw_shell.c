@@ -868,7 +868,24 @@ static int cmd_floors(const struct shell *sh, size_t argc, char **argv)
     ARG_UNUSED(argv);
 
     zsw_floor_counter_data_t counts = zsw_floor_counter_get_counts();
+    zsw_floor_counter_status_t status = zsw_floor_counter_get_status();
     shell_print(sh, "Floors: up=%u down=%u", counts.floors_up, counts.floors_down);
+    const char *enabled = "no";
+    if (status.enabled) {
+        enabled = "yes";
+    }
+    shell_print(sh, "Floor counter: enabled=%s state=%s", enabled,
+                zsw_floor_counter_state_name(status.state));
+    const char *pressure_fast_owned = "no";
+    if (status.pressure_fast_request_owned) {
+        pressure_fast_owned = "yes";
+    }
+    const char *step_snapshots_owned = "no";
+    if (status.step_snapshot_request_owned) {
+        step_snapshots_owned = "yes";
+    }
+    shell_print(sh, "Floor requests (ownership, not hardware state): pressure_fast=%s step_snapshots=%s",
+                pressure_fast_owned, step_snapshots_owned);
     return 0;
 }
 
