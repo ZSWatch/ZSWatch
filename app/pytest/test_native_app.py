@@ -230,6 +230,26 @@ class TestNativeFloorCounter:
             time.sleep(0.1)
         pytest.fail(f"Expected floors {expected}, got {actual}: {sim.get_logs()}")
 
+    def test_default_enabled_starts_idle_without_fast_requests(self, sim):
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            status = self._command(
+                sim,
+                "floors",
+                r"Floor counter: enabled=(yes|no) state=(STOPPED|IDLE|WAIT_BASELINE|TRACKING)",
+            )
+            requests = self._command(
+                sim,
+                "floors",
+                r"Floor requests \(ownership, not hardware state\): pressure_fast=(yes|no) step_snapshots=(yes|no)",
+            )
+            if status.group(1) == "yes" and status.group(2) == "IDLE":
+                assert requests.group(1) == "no"
+                assert requests.group(2) == "no"
+                return
+            time.sleep(0.1)
+        pytest.fail(f"Default floor counter did not reach idle: {sim.get_logs()}")
+
     @pytest.mark.parametrize(
         "direction,reset_counter",
         [(0, False), (1, False), (-1, False), (1, True)],
