@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
@@ -24,11 +25,40 @@ typedef struct {
     uint16_t floors_down;
 } zsw_floor_counter_data_t;
 
+typedef enum {
+    ZSW_FLOOR_COUNTER_STOPPED,
+    ZSW_FLOOR_COUNTER_IDLE,
+    ZSW_FLOOR_COUNTER_WAIT_BASELINE,
+    ZSW_FLOOR_COUNTER_TRACKING,
+} zsw_floor_counter_state_t;
+
+typedef struct {
+    bool enabled;
+    zsw_floor_counter_state_t state;
+    bool pressure_fast_request_owned;
+    bool step_snapshot_request_owned;
+} zsw_floor_counter_status_t;
+
 /** @brief Notification of changed floor totals, including daily resets. */
 typedef void (*zsw_floor_counter_changed_cb_t)(void);
 
-/** @brief Start floor tracking and daily reset checks after sensor initialization. */
+/** @brief Initialize floor tracking and daily reset checks after sensor initialization. */
 void zsw_floor_counter_init(void);
+
+/**
+ * @brief Persist and apply the desired floor-counter state.
+ * @return 0 on acceptance, or a negative error if persistence or scheduling fails.
+ */
+int zsw_floor_counter_set_enabled(bool enabled);
+
+/** @brief Get the accepted desired floor-counter state. */
+bool zsw_floor_counter_is_enabled(void);
+
+/** @brief Get desired state, applied FSM state, and floor-owned request status. */
+zsw_floor_counter_status_t zsw_floor_counter_get_status(void);
+
+/** @brief Get the display name for a floor-counter FSM state. */
+const char *zsw_floor_counter_state_name(zsw_floor_counter_state_t state);
 
 /**
  * @brief Register the count-change callback before initialization.

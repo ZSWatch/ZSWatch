@@ -17,10 +17,14 @@
 
 #include <errno.h>
 #include <math.h>
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/zbus/zbus.h>
+#ifdef CONFIG_SETTINGS
+#include <zephyr/settings/settings.h>
+#endif
 
 #include "events/accel_event.h"
 #include "events/floor_count_event.h"
@@ -30,6 +34,7 @@
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_pressure_sensor.h"
 #include "zsw_clock.h"
+#include "zsw_settings.h"
 
 LOG_MODULE_REGISTER(zsw_floor_counter, CONFIG_ZSW_SENSORS_LOG_LEVEL);
 
@@ -55,14 +60,8 @@ typedef struct {
     uint32_t last_reset_date;
 } floor_count_state_t;
 
-typedef enum {
-    FLOOR_FSM_IDLE,
-    FLOOR_FSM_WAIT_BASELINE,
-    FLOOR_FSM_TRACKING,
-} floor_fsm_state_t;
-
 typedef struct {
-    floor_fsm_state_t state;
+    zsw_floor_counter_state_t state;
     uint32_t episode_start_ms;
     uint32_t last_progress_ms;
     uint32_t last_count;
@@ -86,6 +85,7 @@ typedef enum {
 typedef struct {
     floor_work_type_t type;
     uint32_t timestamp_ms;
+    uint32_t event_generation;
     union {
         float pressure_pa;
         float temperature_k;
@@ -101,6 +101,10 @@ static void inactivity_timeout_handler(struct k_work *work);
 static void on_pressure_event(const struct zbus_channel *chan);
 static void on_accel_event(const struct zbus_channel *chan);
 static void on_day_check(const struct zbus_channel *chan);
+static void retry_floor_work_handler(struct k_work *work);
+#ifdef CONFIG_SETTINGS
+static int floor_settings_load(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg);
+#endif
 
 ZBUS_CHAN_DECLARE(floor_count_chan);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
@@ -124,14 +128,41 @@ static bool pressure_fast_requested;
 static bool step_snapshots_requested;
 
 static atomic_t initialized;
+static atomic_t event_generation;
 /* Cross-thread snapshot: up in the low 16 bits, down in the high 16 bits. */
 static atomic_t published_counts;
 /* Registered before initialization; invoked only by the floor worker. */
 static zsw_floor_counter_changed_cb_t changed_callback;
 
+K_MUTEX_DEFINE(control_lock);
+static bool desired_enabled = true;
+static uint32_t preference_generation;
+static uint32_t disable_generation;
+static uint32_t applied_preference_generation;
+static uint32_t applied_disable_generation;
+static bool applied_enabled;
+static bool control_applied;
+
 K_WORK_DEFINE(floor_work, process_floor_work);
 K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
+K_WORK_DELAYABLE_DEFINE(floor_retry_work, retry_floor_work_handler);
 K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
+
+static int submit_floor_work(void)
+{
+    int ret = k_work_submit(&floor_work);
+
+    if (ret < 0) {
+        LOG_WRN("Floor work submission failed: %d; retrying", ret);
+        int retry_ret = k_work_reschedule(&floor_retry_work, K_MSEC(10));
+        if (retry_ret < 0) {
+            LOG_ERR("Floor work retry scheduling failed: %d", retry_ret);
+            return retry_ret;
+        }
+    }
+
+    return 0;
+}
 
 static bool enqueue_floor_work(const floor_work_item_t *item)
 {
@@ -140,9 +171,166 @@ static bool enqueue_floor_work(const floor_work_item_t *item)
         return false;
     }
 
-    k_work_submit(&floor_work);
-    return true;
+    return submit_floor_work() == 0;
 }
+
+static void reset_episode(void)
+{
+    memset(&floor_fsm, 0, sizeof(floor_fsm));
+    floor_fsm.state = ZSW_FLOOR_COUNTER_IDLE;
+    floor_state.climb_accum = 0.0f;
+    floor_state.descend_accum = 0.0f;
+}
+
+static void enter_stopped(void)
+{
+    bool was_stopped = floor_fsm.state == ZSW_FLOOR_COUNTER_STOPPED;
+
+    memset(&floor_fsm, 0, sizeof(floor_fsm));
+    floor_fsm.state = ZSW_FLOOR_COUNTER_STOPPED;
+    floor_state.climb_accum = 0.0f;
+    floor_state.descend_accum = 0.0f;
+    if (!was_stopped) {
+        LOG_INF("Floor counter stopped; partial episode discarded");
+    }
+}
+
+/* The caller holds control_lock; only this worker changes the applied FSM. */
+static void apply_enabled_preference_locked(void)
+{
+    if (!control_applied || applied_disable_generation != disable_generation) {
+        enter_stopped();
+        applied_disable_generation = disable_generation;
+        applied_enabled = false;
+        control_applied = true;
+    }
+
+    if (desired_enabled) {
+        if (!applied_enabled || floor_fsm.state == ZSW_FLOOR_COUNTER_STOPPED) {
+            reset_episode();
+            LOG_INF("Floor counter enabled");
+        }
+        applied_enabled = true;
+    } else {
+        if (applied_enabled || floor_fsm.state != ZSW_FLOOR_COUNTER_STOPPED) {
+            enter_stopped();
+        }
+        applied_enabled = false;
+    }
+
+    applied_preference_generation = preference_generation;
+}
+
+static bool is_tracking_input_event(floor_work_type_t type)
+{
+    switch (type) {
+        case FLOOR_WORK_PRESSURE:
+        case FLOOR_WORK_STEP:
+        case FLOOR_WORK_ACTIVITY:
+            return true;
+        case FLOOR_WORK_INACTIVITY_TIMEOUT:
+        case FLOOR_WORK_TEMPERATURE:
+        case FLOOR_WORK_DAY_CHECK:
+        default:
+            return false;
+    }
+}
+
+int zsw_floor_counter_set_enabled(bool enabled)
+{
+    int ret = 0;
+
+    k_mutex_lock(&control_lock, K_FOREVER);
+    if (desired_enabled != enabled) {
+#ifdef CONFIG_SETTINGS
+        uint8_t stored_value = 0U;
+        if (enabled) {
+            stored_value = 1U;
+        }
+        ret = settings_save_one(ZSW_SETTINGS_FLOOR_COUNTER_EN, &stored_value, sizeof(stored_value));
+        if (ret != 0) {
+            LOG_ERR("Failed to save floor-counter preference: %d", ret);
+            k_mutex_unlock(&control_lock);
+            return ret;
+        }
+#endif
+        desired_enabled = enabled;
+        preference_generation++;
+        if (!enabled) {
+            disable_generation++;
+        }
+        atomic_set(&event_generation, (atomic_val_t)preference_generation);
+    }
+    k_mutex_unlock(&control_lock);
+
+    if (atomic_get(&initialized)) {
+        ret = submit_floor_work();
+    }
+    return ret;
+}
+
+bool zsw_floor_counter_is_enabled(void)
+{
+    k_mutex_lock(&control_lock, K_FOREVER);
+    bool enabled = desired_enabled;
+    k_mutex_unlock(&control_lock);
+    return enabled;
+}
+
+zsw_floor_counter_status_t zsw_floor_counter_get_status(void)
+{
+    k_mutex_lock(&control_lock, K_FOREVER);
+    zsw_floor_counter_status_t status = {
+        .enabled = desired_enabled,
+        .state = floor_fsm.state,
+        .pressure_fast_request_owned = pressure_fast_requested,
+        .step_snapshot_request_owned = step_snapshots_requested,
+    };
+    k_mutex_unlock(&control_lock);
+    return status;
+}
+
+#ifdef CONFIG_SETTINGS
+static int floor_settings_load(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg)
+{
+    const char *next;
+
+    if (!settings_name_steq(key, "enabled", &next) || next != NULL) {
+        return -ENOENT;
+    }
+    if (len != sizeof(uint8_t)) {
+        LOG_ERR("Malformed floor-counter preference length: %u", (unsigned int)len);
+        return -EINVAL;
+    }
+
+    uint8_t stored_value;
+    int ret = read_cb(cb_arg, &stored_value, sizeof(stored_value));
+    if (ret != sizeof(stored_value)) {
+        LOG_ERR("Failed to read floor-counter preference: %d", ret);
+        if (ret < 0) {
+            return ret;
+        }
+        return -EINVAL;
+    }
+    if (stored_value > 1U) {
+        LOG_ERR("Malformed floor-counter preference value: %u", stored_value);
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&control_lock, K_FOREVER);
+    desired_enabled = stored_value != 0U;
+    k_mutex_unlock(&control_lock);
+    if (stored_value != 0U) {
+        LOG_INF("Loaded floor-counter preference: enabled");
+    } else {
+        LOG_INF("Loaded floor-counter preference: disabled");
+    }
+    return 0;
+}
+
+SETTINGS_STATIC_HANDLER_DEFINE(floor_counter, "floor", NULL,
+                               floor_settings_load, NULL, NULL);
+#endif
 
 static void check_daily_reset(void)
 {
@@ -182,21 +370,22 @@ static void start_episode(uint32_t now_ms)
 {
     floor_fsm.episode_start_ms = now_ms;
     floor_fsm.last_progress_ms = now_ms;
-    floor_fsm.state = FLOOR_FSM_WAIT_BASELINE;
+    floor_fsm.state = ZSW_FLOOR_COUNTER_WAIT_BASELINE;
     LOG_INF("Floor episode started: waiting for baseline, steps=%u", floor_fsm.last_count);
     k_work_reschedule(&floor_inactivity_work, K_MSEC(EPISODE_INACTIVITY_MS));
 }
 
 static void end_episode_if_inactive(uint32_t now_ms)
 {
-    if (floor_fsm.state == FLOOR_FSM_IDLE ||
+    if ((floor_fsm.state != ZSW_FLOOR_COUNTER_WAIT_BASELINE &&
+         floor_fsm.state != ZSW_FLOOR_COUNTER_TRACKING) ||
         (uint32_t)(now_ms - floor_fsm.last_progress_ms) < EPISODE_INACTIVITY_MS) {
         return;
     }
 
     floor_state.climb_accum = 0.0f;
     floor_state.descend_accum = 0.0f;
-    floor_fsm.state = FLOOR_FSM_IDLE;
+    floor_fsm.state = ZSW_FLOOR_COUNTER_IDLE;
     LOG_INF("Floor episode ended: inactive, up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
 }
 
@@ -269,7 +458,7 @@ static void process_step_event(uint32_t step_count, bool snapshot, uint32_t now_
     floor_fsm.last_count = step_count;
     floor_fsm.has_last_count = true;
 
-    if (floor_fsm.state == FLOOR_FSM_IDLE) {
+    if (floor_fsm.state == ZSW_FLOOR_COUNTER_IDLE) {
         if (!snapshot && step_count != 0U && (first_sample || delta > 0U)) {
             start_episode(now_ms);
         }
@@ -281,7 +470,7 @@ static void process_step_event(uint32_t step_count, bool snapshot, uint32_t now_
 
     floor_fsm.last_progress_ms = now_ms;
     k_work_reschedule(&floor_inactivity_work, K_MSEC(EPISODE_INACTIVITY_MS));
-    if (floor_fsm.state == FLOOR_FSM_TRACKING) {
+    if (floor_fsm.state == ZSW_FLOOR_COUNTER_TRACKING) {
         commit_height(now_ms);
     }
 }
@@ -293,10 +482,10 @@ static void process_pressure_sample(float pressure_pa, uint32_t now_ms)
     }
 
     floor_fsm.latest_pressure_pa = pressure_pa;
-    if (floor_fsm.state == FLOOR_FSM_WAIT_BASELINE && floor_fsm.has_last_count &&
+    if (floor_fsm.state == ZSW_FLOOR_COUNTER_WAIT_BASELINE && floor_fsm.has_last_count &&
         (uint32_t)(now_ms - floor_fsm.episode_start_ms) >= EPISODE_SETTLE_MS) {
         set_commit_point(now_ms);
-        floor_fsm.state = FLOOR_FSM_TRACKING;
+        floor_fsm.state = ZSW_FLOOR_COUNTER_TRACKING;
         LOG_INF("Floor baseline ready: tracking, pressure=%d Pa, steps=%u",
                 (int)pressure_pa, floor_fsm.last_count);
     }
@@ -324,7 +513,10 @@ static void publish_counts(void)
 
 static void sync_tracking(void)
 {
-    bool active = floor_fsm.state != FLOOR_FSM_IDLE;
+    k_mutex_lock(&control_lock, K_FOREVER);
+    bool active = desired_enabled &&
+                  (floor_fsm.state == ZSW_FLOOR_COUNTER_WAIT_BASELINE ||
+                   floor_fsm.state == ZSW_FLOOR_COUNTER_TRACKING);
     if (active != pressure_fast_requested) {
         int ret = zsw_pressure_sensor_request_fast(&pressure_fast_request, active);
         if (ret == 0) {
@@ -343,10 +535,28 @@ static void sync_tracking(void)
     }
     if (active != pressure_fast_requested || active != step_snapshots_requested) {
         k_work_reschedule(&floor_inactivity_work, K_SECONDS(1));
+        k_mutex_unlock(&control_lock);
         return;
     }
     if (!active) {
         k_work_cancel_delayable(&floor_inactivity_work);
+    }
+    k_mutex_unlock(&control_lock);
+}
+
+const char *zsw_floor_counter_state_name(zsw_floor_counter_state_t state)
+{
+    switch (state) {
+        case ZSW_FLOOR_COUNTER_STOPPED:
+            return "STOPPED";
+        case ZSW_FLOOR_COUNTER_IDLE:
+            return "IDLE";
+        case ZSW_FLOOR_COUNTER_WAIT_BASELINE:
+            return "WAIT_BASELINE";
+        case ZSW_FLOOR_COUNTER_TRACKING:
+            return "TRACKING";
+        default:
+            return "UNKNOWN";
     }
 }
 
@@ -355,47 +565,72 @@ static void process_floor_work(struct k_work *work)
     floor_work_item_t item;
 
     ARG_UNUSED(work);
+    k_mutex_lock(&control_lock, K_FOREVER);
+    apply_enabled_preference_locked();
+    k_mutex_unlock(&control_lock);
+
     while (k_msgq_get(&floor_work_queue, &item, K_NO_WAIT) == 0) {
         check_daily_reset();
-        switch (item.type) {
-            case FLOOR_WORK_PRESSURE:
-                process_pressure_sample(item.data.pressure_pa, item.timestamp_ms);
-                break;
-            case FLOOR_WORK_STEP:
-                process_step_event(item.data.step.count, item.data.step.snapshot, item.timestamp_ms);
-                break;
-            case FLOOR_WORK_ACTIVITY:
-                if (floor_fsm.state == FLOOR_FSM_IDLE) {
-                    start_episode(item.timestamp_ms);
-                }
-                break;
-            case FLOOR_WORK_INACTIVITY_TIMEOUT:
-                end_episode_if_inactive(k_uptime_get_32());
-                if (floor_fsm.state != FLOOR_FSM_IDLE) {
-                    uint32_t elapsed_ms = k_uptime_get_32() - floor_fsm.last_progress_ms;
-                    k_work_reschedule(&floor_inactivity_work,
-                                      K_MSEC(EPISODE_INACTIVITY_MS - MIN(elapsed_ms, EPISODE_INACTIVITY_MS)));
-                }
-                break;
-            case FLOOR_WORK_TEMPERATURE:
-                temperature_k = item.data.temperature_k;
-                break;
-            case FLOOR_WORK_DAY_CHECK:
-                if (floor_fsm.state != FLOOR_FSM_IDLE) {
-                    LOG_INF("Floor status: state=%s steps=%u pressure=%d Pa up=%u down=%u "
-                            "partial_up=%d cm partial_down=%d cm idle=%u ms",
-                            floor_fsm.state == FLOOR_FSM_WAIT_BASELINE ? "WAIT_BASELINE" : "TRACKING",
-                            floor_fsm.last_count, (int)floor_fsm.latest_pressure_pa,
-                            floor_state.floors_up, floor_state.floors_down,
-                            (int)(floor_state.climb_accum * 100.0f),
-                            (int)(floor_state.descend_accum * 100.0f),
-                            (uint32_t)(item.timestamp_ms - floor_fsm.last_progress_ms));
-                }
-                break;
+        k_mutex_lock(&control_lock, K_FOREVER);
+        apply_enabled_preference_locked();
+
+        bool ignore_tracking_event = false;
+        if (is_tracking_input_event(item.type)) {
+            if (!desired_enabled) {
+                ignore_tracking_event = true;
+            } else if (item.event_generation != applied_preference_generation) {
+                ignore_tracking_event = true;
+            }
         }
+
+        if (ignore_tracking_event) {
+            LOG_DBG("Ignoring stale or disabled floor event: type=%d generation=%u applied=%u",
+                    item.type, item.event_generation, applied_preference_generation);
+        } else {
+            switch (item.type) {
+                case FLOOR_WORK_PRESSURE:
+                    process_pressure_sample(item.data.pressure_pa, item.timestamp_ms);
+                    break;
+                case FLOOR_WORK_STEP:
+                    process_step_event(item.data.step.count, item.data.step.snapshot, item.timestamp_ms);
+                    break;
+                case FLOOR_WORK_ACTIVITY:
+                    if (floor_fsm.state == ZSW_FLOOR_COUNTER_IDLE) {
+                        start_episode(item.timestamp_ms);
+                    }
+                    break;
+                case FLOOR_WORK_INACTIVITY_TIMEOUT:
+                    end_episode_if_inactive(k_uptime_get_32());
+                    if (floor_fsm.state == ZSW_FLOOR_COUNTER_WAIT_BASELINE ||
+                        floor_fsm.state == ZSW_FLOOR_COUNTER_TRACKING) {
+                        uint32_t elapsed_ms = k_uptime_get_32() - floor_fsm.last_progress_ms;
+                        k_work_reschedule(&floor_inactivity_work,
+                                          K_MSEC(EPISODE_INACTIVITY_MS - MIN(elapsed_ms, EPISODE_INACTIVITY_MS)));
+                    }
+                    break;
+                case FLOOR_WORK_TEMPERATURE:
+                    temperature_k = item.data.temperature_k;
+                    break;
+                case FLOOR_WORK_DAY_CHECK:
+                    LOG_INF("Floor status: enabled=%d state=%s pressure_request_owned=%d "
+                            "snapshot_request_owned=%d up=%u down=%u partial_up=%d cm partial_down=%d cm",
+                            desired_enabled, zsw_floor_counter_state_name(floor_fsm.state), pressure_fast_requested,
+                            step_snapshots_requested, floor_state.floors_up, floor_state.floors_down,
+                            (int)(floor_state.climb_accum * 100.0f),
+                            (int)(floor_state.descend_accum * 100.0f));
+                    break;
+            }
+        }
+        k_mutex_unlock(&control_lock);
         publish_counts();
         sync_tracking();
     }
+
+    k_mutex_lock(&control_lock, K_FOREVER);
+    apply_enabled_preference_locked();
+    k_mutex_unlock(&control_lock);
+    publish_counts();
+    sync_tracking();
 }
 
 static void inactivity_timeout_handler(struct k_work *work)
@@ -411,6 +646,12 @@ static void inactivity_timeout_handler(struct k_work *work)
     }
 }
 
+static void retry_floor_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    submit_floor_work();
+}
+
 static void on_pressure_event(const struct zbus_channel *chan)
 {
     if (!atomic_get(&initialized)) {
@@ -421,6 +662,7 @@ static void on_pressure_event(const struct zbus_channel *chan)
     const floor_work_item_t item = {
         .type = FLOOR_WORK_PRESSURE,
         .timestamp_ms = k_uptime_get_32(),
+        .event_generation = (uint32_t)atomic_get(&event_generation),
         .data.pressure_pa = event->pressure,
     };
     enqueue_floor_work(&item);
@@ -433,7 +675,10 @@ static void on_accel_event(const struct zbus_channel *chan)
     }
 
     const struct accel_event *event = zbus_chan_const_msg(chan);
-    floor_work_item_t item = { .timestamp_ms = k_uptime_get_32() };
+    floor_work_item_t item = {
+        .timestamp_ms = k_uptime_get_32(),
+        .event_generation = (uint32_t)atomic_get(&event_generation),
+    };
 
     if (event->data.type == ZSW_IMU_EVT_TYPE_STEP_ACTIVITY) {
         if (event->data.data.step_activity != ZSW_IMU_EVT_STEP_ACTIVITY_WALK &&
@@ -470,6 +715,10 @@ void zsw_floor_counter_init(void)
         LOG_WRN("Floor daily reset observer failed: %d", ret);
     }
     on_day_check(NULL);
+    ret = submit_floor_work();
+    if (ret != 0) {
+        LOG_ERR("Floor initialization reconciliation scheduling failed: %d", ret);
+    }
 }
 
 void zsw_floor_counter_set_callback(zsw_floor_counter_changed_cb_t callback)
@@ -498,5 +747,8 @@ int zsw_floor_counter_set_temperature(float ambient_temperature_k)
         .type = FLOOR_WORK_TEMPERATURE,
         .data.temperature_k = ambient_temperature_k,
     };
-    return enqueue_floor_work(&item) ? 0 : -ENOMSG;
+    if (!enqueue_floor_work(&item)) {
+        return -ENOMSG;
+    }
+    return 0;
 }
