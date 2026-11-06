@@ -174,12 +174,23 @@ static bool enqueue_floor_work(const floor_work_item_t *item)
     return submit_floor_work() == 0;
 }
 
+static void log_floor_status(void)
+{
+    LOG_INF("Floor status: enabled=%d state=%s pressure_request_owned=%d "
+            "snapshot_request_owned=%d up=%u down=%u partial_up=%d cm partial_down=%d cm",
+            desired_enabled, zsw_floor_counter_state_name(floor_fsm.state), pressure_fast_requested,
+            step_snapshots_requested, floor_state.floors_up, floor_state.floors_down,
+            (int)(floor_state.climb_accum * 100.0f),
+            (int)(floor_state.descend_accum * 100.0f));
+}
+
 static void reset_episode(void)
 {
     memset(&floor_fsm, 0, sizeof(floor_fsm));
     floor_fsm.state = ZSW_FLOOR_COUNTER_IDLE;
     floor_state.climb_accum = 0.0f;
     floor_state.descend_accum = 0.0f;
+    log_floor_status();
 }
 
 static void enter_stopped(void)
@@ -192,6 +203,7 @@ static void enter_stopped(void)
     floor_state.descend_accum = 0.0f;
     if (!was_stopped) {
         LOG_INF("Floor counter stopped; partial episode discarded");
+        log_floor_status();
     }
 }
 
@@ -387,6 +399,7 @@ static void end_episode_if_inactive(uint32_t now_ms)
     floor_state.descend_accum = 0.0f;
     floor_fsm.state = ZSW_FLOOR_COUNTER_IDLE;
     LOG_INF("Floor episode ended: inactive, up=%u down=%u", floor_state.floors_up, floor_state.floors_down);
+    log_floor_status();
 }
 
 static void commit_height(uint32_t now_ms)
@@ -612,12 +625,6 @@ static void process_floor_work(struct k_work *work)
                     temperature_k = item.data.temperature_k;
                     break;
                 case FLOOR_WORK_DAY_CHECK:
-                    LOG_INF("Floor status: enabled=%d state=%s pressure_request_owned=%d "
-                            "snapshot_request_owned=%d up=%u down=%u partial_up=%d cm partial_down=%d cm",
-                            desired_enabled, zsw_floor_counter_state_name(floor_fsm.state), pressure_fast_requested,
-                            step_snapshots_requested, floor_state.floors_up, floor_state.floors_down,
-                            (int)(floor_state.climb_accum * 100.0f),
-                            (int)(floor_state.descend_accum * 100.0f));
                     break;
             }
         }
