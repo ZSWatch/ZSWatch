@@ -1,6 +1,6 @@
 /*
  * This file is part of ZSWatch project <https://github.com/zswatch/>.
- * Copyright (c) 2025 ZSWatch Project.
+ * Copyright (c) 2026 ZSWatch Project.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,21 +17,4 @@
 
 #pragma once
 
-#include <inttypes.h>
-#include <lvgl.h>
-
-#include <zephyr/devicetree.h>
-
-typedef void(*on_ui_close_cb_t)(void);
-
-typedef void(*on_reference_set_cb_t)(void);
-
-void sensors_summary_ui_show(lv_obj_t *root, on_ui_close_cb_t close_cb, on_reference_set_cb_t ref_set_cb);
-
-void sensors_summary_ui_remove(void);
-
-void sensors_summary_ui_set_pressure(float pressure);
-
-void sensors_summary_ui_set_rel_height(float rel_height);
-
-void sensors_summary_ui_set_light(float light);
+void zsw_altimeter_calibration_start(void);

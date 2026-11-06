@@ -91,7 +91,7 @@ graph LR
 
 ## Event System (Zbus)
 
-ZSWatch uses Zephyr's **zbus** for all inter-module communication. Modules publish typed structs to named channels, and any number of listeners or subscribers receive them asynchronously.
+ZSWatch uses Zephyr's **zbus** for event and measurement distribution. Modules publish typed structs to named channels; listeners run in the publisher's context, while subscribers can process messages asynchronously. Direct APIs express requests for sensor services, with each sensor module owning its configuration and recovery.
 
 Key rules:
 - **Listeners run in the publisher's context** (often a BLE or sensor thread with limited stack). Always use `k_work_submit()` for non-trivial processing.
@@ -111,7 +111,7 @@ Key rules:
 | `light_data_chan` | Lux value | Sensor → Apps | Ambient light level |
 | `magnetometer_data_chan` | x/y/z components | Sensor → Apps | Magnetometer heading data |
 | `music_control_data_chan` | Play/pause/next/prev | App → BLE | Music UI commands sent to phone |
-| `pressure_data_chan` | Pressure, temperature | Sensor → Apps | Barometric pressure readings |
+| `pressure_data_chan` | Pressure (Pa), temperature (Celsius) | Sensor → Apps | Barometric pressure readings |
 | `periodic_event_100ms_chan` | Tick | Timer → Subscribers | 100 ms periodic event |
 | `periodic_event_1s_chan` | Tick | Timer → Subscribers | 1-second periodic event |
 | `periodic_event_10s_chan` | Tick | Timer → Subscribers | 10-second periodic event |
@@ -149,6 +149,59 @@ Periodic Timer → Sensor Driver → zbus channel → App Listener → k_work �
 ```
 
 Sensor modules (IMU, magnetometer, pressure, environment, light) are abstracted behind simple APIs in `app/src/sensors/`. The IMU is an exception: it is primarily **interrupt-driven** (gestures, step events) rather than polled. The **Heart Rate (HR) driver** (`app/src/drivers/zsw_hr.c/h`) provides periodic or continuous heart rate measurements via callback, supporting modes for real-time biometric monitoring.
+
+### Floor Counter
+
+`app/src/sensors/zsw_floor_counter.c/h` owns pressure/step fusion and the episode
+FSM, ending tracking after 30 seconds without steps. Events are queued for processing
+on the system workqueue. Daily totals reset on date changes and are published on
+`floor_count_chan`, independently of the Altimeter UI.
+
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> WAIT_BASELINE: WALK/RUN activity or new non-snapshot steps
+    WAIT_BASELINE --> TRACKING: Valid pressure and known step count after 1.5 s settling
+    WAIT_BASELINE --> WAIT_BASELINE: Step-count progress refreshes inactivity timeout
+    TRACKING --> TRACKING: Step-count progress validates and commits height
+    WAIT_BASELINE --> IDLE: 30 s without step-count progress
+    TRACKING --> IDLE: 30 s without step-count progress
+
+    IDLE: IDLE - Release floor-owned sensor requests
+    WAIT_BASELINE: WAIT_BASELINE - Request fast pressure and one-second step snapshots
+    TRACKING: TRACKING - Accumulate accepted height. one floor is 2.8 m
+```
+
+Daily reset clears totals and partial heights without changing the FSM state.
+
+During tracking, the counter uses caller-owned requests through
+`zsw_pressure_sensor_request_fast()` and `zsw_imu_request_step_snapshots()`.
+These APIs are idempotent and asynchronous: success means accepted, not applied.
+Each sensor aggregates requests and retries failed updates; releasing one request
+does not cancel another caller's demand. Measurements still use zbus.
+
+The pressure service owns these BMP581 configuration profiles:
+
+| Setting | IDLE (`PROFILE_10S`) | FAST (`PROFILE_1S`) |
+|---------|----------------------|---------------------|
+| Power mode (`mode`) | NORMAL | NORMAL |
+| Output data rate (`odr`) | 0.25 Hz | 10 Hz |
+| Pressure oversampling (`osr_p`) | 4x | 4x |
+| Temperature oversampling (`osr_t`) | 64x | 1x |
+| Pressure IIR (`iir_p`) | 63 | 3 |
+| Temperature IIR (`iir_t`) | 63 | Bypass |
+| FIFO (`fifo_enabled`) | Disabled | Disabled |
+| Publication interval (software) | 10 s | 1 s |
+
+The IMU owns step/activity detection and one-second cumulative step snapshots.
+Snapshots read the existing count, not additional steps, and cannot start an episode
+by themselves.
+
+The Altimeter retains calibration, altitude calculation, charts, and UI. It supplies
+ambient temperature to the counter; sea-level calibration does not count as a climb.
+
+Diagnostics: `floors`, `event pressure <hPa>`, and `event step <count> [snapshot]`.
+Add `boards/step_debug.conf` for BMI270 IRQ diagnostics and tracking logs.
 
 ### Heart Rate Manager
 

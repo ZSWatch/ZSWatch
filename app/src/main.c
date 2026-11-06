@@ -65,6 +65,8 @@
 #include "managers/zsw_app_manager.h"
 #include "managers/zsw_notification_manager.h"
 
+#include "applications/altimeter/altimeter_app.h"
+#include "sensors/zsw_floor_counter.h"
 #include "applications/watchface/watchface_app.h"
 
 #include <filesystem/zsw_rtt_flash_loader.h>
@@ -115,6 +117,8 @@ static void run_init_work(struct k_work *item)
     zsw_imu_init();
     zsw_magnetometer_init();
     zsw_pressure_sensor_init();
+    zsw_floor_counter_init();
+    zsw_altimeter_calibration_start();
     zsw_light_sensor_init();
 
     zsw_power_manager_init();
@@ -183,12 +187,18 @@ static void enable_bluetooth(void)
     err = bt_enable(NULL);
     if (err != 0) {
         LOG_ERR("Failed to enable Bluetooth, err: %d", err);
-        return;
     }
 
 #ifdef CONFIG_SETTINGS
-    settings_load();
+    int settings_err = settings_load();
+    if (settings_err != 0) {
+        LOG_ERR("Failed to load settings: %d", settings_err);
+    }
 #endif
+
+    if (err != 0) {
+        return;
+    }
 
     __ASSERT_NO_MSG(ble_comm_init() == 0);
     bleAoaInit();
