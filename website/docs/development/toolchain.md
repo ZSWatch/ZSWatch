@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # Setting up the Toolchain
 
+Using Ubuntu on Windows? Follow the [WSL Development Setup](./wsl_setup.md) guide for a fresh Linux-side toolchain, build, and simulator setup.
+
 ## 1. Install Required Tools
 
 - [nRF Util](https://www.nordicsemi.com/Products/Development-tools/nRF-Util/)  
