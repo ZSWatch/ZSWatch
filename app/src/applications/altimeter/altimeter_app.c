@@ -24,6 +24,7 @@
 
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include <zephyr/bluetooth/conn.h>
 #include <ble/ble_http.h>
 #include "applications/altimeter/altimeter_app.h"
 #include "events/ble_event.h"
@@ -510,9 +511,17 @@ static int altimeter_app_add(void)
     return 0;
 }
 
-void zsw_altimeter_calibration_start(void)
+static void altimeter_ble_connected(struct bt_conn *conn, uint8_t err)
 {
-    k_work_reschedule(&altimeter_calibration_work, K_NO_WAIT);
+    ARG_UNUSED(conn);
+
+    if (err == 0) {
+        k_work_reschedule(&altimeter_calibration_work, K_NO_WAIT);
+    }
 }
+
+BT_CONN_CB_DEFINE(altimeter_conn_callbacks) = {
+    .connected = altimeter_ble_connected
+};
 
 SYS_INIT(altimeter_app_add, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
