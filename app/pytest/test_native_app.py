@@ -29,7 +29,9 @@ Options:
     --screenshot-dir DIR  Directory for screenshots (default: /tmp)
 """
 
+import math
 import os
+import re
 import subprocess
 import time
 
@@ -173,6 +175,152 @@ class TestNativeSim:
         assert not crash, f"Crash after closing {app_name}: {crash}"
 
         sim.shell_command("app state")
+
+
+@pytest.mark.linux_only
+class TestNativeFloorCounter:
+    """Exercise pressure/step fusion with the Altimeter UI closed."""
+
+    @pytest.fixture
+    def sim(self, request):
+        exe = _find_exe(request)
+        if not exe:
+            pytest.skip("No native_sim executable found (build or provide --exe-path)")
+
+        device = NativeSimDevice(exe_path=exe)
+        try:
+            device.start()
+            assert device.wait_for_log(BOOT_MARKER, timeout=BOOT_TIMEOUT), device.get_logs()
+            yield device
+        finally:
+            device.stop()
+
+    @staticmethod
+    def _command(sim, command, pattern):
+        start = len(sim.get_shell_output())
+        sim.shell_command(command)
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            assert not sim.has_crash(), sim.get_logs()
+            output = sim.get_shell_output()[start:]
+            match = re.search(pattern, output)
+            if match:
+                return match
+            time.sleep(0.05)
+        pytest.fail(f"No response to {command!r}: {sim.get_shell_output()[start:]}")
+
+    def _pressure(self, sim, pressure_hpa):
+        self._command(sim, f"event pressure {pressure_hpa}", r"Injected pressure:")
+
+    def _steps(self, sim, count, snapshot=False):
+        suffix = " snapshot" if snapshot else ""
+        self._command(sim, f"event step {count}{suffix}", r"Injected cumulative step count:")
+
+    def _counts(self, sim):
+        match = self._command(sim, "floors", r"Floors: up=(\d+) down=(\d+)")
+        return int(match[1]), int(match[2])
+
+    def _wait_for_counts(self, sim, expected, timeout=3):
+        deadline = time.monotonic() + timeout
+        actual = None
+        while time.monotonic() < deadline:
+            actual = self._counts(sim)
+            if actual == expected:
+                return
+            time.sleep(0.1)
+        pytest.fail(f"Expected floors {expected}, got {actual}: {sim.get_logs()}")
+
+    def test_default_enabled_starts_idle_without_fast_requests(self, sim):
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            status = self._command(
+                sim,
+                "floors",
+                r"Floor counter: enabled=(yes|no) state=(STOPPED|IDLE|WAIT_BASELINE|TRACKING)",
+            )
+            requests = self._command(
+                sim,
+                "floors",
+                r"Floor requests \(ownership, not hardware state\): pressure_fast=(yes|no) step_snapshots=(yes|no)",
+            )
+            if status.group(1) == "yes" and status.group(2) == "IDLE":
+                assert requests.group(1) == "no"
+                assert requests.group(2) == "no"
+                return
+            time.sleep(0.1)
+        pytest.fail(f"Default floor counter did not reach idle: {sim.get_logs()}")
+
+    @pytest.mark.parametrize(
+        "direction,reset_counter",
+        [(0, False), (1, False), (-1, False), (1, True)],
+        ids=["flat", "up", "down", "up-after-reset"],
+    )
+    def test_floor_counts(self, sim, direction, reset_counter):
+        assert self._counts(sim) == (0, 0)
+        self._steps(sim, 100)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+
+        count = 100
+        if reset_counter:
+            count = 0
+            self._steps(sim, count)
+
+        for sample in range(1, 5):
+            time.sleep(1.3)
+            height_m = direction * sample
+            pressure_hpa = 1000 * math.exp(-height_m * 9.80665 / (287.05 * 288.15))
+            self._pressure(sim, pressure_hpa)
+            count += 10
+            self._steps(sim, count)
+
+        expected = (1, 0) if direction > 0 else (0, 1) if direction < 0 else (0, 0)
+        assert self._counts(sim) == expected
+
+    def test_snapshot_does_not_start_episode(self, sim):
+        self._steps(sim, 100, snapshot=True)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+        time.sleep(4.5)
+        self._pressure(sim, 999.5)
+        self._steps(sim, 110)
+        assert self._counts(sim) == (0, 0)
+
+    def test_invalid_pressure_is_ignored(self, sim):
+        self._steps(sim, 100)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+        for pressure in ("nan", "inf", "0", "-1"):
+            self._pressure(sim, pressure)
+            self._steps(sim, 110)
+        assert self._counts(sim) == (0, 0)
+
+    def test_daily_reset_without_pressure(self, sim):
+        self._command(sim, "event time 12 0", r"Injected time: 12:00")
+        self._steps(sim, 100)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+
+        for sample in range(1, 5):
+            time.sleep(1.3)
+            pressure_hpa = 1000 * math.exp(-sample * 9.80665 / (287.05 * 288.15))
+            self._pressure(sim, pressure_hpa)
+            self._steps(sim, 100 + sample * 10)
+        self._wait_for_counts(sim, (1, 0))
+
+        self._command(sim, "event time 13 0", r"Injected time: 13:00")
+        self._steps(sim, 140, snapshot=True)
+        deadline = time.monotonic() + 11
+        while time.monotonic() < deadline:
+            assert self._counts(sim) == (1, 0), sim.get_logs()
+            time.sleep(0.5)
+
+        self._command(sim, "event time 23 59", r"Injected time: 23:59")
+        self._wait_for_counts(sim, (0, 0), timeout=75)
 
 
 # ── BLE tests ────────────────────────────────────────────────

@@ -28,6 +28,7 @@
 #include "ble/ble_comm.h"
 #include "ble/ble_log_backend.h"
 #include "sensors/zsw_imu.h"
+#include "sensors/zsw_floor_counter.h"
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/zsw_ui_controller.h"
@@ -55,6 +56,7 @@ static void on_clear_bonded_changed(lv_setting_value_t value, bool final);
 static void on_clear_external_flash_changed(lv_setting_value_t value, bool final);
 static void on_factory_reset_changed(lv_setting_value_t value, bool final);
 static void on_ble_log_changed(lv_setting_value_t value, bool final);
+static void on_floor_counter_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_swipe_back_changed(lv_setting_value_t value, bool final);
 static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
@@ -70,6 +72,7 @@ typedef struct setting_app {
     zsw_settings_ble_log_en_t           ble_log_enabled;
     zsw_settings_ble_aoa_en_t           ble_aoa_enabled;
     zsw_settings_ble_aoa_int_t          ble_aoa_tx_interval;
+    zsw_settings_floor_counter_en_t     floor_counter_enabled;
     zsw_settings_watchface_t            watchface;
 } setting_app_t;
 
@@ -82,6 +85,7 @@ static setting_app_t settings_app = {
     .ble_log_enabled = false,
     .ble_aoa_enabled = false,
     .ble_aoa_tx_interval = 100,
+    .floor_counter_enabled = true,
     .watchface = {
         .relative_battery = true,
         .animations_on = false,
@@ -171,6 +175,17 @@ static lv_settings_item_t general_page_items[] = {
             .btn = {
                 .name = "Factory reset",
                 .text = LV_SYMBOL_TRASH
+            }
+        }
+    },
+    {
+        .type = LV_SETTINGS_TYPE_SWITCH,
+        .icon = LV_SYMBOL_SETTINGS,
+        .change_callback = on_floor_counter_changed,
+        .item = {
+            .sw = {
+                .name = "Floor counter",
+                .inital_val = &settings_app.floor_counter_enabled,
             }
         }
     },
@@ -347,6 +362,7 @@ static lv_settings_page_t settings_menu[] = {
 static void settings_app_start(lv_obj_t *root, lv_group_t *group)
 {
     settings_load_subtree(ZSW_SETTINGS_PATH); // Update any values that may have changed outside of the settings app.
+    settings_app.floor_counter_enabled = zsw_floor_counter_is_enabled();
     lv_settings_create(root, settings_menu, ARRAY_SIZE(settings_menu), "N/A", group, on_close_settings);
 }
 
@@ -403,6 +419,18 @@ static void on_ble_log_changed(lv_setting_value_t value, bool final)
     ble_log_backend_set_enabled(settings_app.ble_log_enabled);
     settings_save_one(ZSW_SETTINGS_BLE_LOG_EN, &settings_app.ble_log_enabled,
                       sizeof(settings_app.ble_log_enabled));
+}
+
+static void on_floor_counter_changed(lv_setting_value_t value, bool final)
+{
+    ARG_UNUSED(final);
+
+    int rc = zsw_floor_counter_set_enabled(value.item.sw);
+    settings_app.floor_counter_enabled = zsw_floor_counter_is_enabled();
+    if (rc != 0) {
+        LOG_ERR("Failed to change floor counter setting: %d", rc);
+        zsw_popup_show("Floor counter", "Unable to apply setting.", NULL, 5, false);
+    }
 }
 
 static void on_relative_battery_press_changed(lv_setting_value_t value, bool final)

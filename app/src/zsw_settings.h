@@ -65,3 +65,6 @@ typedef bool zsw_settings_swipe_back_t;
 int zsw_settings_erase_all(void);
 
 #define ZSW_SETTINGS_HR_MODE "hr/mode"
+
+typedef bool zsw_settings_floor_counter_en_t;
+#define ZSW_SETTINGS_FLOOR_COUNTER_EN "floor/enabled"

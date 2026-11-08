@@ -18,13 +18,33 @@
 #pragma once
 
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/slist.h>
 
 #include "../../drivers/sensor/bmp581/zsw_bosch_bmp581.h"
 
+/** @brief Caller-owned request; zero-initialize and keep alive until released. */
+struct zsw_pressure_fast_request {
+    sys_snode_t node;
+    bool active;
+};
+
+/** @brief Initialize the requested pressure profile and periodic publication. */
 int zsw_pressure_sensor_init(void);
 
-int zsw_pressure_sensor_set_odr(uint8_t odr);
+/**
+ * @brief Request or release fast sampling. Thread-only and idempotent.
+ *
+ * Fast sampling lasts until all requests are released. Do not copy or modify req.
+ * Hardware updates are asynchronous; failures are logged and retried.
+ * @return 0 if accepted; negative errno leaves the request unchanged.
+ */
+int zsw_pressure_sensor_request_fast(struct zsw_pressure_fast_request *req, bool enable);
 
+/** @brief Get the latest pressure (Pa) and temperature (Celsius). */
+int zsw_pressure_sensor_get_sample(float *pressure, float *temperature);
+
+/** @brief Get the latest pressure in Pa. */
 int zsw_pressure_sensor_get_pressure(float *pressure);
 
+/** @brief Get the latest temperature in Celsius. */
 int zsw_pressure_sensor_get_temperature(float *temperature);

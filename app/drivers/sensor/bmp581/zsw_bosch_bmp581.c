@@ -24,6 +24,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
+#include <zephyr/kernel.h>
 
 #include "bmp5.h"
 #include "zsw_bosch_bmp581.h"
@@ -43,6 +44,14 @@ struct bmp581_config {
 static struct bmp5_osr_odr_press_config bmp5_osr_odr_press_cfg;
 static const struct device *device;
 static struct bmp5_dev bmp5_dev;
+static K_MUTEX_DEFINE(bmp581_lock);
+static bosch_bmp581_configuration_t applied_configuration;
+static bosch_bmp581_sample_t cached_sample;
+static bool configuration_valid;
+static bool configuration_saved;
+static bool sample_valid;
+static bool sensor_active = true;
+static uint32_t configuration_generation;
 
 /** @brief              Platform specific i2c read function.
  *  @param reg_addr     Register address
@@ -85,42 +94,228 @@ static void bmp5_delay_us(uint32_t period, void *p_intf)
     k_usleep(period);
 }
 
-/** @brief
- *  @param p_cfg
- *  @param p_dev
- *  @return         0 when successful
-*/
-static int8_t bmp5_set_config(struct bmp5_osr_odr_press_config *p_cfg, struct bmp5_dev *p_dev)
+static bool bmp581_config_equal(const bosch_bmp581_configuration_t *first,
+                               const bosch_bmp581_configuration_t *second)
 {
-    int8_t rslt;
-    struct bmp5_iir_config set_iir_cfg;
+    return first->mode == second->mode && first->odr == second->odr &&
+           first->osr_p == second->osr_p && first->osr_t == second->osr_t &&
+           first->iir_p == second->iir_p && first->iir_t == second->iir_t &&
+           first->fifo_enabled == second->fifo_enabled;
+}
 
-    rslt = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, p_dev);
-    if (rslt == BMP5_OK) {
-        rslt = bmp5_get_osr_odr_press_config(p_cfg, p_dev);
+static int bmp581_get_config_locked(bosch_bmp581_configuration_t *configuration)
+{
+    struct bmp5_osr_odr_press_config oversampling = {0};
+    struct bmp5_iir_config filtering = {0};
+    struct bmp5_fifo fifo = {0};
+    enum bmp5_powermode mode;
+    uint8_t interrupt_config[2];
+    uint8_t odr_config;
+    uint8_t dsp_config;
 
-        if (rslt == BMP5_OK) {
-            p_cfg->odr = BOSCH_BMP581_ODR_DEFAULT;
-            p_cfg->press_en = BMP5_ENABLE;
-            p_cfg->osr_t = BMP5_OVERSAMPLING_64X;
-            p_cfg->osr_p = BMP5_OVERSAMPLING_4X;
-
-            rslt = bmp5_set_osr_odr_press_config(p_cfg, p_dev);
-        }
-
-        if (rslt == BMP5_OK) {
-            set_iir_cfg.set_iir_t = BMP5_IIR_FILTER_COEFF_63;
-            set_iir_cfg.set_iir_p = BMP5_IIR_FILTER_COEFF_63;
-            set_iir_cfg.shdw_set_iir_t = BMP5_ENABLE;
-            set_iir_cfg.shdw_set_iir_p = BMP5_ENABLE;
-
-            rslt = bmp5_set_iir_config(&set_iir_cfg, p_dev);
-        }
-
-        rslt = bmp5_set_power_mode(BMP5_POWERMODE_NORMAL, p_dev);
+    if (bmp5_get_osr_odr_press_config(&oversampling, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_iir_config(&filtering, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_fifo_configuration(&fifo, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_power_mode(&mode, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_regs(BMP5_REG_INT_CONFIG, interrupt_config, sizeof(interrupt_config), &bmp5_dev) != BMP5_OK ||
+        bmp5_get_regs(BMP5_REG_ODR_CONFIG, &odr_config, 1, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_regs(BMP5_REG_DSP_CONFIG, &dsp_config, 1, &bmp5_dev) != BMP5_OK) {
+        return -EIO;
     }
 
-    return rslt;
+    if (oversampling.press_en != BMP5_ENABLE || filtering.shdw_set_iir_p != BMP5_ENABLE ||
+        filtering.shdw_set_iir_t != BMP5_ENABLE || filtering.iir_flush_forced_en != BMP5_DISABLE ||
+        (interrupt_config[0] & BMP5_INT_EN_MSK) != 0 ||
+        (interrupt_config[1] & BMP5_INT_ASSERTED_DRDY) == 0 ||
+        (odr_config & BMP5_DEEP_DISABLE_MSK) == 0 || (dsp_config & 0x03) != 0x03 ||
+        (fifo.frame_sel != BMP5_FIFO_NOT_ENABLED && fifo.frame_sel != BMP5_FIFO_PRESS_TEMP_DATA)) {
+        return -EIO;
+    }
+
+    *configuration = (bosch_bmp581_configuration_t) {
+        .mode = mode,
+        .odr = oversampling.odr,
+        .osr_p = oversampling.osr_p,
+        .osr_t = oversampling.osr_t,
+        .iir_p = filtering.set_iir_p,
+        .iir_t = filtering.set_iir_t,
+        .fifo_enabled = fifo.frame_sel != BMP5_FIFO_NOT_ENABLED,
+    };
+    return 0;
+}
+
+static int bmp581_apply_config_locked(const bosch_bmp581_configuration_t *configuration)
+{
+    struct bmp5_osr_odr_press_config oversampling = {
+        .odr = configuration->odr,
+        .osr_p = configuration->osr_p,
+        .osr_t = configuration->osr_t,
+        .press_en = BMP5_ENABLE,
+    };
+    struct bmp5_iir_config filtering = {
+        .set_iir_p = configuration->iir_p,
+        .set_iir_t = configuration->iir_t,
+        .shdw_set_iir_p = BMP5_ENABLE,
+        .shdw_set_iir_t = BMP5_ENABLE,
+        .iir_flush_forced_en = BMP5_DISABLE,
+    };
+    struct bmp5_fifo fifo = {
+        .frame_sel = configuration->fifo_enabled ? BMP5_FIFO_PRESS_TEMP_DATA : BMP5_FIFO_NOT_ENABLED,
+    };
+    struct bmp5_int_source_select interrupt_source = {.drdy_en = BMP5_ENABLE};
+    bosch_bmp581_configuration_t readback;
+    bosch_bmp581_configuration_t standby_configuration = *configuration;
+    enum bmp5_powermode mode;
+    uint8_t interrupt_config;
+    uint8_t dsp_config;
+    uint8_t interrupt_status;
+    int ret = -EIO;
+
+    if (configuration->mode > BOSCH_BMP581_MODE_NORMAL || configuration->odr > BMP5_ODR_0_125_HZ ||
+        configuration->osr_p > BMP5_OVERSAMPLING_128X || configuration->osr_t > BMP5_OVERSAMPLING_128X ||
+        configuration->iir_p > BOSCH_BMP581_IIR_127 || configuration->iir_t > BOSCH_BMP581_IIR_127) {
+        return -EINVAL;
+    }
+
+    configuration_valid = false;
+    sample_valid = false;
+    configuration_generation++;
+
+    if (bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_power_mode(&mode, &bmp5_dev) != BMP5_OK || mode != BMP5_POWERMODE_STANDBY ||
+        bmp5_set_osr_odr_press_config(&oversampling, &bmp5_dev) != BMP5_OK ||
+        bmp5_set_iir_config(&filtering, &bmp5_dev) != BMP5_OK ||
+        bmp5_set_fifo_configuration(&fifo, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_regs(BMP5_REG_DSP_CONFIG, &dsp_config, 1, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+
+    dsp_config |= 0x03;
+    if (bmp5_set_regs(BMP5_REG_DSP_CONFIG, &dsp_config, 1, &bmp5_dev) != BMP5_OK ||
+        bmp5_get_regs(BMP5_REG_INT_CONFIG, &interrupt_config, 1, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+    interrupt_config &= ~BMP5_INT_EN_MSK;
+    if (bmp5_set_regs(BMP5_REG_INT_CONFIG, &interrupt_config, 1, &bmp5_dev) != BMP5_OK ||
+        bmp5_int_source_select(&interrupt_source, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+
+    standby_configuration.mode = BOSCH_BMP581_MODE_STANDBY;
+    ret = bmp581_get_config_locked(&readback);
+    if (ret != 0 || !bmp581_config_equal(&readback, &standby_configuration)) {
+        ret = -EIO;
+        goto failed;
+    }
+
+    ret = -EIO;
+    if (bmp5_get_interrupt_status(&interrupt_status, &bmp5_dev) != BMP5_OK ||
+        bmp5_set_power_mode(configuration->mode, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+    ret = bmp581_get_config_locked(&readback);
+    if (ret != 0 || !bmp581_config_equal(&readback, configuration)) {
+        ret = -EIO;
+        goto failed;
+    }
+
+    bmp5_osr_odr_press_cfg = oversampling;
+    applied_configuration = *configuration;
+    configuration_saved = true;
+    configuration_valid = true;
+    return 0;
+
+failed:
+    bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &bmp5_dev);
+    return ret;
+}
+
+int zsw_bmp581_apply_config(const struct device *dev, const bosch_bmp581_configuration_t *configuration,
+                           uint32_t *generation)
+{
+    if (dev == NULL || dev != device || configuration == NULL || generation == NULL) {
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    int ret = sensor_active ? bmp581_apply_config_locked(configuration) : -EBUSY;
+    if (ret == 0) {
+        *generation = configuration_generation;
+    }
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
+}
+
+int zsw_bmp581_get_config(const struct device *dev, bosch_bmp581_configuration_t *configuration)
+{
+    if (dev == NULL || dev != device || configuration == NULL) {
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    int ret = sensor_active ? bmp581_get_config_locked(configuration) : -EBUSY;
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
+}
+
+static int bmp581_fetch_locked(const struct device *dev)
+{
+    struct bmp5_sensor_data measurement = {0};
+    struct bmp5_osr_odr_eff effective = {0};
+    uint8_t interrupt_status;
+
+    if (!sensor_active) {
+        return -EBUSY;
+    }
+    if (!configuration_valid) {
+        return -EIO;
+    }
+    if (applied_configuration.mode != BOSCH_BMP581_MODE_NORMAL) {
+        return -EAGAIN;
+    }
+    if (bmp5_get_interrupt_status(&interrupt_status, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+    if (interrupt_status & BMP5_INT_ASSERTED_POR_SOFTRESET_COMPLETE) {
+        goto failed;
+    }
+    if ((interrupt_status & BMP5_INT_ASSERTED_DRDY) == 0) {
+        return sample_valid ? 0 : -EAGAIN;
+    }
+    if (bmp5_get_osr_odr_eff(&effective, &bmp5_dev) != BMP5_OK || !effective.odr_is_valid ||
+        effective.osr_p_eff != applied_configuration.osr_p ||
+        effective.osr_t_eff != applied_configuration.osr_t ||
+        bmp5_get_sensor_data(&measurement, &bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
+        goto failed;
+    }
+
+    *(struct bmp5_sensor_data *)dev->data = measurement;
+    cached_sample.pressure = measurement.pressure;
+    cached_sample.temperature = measurement.temperature;
+    cached_sample.generation = configuration_generation;
+    cached_sample.sequence++;
+    sample_valid = true;
+    return 0;
+
+failed:
+    configuration_valid = false;
+    sample_valid = false;
+    return -EIO;
+}
+
+int zsw_bmp581_read_sample(const struct device *dev, bosch_bmp581_sample_t *sample)
+{
+    if (dev == NULL || dev != device || sample == NULL) {
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    int ret = bmp581_fetch_locked(dev);
+    if (ret == 0) {
+        *sample = cached_sample;
+    }
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
 }
 
 /** @brief
@@ -136,46 +331,42 @@ static int bmp581_attr_set(const struct device *p_dev, enum sensor_channel chann
     __ASSERT_NO_MSG(p_value != NULL);
 
     if (((channel != SENSOR_CHAN_ALL) && (channel != SENSOR_CHAN_AMBIENT_TEMP) && (channel != SENSOR_CHAN_PRESS)) ||
-        ((attribute != SENSOR_ATTR_SAMPLING_FREQUENCY) && (attribute == SENSOR_ATTR_OVERSAMPLING))) {
+        ((attribute != SENSOR_ATTR_SAMPLING_FREQUENCY) && (attribute != SENSOR_ATTR_OVERSAMPLING))) {
         return -ENOTSUP;
     }
 
-    if (bmp5_get_osr_odr_press_config(&bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-        return -EFAULT;
+    if (p_value->val1 < 0 || p_value->val1 >
+        (attribute == SENSOR_ATTR_OVERSAMPLING ? BMP5_OVERSAMPLING_128X : BMP5_ODR_0_125_HZ)) {
+        return -EINVAL;
     }
 
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    bosch_bmp581_configuration_t configuration;
+    int ret = sensor_active ? bmp581_get_config_locked(&configuration) : -EBUSY;
+    if (ret != 0) {
+        goto out;
+    }
     if (attribute == SENSOR_ATTR_OVERSAMPLING) {
-        if (p_value->val1 > BMP5_OVERSAMPLING_128X) {
-            return -ENOTSUP;
-        }
-
         if (channel == SENSOR_CHAN_ALL) {
-            bmp5_osr_odr_press_cfg.osr_t = p_value->val1;
-            bmp5_osr_odr_press_cfg.osr_p = p_value->val1;
+            configuration.osr_t = p_value->val1;
+            configuration.osr_p = p_value->val1;
         }
         else if (channel == SENSOR_CHAN_AMBIENT_TEMP) {
-            bmp5_osr_odr_press_cfg.osr_t = p_value->val1;
+            configuration.osr_t = p_value->val1;
         }
         else if (channel == SENSOR_CHAN_PRESS) {
-            bmp5_osr_odr_press_cfg.osr_p = p_value->val1;
+            configuration.osr_p = p_value->val1;
         }
     }
-    else if (attribute == SENSOR_ATTR_SAMPLING_FREQUENCY) {
-        if (p_value->val1 > BMP5_ODR_0_125_HZ) {
-            return -ENOTSUP;
-        }
-
-        bmp5_osr_odr_press_cfg.odr = p_value->val1;
+    else {
+        configuration.odr = p_value->val1;
     }
-
-    bmp5_osr_odr_press_cfg.press_en = BMP5_ENABLE;
-
-    if (bmp5_set_osr_odr_press_config(&bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-        LOG_ERR("Failed to set sensor attribute!");
-        return -EFAULT;
+    if (!configuration_valid || !bmp581_config_equal(&configuration, &applied_configuration)) {
+        ret = bmp581_apply_config_locked(&configuration);
     }
-
-    return 0;
+out:
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
 }
 
 /** @brief
@@ -191,36 +382,33 @@ static int bmp581_attr_get(const struct device *p_dev, enum sensor_channel chann
     __ASSERT_NO_MSG(p_value != NULL);
 
     if (((channel != SENSOR_CHAN_ALL) && (channel != SENSOR_CHAN_AMBIENT_TEMP) && (channel != SENSOR_CHAN_PRESS)) ||
-        ((attribute != SENSOR_ATTR_SAMPLING_FREQUENCY) && (attribute == SENSOR_ATTR_OVERSAMPLING))) {
+        ((attribute != SENSOR_ATTR_SAMPLING_FREQUENCY) && (attribute != SENSOR_ATTR_OVERSAMPLING))) {
         return -ENOTSUP;
     }
 
-    if (attribute == SENSOR_ATTR_SAMPLING_FREQUENCY) {
-    } else {
-        return -ENOTSUP;
+    bosch_bmp581_configuration_t configuration;
+    int ret = zsw_bmp581_get_config(p_dev, &configuration);
+    if (ret != 0) {
+        return ret;
     }
 
-    if (bmp5_get_osr_odr_press_config(&bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-        LOG_ERR("Failed to read sensor attribute!");
-        return -EFAULT;
-    }
-
+    p_value->val2 = 0;
     if (attribute == SENSOR_ATTR_OVERSAMPLING) {
-        if (channel == SENSOR_CHAN_ALL) {;
-            p_value->val1 = bmp5_osr_odr_press_cfg.osr_t;
-            p_value->val2 = bmp5_osr_odr_press_cfg.osr_p;
+        if (channel == SENSOR_CHAN_ALL) {
+            p_value->val1 = configuration.osr_t;
+            p_value->val2 = configuration.osr_p;
         }
         else if (channel == SENSOR_CHAN_AMBIENT_TEMP) {
-            p_value->val1 = bmp5_osr_odr_press_cfg.osr_t;
+            p_value->val1 = configuration.osr_t;
             p_value->val2 = 0;
         }
         else if (channel == SENSOR_CHAN_PRESS) {
-            p_value->val1 = bmp5_osr_odr_press_cfg.osr_p;
+            p_value->val1 = configuration.osr_p;
             p_value->val2 = 0;
         }
     }
     else if (attribute == SENSOR_ATTR_SAMPLING_FREQUENCY) {
-        p_value->val1 = bmp5_osr_odr_press_cfg.odr;
+        p_value->val1 = configuration.odr;
         p_value->val2 = 0;
     }
 
@@ -234,25 +422,14 @@ static int bmp581_attr_get(const struct device *p_dev, enum sensor_channel chann
 */
 static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel channel)
 {
-    enum pm_device_state pm_state;
-    struct bmp5_sensor_data *data = p_dev->data;
-
-    pm_device_state_get(p_dev, &pm_state);
-    if (pm_state != PM_DEVICE_STATE_ACTIVE) {
-        return -EFAULT;
-    }
-
     if ((channel != SENSOR_CHAN_ALL) && (channel != SENSOR_CHAN_AMBIENT_TEMP) && (channel != SENSOR_CHAN_PRESS)) {
         return -ENOTSUP;
     }
 
-    LOG_DBG("Start a new measurement...");
-
-    if (bmp5_get_sensor_data(data, &bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-        LOG_ERR("Measurement error!");
-    }
-
-    return 0;
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    int ret = bmp581_fetch_locked(p_dev);
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
 }
 
 /** @brief
@@ -263,21 +440,24 @@ static int bmp581_sample_fetch(const struct device *p_dev, enum sensor_channel c
 */
 static int bmp581_channel_get(const struct device *p_dev, enum sensor_channel channel, struct sensor_value *p_value)
 {
-	const struct bmp5_sensor_data *data = p_dev->data;
-
     __ASSERT_NO_MSG(p_value != NULL);
 
-    if (channel == SENSOR_CHAN_AMBIENT_TEMP) {
-        sensor_value_from_float(p_value, data->temperature);
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    int ret;
+    if (!sample_valid || !configuration_valid || !sensor_active) {
+        ret = -ENODATA;
+    }
+    else if (channel == SENSOR_CHAN_AMBIENT_TEMP) {
+        ret = sensor_value_from_float(p_value, cached_sample.temperature);
     }
     else if (channel == SENSOR_CHAN_PRESS) {
-        sensor_value_from_float(p_value, data->pressure);
+        ret = sensor_value_from_float(p_value, cached_sample.pressure);
     }
     else {
-        return -ENOTSUP;
+        ret = -ENOTSUP;
     }
-
-    return 0;
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
 }
 
 static const struct sensor_driver_api bmp581_driver_api = {
@@ -320,9 +500,16 @@ static int bmp581_init(const struct device *p_dev)
 
     if (rslt == BMP5_OK) {
         LOG_DBG("Reset successful! Set configuration...");
-        if (bmp5_set_config(&bmp5_osr_odr_press_cfg, &bmp5_dev) != BMP5_OK) {
-            return -EFAULT;
-        }
+        const bosch_bmp581_configuration_t configuration = {
+            .mode = BOSCH_BMP581_MODE_NORMAL,
+            .odr = BOSCH_BMP581_ODR_DEFAULT,
+            .osr_p = BOSCH_BMP581_OSR_4X,
+            .osr_t = BOSCH_BMP581_OSR_64X,
+            .iir_p = BOSCH_BMP581_IIR_63,
+            .iir_t = BOSCH_BMP581_IIR_63,
+        };
+        uint32_t generation;
+        return zsw_bmp581_apply_config(p_dev, &configuration, &generation);
     }
     else {
         LOG_ERR("Can not initialize BMP581!");
@@ -335,32 +522,44 @@ static int bmp581_init(const struct device *p_dev)
 #ifdef CONFIG_PM_DEVICE
 static int bmp581_pm_action(const struct device *p_dev, enum pm_device_action action)
 {
-    int8_t rslt;
+    int ret;
+
+    if (action != PM_DEVICE_ACTION_TURN_ON && action != PM_DEVICE_ACTION_RESUME &&
+        action != PM_DEVICE_ACTION_SUSPEND && action != PM_DEVICE_ACTION_TURN_OFF) {
+        return -ENOTSUP;
+    }
+    k_mutex_lock(&bmp581_lock, K_FOREVER);
+    sample_valid = false;
+    configuration_valid = false;
 
     switch (action) {
         case PM_DEVICE_ACTION_TURN_ON:
         case PM_DEVICE_ACTION_RESUME: {
-                rslt = bmp5_set_power_mode(BMP5_POWERMODE_NORMAL, &bmp5_dev);
+            sensor_active = true;
+            ret = configuration_saved ? bmp581_apply_config_locked(&applied_configuration) : -ENODATA;
             break;
         }
         case PM_DEVICE_ACTION_SUSPEND: {
-                rslt = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &bmp5_dev);
+            ret = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &bmp5_dev) == BMP5_OK ? 0 : -EIO;
+            if (ret == 0) {
+                sensor_active = false;
+            }
             break;
         }
         case PM_DEVICE_ACTION_TURN_OFF: {
-                rslt = bmp5_set_power_mode(BMP5_POWERMODE_DEEP_STANDBY, &bmp5_dev);
+            ret = bmp5_set_power_mode(BMP5_POWERMODE_DEEP_STANDBY, &bmp5_dev) == BMP5_OK ? 0 : -EIO;
+            if (ret == 0) {
+                sensor_active = false;
+            }
             break;
         }
         default: {
-            return -ENOTSUP;
+            ret = -ENOTSUP;
+            break;
         }
     }
-
-    if (rslt != BMP5_OK) {
-        return -EFAULT;
-    }
-
-    return 0;
+    k_mutex_unlock(&bmp581_lock);
+    return ret;
 }
 #endif
 

@@ -146,15 +146,22 @@ static void switch_event_cb(lv_event_t *e)
 {
     lv_settings_changed_cb_t callback;
     lv_setting_value_t settings_value;
+    lv_settings_item_t *item = lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
     bool val = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
 
     settings_value.item.sw = val;
     settings_value.type = LV_SETTINGS_TYPE_SWITCH;
-    callback = (lv_settings_changed_cb_t)lv_event_get_user_data(e);
+    callback = item->change_callback;
 
     if ((callback != NULL) && ((code == LV_EVENT_VALUE_CHANGED) || (code == LV_EVENT_RELEASED))) {
         callback(settings_value, code == LV_EVENT_RELEASED);
+        /* Callbacks update the backing value to the accepted state; reflect it for rollback. */
+        if (*item->item.sw.inital_val) {
+            lv_obj_add_state(lv_event_get_target(e), LV_STATE_CHECKED);
+        } else {
+            lv_obj_clear_state(lv_event_get_target(e), LV_STATE_CHECKED);
+        }
     }
 }
 
@@ -188,7 +195,7 @@ static void populate_page(lv_obj_t *page, lv_settings_page_t *settings_page)
                 break;
             case LV_SETTINGS_TYPE_SWITCH:
                 obj = create_switch(page, item->icon, item->item.sw.name, *item->item.sw.inital_val);
-                lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item->change_callback);
+                lv_obj_add_event_cb(obj, switch_event_cb, LV_EVENT_ALL, item);
                 break;
             case LV_SETTINGS_TYPE_SLIDER:
                 obj = create_slider(page, item->icon, item->item.slider.name,
