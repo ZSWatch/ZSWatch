@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #define ZSW_USER_LFS_MOUNT_POINT "/user"
 
 #define ZSW_USER_LFS_CACHE_SIZE  512
@@ -26,3 +28,19 @@ int zsw_filesytem_get_num_rawfs_files(void);
 int zsw_filesytem_get_total_size(void);
 
 int zsw_filesytem_erase(void);
+
+/**
+ * @brief Get a pointer to the content of a file in the image resource filesystem (S:).
+ *
+ * Only works while the external flash is memory mapped (XIP on). The pointer is valid
+ * until zsw_filesystem_unmap_file() is called, which must be done once for each
+ * successful call.
+ *
+ * @param name File name without drive letter, for example "icon.bin".
+ * @param len Set to the length of the file.
+ *
+ * @return Pointer to the file content, NULL if not memory mapped or the file does not exist.
+ */
+const uint8_t *zsw_filesystem_map_file(const char *name, uint32_t *len);
+
+void zsw_filesystem_unmap_file(void);
