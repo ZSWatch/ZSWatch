@@ -81,7 +81,8 @@ Config layers: `app/prj.conf` → `app/boards/<board>.conf/.overlay` →
 `EXTRA_CONF_FILE` / `EXTRA_DTC_OVERLAY_FILE` fragments. Fragments in
 `app/boards/`: `debug.conf` or `release.conf`, then one log transport:
 `log_on_uart` (.conf + .overlay), `log_on_rtt` (.conf only), `log_on_usb`
-(.conf + .overlay). Others: `test_mode.conf`, `no_touch`, `clockwise_rotation`.
+(.conf + .overlay). Others: `test_mode.conf`, `no_touch`, `clockwise_rotation`,
+`perf_monitor.conf` (logs LVGL FPS and render times).
 Add `-DCONFIG_ZSW_TEST_AUTO_LAUNCH_APP=\"Calculator\"` to open an app at boot.
 
 Add `--pristine` after changing Kconfig/overlay sets. Changing a Kconfig default
@@ -187,9 +188,13 @@ otherwise hard to observe.
 - **zbus**: channels in `app/src/events/`. Listeners run in the publisher's
   thread (often the BLE thread with a small stack), so move real work to a work
   queue. Periodic ticks: `zsw_periodic_chan_add_obs(&periodic_event_{100ms,1s,10s}_chan, ...)`.
-- **LVGL**: images via `ZSW_LV_IMG_DECLARE/USE` (internal or external flash).
-  Convert a new external image with
-  `python app/scripts/lvgl_c_array_to_bin_lvgl9.py <file.c> app/src/images/binaries/S/`.
+- **LVGL**: images via `ZSW_LV_IMG_DECLARE/USE`, which is the file
+  `S:<name>.bin` in the resource image built from `app/src/images/binaries/S/`
+  (external flash on hardware, linked into the executable on native_sim). Add
+  an image as a `.bin` there, no `.c` file: `python
+  modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o
+  app/src/images/binaries/S/ <file.png>`. `img_stats` in the shell shows if
+  images are drawn straight from flash.
   LVGL Editor apps: edit the XML in `app/lvgl_editor/`, never `*_gen.c/h`;
   `music_control` is the reference. Round 240×240 display: keep content out of
   the corners.
