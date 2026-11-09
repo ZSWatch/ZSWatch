@@ -4,8 +4,6 @@
 FILE(GLOB app_sources *.c)
 target_sources(app PRIVATE ${app_sources})
 
-if (CONFIG_STORE_IMAGES_EXTERNAL_FLASH OR CONFIG_ARCH_POSIX)
-    # Export none critical files for relocation to save flash
-    FILE(GLOB xip_sources *_ui.c)
-    set(RELOCATE_FILES ${RELOCATE_FILES} ${xip_sources} PARENT_SCOPE)
-endif()
+# Export none critical files for relocation to save flash
+FILE(GLOB xip_sources *_ui.c)
+set(RELOCATE_FILES ${RELOCATE_FILES} ${xip_sources} PARENT_SCOPE)

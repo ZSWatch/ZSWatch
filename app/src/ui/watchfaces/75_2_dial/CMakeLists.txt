@@ -6,7 +6,5 @@
 # https://github.com/kampi
 # Watchface: 75_2_dial
 
-if (CONFIG_STORE_IMAGES_EXTERNAL_FLASH OR CONFIG_ARCH_POSIX)
 FILE(GLOB app_sources *.c)
 target_sources(app PRIVATE ${app_sources})
-endif()
