@@ -89,6 +89,29 @@ target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_
 target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_custom_fs.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_image_decoder.c)
 
+if(CONFIG_ZSW_FS_EMBEDDED_IMAGE)
+    set(ZSW_FS_IMAGE_FILE ${CMAKE_CURRENT_BINARY_DIR}/lvgl_resources_raw.bin)
+    set(ZSW_FS_IMAGE_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/create_custom_resource_image.py)
+    file(GLOB ZSW_FS_IMAGE_SOURCES CONFIGURE_DEPENDS src/images/binaries/S/*)
+    if(CONFIG_ZSW_FS_TEST_LEGACY_IMAGE)
+        set(ZSW_FS_IMAGE_ARGS --legacy)
+    endif()
+
+    add_custom_command(
+        OUTPUT ${ZSW_FS_IMAGE_FILE}
+        COMMAND ${PYTHON_EXECUTABLE} ${ZSW_FS_IMAGE_SCRIPT} ${ZSW_FS_IMAGE_ARGS}
+                --img-filename ${ZSW_FS_IMAGE_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/src/images/binaries/S
+        DEPENDS ${ZSW_FS_IMAGE_SCRIPT} ${ZSW_FS_IMAGE_SOURCES}
+        COMMENT "Generating image resource filesystem"
+    )
+
+    target_sources(app PRIVATE src/filesystem/zsw_custom_fs_embedded_image.c)
+    set_source_files_properties(src/filesystem/zsw_custom_fs_embedded_image.c PROPERTIES
+        COMPILE_DEFINITIONS ZSW_FS_EMBEDDED_IMAGE_FILE="${ZSW_FS_IMAGE_FILE}"
+        OBJECT_DEPENDS ${ZSW_FS_IMAGE_FILE}
+    )
+endif()
+
 target_sources_ifdef(CONFIG_RTC_ALARM app PRIVATE src/zsw_alarm.c)
 
 target_compile_definitions(app PRIVATE _POSIX_C_SOURCE=200809L)
