@@ -20,10 +20,16 @@
 #include <inttypes.h>
 #include <lvgl.h>
 
-typedef void(*on_start_calibraion_cb_t)(void);
+typedef void(*on_start_calibration_cb_t)(void);
 
-void compass_ui_show(lv_obj_t *root, on_start_calibraion_cb_t start_cal_cb);
+void compass_ui_show(lv_obj_t *root, on_start_calibration_cb_t start_cal_cb);
 
 void compass_ui_remove(void);
 
 void compass_ui_set_heading(double heading);
+
+void compass_ui_show_calibration(void);
+
+void compass_ui_hide_calibration(void);
+
+void compass_ui_set_calibration_progress(int px, int py, int pz);
