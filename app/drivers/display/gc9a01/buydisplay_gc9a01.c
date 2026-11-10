@@ -191,6 +191,26 @@ struct gc9a01_frame {
 
 static struct gc9a01_frame frame = {{0, 0}, {DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1}};
 
+static void gc9a01_bus_resume(const struct device *dev)
+{
+    const struct gc9a01_config *config = dev->config;
+    // The bus is suspended between writes. Resuming it also applies the SPI frequency
+    // allowed by the current CPU clock (32 MHz needs the CPU at 128 MHz).
+    int rc = pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_RESUME);
+
+    __ASSERT(rc == 0 || rc == -EALREADY, "Failed resume SPI Bus");
+    ARG_UNUSED(rc);
+}
+
+static void gc9a01_bus_suspend(const struct device *dev)
+{
+    const struct gc9a01_config *config = dev->config;
+    int rc = pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_SUSPEND);
+
+    __ASSERT(rc == 0 || rc == -EALREADY, "Failed suspend SPI Bus");
+    ARG_UNUSED(rc);
+}
+
 static inline int gc9a01_write_cmd(const struct device *dev, uint8_t cmd,
                                    const uint8_t *data, size_t len)
 {
@@ -235,20 +255,29 @@ static void gc9a01_set_frame(const struct device *dev, struct gc9a01_frame frame
 
 static int gc9a01_blanking_off(const struct device *dev)
 {
-    return gc9a01_write_cmd(dev, GC9A01A_DISPON, NULL, 0);
+    int rc;
+
+    gc9a01_bus_resume(dev);
+    rc = gc9a01_write_cmd(dev, GC9A01A_DISPON, NULL, 0);
+    gc9a01_bus_suspend(dev);
+    return rc;
 }
 
 static int gc9a01_blanking_on(const struct device *dev)
 {
-    return gc9a01_write_cmd(dev, GC9A01A_DISPOFF, NULL, 0);
+    int rc;
+
+    gc9a01_bus_resume(dev);
+    rc = gc9a01_write_cmd(dev, GC9A01A_DISPOFF, NULL, 0);
+    gc9a01_bus_suspend(dev);
+    return rc;
 }
 
 static int gc9a01_write(const struct device *dev, const uint16_t x, const uint16_t y,
                         const struct display_buffer_descriptor *desc,
                         const void *buf)
 {
-    const struct gc9a01_config *config = dev->config;
-    __ASSERT(pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_RESUME) == 0, "Failed resume SPI Bus");
+    gc9a01_bus_resume(dev);
 #ifdef GC9A01_SPI_PROFILING
     uint32_t start_time;
     uint32_t stop_time;
@@ -277,7 +306,7 @@ static int gc9a01_write(const struct device *dev, const uint16_t x, const uint16
     nanoseconds_spent = k_cyc_to_ns_ceil32(cycles_spent);
     LOG_DBG("%d =>: %dns", len, nanoseconds_spent);
 #endif
-    __ASSERT(pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_SUSPEND) == 0, "Failed suspend SPI Bus");
+    gc9a01_bus_suspend(dev);
     return 0;
 }
 
@@ -334,7 +363,6 @@ static int gc9a01_set_pixel_format(const struct device *dev,
 
 static int gc9a01_controller_init(const struct device *dev)
 {
-    int rc;
     int i = 0;
     uint8_t cmd, x, numArgs;
     const uint8_t *addr;
@@ -345,8 +373,7 @@ static int gc9a01_controller_init(const struct device *dev)
     k_msleep(5);
     gpio_pin_set_dt(&config->reset_gpio, 1);
     k_msleep(150);
-    rc = pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_RESUME);
-    __ASSERT(rc == -EALREADY || rc == 0, "Failed resume SPI Bus");
+    gc9a01_bus_resume(dev);
 
     addr = initcmd;
     while ((cmd = *addr++) > 0) {
@@ -360,7 +387,7 @@ static int gc9a01_controller_init(const struct device *dev)
         i++;
     }
 
-    __ASSERT(pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_SUSPEND) == 0, "Failed suspend SPI Bus");
+    gc9a01_bus_suspend(dev);
     return 0;
 }
 
@@ -396,7 +423,7 @@ static int gc9a01_pm_action(const struct device *dev,
 {
     int err = 0;
     const struct gc9a01_config *config = dev->config;
-    __ASSERT(pm_device_action_run(config->bus.bus, PM_DEVICE_ACTION_RESUME) == 0, "Failed resume SPI Bus");
+    gc9a01_bus_resume(dev);
 
     switch (action) {
         case PM_DEVICE_ACTION_RESUME:
