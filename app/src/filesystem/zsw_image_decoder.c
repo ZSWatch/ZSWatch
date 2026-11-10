@@ -23,6 +23,9 @@
  * mapped this decoder instead hands LVGL a pointer straight into the flash, the same
  * way an image compiled into the firmware is drawn. When the flash is not mapped, or
  * the image has a format that must be decoded to RAM, LVGL's decoder does the work.
+ *
+ * The copy of the custom watchface background (ZSW_CUSTOM_BG_SRC) is drawn the same way.
+ * It has no file system behind it, so it can only be drawn while mapped.
  */
 
 #include <zephyr/kernel.h>
@@ -33,6 +36,7 @@
 #include <lvgl_private.h>
 #include <libs/bin_decoder/lv_bin_decoder.h>
 #include <filesystem/zsw_filesystem.h>
+#include <filesystem/zsw_custom_bg.h>
 
 LOG_MODULE_REGISTER(zsw_image_decoder, LOG_LEVEL_INF);
 
@@ -63,6 +67,28 @@ static bool can_draw_from_flash(const lv_image_header_t *header)
     }
 }
 
+static bool is_custom_bg(const void *src)
+{
+    return strcmp(src, ZSW_CUSTOM_BG_SRC) == 0;
+}
+
+static const uint8_t *map_file(const char *src, uint32_t *len)
+{
+    if (is_custom_bg(src)) {
+        return zsw_custom_bg_map(len);
+    }
+    return zsw_filesystem_map_file(src + ZSW_FS_DRIVE_PREFIX_LEN, len);
+}
+
+static void unmap_file(const char *src)
+{
+    if (is_custom_bg(src)) {
+        zsw_custom_bg_unmap();
+    } else {
+        zsw_filesystem_unmap_file();
+    }
+}
+
 static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
 {
     uint32_t len;
@@ -70,7 +96,7 @@ static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
     lv_draw_buf_t *draw_buf;
     const lv_image_header_t *header;
 
-    file = zsw_filesystem_map_file((const char *)dsc->src + ZSW_FS_DRIVE_PREFIX_LEN, &len);
+    file = map_file(dsc->src, &len);
     if (!file) {
         return NULL;
     }
@@ -96,7 +122,7 @@ static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
     }
 
     lv_free(draw_buf);
-    zsw_filesystem_unmap_file();
+    unmap_file(dsc->src);
 
     return NULL;
 }
@@ -107,10 +133,33 @@ static bool is_opened_from_flash(const lv_image_decoder_dsc_t *dsc)
     return dsc->user_data && dsc->decoded == dsc->user_data;
 }
 
+static lv_result_t custom_bg_info(lv_image_header_t *header)
+{
+    uint32_t len;
+    const uint8_t *file = zsw_custom_bg_map(&len);
+    lv_result_t res = LV_RESULT_INVALID;
+
+    if (!file) {
+        return LV_RESULT_INVALID;
+    }
+    if (len > sizeof(lv_image_header_t)) {
+        memcpy(header, file, sizeof(lv_image_header_t));
+        res = header->magic == LV_IMAGE_HEADER_MAGIC ? LV_RESULT_OK : LV_RESULT_INVALID;
+    }
+    zsw_custom_bg_unmap();
+
+    return res;
+}
+
 static lv_result_t decoder_info(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *dsc, lv_image_header_t *header)
 {
-    if (dsc->src_type != LV_IMAGE_SRC_FILE ||
-        strncmp(dsc->src, ZSW_FS_DRIVE_PREFIX, ZSW_FS_DRIVE_PREFIX_LEN) != 0) {
+    if (dsc->src_type != LV_IMAGE_SRC_FILE) {
+        return LV_RESULT_INVALID;
+    }
+    if (is_custom_bg(dsc->src)) {
+        return custom_bg_info(header);
+    }
+    if (strncmp(dsc->src, ZSW_FS_DRIVE_PREFIX, ZSW_FS_DRIVE_PREFIX_LEN) != 0) {
         return LV_RESULT_INVALID;
     }
 
@@ -128,6 +177,10 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         return LV_RESULT_OK;
     }
 
+    if (is_custom_bg(dsc->src)) {
+        return LV_RESULT_INVALID;
+    }
+
     num_opened_by_lvgl++;
     return lv_bin_decoder_open(decoder, dsc);
 }
@@ -138,7 +191,7 @@ static void decoder_close(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *d
         lv_free(dsc->user_data);
         dsc->user_data = NULL;
         dsc->decoded = NULL;
-        zsw_filesystem_unmap_file();
+        unmap_file(dsc->src);
         return;
     }
 

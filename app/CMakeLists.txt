@@ -89,6 +89,7 @@ target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_custom_fs.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_image_decoder.c)
+target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_custom_bg.c)
 
 if(CONFIG_ZSW_FS_EMBEDDED_IMAGE)
     set(ZSW_FS_IMAGE_FILE ${CMAKE_CURRENT_BINARY_DIR}/lvgl_resources_raw.bin)

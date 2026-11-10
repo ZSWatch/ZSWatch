@@ -45,6 +45,7 @@
 #include "drivers/zsw_display_control.h"
 #include "managers/zsw_notification_manager.h"
 #include "managers/zsw_xip_manager.h"
+#include "filesystem/zsw_custom_bg.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
 
 LOG_MODULE_REGISTER(watchface_app, LOG_LEVEL_WRN);
@@ -60,6 +61,16 @@ LOG_MODULE_REGISTER(watchface_app, LOG_LEVEL_WRN);
 
 ZSW_LV_IMG_DECLARE(space_blur_bg);
 static const void *default_watchface_bg_img = (const void *)ZSW_LV_IMG_USE(space_blur_bg);
+static const char custom_bg_file_src[] = CUSTOM_BG_PATH;
+
+static void bg_store_work_handler(struct k_work *work);
+
+// Copies the custom background to flash so it can be drawn from there, see zsw_custom_bg.h.
+// It runs in the system work queue, the same thread LVGL draws in, so nothing is drawn
+// from the flash while it is erased and written.
+static K_WORK_DEFINE(bg_store_work, bg_store_work_handler);
+// Held while CUSTOM_BG_PATH is read or replaced.
+static K_MUTEX_DEFINE(bg_file_mutex);
 
 static const void *watchface_bg_img = NULL;
 
@@ -193,7 +204,9 @@ static void watchface_app_load_bg(void)
     if (bg_file_exists(CUSTOM_BG_PATH, &size)) {
         LOG_INF("Custom watchface background found: %s (%u bytes)",
                 CUSTOM_BG_PATH, size);
-        watchface_bg_img = CUSTOM_BG_PATH;
+        // Drawn from the file until the copy in flash is checked or made.
+        watchface_bg_img = custom_bg_file_src;
+        k_work_submit(&bg_store_work);
     } else {
         watchface_bg_img = default_watchface_bg_img;
     }
@@ -214,14 +227,39 @@ static void watchface_notify_new_bg(void)
     }
 }
 
+static void bg_store_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+
+    k_mutex_lock(&bg_file_mutex, K_FOREVER);
+    int rc = zsw_custom_bg_store(CUSTOM_BG_PATH);
+    k_mutex_unlock(&bg_file_mutex);
+
+    if (rc != 0) {
+        return;
+    }
+
+    lvgl_lock();
+    // Unless the background was reset or replaced meanwhile.
+    if (watchface_bg_img == custom_bg_file_src) {
+        lv_image_cache_drop(CUSTOM_BG_PATH);
+        watchface_bg_img = ZSW_CUSTOM_BG_SRC;
+        watchface_notify_new_bg();
+    }
+    lvgl_unlock();
+}
+
 int watchface_app_reload_bg(void)
 {
     if (!bg_file_exists(CUSTOM_BG_NEW_PATH, NULL)) {
         return -ENOENT;
     }
 
+    // Waits for a copy of the old background to finish.
+    k_mutex_lock(&bg_file_mutex, K_FOREVER);
     lvgl_lock();
     lv_image_cache_drop(CUSTOM_BG_PATH);
+    lv_image_cache_drop(ZSW_CUSTOM_BG_SRC);
 
     int rc = fs_unlink(CUSTOM_BG_PATH);
     if (rc == 0 || rc == -ENOENT) {
@@ -229,6 +267,7 @@ int watchface_app_reload_bg(void)
     }
 
     if (rc == 0) {
+        // Stops drawing the old copy before it is overwritten.
         watchface_app_load_bg();
     } else {
         watchface_bg_img = default_watchface_bg_img;
@@ -237,6 +276,7 @@ int watchface_app_reload_bg(void)
 
     watchface_notify_new_bg();
     lvgl_unlock();
+    k_mutex_unlock(&bg_file_mutex);
 
     return rc;
 }
@@ -247,9 +287,12 @@ int watchface_app_reset_bg(void)
     watchface_bg_img = default_watchface_bg_img;
     watchface_notify_new_bg();
     lv_image_cache_drop(CUSTOM_BG_PATH);
+    lv_image_cache_drop(ZSW_CUSTOM_BG_SRC);
     lvgl_unlock();
 
+    k_mutex_lock(&bg_file_mutex, K_FOREVER);
     int rc = fs_unlink(CUSTOM_BG_PATH);
+    k_mutex_unlock(&bg_file_mutex);
     if (rc != 0 && rc != -ENOENT) {
         return rc;
     }
