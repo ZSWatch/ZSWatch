@@ -92,9 +92,14 @@ littlefs_storage:
   size: 0x200000
 lvgl_raw_partition:
   address: 0x520000
+  end_address: 0xD00000
+  region: external_flash
+  size: 0x7E0000
+custom_bg_partition:
+  address: 0xD00000
   end_address: 0xD20000
   region: external_flash
-  size: 0x800000
+  size: 0x20000
 settings_storage:
   address: 0xD20000
   end_address: 0xE20000

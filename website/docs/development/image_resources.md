@@ -92,6 +92,8 @@ Every file in `app/src/images/binaries/S/` goes into the resource image, which t
 
 The resource image is made by `app/scripts/create_custom_resource_image.py` and ends with a hash index of the file names. The firmware keeps no file table in RAM: opening a file hashes its name and reads one index entry from flash. While the external flash is memory mapped (XIP is on whenever the display is on), LVGL draws images straight from flash without copying them to RAM first. With XIP off the same files are read through the flash driver.
 
+A custom watchface background is uploaded as `/user/bg.bin` in LittleFS, which can not be drawn straight from flash. After the background is applied, and at boot if needed, the firmware copies it to the `custom_bg_partition` partition (128 KB, right after the resource image) and draws it from there the same way. Until the copy is done, and on native_sim, the file in LittleFS is drawn.
+
 Firmware and resource image can be updated in any order. Older firmware reads new resource images through the name table at the start of the image, and new firmware reads older images without index, only slower when opening files.
 
 :::note

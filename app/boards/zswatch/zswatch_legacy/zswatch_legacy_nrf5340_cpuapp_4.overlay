@@ -127,7 +127,13 @@
 
 		lvgl_raw_partition: partition@520000 {
 			label = "lvgl_raw_partition";
-			reg = <0x520000 0x800000>;
+			reg = <0x520000 0x7E0000>;
+		};
+
+		// Custom watchface background, copied here to be drawn straight from XIP.
+		custom_bg_partition: partition@D00000 {
+			label = "custom_bg_partition";
+			reg = <0xD00000 0x20000>;
 		};
 
 		storage_partition: partition@D20000 {
