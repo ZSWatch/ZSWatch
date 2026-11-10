@@ -27,6 +27,9 @@
 #define LIVING_SKY_MAX_PARTICLES 36
 #define LIVING_SKY_MAX_BLOBS 4
 #define LIVING_SKY_FOG_BAND_WIDTH 170
+// Everything that moves stays in this band at the top, above the time, so an
+// animation frame only redraws the band and not the whole face.
+#define LIVING_SKY_ANIM_H 90
 
 typedef struct {
     int16_t x;
