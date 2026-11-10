@@ -37,6 +37,15 @@ menu "ZSWatch"
         help
           Only for testing that images made by older tools can still be read.
 
+    config ZSW_FAST_MEMCPY
+        bool "Word based memcpy, memmove and memset"
+        default y
+        depends on ARMV7_M_ARMV8_M_MAINLINE && PICOLIBC_USE_TOOLCHAIN && !TRAP_UNALIGNED_ACCESS
+        help
+          The picolibc in the Zephyr SDK is built for size and copies one byte
+          at a time. LVGL uses memcpy and memset for every rendered row, so
+          replace them with versions that move a word at a time.
+
     config ZSW_FW_UPDATE
         bool
         prompt "Enable firmware update"
