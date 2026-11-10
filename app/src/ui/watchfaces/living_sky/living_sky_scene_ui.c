@@ -214,7 +214,7 @@ static void draw_stars(const living_sky_scene_t *scene, lv_layer_t *layer, int32
         line.round_end = 1;
         line.opa = (lv_opa_t)(255 - t * 14);
         line.p2.x = ox + 150 - t * 7;
-        line.p2.y = oy + 30 + t * 4;
+        line.p2.y = oy + 30 + t * 3;
         line.p1.x = line.p2.x + 24;
         line.p1.y = line.p2.y - 14;
         lv_draw_line(layer, &line);

@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(living_sky_fx, LOG_LEVEL_INF);
 #define NIGHT_END_MIN       (6 * 60)
 
 #define FOG_BAND_WIDTH      LIVING_SKY_FOG_BAND_WIDTH
+#define ANIM_H              LIVING_SKY_ANIM_H
 
 static struct {
     lv_obj_t *obj;
@@ -92,7 +93,7 @@ static void spawn_rain_drop(living_sky_particle_t *p, bool anywhere)
     p->size = (uint8_t)fx_rand_range(8, 16);
     // Spawn wider than the screen on the upwind side so slanted rain covers the whole face.
     p->x = (int16_t)FP(fx_rand_range(p->vx > 0 ? -40 : 20, p->vx < 0 ? FX_SIZE + 40 : FX_SIZE - 20));
-    p->y = (int16_t)(anywhere ? FP(fx_rand_range(0, FX_SIZE)) : -FP(fx_rand_range(p->size, 40)));
+    p->y = (int16_t)(anywhere ? FP(fx_rand_range(0, ANIM_H - 2)) : -FP(fx_rand_range(0, 30)));
 }
 
 static void spawn_snow_flake(living_sky_particle_t *p, bool anywhere)
@@ -102,7 +103,7 @@ static void spawn_snow_flake(living_sky_particle_t *p, bool anywhere)
     p->size = (uint8_t)fx_rand_range(2, 5);
     p->phase = (uint8_t)fx_rand(255);
     p->x = (int16_t)FP(fx_rand_range(-20, FX_SIZE + 20));
-    p->y = (int16_t)(anywhere ? FP(fx_rand_range(0, FX_SIZE)) : -FP(fx_rand_range(4, 30)));
+    p->y = (int16_t)(anywhere ? FP(fx_rand_range(0, ANIM_H - p->size - 1)) : -FP(fx_rand_range(4, 30)));
 }
 
 static void spawn_star(living_sky_particle_t *p)
@@ -112,7 +113,7 @@ static void spawn_star(living_sky_particle_t *p)
     // Keep stars out of the moon glow.
     do {
         x = fx_rand_range(24, FX_SIZE - 24);
-        y = fx_rand_range(16, 170);
+        y = fx_rand_range(12, ANIM_H - 6);
     } while (abs(x - LIVING_SKY_SUN_X) < 26 && abs(y - LIVING_SKY_SUN_Y) < 26);
     p->x = (int16_t)FP(x);
     p->y = (int16_t)FP(y);
@@ -138,7 +139,7 @@ static void spawn_fog_band(living_sky_particle_t *p, int index)
 {
     p->size = (uint8_t)fx_rand_range(20, 30);
     p->x = (int16_t)FP(fx_rand_range(-FOG_BAND_WIDTH / 2, FX_SIZE - FOG_BAND_WIDTH / 2));
-    p->y = (int16_t)FP(50 + index * 45);
+    p->y = (int16_t)FP(22 + index * 15);
     // Neighbouring bands drift in opposite directions for a slow rolling look.
     p->vx = (int8_t)((index & 1) ? -fx_rand_range(3, 6) : fx_rand_range(3, 6));
 }
@@ -201,14 +202,15 @@ static void step_particles(void)
             case ZSW_WEATHER_THUNDER:
                 p->x += p->vx;
                 p->y += p->vy;
-                if (p->y > FP(FX_SIZE + p->size)) {
+                // The drop ends at y, it is respawned before it leaves the band.
+                if (p->y > FP(ANIM_H - 2)) {
                     spawn_rain_drop(p, false);
                 }
                 break;
             case ZSW_WEATHER_SNOW:
                 p->x += p->vx;
                 p->y += p->vy;
-                if (p->y > FP(FX_SIZE + 4) || p->x < -FP(30) || p->x > FP(FX_SIZE + 30)) {
+                if (p->y > FP(ANIM_H - p->size - 1) || p->x < -FP(30) || p->x > FP(FX_SIZE + 30)) {
                     spawn_snow_flake(p, false);
                 }
                 break;
@@ -250,10 +252,21 @@ static void fx_timer_cb(lv_timer_t *timer)
 {
     ARG_UNUSED(timer);
 
+    bool flash = fx.scene.flash_opa > 0;
+    lv_area_t band;
+
     fx.scene.frame++;
     step_particles();
     step_lightning();
-    lv_obj_invalidate(fx.obj);
+
+    // Lightning lights up the whole face, everything else moves in the band at the top.
+    if (flash || fx.scene.flash_opa > 0) {
+        lv_obj_invalidate(fx.obj);
+    } else {
+        lv_obj_get_coords(fx.obj, &band);
+        band.y2 = band.y1 + ANIM_H - 1;
+        lv_obj_invalidate_area(fx.obj, &band);
+    }
 
     if (lv_tick_elaps(fx.start_tick) >= fx.duration_ms) {
         living_sky_fx_stop();
