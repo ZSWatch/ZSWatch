@@ -21,6 +21,7 @@
 #include <zephyr/logging/log.h>
 
 #include "living_sky_fx.h"
+#include "living_sky_blend.h"
 #include "living_sky_scene_ui.h"
 
 LOG_MODULE_REGISTER(living_sky_fx, LOG_LEVEL_INF);
@@ -276,6 +277,7 @@ lv_obj_t *living_sky_fx_create(lv_obj_t *parent)
     lv_obj_center(fx.obj);
     lv_obj_remove_flag(fx.obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(fx.obj, fx_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+    living_sky_blend_register();
 
     // xorshift must never be seeded with 0.
     fx.rng = (fx.rng ^ k_cycle_get_32()) | 1;
@@ -288,6 +290,7 @@ lv_obj_t *living_sky_fx_create(lv_obj_t *parent)
 void living_sky_fx_delete(void)
 {
     living_sky_fx_stop();
+    living_sky_blend_unregister();
     fx.obj = NULL;
 }
 
