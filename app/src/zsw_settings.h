@@ -46,7 +46,7 @@ typedef int32_t zsw_settings_ble_aoa_int_t;
 #define ZSW_SETTINGS_BLE_AOA_INT (ZSW_SETTINGS_PATH "/" ZSW_SETTINGS_KEY_BLE_AOA_INT)
 
 typedef struct {
-    bool animations_on;
+    bool unused; // Was animations_on, kept so stored settings keep their layout.
     uint8_t watchface_index;
     bool smooth_second_hand;
     bool relative_battery;

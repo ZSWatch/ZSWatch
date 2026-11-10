@@ -31,7 +31,6 @@
  */
 #define ZSW_LV_IMG_DECLARE(var_name)
 #define ZSW_LV_IMG_USE(var_name)                            "S:"#var_name".bin"
-#define ZSW_LV_GIF_USE(var_name)                            "S:"#var_name".gif"
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color);
 

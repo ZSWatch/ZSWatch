@@ -59,7 +59,6 @@ static void on_ble_log_changed(lv_setting_value_t value, bool final);
 static void on_floor_counter_changed(lv_setting_value_t value, bool final);
 static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_swipe_back_changed(lv_setting_value_t value, bool final);
-static void on_watchface_animation_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
 ZSW_LV_IMG_DECLARE(settings);
@@ -88,7 +87,6 @@ static setting_app_t settings_app = {
     .floor_counter_enabled = true,
     .watchface = {
         .relative_battery = true,
-        .animations_on = false,
         .watchface_index = 0,
         .smooth_second_hand = false
     },
@@ -274,17 +272,6 @@ static lv_settings_item_t developer_page_items[] = {
 };
 
 static lv_settings_item_t ui_page_items[] = {
-    {
-        .type = LV_SETTINGS_TYPE_SWITCH,
-        .icon = LV_SYMBOL_VIDEO,
-        .change_callback = on_watchface_animation_changed,
-        .item = {
-            .sw = {
-                .name = "Enable animations on watchface",
-                .inital_val = &settings_app.watchface.animations_on,
-            }
-        }
-    },
     {
         .type = LV_SETTINGS_TYPE_SWITCH,
         .icon = LV_SYMBOL_SETTINGS,
@@ -533,12 +520,6 @@ static void on_factory_reset_changed(lv_setting_value_t value, bool final)
                        "This will erase all stored settings\nand reboot the watch.",
                        on_factory_reset_confirm, 10, true);
     }
-}
-
-static void on_watchface_animation_changed(lv_setting_value_t value, bool final)
-{
-    settings_app.watchface.animations_on = value.item.sw;
-    settings_save_one(ZSW_SETTINGS_WATCHFACE, &settings_app.watchface, sizeof(settings_app.watchface));
 }
 
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final)
