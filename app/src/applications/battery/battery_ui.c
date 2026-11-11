@@ -24,7 +24,8 @@
 #include <assert.h>
 #include <string.h>
 
-#define BATTERY_COLOR       ZSW_COLOR_GREEN
+// The blue of the nPM1300, as the glow behind every page
+#define BATTERY_COLOR       lv_color_hex(0x00A2C6)
 #define PERCENT_COLOR       ZSW_COLOR_GREEN
 #define VOLTAGE_COLOR       ZSW_COLOR_SKY
 
@@ -157,13 +158,13 @@ static void overview_init(lv_obj_t *tile)
     lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
 
     overview_percent = -1;
-    overview_ring = zsw_ui_ring_create(screen, BATTERY_COLOR);
+    overview_ring = zsw_ui_ring_create(screen, ZSW_COLOR_GREEN);
     zsw_ui_title_create(screen, "BATTERY", ZSW_COLOR_TEXT_DIM);
 
     overview_charge_icon = lv_label_create(screen);
     lv_label_set_text(overview_charge_icon, LV_SYMBOL_CHARGE);
     lv_obj_set_style_text_font(overview_charge_icon, ZSW_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(overview_charge_icon, BATTERY_COLOR, LV_PART_MAIN);
+    lv_obj_set_style_text_color(overview_charge_icon, ZSW_COLOR_GREEN, LV_PART_MAIN);
     lv_obj_align(overview_charge_icon, LV_ALIGN_TOP_MID, 0, 46);
     lv_obj_add_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN);
 
@@ -344,7 +345,7 @@ void battery_ui_update(int ttf, int tte, const char *status_text, const char *er
         lv_label_set_text(charger_tte_label, tte_text);
         lv_label_set_text(charger_status_label, status_text);
         lv_label_set_text(charger_error_label, error_text);
-        lv_obj_set_style_text_color(charger_status_label, charging ? BATTERY_COLOR : ZSW_COLOR_TEXT, LV_PART_MAIN);
+        lv_obj_set_style_text_color(charger_status_label, charging ? ZSW_COLOR_GREEN : ZSW_COLOR_TEXT, LV_PART_MAIN);
     }
 }
 
