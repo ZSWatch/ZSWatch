@@ -48,6 +48,8 @@
 
 #define SHAKE_STEPS         18
 #define EVEN_OUT_MAX_STEPS  600
+/* How far up a grain is thrown by sand_sim_kick() */
+#define KICK_HEIGHT         3
 
 /* In-plane gravity below this (0.2 g) means the watch lies flat: keep the last direction. */
 #define GRAVITY_MIN         26
@@ -794,4 +796,40 @@ bool sand_sim_pop_dirty(int band, int *x_first, int *x_last)
     world.dirty_last[band] = 0;
 
     return true;
+}
+
+int sand_sim_surface(int x)
+{
+    int top = GRID;
+    int y;
+
+    if (x < 0 || x >= GRID) {
+        return GRID;
+    }
+
+    y = GRID - 1 - world.row_first[x];
+
+    /* From the edge at the bottom of the column and up, as long as it is sand */
+    for (; y >= 0 && inside(x, y) && SAND_CELL_TYPE(get_cell(x, y)) == SAND_CELL_SAND; y--) {
+        top = y;
+    }
+
+    return top;
+}
+
+void sand_sim_kick(int x)
+{
+    int y = sand_sim_surface(x);
+
+    if (y < GRID && is_empty(x, y - KICK_HEIGHT)) {
+        uint8_t cell = get_cell(x, y);
+
+        set_cell(x, y, SAND_CELL_EMPTY);
+        set_cell(x, y - KICK_HEIGHT, cell);
+    }
+}
+
+bool sand_sim_is_level(void)
+{
+    return world.fall[0][0] == 0 && world.fall[0][1] == 1 && world.shake_steps == 0;
 }

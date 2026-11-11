@@ -52,21 +52,71 @@ LOG_MODULE_REGISTER(watchface_sand, LOG_LEVEL_INF);
 
 #define COLOR_DATE              0x9FAEE0
 /* The grains where the sand meets the sky catch the light */
-#define COLOR_SAND_TOP          0xFFE9B0
+#define COLOR_SAND_TOP          0xFFFFFF
 
 ZSW_LV_IMG_DECLARE(face_sand_preview);
 ZSW_LV_IMG_DECLARE(face_sand_sky);
+ZSW_LV_IMG_DECLARE(face_sand_skier_right);
+ZSW_LV_IMG_DECLARE(face_sand_skier_left);
 
 static void reset_cached_values(void);
 
-/* A grain is one of four shades of its kind: the base, darker, deep shadow and lighter. */
-static const uint32_t sand_colors[SAND_NUM_SHADES] = { 0xD9952B, 0xB37615, 0x7E4E0C, 0xF4C263 };
-static const uint32_t digit_colors[SAND_NUM_SHADES] = { 0xFFF0D2, 0xEDD5A6, 0xD6B77E, 0xFFFFFF };
+/*
+ * The grains are snow. One of four shades each: the base, darker, deep shadow and lighter.
+ * The digits are the same snow, a little brighter so that the time stands out.
+ */
+static const uint32_t sand_colors[SAND_NUM_SHADES] = { 0xD3DFF5, 0xB4C5E6, 0x8DA2CE, 0xF2F6FF };
+static const uint32_t digit_colors[SAND_NUM_SHADES] = { 0xFFFFFF, 0xE6EEFB, 0xCBD8F0, 0xFFFFFF };
+
+/* Snow falls slowly all the time. Few flakes: each one is a small redraw of its own. */
+#define NUM_FLAKES              7
+#define FLAKE_PERIOD_MS         110
+#define FLAKE_SIZE              2
+#define COLOR_FLAKE             0xAFC0E6
+
+typedef struct {
+    int16_t x;
+    int16_t y;
+} flake_t;
+
+/*
+ * A skier crosses the snow now and then, and when the face is tapped. Positions are in
+ * 1/16 pixel, the point where the skis touch the snow.
+ */
+#define SKIER_FP                16
+#define SKIER_WIDTH             32
+#define SKIER_HEIGHT            28
+#define SKIER_SPEED             (2 * SKIER_FP + 6)
+#define SKIER_SPEED_MIN         (1 * SKIER_FP + 4)
+#define SKIER_SPEED_MAX         (4 * SKIER_FP)
+#define SKIER_GRAVITY           14
+#define SKIER_JUMP              (5 * SKIER_FP)
+/* The ground has to fall away this fast for him to leave it */
+#define SKIER_DROP_FP           (6 * SKIER_FP)
+#define SKIER_SPRAY_EVERY       3
+/* Rest ticks (REST_PERIOD_MS each): he comes about every this many, and soon after the face wakes */
+#define SKIER_RANDOM_TICKS      70
+#define SKIER_WAKE_TICKS        5
+
+typedef struct {
+    lv_obj_t *img;
+    int32_t x;
+    int32_t y;
+    int32_t dy;
+    int8_t dir;
+    bool active;
+    bool airborne;
+    uint8_t frame;
+} skier_t;
 
 static lv_obj_t *root_page;
 static lv_obj_t *sand_obj;
 static lv_obj_t *ui_date;
 static lv_timer_t *frame_timer;
+static lv_timer_t *flake_timer;
+static flake_t flakes[NUM_FLAKES];
+static skier_t skier;
+static uint8_t skier_wait_ticks;
 static bool face_active;
 static bool paused;
 static uint8_t rest_frames;
@@ -91,6 +141,14 @@ static void fill_cells(lv_layer_t *layer, lv_draw_rect_dsc_t *dsc, const lv_area
     lv_draw_rect(layer, dsc, &area);
 }
 
+static void flake_area(const flake_t *flake, const lv_area_t *origin, lv_area_t *area)
+{
+    area->x1 = origin->x1 + flake->x;
+    area->y1 = origin->y1 + flake->y;
+    area->x2 = area->x1 + FLAKE_SIZE - 1;
+    area->y2 = area->y1 + FLAKE_SIZE - 1;
+}
+
 /*
  * Each row is drawn as runs of grains in the base shade, with the grains of other shades on
  * top one by one, and a lighter one where the sand meets the sky. That is far fewer
@@ -111,6 +169,17 @@ static void sand_draw_cb(lv_event_t *e)
 
     lv_draw_rect_dsc_init(&dsc);
     dsc.bg_opa = LV_OPA_COVER;
+
+    /* The falling snow first, so that it is behind the pile and the digits */
+    dsc.bg_color = lv_color_hex(COLOR_FLAKE);
+    for (int i = 0; i < NUM_FLAKES; i++) {
+        lv_area_t area;
+
+        flake_area(&flakes[i], &coords, &area);
+        if (lv_area_is_on(&area, &clip)) {
+            lv_draw_rect(layer, &dsc, &area);
+        }
+    }
 
     int x0 = (clip.x1 - coords.x1) / SAND_CELL_PX;
     int x1 = (clip.x2 - coords.x1) / SAND_CELL_PX;
@@ -212,6 +281,158 @@ static bool read_gravity(void)
                                 (int)(ACCEL_TO_DOWN(x, y) * 127.0f / ACCEL_1G));
 }
 
+static void flake_respawn(flake_t *flake, bool anywhere)
+{
+    flake->x = lv_rand(30, FACE_SIZE - 30);
+    flake->y = anywhere ? lv_rand(0, FACE_SIZE / 2) : 0;
+}
+
+/* Each flake sinks a pixel or two and sways, until it meets the snow and a new one starts at the top. */
+static void flake_timer_cb(lv_timer_t *timer)
+{
+    lv_area_t coords;
+    lv_area_t area;
+
+    ARG_UNUSED(timer);
+
+    lv_obj_get_coords(sand_obj, &coords);
+    for (int i = 0; i < NUM_FLAKES; i++) {
+        flake_t *flake = &flakes[i];
+
+        flake_area(flake, &coords, &area);
+        lv_obj_invalidate_area(sand_obj, &area);
+
+        flake->y += 1 + (i & 1);
+        flake->x += (int)lv_rand(0, 2) - 1;
+        if (flake->y >= FACE_SIZE - FLAKE_SIZE || flake->x < 0 || flake->x >= FACE_SIZE - FLAKE_SIZE ||
+            SAND_CELL_TYPE(sand_sim_cell(flake->x / SAND_CELL_PX, flake->y / SAND_CELL_PX)) == SAND_CELL_SAND) {
+            flake_respawn(flake, false);
+        }
+
+        flake_area(flake, &coords, &area);
+        lv_obj_invalidate_area(sand_obj, &area);
+    }
+}
+
+/* The height in pixels of the snow under a point, or -1 where there is none. */
+static int ground_at(int x_px)
+{
+    int surface = sand_sim_surface(x_px / SAND_CELL_PX);
+
+    return surface < SAND_GRID_SIZE ? surface * SAND_CELL_PX : -1;
+}
+
+static void skier_stop(void)
+{
+    skier.active = false;
+    lv_obj_add_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void skier_place(void)
+{
+    lv_obj_set_pos(skier.img, skier.x / SKIER_FP - SKIER_WIDTH / 2, skier.y / SKIER_FP - SKIER_HEIGHT);
+}
+
+/* He starts at the end of the snow that is higher up, to get a run downhill. */
+static void skier_start(void)
+{
+    int left = -1;
+    int right = -1;
+
+    if (skier.active || !sand_sim_is_level()) {
+        return;
+    }
+
+    for (int x = SKIER_WIDTH; x < FACE_SIZE - SKIER_WIDTH && left < 0; x += SAND_CELL_PX) {
+        if (ground_at(x) >= 0) {
+            left = x;
+        }
+    }
+    for (int x = FACE_SIZE - SKIER_WIDTH; x > left && right < 0; x -= SAND_CELL_PX) {
+        if (ground_at(x) >= 0) {
+            right = x;
+        }
+    }
+    if (left < 0 || right - left < 4 * SKIER_WIDTH) {
+        /* Not enough snow to ski on */
+        return;
+    }
+
+    skier.dir = ground_at(left) <= ground_at(right) ? 1 : -1;
+    skier.x = (skier.dir > 0 ? left : right) * SKIER_FP;
+    skier.y = ground_at(skier.x / SKIER_FP) * SKIER_FP;
+    skier.dy = 0;
+    skier.airborne = false;
+    skier.frame = 0;
+    skier.active = true;
+    lv_image_set_src(skier.img, skier.dir > 0 ? ZSW_LV_IMG_USE(face_sand_skier_right) :
+                     ZSW_LV_IMG_USE(face_sand_skier_left));
+    skier_place();
+    lv_obj_remove_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
+    wake_sand();
+}
+
+/* A tap while he is out makes him jump. */
+static void skier_jump(void)
+{
+    if (!skier.airborne) {
+        skier.airborne = true;
+        skier.dy = -SKIER_JUMP;
+    }
+}
+
+/* One frame of the skier: faster downhill, off the ground over a crest, spray behind the skis. */
+static void skier_step(void)
+{
+    int ground;
+    int speed = SKIER_SPEED;
+
+    if (!skier.active) {
+        return;
+    }
+
+    if (!skier.airborne) {
+        /* dy is how much the ground fell in the last frame: positive is downhill */
+        speed = LV_CLAMP(SKIER_SPEED_MIN, SKIER_SPEED + skier.dy, SKIER_SPEED_MAX);
+    }
+    skier.x += skier.dir * speed;
+    skier.frame++;
+
+    ground = ground_at(skier.x / SKIER_FP);
+    if (ground < 0 || !sand_sim_is_level()) {
+        /* Out of snow, or the watch was turned and the snow is sliding away under him */
+        skier_stop();
+        return;
+    }
+    ground *= SKIER_FP;
+
+    if (skier.airborne) {
+        skier.dy += SKIER_GRAVITY;
+        skier.y += skier.dy;
+        if (skier.y >= ground) {
+            skier.y = ground;
+            skier.airborne = false;
+            skier.dy = 0;
+            sand_sim_kick(skier.x / SKIER_FP / SAND_CELL_PX);
+        }
+    } else {
+        int fall = ground - skier.y;
+
+        if (fall > SKIER_DROP_FP || (skier.dy < -SKIER_FP && fall > 0)) {
+            /* The ground dropped away, or he came over a crest with speed: he keeps going as he was */
+            skier.airborne = true;
+        } else {
+            skier.y = ground;
+            skier.dy = fall;
+            if (skier.frame % SKIER_SPRAY_EVERY == 0) {
+                sand_sim_kick(skier.x / SKIER_FP / SAND_CELL_PX - skier.dir * 7);
+            }
+        }
+    }
+
+    skier_place();
+}
+
 static void frame_timer_cb(lv_timer_t *timer)
 {
     bool moving = false;
@@ -219,9 +440,12 @@ static void frame_timer_cb(lv_timer_t *timer)
     ARG_UNUSED(timer);
 
     if (rest_frames >= REST_AFTER_FRAMES) {
-        /* At rest: only look for the wrist turning */
+        /* At rest: only look for the wrist turning, and now and then send the skier out */
         if (read_gravity()) {
             wake_sand();
+        } else if (skier_wait_ticks > 0 && --skier_wait_ticks == 0) {
+            skier_wait_ticks = lv_rand(SKIER_RANDOM_TICKS / 2, SKIER_RANDOM_TICKS * 3 / 2);
+            skier_start();
         }
         return;
     }
@@ -231,9 +455,11 @@ static void frame_timer_cb(lv_timer_t *timer)
         read_gravity();
     }
 
+    skier_step();
     for (int i = 0; i < STEPS_PER_FRAME; i++) {
         moving |= sand_sim_step();
     }
+    moving |= skier.active;
     invalidate_dirty();
 
     rest_frames = moving ? 0 : rest_frames + 1;
@@ -250,18 +476,27 @@ static void update_timer_state(void)
 
     if (face_active && !paused) {
         lv_timer_resume(frame_timer);
+        lv_timer_resume(flake_timer);
     } else {
         lv_timer_pause(frame_timer);
+        lv_timer_pause(flake_timer);
     }
 }
 
 static void root_clicked_cb(lv_event_t *e)
 {
-    ARG_UNUSED(e);
+    if (!face_active || paused) {
+        return;
+    }
 
-    if (face_active && !paused) {
+    if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED) {
+        /* A long press throws the snow up */
         sand_sim_shake();
         wake_sand();
+    } else if (skier.active) {
+        skier_jump();
+    } else {
+        skier_start();
     }
 }
 
@@ -280,9 +515,10 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(root_page, lv_color_black(), LV_PART_MAIN);
     /* A night sky behind the sand, drawn straight from the resource filesystem */
     lv_obj_set_style_bg_image_src(root_page, ZSW_LV_IMG_USE(face_sand_sky), LV_PART_MAIN);
-    /* A tap on the face throws the sand up */
+    /* A tap sends the skier out, or makes him jump. A long press throws the snow up. */
     lv_obj_add_flag(root_page, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_page, root_clicked_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(root_page, root_clicked_cb, LV_EVENT_LONG_PRESSED, NULL);
 
     reset_cached_values();
     face_active = true;
@@ -302,7 +538,18 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_text_letter_space(ui_date, 1, LV_PART_MAIN);
     lv_obj_align(ui_date, LV_ALIGN_TOP_MID, 0, 30);
 
+    skier.img = lv_image_create(root_page);
+    skier.active = false;
+    lv_obj_add_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(skier.img, LV_OBJ_FLAG_CLICKABLE);
+    skier_wait_ticks = SKIER_WAKE_TICKS;
+
+    for (int i = 0; i < NUM_FLAKES; i++) {
+        flake_respawn(&flakes[i], true);
+    }
+
     frame_timer = lv_timer_create(frame_timer_cb, FRAME_PERIOD_MS, NULL);
+    flake_timer = lv_timer_create(flake_timer_cb, FLAKE_PERIOD_MS, NULL);
     wake_sand();
 }
 
@@ -315,8 +562,11 @@ static void watchface_remove(void)
     face_active = false;
     if (frame_timer) {
         lv_timer_delete(frame_timer);
+        lv_timer_delete(flake_timer);
         frame_timer = NULL;
+        flake_timer = NULL;
     }
+    skier.active = false;
     lv_obj_delete(root_page);
     root_page = NULL;
     sand_obj = NULL;
@@ -331,6 +581,8 @@ static void watchface_set_display_active(bool active)
     face_active = active;
     update_timer_state();
     if (active) {
+        /* Every other time the watch is looked at, the skier comes by soon after */
+        skier_wait_ticks = lv_rand(0, 1) ? SKIER_WAKE_TICKS : SKIER_RANDOM_TICKS;
         wake_sand();
     }
 }
