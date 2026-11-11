@@ -24,12 +24,20 @@
 
 #include "managers/zsw_power_manager.h"
 #include "ui/popup/zsw_popup_window.h"
+#include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 LOG_MODULE_REGISTER(zsw_popup_window, LOG_LEVEL_INF);
 
 #define POPUP_QUEUE_SIZE         8
 #define POPUP_TITLE_MAX_LEN      64
 #define POPUP_BODY_MAX_LEN       192
+
+#define POPUP_COLOR              ZSW_COLOR_ACCENT
+#define BUTTON_SIZE              44
+#define BUTTON_BOTTOM            -22
+#define COUNTDOWN_WIDTH          4
+#define COUNTDOWN_STEPS          120
 
 typedef struct popup_request {
     char title[POPUP_TITLE_MAX_LEN];
@@ -84,6 +92,29 @@ static void copy_text_to_request(char *dst, size_t dst_size, const char *src, co
     dst[dst_size - 1] = '\0';
 }
 
+static void countdown_anim_exec(void *ring, int32_t value)
+{
+    // The value only changes a few times per second, in between this returns without redrawing.
+    lv_arc_set_value(ring, value * ZSW_UI_RING_MAX / COUNTDOWN_STEPS);
+}
+
+/* A ring around the edge drains until the popup closes by itself. */
+static void start_countdown(uint32_t seconds)
+{
+    lv_obj_t *ring = zsw_ui_ring_create(mbox, POPUP_COLOR);
+    lv_obj_set_style_arc_width(ring, COUNTDOWN_WIDTH, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(ring, COUNTDOWN_WIDTH, LV_PART_INDICATOR);
+    lv_arc_set_value(ring, ZSW_UI_RING_MAX);
+
+    lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, ring);
+    lv_anim_set_exec_cb(&anim, countdown_anim_exec);
+    lv_anim_set_values(&anim, COUNTDOWN_STEPS, 0);
+    lv_anim_set_duration(&anim, seconds * 1000);
+    lv_anim_start(&anim);
+}
+
 static void show_popup_request(popup_request_t *req)
 {
     __ASSERT_NO_MSG(req != NULL);
@@ -93,40 +124,55 @@ static void show_popup_request(popup_request_t *req)
     current_popup = *req;
     zsw_power_manager_reset_idle_timout();
 
-    mbox = lv_msgbox_create(lv_layer_top());
-    lv_msgbox_add_title(mbox, current_popup.title);
-    lv_msgbox_add_text(mbox, current_popup.body);
+    // A full screen sheet instead of a box: opaque, so nothing under it is drawn.
+    mbox = zsw_ui_screen_create(lv_layer_top(), POPUP_COLOR);
+    lv_obj_add_flag(mbox, LV_OBJ_FLAG_CLICKABLE);
+
+    if (current_popup.close_after_seconds > 0) {
+        start_countdown(current_popup.close_after_seconds);
+    }
+
+    lv_obj_t *title = lv_label_create(mbox);
+    lv_label_set_text(title, current_popup.title);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(title, 140);
+    lv_obj_set_height(title, lv_font_get_line_height(ZSW_FONT_TITLE));
+    lv_obj_set_style_text_font(title, ZSW_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(title, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 30);
+
+    // The body scrolls when it does not fit
+    lv_obj_t *body_scroll = lv_obj_create(mbox);
+    lv_obj_remove_style_all(body_scroll);
+    lv_obj_set_size(body_scroll, 184, 100);
+    lv_obj_align(body_scroll, LV_ALIGN_TOP_MID, 0, 62);
+    lv_obj_set_scroll_dir(body_scroll, LV_DIR_VER);
+
+    lv_obj_t *body = lv_label_create(body_scroll);
+    lv_label_set_text(body, current_popup.body);
+    lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(body, LV_PCT(100));
+    lv_obj_set_style_text_font(body, ZSW_FONT_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_color(body, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    lv_obj_set_style_text_align(body, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_base_dir(body, LV_BASE_DIR_AUTO, LV_PART_MAIN);
+
     if (current_popup.display_yes_no) {
-        yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
-        no_btn = lv_msgbox_add_footer_button(mbox, "No");
+        no_btn = zsw_ui_round_button_create(mbox, LV_SYMBOL_CLOSE, BUTTON_SIZE, ZSW_COLOR_SURFACE_HIGH);
+        lv_obj_align(no_btn, LV_ALIGN_BOTTOM_MID, -30, BUTTON_BOTTOM);
+        yes_btn = zsw_ui_round_button_create(mbox, LV_SYMBOL_OK, BUTTON_SIZE, ZSW_COLOR_GREEN);
+        lv_obj_align(yes_btn, LV_ALIGN_BOTTOM_MID, 30, BUTTON_BOTTOM);
         lv_obj_add_event_cb(yes_btn, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
         lv_obj_add_event_cb(no_btn, on_popup_button_pressed, LV_EVENT_CLICKED, NULL);
+        zsw_ui_slide_in(no_btn, 0);
+        zsw_ui_slide_in(yes_btn, 40);
     } else {
-        close_btn = lv_msgbox_add_header_button(mbox, LV_SYMBOL_CLOSE);
+        close_btn = zsw_ui_round_button_create(mbox, LV_SYMBOL_OK, BUTTON_SIZE, POPUP_COLOR);
+        lv_obj_align(close_btn, LV_ALIGN_BOTTOM_MID, 0, BUTTON_BOTTOM);
         lv_obj_add_event_cb(close_btn, on_popup_close_button_pressed, LV_EVENT_CLICKED, NULL);
-    }
-
-    lv_obj_set_scrollbar_mode(lv_layer_top(), LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_scrollbar_mode(mbox, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_center(mbox);
-    if (close_btn) {
+        zsw_ui_slide_in(close_btn, 0);
         lv_group_focus_obj(close_btn);
-    }
-    lv_obj_set_size(mbox, 180, LV_SIZE_CONTENT);
-    lv_obj_set_style_radius(mbox, 5, 0);
-    lv_obj_clear_flag(mbox, LV_OBJ_FLAG_SCROLLABLE);
-
-    static lv_style_t style_indic_not_bg;
-    lv_style_init(&style_indic_not_bg);
-    lv_style_set_bg_color(&style_indic_not_bg, lv_color_hex(0x2C3333));
-    lv_obj_add_style(mbox, &style_indic_not_bg, 0);
-
-    static lv_style_t color_style;
-    lv_style_init(&color_style);
-    lv_style_set_text_color(&color_style, lv_color_hex(0xCBE4DE));
-    lv_style_set_bg_color(&color_style, lv_color_hex(0x2C3333));
-    if (close_btn) {
-        lv_obj_add_style(close_btn, &color_style, 0);
     }
 
     if (current_popup.close_after_seconds > 0) {
