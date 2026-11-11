@@ -24,6 +24,7 @@
 #include "ui/zsw_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 #define EXTENDED_TIMEOUT_MS 20000
 #define BODY_TOP            70
@@ -160,32 +161,16 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
 
     dismissed = false;
 
-    panel = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(panel, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
-    lv_obj_center(panel);
     // Opaque and square, so LVGL skips redrawing the screen below.
-    lv_obj_set_style_radius(panel, 0, 0);
-    lv_obj_set_style_bg_color(panel, lv_color_hex(0x0C0C1A), 0);
-    lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(panel, 0, 0);
-    lv_obj_set_style_pad_all(panel, 0, 0);
-    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    panel = zsw_ui_screen_create(lv_scr_act(), ZSW_COLOR_ACCENT);
+    lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(panel, on_pressed, LV_EVENT_PRESSED, NULL);
 
     if (overlay.timeout_ms > 0) {
-        countdown = lv_arc_create(panel);
-        lv_obj_set_size(countdown, lv_disp_get_hor_res(NULL) - 4, lv_disp_get_ver_res(NULL) - 4);
-        lv_obj_center(countdown);
-        lv_arc_set_rotation(countdown, 270);
-        lv_arc_set_bg_angles(countdown, 0, 360);
-        lv_arc_set_range(countdown, 0, 1000);
-        lv_arc_set_value(countdown, 1000);
-        lv_obj_remove_style(countdown, NULL, LV_PART_KNOB);
-        lv_obj_clear_flag(countdown, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_set_style_arc_width(countdown, 3, LV_PART_MAIN);
-        lv_obj_set_style_arc_width(countdown, 3, LV_PART_INDICATOR);
-        lv_obj_set_style_arc_opa(countdown, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_arc_color(countdown, zsw_color_blue(), LV_PART_INDICATOR);
+        countdown = zsw_ui_ring_create(panel, ZSW_COLOR_ACCENT);
+        lv_obj_set_style_arc_width(countdown, 4, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(countdown, 4, LV_PART_INDICATOR);
+        lv_arc_set_value(countdown, ZSW_UI_RING_MAX);
         start_countdown(overlay.timeout_ms);
     }
 
@@ -207,9 +192,9 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_label_set_text(app, notif.src == NOTIFICATION_SRC_NONE && notif.title[0] != '\0' ? notif.title :
                       zsw_ui_utils_source_from_notification(notif.src));
     lv_obj_set_style_text_font(app, ZSW_FONT_TEXT, 0);
-    lv_obj_set_style_text_color(app, lv_palette_main(LV_PALETTE_GREY), 0);
+    lv_obj_set_style_text_color(app, ZSW_COLOR_TEXT_DIM, 0);
 
-    lv_obj_t *title = create_text(panel, sender, zsw_color_blue(), LV_LABEL_LONG_DOT, 176);
+    lv_obj_t *title = create_text(panel, sender, ZSW_COLOR_TEXT, LV_LABEL_LONG_DOT, 176);
     lv_obj_set_height(title, lv_font_get_line_height(ZSW_FONT_TEXT));
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 44);
 
@@ -224,13 +209,13 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_align(body_scroll, LV_ALIGN_TOP_MID, 0, BODY_TOP);
     lv_obj_add_event_cb(body_scroll, on_pressed, LV_EVENT_PRESSED, NULL);
 
-    lv_obj_t *body = create_text(body_scroll, notif.body, lv_color_white(), LV_LABEL_LONG_WRAP, 196);
+    lv_obj_t *body = create_text(body_scroll, notif.body, ZSW_COLOR_TEXT_DIM, LV_LABEL_LONG_WRAP, 196);
     lv_obj_set_style_pad_bottom(body, 8, 0);
 
-    lv_color_t neutral = lv_color_make(0x3a, 0x3a, 0x4e);
+    lv_color_t neutral = ZSW_COLOR_SURFACE_HIGH;
     if (notif.can_reply && IS_ENABLED(CONFIG_ZSW_NOTIFICATION_REPLY)) {
         create_button(panel, NULL, LV_SYMBOL_CLOSE, neutral, lv_color_white(), on_dismiss_clicked, -44, BUTTON_HEIGHT);
-        lv_obj_t *reply = create_button(panel, ZSW_LV_IMG_USE(mic_icon), "Reply", zsw_color_blue(), lv_color_black(),
+        lv_obj_t *reply = create_button(panel, ZSW_LV_IMG_USE(mic_icon), "Reply", ZSW_COLOR_ACCENT, lv_color_white(),
                                         on_reply_clicked, 24, 92);
         lv_group_focus_obj(reply);
     } else {
