@@ -208,14 +208,14 @@ static void create_list_screen(void)
     /* Header */
     ui.header_label = lv_label_create(ui.list_screen);
     lv_label_set_text(ui.header_label, "Voice Memos");
-    lv_obj_set_style_text_font(ui.header_label, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(ui.header_label, ZSW_FONT_BODY, 0);
     lv_obj_set_style_text_color(ui.header_label, lv_color_white(), 0);
     lv_obj_align(ui.header_label, LV_ALIGN_TOP_MID, 0, 12);
 
     /* Storage label */
     ui.storage_label = lv_label_create(ui.list_screen);
     lv_label_set_text(ui.storage_label, "");
-    lv_obj_set_style_text_font(ui.storage_label, &zsw_font_12, 0);
+    lv_obj_set_style_text_font(ui.storage_label, ZSW_FONT_CAPTION, 0);
     lv_obj_set_style_text_color(ui.storage_label, zsw_color_gray(), 0);
     lv_obj_align(ui.storage_label, LV_ALIGN_TOP_MID, 0, 32);
 
@@ -235,7 +235,7 @@ static void create_list_screen(void)
     lv_label_set_text(ui.empty_label, LV_SYMBOL_AUDIO "\nNo recordings\nTap to record");
     lv_obj_set_style_text_align(ui.empty_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ui.empty_label, zsw_color_gray(), 0);
-    lv_obj_set_style_text_font(ui.empty_label, &zsw_font_14, 0);
+    lv_obj_set_style_text_font(ui.empty_label, ZSW_FONT_TEXT, 0);
     lv_obj_center(ui.empty_label);
 
     /* Record button (red circle at bottom) */
@@ -277,7 +277,7 @@ static void create_recording_screen(void)
     /* Timer label */
     ui.time_label = lv_label_create(ui.rec_screen);
     lv_label_set_text(ui.time_label, "00:00");
-    lv_obj_set_style_text_font(ui.time_label, &zsw_font_28, 0);
+    lv_obj_set_style_text_font(ui.time_label, ZSW_FONT_HEADLINE, 0);
     lv_obj_set_style_text_color(ui.time_label, lv_color_white(), 0);
     lv_obj_align(ui.time_label, LV_ALIGN_TOP_MID, 0, 65);
 
@@ -293,7 +293,7 @@ static void create_recording_screen(void)
     /* Remaining time label */
     ui.remaining_label = lv_label_create(ui.rec_screen);
     lv_label_set_text(ui.remaining_label, "");
-    lv_obj_set_style_text_font(ui.remaining_label, &zsw_font_12, 0);
+    lv_obj_set_style_text_font(ui.remaining_label, ZSW_FONT_CAPTION, 0);
     lv_obj_set_style_text_color(ui.remaining_label, zsw_color_gray(), 0);
     lv_obj_align(ui.remaining_label, LV_ALIGN_CENTER, 0, 15);
 
@@ -309,7 +309,7 @@ static void create_recording_screen(void)
     lv_obj_t *stop_icon = lv_label_create(ui.stop_btn);
     lv_label_set_text(stop_icon, LV_SYMBOL_STOP);
     lv_obj_set_style_text_color(stop_icon, lv_color_white(), 0);
-    lv_obj_set_style_text_font(stop_icon, &zsw_font_20, 0);
+    lv_obj_set_style_text_font(stop_icon, ZSW_FONT_TITLE, 0);
     lv_obj_center(stop_icon);
 
     /* Start hidden */
@@ -495,7 +495,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
         lv_obj_add_event_cb(del_btn, entry_delete_btn_cb, LV_EVENT_CLICKED, NULL);
         lv_obj_t *del_icon = lv_label_create(del_btn);
         lv_label_set_text(del_icon, LV_SYMBOL_TRASH);
-        lv_obj_set_style_text_font(del_icon, &zsw_font_12, 0);
+        lv_obj_set_style_text_font(del_icon, ZSW_FONT_CAPTION, 0);
         lv_obj_center(del_icon);
 
         /* Relative time or filename */
@@ -503,7 +503,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
         char time_str[32];
         format_relative_time(entries[i].timestamp, time_str, sizeof(time_str));
         lv_label_set_text(name, time_str);
-        lv_obj_set_style_text_font(name, &zsw_font_12, 0);
+        lv_obj_set_style_text_font(name, ZSW_FONT_CAPTION, 0);
         lv_obj_set_style_text_color(name, lv_color_white(), 0);
         lv_obj_align(name, LV_ALIGN_TOP_LEFT, 0, 0);
 
@@ -513,7 +513,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
         lv_label_set_text_fmt(info, "%u:%02u  %u KB",
                               dur_s / 60, dur_s % 60,
                               entries[i].size_bytes / 1024);
-        lv_obj_set_style_text_font(info, &zsw_font_12, 0);
+        lv_obj_set_style_text_font(info, ZSW_FONT_CAPTION, 0);
         lv_obj_set_style_text_color(info, zsw_color_gray(), 0);
         lv_obj_align(info, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     }

@@ -38,7 +38,7 @@ void altimeter_ui_show(lv_obj_t *root)
 
     // Altitude Number (Large Font)
     alt_label = lv_label_create(root_page);
-    lv_obj_set_style_text_font(alt_label, &zsw_font_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(alt_label, ZSW_FONT_HEADLINE, LV_PART_MAIN);
     lv_label_set_text(alt_label, "-- m");
     lv_obj_align(alt_label, LV_ALIGN_TOP_MID, 0, 15);
 

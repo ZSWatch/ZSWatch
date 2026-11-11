@@ -224,7 +224,7 @@ static void populate_page(lv_obj_t *page, lv_settings_page_t *settings_page)
                 obj = create_text(page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
                 lv_obj_t *label = lv_obj_get_child(obj, -1);
                 lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-                lv_obj_set_style_text_font(label, &zsw_font_12, 0);
+                lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, 0);
                 lv_obj_set_style_text_line_space(label, 5, 0);
                 break;
             case LV_SETTINGS_TYPE_SWITCH:

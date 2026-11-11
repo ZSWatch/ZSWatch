@@ -214,8 +214,6 @@ void chronos_ui_add_notification(chronos_notification_t notification)
     lv_label_set_long_mode(app_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_label_set_text(app_name, notification.title);
     lv_obj_set_style_text_font(app_name, CHRONOS_FONT_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    LV_FONT_DECLARE(zsw_font_14);
     lv_obj_t *time_label = lv_label_create(title_panel);
     lv_obj_set_width(time_label, LV_SIZE_CONTENT);  /// 1
     lv_obj_set_height(time_label, LV_SIZE_CONTENT); /// 1

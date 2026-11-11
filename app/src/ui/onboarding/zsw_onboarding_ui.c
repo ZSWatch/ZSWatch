@@ -103,14 +103,14 @@ static void create_welcome_page(lv_obj_t *tile)
     lv_obj_set_align(logo, LV_ALIGN_CENTER);
     lv_obj_set_y(logo, -45);
 
-    add_label(tile, "Welcome to", &zsw_font_14,
+    add_label(tile, "Welcome to", ZSW_FONT_TEXT,
               zsw_color_red(), LV_ALIGN_CENTER, 0, -75);
 
-    add_label(tile, "ZSWatch", &zsw_font_28,
+    add_label(tile, "ZSWatch", ZSW_FONT_HEADLINE,
               lv_color_white(), LV_ALIGN_CENTER, 0, -5);
 
     add_label(tile, LV_SYMBOL_LEFT " Swipe to continue",
-              &zsw_font_14, zsw_color_blue(), LV_ALIGN_CENTER, 0, 45);
+              ZSW_FONT_TEXT, zsw_color_blue(), LV_ALIGN_CENTER, 0, 45);
 }
 
 static void create_button_indicator(lv_obj_t *parent, int x, int y,
@@ -131,14 +131,14 @@ static void create_button_indicator(lv_obj_t *parent, int x, int y,
     lv_obj_t *sym = lv_label_create(circle);
     lv_label_set_text(sym, symbol);
     lv_obj_set_style_text_color(sym, color, 0);
-    lv_obj_set_style_text_font(sym, &zsw_font_14, 0);
+    lv_obj_set_style_text_font(sym, ZSW_FONT_TEXT, 0);
     lv_obj_center(sym);
 
     /* Label above or below the circle */
     lv_obj_t *lbl = lv_label_create(parent);
     lv_label_set_text(lbl, text);
     lv_obj_set_style_text_color(lbl, color, 0);
-    lv_obj_set_style_text_font(lbl, &zsw_font_12, 0);
+    lv_obj_set_style_text_font(lbl, ZSW_FONT_CAPTION, 0);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lbl, 60);
     if (label_above) {
@@ -165,7 +165,7 @@ static void create_buttons_page(lv_obj_t *tile)
                             zsw_color_red(), true);
 
     /* Center title */
-    add_label(tile, "Buttons", &zsw_font_16,
+    add_label(tile, "Buttons", ZSW_FONT_BODY,
               zsw_color_red(), LV_ALIGN_CENTER, 0, 0);
 }
 
@@ -173,7 +173,7 @@ static void create_gestures_page(lv_obj_t *tile)
 {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
 
-    add_label(tile, "Gestures", &zsw_font_20,
+    add_label(tile, "Gestures", ZSW_FONT_TITLE,
               lv_color_white(), LV_ALIGN_TOP_MID, 0, 30);
 
     lv_obj_t *container = lv_obj_create(tile);
@@ -201,27 +201,27 @@ static void create_gestures_page(lv_obj_t *tile)
         lv_obj_t *lbl = lv_label_create(container);
         lv_label_set_text(lbl, gesture_texts[i]);
         lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
-        lv_obj_set_style_text_font(lbl, &zsw_font_14, 0);
+        lv_obj_set_style_text_font(lbl, ZSW_FONT_TEXT, 0);
     }
 
     add_label(tile, "Tip: App picker is swipeable",
-              &zsw_font_12, zsw_color_gray(), LV_ALIGN_BOTTOM_MID, 0, -30);
+              ZSW_FONT_CAPTION, zsw_color_gray(), LV_ALIGN_BOTTOM_MID, 0, -30);
 }
 
 static void create_getstarted_page(lv_obj_t *tile)
 {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
 
-    add_label(tile, "Get Started", &zsw_font_20,
+    add_label(tile, "Get Started", ZSW_FONT_TITLE,
               lv_color_white(), LV_ALIGN_TOP_MID, 0, 25);
 
     add_label(tile,
               "Pair with GadgetBridge\n(Android) or connect\nvia iOS for the\nbest experience",
-              &zsw_font_14, lv_color_white(), LV_ALIGN_CENTER, 0, -15);
+              ZSW_FONT_TEXT, lv_color_white(), LV_ALIGN_CENTER, 0, -15);
 
     add_label(tile,
               "Upload filesystem for\nfull UI experience",
-              &zsw_font_12, zsw_color_red(), LV_ALIGN_CENTER, 0, 40);
+              ZSW_FONT_CAPTION, zsw_color_red(), LV_ALIGN_CENTER, 0, 40);
 
     lv_obj_t *btn = lv_btn_create(tile);
     lv_obj_set_size(btn, 120, 36);
@@ -232,7 +232,7 @@ static void create_getstarted_page(lv_obj_t *tile)
 
     lv_obj_t *btn_label = lv_label_create(btn);
     lv_label_set_text(btn_label, "Let's go!");
-    lv_obj_set_style_text_font(btn_label, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(btn_label, ZSW_FONT_BODY, 0);
     lv_obj_center(btn_label);
 }
 

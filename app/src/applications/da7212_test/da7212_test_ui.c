@@ -58,13 +58,13 @@ void da7212_test_ui_show(lv_obj_t *root, da7212_test_ui_evt_cb_t play_cb)
     lv_obj_t *title = lv_label_create(root_page);
     lv_label_set_text(title, "DA7212 Test");
     lv_obj_set_style_text_color(title, lv_color_hex(0x4FC3F7), 0);
-    lv_obj_set_style_text_font(title, &zsw_font_20, 0);
+    lv_obj_set_style_text_font(title, ZSW_FONT_TITLE, 0);
 
     /* Status label */
     status_label = lv_label_create(root_page);
     lv_label_set_text(status_label, "Ready");
     lv_obj_set_style_text_color(status_label, lv_color_hex(0xBDBDBD), 0);
-    lv_obj_set_style_text_font(status_label, &zsw_font_14, 0);
+    lv_obj_set_style_text_font(status_label, ZSW_FONT_TEXT, 0);
     lv_obj_set_style_pad_top(status_label, 10, 0);
     lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(status_label, 200);
@@ -81,7 +81,7 @@ void da7212_test_ui_show(lv_obj_t *root, da7212_test_ui_evt_cb_t play_cb)
 
     play_btn_label = lv_label_create(play_btn);
     lv_label_set_text(play_btn_label, LV_SYMBOL_PLAY " Play");
-    lv_obj_set_style_text_font(play_btn_label, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(play_btn_label, ZSW_FONT_BODY, 0);
     lv_obj_center(play_btn_label);
 }
 
