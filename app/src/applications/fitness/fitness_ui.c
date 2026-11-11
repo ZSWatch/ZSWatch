@@ -19,6 +19,7 @@
 #include "ui/zsw_ui.h"
 #include <lvgl.h>
 #include <assert.h>
+#include "ui/zsw_ui_theme.h"
 
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *ui_step_progress_label = NULL;
@@ -59,7 +60,7 @@ static void event_cb(lv_event_t *e)
             draw_label_dsc.color = zsw_color_red();
             draw_label_dsc.align = LV_TEXT_ALIGN_CENTER;
             draw_label_dsc.text = buf;
-            draw_label_dsc.font = &lv_font_montserrat_12;
+            draw_label_dsc.font = &zsw_font_12;
 
             lv_area_t a;
             lv_area_t obj_coords;
@@ -135,7 +136,7 @@ static void create_step_chart(lv_obj_t *ui_root_container, uint16_t max_samples)
     lv_obj_set_y(ui_step_progress_label, -90);
     lv_obj_set_align(ui_step_progress_label, LV_ALIGN_CENTER);
     lv_obj_set_style_text_color(ui_step_progress_label, zsw_color_blue(), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_step_progress_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_step_progress_label, &zsw_font_20, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text(ui_step_progress_label, "- / 10000");
 
     ui_weekly_chart = lv_chart_create(ui_root_container);

@@ -18,6 +18,7 @@
 #include "about_ui.h"
 #include "ui/zsw_ui.h"
 #include "assert.h"
+#include "ui/zsw_ui_theme.h"
 
 static lv_obj_t *root_page = NULL;
 
@@ -30,9 +31,6 @@ static lv_obj_t *ui_sdk_versions;
 
 ZSW_LV_IMG_DECLARE(ZSWatch_logo_small);
 ZSW_LV_IMG_DECLARE(zswatch_text);
-
-LV_FONT_DECLARE(lv_font_montserrat_10);
-LV_FONT_DECLARE(lv_font_montserrat_12);
 
 void about_ui_show(lv_obj_t *root, char *board, char *fw_version, char *fw_version_info, char *sdk_version,
                    char *fs_stats, int num_apps)
@@ -93,7 +91,7 @@ void about_ui_show(lv_obj_t *root, char *board, char *fw_version, char *fw_versi
     lv_obj_set_height(ui_hw_revision, LV_SIZE_CONTENT);
     lv_label_set_text_fmt(ui_hw_revision, "%s", board);
     lv_obj_set_style_text_align(ui_hw_revision, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_hw_revision, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_hw_revision, &zsw_font_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_filesystem_stats = lv_label_create(root_page);
     lv_obj_set_width(ui_filesystem_stats, LV_SIZE_CONTENT);
@@ -126,7 +124,7 @@ void about_ui_show(lv_obj_t *root, char *board, char *fw_version, char *fw_versi
     lv_obj_set_height(ui_compile_time, LV_SIZE_CONTENT);
     lv_label_set_text_fmt(ui_compile_time, "Compiled at\n%s", fw_version_info);
     lv_obj_set_style_text_align(ui_compile_time, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_compile_time, &lv_font_montserrat_10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_compile_time, &zsw_font_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void about_ui_remove(void)

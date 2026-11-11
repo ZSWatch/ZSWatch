@@ -21,6 +21,7 @@
 #include <lvgl.h>
 #include <assert.h>
 #include <stdio.h>
+#include "ui/zsw_ui_theme.h"
 
 static void on_start_pause_clicked(lv_event_t *e);
 static void on_reset_clicked(lv_event_t *e);
@@ -84,7 +85,7 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     // The stopwatch time label
     ui.time_label = lv_label_create(ui.root_page);
     lv_label_set_text(ui.time_label, "00:00.00");
-    lv_obj_set_style_text_font(ui.time_label, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ui.time_label, &zsw_font_28, LV_PART_MAIN);
     lv_obj_set_style_text_color(ui.time_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.time_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(ui.time_label, 150); // Fixed width to prevent jumping
@@ -111,7 +112,7 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     lv_obj_t *lap_label = lv_label_create(ui.lap_btn);
     lv_label_set_text(lap_label, LV_SYMBOL_LIST);
     lv_obj_set_style_text_color(lap_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(lap_label, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lap_label, &zsw_font_16, LV_PART_MAIN);
     lv_obj_center(lap_label);
 
     // Play/Pause button
@@ -124,7 +125,7 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     lv_obj_t *start_pause_label = lv_label_create(ui.start_pause_btn);
     lv_label_set_text(start_pause_label, LV_SYMBOL_PLAY);
     lv_obj_set_style_text_color(start_pause_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(start_pause_label, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(start_pause_label, &zsw_font_20, LV_PART_MAIN);
     lv_obj_center(start_pause_label);
 
     // Reset button
@@ -137,7 +138,7 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     lv_obj_t *reset_label = lv_label_create(ui.reset_btn);
     lv_label_set_text(reset_label, LV_SYMBOL_REFRESH);
     lv_obj_set_style_text_color(reset_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(reset_label, &lv_font_montserrat_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(reset_label, &zsw_font_16, LV_PART_MAIN);
     lv_obj_center(reset_label);
 
     // Lap times container
@@ -231,7 +232,7 @@ void stopwatch_ui_add_lap_time(uint32_t lap_time, uint32_t total_time)
     lv_obj_t *lap_item = lv_label_create(ui.lap_list);
     lv_label_set_text_fmt(lap_item, "L%d %s", ui.lap_count, time_str);
     lv_obj_set_style_text_color(lap_item, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(lap_item, &lv_font_montserrat_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lap_item, &zsw_font_14, LV_PART_MAIN);
     lv_obj_set_width(lap_item, LV_PCT(100));
     lv_obj_set_style_text_align(lap_item, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 

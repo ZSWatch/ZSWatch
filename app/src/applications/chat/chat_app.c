@@ -38,6 +38,7 @@
 #include "ui/zsw_ui.h"
 #include "ui/zsw_overlay_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui_theme.h"
 
 LOG_MODULE_REGISTER(chat_app, CONFIG_ZSW_CHAT_APP_LOG_LEVEL);
 
@@ -45,8 +46,6 @@ LOG_MODULE_REGISTER(chat_app, CONFIG_ZSW_CHAT_APP_LOG_LEVEL);
 #define ANSWER_TIMEOUT_MS      (120 * 1000)
 #define POPUP_DISMISS_MS       (30 * 1000)
 #define POPUP_TOP              46
-
-LV_FONT_DECLARE(lv_font_montserrat_14_full);
 
 typedef enum {
     STATE_IDLE,
@@ -163,7 +162,7 @@ static void build_answer_view(lv_obj_t *parent, int top, int bottom_space)
     k_mutex_unlock(&answer_lock);
     lv_obj_set_width(text, 196);
     lv_label_set_long_mode(text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(text, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_font(text, &zsw_font_14, 0);
     lv_obj_set_style_text_color(text, lv_color_white(), 0);
     lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
     /* Room to scroll the last line above the round bezel. */
@@ -216,7 +215,7 @@ static lv_obj_t *popup_button(const char *text, lv_color_t color, lv_event_cb_t 
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
     lv_group_add_obj(lv_group_get_default(), btn);
 
-    lv_obj_t *label = create_label(btn, text, &lv_font_montserrat_14, lv_color_white());
+    lv_obj_t *label = create_label(btn, text, &zsw_font_14, lv_color_white());
     lv_obj_center(label);
     return btn;
 }
@@ -243,7 +242,7 @@ static void popup_render(void)
             lv_obj_set_style_bg_color(dot, zsw_color_red(), 0);
             lv_obj_set_style_border_width(dot, 0, 0);
             lv_obj_align(dot, LV_ALIGN_BOTTOM_MID, -74, -41);
-            popup.time_label = create_label(popup.body, "0:00", &lv_font_montserrat_14, lv_color_white());
+            popup.time_label = create_label(popup.body, "0:00", &zsw_font_14, lv_color_white());
             lv_obj_align(popup.time_label, LV_ALIGN_BOTTOM_MID, -44, -38);
             focus = popup_button(LV_SYMBOL_OK " Send", zsw_color_blue(), send_btn_cb, 36, 92);
             break;
@@ -254,7 +253,7 @@ static void popup_render(void)
             lv_obj_set_style_arc_width(spinner, 4, LV_PART_MAIN);
             lv_obj_set_style_arc_width(spinner, 4, LV_PART_INDICATOR);
             lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -6);
-            lv_obj_t *label = create_label(popup.body, "Thinking...", &lv_font_montserrat_14,
+            lv_obj_t *label = create_label(popup.body, "Thinking...", &zsw_font_14,
                                            lv_color_make(0xbb, 0xbb, 0xbb));
             lv_obj_align(label, LV_ALIGN_CENTER, 0, 30);
             focus = popup_button(LV_SYMBOL_CLOSE, lv_color_make(0x3a, 0x3a, 0x4e), popup_close_cb, 0, 40);
@@ -267,7 +266,7 @@ static void popup_render(void)
             break;
         case STATE_TIMED_OUT: {
             lv_obj_t *label = create_label(popup.body, "No answer yet.\nIs the phone nearby\nwith OpenRouter set up?",
-                                           &lv_font_montserrat_14, lv_color_white());
+                                           &zsw_font_14, lv_color_white());
             lv_obj_align(label, LV_ALIGN_CENTER, 0, -10);
             focus = popup_button(LV_SYMBOL_CLOSE, lv_color_make(0x3a, 0x3a, 0x4e), popup_close_cb, 0, 40);
             break;
@@ -288,7 +287,7 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_bg_color(popup.cont, lv_color_make(0x1a, 0x1a, 0x2e), 0);
     lv_obj_set_style_bg_opa(popup.cont, LV_OPA_90, 0);
 
-    lv_obj_t *title = create_label(popup.cont, "Chat", &lv_font_montserrat_14, zsw_color_blue());
+    lv_obj_t *title = create_label(popup.cont, "Chat", &zsw_font_14, zsw_color_blue());
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
 
     popup.timer = lv_timer_create(popup_timer_cb, UI_UPDATE_INTERVAL_MS, NULL);

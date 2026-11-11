@@ -22,12 +22,12 @@
 #include "tiles_ui.h"
 #include "ui/zsw_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui_theme.h"
 
 #define RING_SIZE       156
 #define RING_WIDTH      10
 #define DOT_SIZE        6
 
-LV_FONT_DECLARE(lv_font_montserrat_14_full);
 LV_FONT_DECLARE(ui_font_aliean_25);
 LV_FONT_DECLARE(ui_font_aliean_47);
 
@@ -94,7 +94,7 @@ static void set_number(lv_obj_t *label, const lv_font_t *digit_font, const char 
     for (const char *c = text; *c; c++) {
         digits = digits && ((*c >= '0' && *c <= '9') || *c == ':');
     }
-    lv_obj_set_style_text_font(label, digits ? digit_font : &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(label, digits ? digit_font : &zsw_font_28, 0);
     lv_label_set_text(label, text);
 }
 
@@ -110,7 +110,7 @@ static lv_obj_t *add_tile(tiles_tile_t type, const char *title)
     lv_obj_add_event_cb(tile, tile_clicked, LV_EVENT_SHORT_CLICKED, (void *)(uintptr_t)type);
     num_tiles++;
 
-    lv_obj_t *label = create_label(tile, title, &lv_font_montserrat_14, gray());
+    lv_obj_t *label = create_label(tile, title, &zsw_font_14, gray());
     lv_obj_set_style_text_letter_space(label, 2, 0);
     lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 26);
     return tile;
@@ -147,7 +147,7 @@ static lv_obj_t *create_value_row(lv_obj_t *parent, lv_obj_t **value, lv_obj_t *
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
 
     *value = create_label(row, "", font, color);
-    lv_obj_t *unit_label = create_label(row, unit_text, &lv_font_montserrat_16, gray());
+    lv_obj_t *unit_label = create_label(row, unit_text, &zsw_font_16, gray());
     lv_obj_set_style_pad_bottom(unit_label, 6, 0);
     if (unit) {
         *unit = unit_label;
@@ -170,7 +170,7 @@ static void build_weather(void)
                                      lv_color_white());
     lv_obj_align(row, LV_ALIGN_CENTER, 0, 24);
 
-    weather.text = create_label(tile, "", &lv_font_montserrat_14_full, gray());
+    weather.text = create_label(tile, "", &zsw_font_14, gray());
     lv_obj_set_width(weather.text, 170);
     lv_label_set_long_mode(weather.text, LV_LABEL_LONG_DOT);
     lv_obj_align(weather.text, LV_ALIGN_CENTER, 0, 66);
@@ -183,7 +183,7 @@ static void build_activity(void)
     activity.ring = create_ring(tile, lv_color_hex(0x4CD964));
     activity.steps = create_label(tile, "", &ui_font_aliean_25, lv_color_white());
     lv_obj_align(activity.steps, LV_ALIGN_CENTER, 0, 0);
-    activity.goal = create_label(tile, "", &lv_font_montserrat_12, gray());
+    activity.goal = create_label(tile, "", &zsw_font_12, gray());
     lv_obj_align(activity.goal, LV_ALIGN_CENTER, 0, 26);
 }
 
@@ -194,7 +194,7 @@ static void build_heart_rate(void)
     lv_obj_t *row = create_value_row(tile, &hr.bpm, NULL, "bpm", &ui_font_aliean_47, lv_color_hex(0xFF5A5F));
     lv_obj_align(row, LV_ALIGN_CENTER, 0, -18);
 
-    hr.age = create_label(tile, "", &lv_font_montserrat_12, gray());
+    hr.age = create_label(tile, "", &zsw_font_12, gray());
     lv_obj_align(hr.age, LV_ALIGN_CENTER, 0, 18);
 
     hr.chart = lv_chart_create(tile);
@@ -230,7 +230,7 @@ static lv_obj_t *create_music_button(lv_obj_t *parent, const char *symbol, tiles
     // Focusing a button would scroll the tileview to its tile.
     lv_group_remove_obj(btn);
 
-    lv_obj_t *label = create_label(btn, symbol, &lv_font_montserrat_16,
+    lv_obj_t *label = create_label(btn, symbol, &zsw_font_16,
                                    action == TILES_MUSIC_PLAY_PAUSE ? lv_color_black() : lv_color_white());
     lv_obj_center(label);
     return label;
@@ -240,14 +240,14 @@ static void build_music(void)
 {
     lv_obj_t *tile = add_tile(TILE_MUSIC, "MUSIC");
 
-    music.track = create_label(tile, "", &lv_font_montserrat_14_full, lv_color_white());
+    music.track = create_label(tile, "", &zsw_font_14, lv_color_white());
     lv_obj_set_width(music.track, 176);
     lv_label_set_long_mode(music.track, LV_LABEL_LONG_DOT);
-    lv_obj_set_height(music.track, 2 * lv_font_get_line_height(&lv_font_montserrat_14_full));
+    lv_obj_set_height(music.track, 2 * lv_font_get_line_height(&zsw_font_14));
     lv_obj_align(music.track, LV_ALIGN_CENTER, 0, -30);
 
-    music.artist = create_label(tile, "", &lv_font_montserrat_14_full, gray());
-    lv_obj_set_size(music.artist, 160, lv_font_get_line_height(&lv_font_montserrat_14_full));
+    music.artist = create_label(tile, "", &zsw_font_14, gray());
+    lv_obj_set_size(music.artist, 160, lv_font_get_line_height(&zsw_font_14));
     lv_label_set_long_mode(music.artist, LV_LABEL_LONG_DOT);
     lv_obj_align(music.artist, LV_ALIGN_CENTER, 0, 2);
 
@@ -264,7 +264,7 @@ static void build_battery(void)
     lv_arc_set_range(battery.ring, 0, 100);
     lv_obj_t *row = create_value_row(tile, &battery.percent, NULL, "%", &ui_font_aliean_47, lv_color_white());
     lv_obj_align(row, LV_ALIGN_CENTER, 0, 0);
-    battery.status = create_label(tile, "", &lv_font_montserrat_12, gray());
+    battery.status = create_label(tile, "", &zsw_font_12, gray());
     lv_obj_set_width(battery.status, 120);
     lv_obj_align(battery.status, LV_ALIGN_CENTER, 0, 38);
 }

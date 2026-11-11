@@ -19,6 +19,7 @@
 #include <lvgl.h>
 #include <ui/zsw_ui.h>
 #include <assert.h>
+#include "ui/zsw_ui_theme.h"
 
 typedef struct {
     lv_obj_t *ui_day;
@@ -94,7 +95,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_y(ui_status_label, 25);
     lv_obj_set_align(ui_status_label, LV_ALIGN_TOP_MID);
     lv_label_set_text(ui_status_label, "");
-    lv_obj_set_style_text_font(ui_status_label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_status_label, &zsw_font_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_forecast_widget = lv_obj_create(ui_root_container);
     lv_obj_remove_style_all(ui_forecast_widget);
@@ -142,7 +143,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_height(ui_Label8, LV_SIZE_CONTENT);
     lv_obj_set_align(ui_Label8, LV_ALIGN_TOP_MID);
     lv_label_set_text(ui_Label8, "NOW");
-    lv_obj_set_style_text_font(ui_Label8, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_Label8, &zsw_font_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_today_temp = lv_label_create(ui_today_container);
     lv_obj_set_width(ui_today_temp, LV_SIZE_CONTENT);
@@ -150,7 +151,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_x(ui_today_temp, -40);
     lv_obj_set_y(ui_today_temp, -10);
     lv_obj_set_align(ui_today_temp, LV_ALIGN_CENTER);
-    lv_obj_set_style_text_font(ui_today_temp, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_today_temp, &zsw_font_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_today_min_max_temp = lv_label_create(ui_today_container);
     lv_obj_set_width(ui_today_min_max_temp, LV_SIZE_CONTENT);
@@ -160,7 +161,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_align(ui_today_min_max_temp, LV_ALIGN_CENTER);
     //lv_obj_set_style_text_color(ui_today_min_max_temp, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_today_min_max_temp, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_today_min_max_temp, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_today_min_max_temp, &zsw_font_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_today_rain = lv_label_create(ui_today_container);
     lv_obj_set_width(ui_today_rain, LV_SIZE_CONTENT);
@@ -168,7 +169,7 @@ void weather_ui_show(lv_obj_t *root)
     lv_obj_set_x(ui_today_rain, -40);
     lv_obj_set_y(ui_today_rain, 10);
     lv_obj_set_align(ui_today_rain, LV_ALIGN_CENTER);
-    lv_obj_set_style_text_font(ui_today_rain, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_today_rain, &zsw_font_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_water_drop_img = lv_img_create(ui_today_container);
     lv_img_set_src(ui_water_drop_img, ZSW_LV_IMG_USE(ui_img_water_16_png));
@@ -253,7 +254,7 @@ static void add_forecast_day(lv_obj_t *parent, lv_obj_forecasts_t *storage)
     lv_obj_set_align(storage->ui_day_day, LV_ALIGN_CENTER);
     lv_obj_set_style_text_color(storage->ui_day_day, lv_color_hex(0x5AA1EE), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(storage->ui_day_day, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(storage->ui_day_day, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(storage->ui_day_day, &zsw_font_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
 void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weather,
@@ -298,7 +299,7 @@ void weather_ui_set_error(const char *error)
     }
 
     weather_ui_set_refreshing(false);
-    lv_obj_set_style_text_font(ui_status_label, &lv_font_montserrat_12, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ui_status_label, &zsw_font_12, LV_PART_MAIN);
     lv_label_set_text(ui_status_label, error);
 }
 

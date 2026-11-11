@@ -1,5 +1,6 @@
 #include "altimeter_ui.h"
 #include "ui/zsw_ui.h"
+#include "ui/zsw_ui_theme.h"
 
 #define RUNOUT_DURATION_S 10
 
@@ -37,7 +38,7 @@ void altimeter_ui_show(lv_obj_t *root)
 
     // Altitude Number (Large Font)
     alt_label = lv_label_create(root_page);
-    lv_obj_set_style_text_font(alt_label, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_font(alt_label, &zsw_font_28, LV_PART_MAIN);
     lv_label_set_text(alt_label, "-- m");
     lv_obj_align(alt_label, LV_ALIGN_TOP_MID, 0, 15);
 
