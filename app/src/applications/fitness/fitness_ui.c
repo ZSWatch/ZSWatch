@@ -75,12 +75,8 @@ static void create_week_bars(lv_obj_t *parent)
         lv_obj_add_flag(bars[i], LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(bars[i], on_bar_clicked, LV_EVENT_CLICKED, (void *)(intptr_t)i);
 
-        lv_obj_t *day = lv_label_create(container);
-        lv_label_set_text(day, "");
-        lv_obj_set_style_text_font(day, ZSW_FONT_CAPTION, LV_PART_MAIN);
-        lv_obj_set_style_text_color(day, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+        lv_obj_t *day = zsw_ui_label_create(container, "", ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DIM);
         lv_obj_set_width(day, BAR_PITCH);
-        lv_obj_set_style_text_align(day, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_align(day, LV_ALIGN_BOTTOM_LEFT, i * BAR_PITCH, 0);
     }
 }
@@ -138,16 +134,10 @@ void fitness_ui_show(lv_obj_t *root, uint16_t max_samples)
     goal_ring = zsw_ui_ring_create(root_page, FITNESS_COLOR);
     zsw_ui_title_create(root_page, "STEPS", ZSW_COLOR_TEXT_DIM);
 
-    steps_label = lv_label_create(root_page);
-    lv_label_set_text(steps_label, "-");
-    lv_obj_set_style_text_font(steps_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(steps_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    steps_label = zsw_ui_label_create(root_page, "-", ZSW_FONT_NUMBER, ZSW_COLOR_TEXT);
     lv_obj_align(steps_label, LV_ALIGN_TOP_MID, 0, 42);
 
-    caption_label = lv_label_create(root_page);
-    lv_label_set_text(caption_label, "");
-    lv_obj_set_style_text_font(caption_label, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(caption_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    caption_label = zsw_ui_label_create(root_page, "", ZSW_FONT_TEXT, ZSW_COLOR_TEXT_DIM);
     lv_obj_align(caption_label, LV_ALIGN_TOP_MID, 0, 98);
 
     create_week_bars(root_page);

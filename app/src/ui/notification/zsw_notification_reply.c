@@ -34,6 +34,7 @@
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_recording_manager.h"
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 LOG_MODULE_REGISTER(zsw_notification_reply, CONFIG_ZSW_NOTIFICATION_REPLY_LOG_LEVEL);
 
@@ -209,16 +210,6 @@ static lv_obj_t *create_view(lv_obj_t *parent)
     return view;
 }
 
-static lv_obj_t *create_label(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color)
-{
-    lv_obj_t *label = lv_label_create(parent);
-    lv_label_set_text(label, text);
-    lv_obj_set_style_text_font(label, font, 0);
-    lv_obj_set_style_text_color(label, color, 0);
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    return label;
-}
-
 static lv_obj_t *create_button(const char *text, lv_color_t color, lv_color_t text_color, lv_event_cb_t cb,
                                int x, int width)
 {
@@ -233,7 +224,7 @@ static lv_obj_t *create_button(const char *text, lv_color_t color, lv_color_t te
     lv_group_add_obj(lv_group_get_default(), btn);
 
     if (text) {
-        lv_obj_t *label = create_label(btn, text, ZSW_FONT_TEXT, text_color);
+        lv_obj_t *label = zsw_ui_label_create(btn, text, ZSW_FONT_TEXT, text_color);
         lv_obj_center(label);
     }
     return btn;
@@ -264,7 +255,7 @@ static void create_scroll_text(const char *text, lv_color_t color)
     lv_obj_set_scrollbar_mode(scroll, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_align(scroll, LV_ALIGN_TOP_MID, 0, TEXT_TOP);
 
-    lv_obj_t *label = create_label(scroll, text, ZSW_FONT_TEXT, color);
+    lv_obj_t *label = zsw_ui_label_create(scroll, text, ZSW_FONT_TEXT, color);
     lv_obj_set_width(label, 196);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_base_dir(label, LV_BASE_DIR_AUTO, 0);
@@ -282,7 +273,7 @@ static lv_obj_t *create_status_badge(const char *symbol, lv_color_t color)
     lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(badge, LV_ALIGN_CENTER, 0, -18);
 
-    lv_obj_t *icon = create_label(badge, symbol, ZSW_FONT_HEADLINE, lv_color_white());
+    lv_obj_t *icon = zsw_ui_label_create(badge, symbol, ZSW_FONT_HEADLINE, lv_color_white());
     lv_obj_center(icon);
     return badge;
 }
@@ -312,7 +303,7 @@ static void render_recording(void)
     lv_obj_t *mic = zsw_ui_utils_create_icon(reply.body, ZSW_LV_IMG_USE(mic_icon), 36, lv_color_white());
     lv_obj_align_to(mic, ring, LV_ALIGN_CENTER, 0, -10);
 
-    reply.time_label = create_label(reply.body, "0:00", ZSW_FONT_TEXT, lv_color_make(0xbb, 0xbb, 0xbb));
+    reply.time_label = zsw_ui_label_create(reply.body, "0:00", ZSW_FONT_TEXT, lv_color_make(0xbb, 0xbb, 0xbb));
     lv_obj_align_to(reply.time_label, ring, LV_ALIGN_CENTER, 0, 22);
 
     create_cancel_button(-46);
@@ -329,7 +320,7 @@ static void render_waiting(const char *text)
     lv_obj_set_style_arc_color(spinner, zsw_color_blue(), LV_PART_INDICATOR);
     lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -14);
 
-    lv_obj_t *label = create_label(reply.body, text, ZSW_FONT_TEXT, lv_color_make(0xbb, 0xbb, 0xbb));
+    lv_obj_t *label = zsw_ui_label_create(reply.body, text, ZSW_FONT_TEXT, lv_color_make(0xbb, 0xbb, 0xbb));
     lv_obj_align(label, LV_ALIGN_CENTER, 0, 26);
 }
 
@@ -346,8 +337,8 @@ static void render_draft(void)
 static void render_sent(void)
 {
     lv_obj_t *badge = create_status_badge(LV_SYMBOL_OK, lv_color_make(0x2e, 0x9e, 0x5b));
-    lv_obj_t *label = create_label(reply.body, reply.status[0] ? reply.status : "Sent", ZSW_FONT_TEXT,
-                                   lv_color_white());
+    lv_obj_t *label = zsw_ui_label_create(reply.body, reply.status[0] ? reply.status : "Sent", ZSW_FONT_TEXT,
+                                          lv_color_white());
     lv_obj_set_width(label, 180);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_align_to(label, badge, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
@@ -367,7 +358,7 @@ static void render_sent(void)
 
 static void render_failed(void)
 {
-    lv_obj_t *label = create_label(reply.body, reply.status, ZSW_FONT_TEXT, lv_color_white());
+    lv_obj_t *label = zsw_ui_label_create(reply.body, reply.status, ZSW_FONT_TEXT, lv_color_white());
     lv_obj_set_width(label, 180);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, -10);
@@ -479,7 +470,7 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_bg_color(reply.cont, lv_color_hex(0x0C0C1A), 0);
     lv_obj_set_style_bg_opa(reply.cont, LV_OPA_COVER, 0);
 
-    lv_obj_t *title = create_label(reply.cont, "", ZSW_FONT_TEXT, zsw_color_blue());
+    lv_obj_t *title = zsw_ui_label_create(reply.cont, "", ZSW_FONT_TEXT, zsw_color_blue());
     lv_label_set_text_fmt(title, "Reply to %s", reply.sender);
     lv_obj_set_size(title, 150, lv_font_get_line_height(ZSW_FONT_TEXT));
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);

@@ -35,6 +35,11 @@
  */
 lv_obj_t *zsw_ui_screen_create(lv_obj_t *parent, lv_color_t color);
 
+/**
+ * A label with text, font and color set. Text is centered when it wraps or the label is wider than it.
+ */
+lv_obj_t *zsw_ui_label_create(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color);
+
 /** Creates a small title at the top of the screen. The text is not copied. */
 lv_obj_t *zsw_ui_title_create(lv_obj_t *parent, const char *text, lv_color_t color);
 

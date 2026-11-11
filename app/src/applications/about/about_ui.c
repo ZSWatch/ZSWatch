@@ -46,10 +46,7 @@ void about_ui_show(lv_obj_t *root, const about_ui_info_t *info)
     lv_obj_align(logo, LV_ALIGN_TOP_MID, 0, 28);
 
     // Too long to share a row with a key
-    lv_obj_t *board = lv_label_create(root_page);
-    lv_label_set_text(board, info->board);
-    lv_obj_set_style_text_font(board, ZSW_FONT_CAPTION, LV_PART_MAIN);
-    lv_obj_set_style_text_color(board, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    lv_obj_t *board = zsw_ui_label_create(root_page, info->board, ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DIM);
     lv_obj_align(board, LV_ALIGN_TOP_MID, 0, 60);
 
     lv_obj_t *list = zsw_ui_info_list_create(root_page, INFO_LIST_WIDTH);

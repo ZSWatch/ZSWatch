@@ -56,39 +56,26 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
 
     zsw_ui_title_create(root_page, "UPDATE", ZSW_COLOR_TEXT_DIM);
 
-    status_label = lv_label_create(root_page);
+    status_label = zsw_ui_label_create(root_page, "Ready", ZSW_FONT_TEXT, UPDATE_COLOR);
     lv_obj_set_width(status_label, 150);
-    lv_label_set_text(status_label, "Ready");
     lv_label_set_long_mode(status_label, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR);
-    lv_obj_set_style_text_font(status_label, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(status_label, UPDATE_COLOR, LV_PART_MAIN);
-    lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(status_label, LV_ALIGN_TOP_MID, 0, 44);
 
     // Shown instead of the help text once an update is running
-    progress_pct_label = lv_label_create(root_page);
-    lv_label_set_text(progress_pct_label, "0%");
-    lv_obj_set_style_text_font(progress_pct_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(progress_pct_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    progress_pct_label = zsw_ui_label_create(root_page, "0%", ZSW_FONT_NUMBER, ZSW_COLOR_TEXT);
     lv_obj_align(progress_pct_label, LV_ALIGN_CENTER, 0, -14);
     lv_obj_add_flag(progress_pct_label, LV_OBJ_FLAG_HIDDEN);
 
-    help_label = lv_label_create(root_page);
-    lv_label_set_text(help_label, "Bluetooth is always ready.\nFor USB, tap below.");
+    help_label = zsw_ui_label_create(root_page, "Bluetooth is always ready.\nFor USB, tap below.",
+                                     ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DIM);
     lv_obj_set_width(help_label, 190);
-    lv_obj_set_style_text_font(help_label, ZSW_FONT_CAPTION, LV_PART_MAIN);
-    lv_obj_set_style_text_color(help_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
-    lv_obj_set_style_text_align(help_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(help_label, LV_ALIGN_CENTER, 0, -18);
 
     btn_usb_fota = zsw_ui_round_button_create(root_page, LV_SYMBOL_USB, USB_BTN_SIZE, ZSW_COLOR_SURFACE_HIGH);
     lv_obj_align(btn_usb_fota, LV_ALIGN_BOTTOM_MID, 0, -50);
     lv_obj_add_event_cb(btn_usb_fota, btn_fota_usb_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t *usb_label = lv_label_create(root_page);
-    lv_label_set_text(usb_label, "USB");
-    lv_obj_set_style_text_font(usb_label, ZSW_FONT_CAPTION, LV_PART_MAIN);
-    lv_obj_set_style_text_color(usb_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    lv_obj_t *usb_label = zsw_ui_label_create(root_page, "USB", ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DIM);
     lv_obj_align(usb_label, LV_ALIGN_BOTTOM_MID, 0, -30);
 }
 

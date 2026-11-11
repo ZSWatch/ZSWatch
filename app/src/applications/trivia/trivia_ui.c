@@ -61,14 +61,10 @@ void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
     zsw_ui_title_create(root_page, "TRIVIA", ZSW_COLOR_TEXT_DIM);
 
     // The question comes from the phone, so it needs the font with all characters
-    question_lb = lv_label_create(root_page);
+    question_lb = zsw_ui_label_create(root_page, "-", ZSW_FONT_TEXT, ZSW_COLOR_TEXT);
     lv_obj_set_width(question_lb, 184);
     lv_label_set_long_mode(question_lb, LV_LABEL_LONG_WRAP);
     lv_obj_align(question_lb, LV_ALIGN_TOP_MID, 0, 48);
-    lv_obj_set_style_text_align(question_lb, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_style_text_font(question_lb, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(question_lb, ZSW_COLOR_TEXT, LV_PART_MAIN);
-    lv_label_set_text(question_lb, "-");
 
     create_answer_button(root_page, "True", ZSW_COLOR_GREEN, -(ANSWER_BTN_WIDTH / 2 + 5), TRUE_BUTTON);
     create_answer_button(root_page, "False", ZSW_COLOR_RED, ANSWER_BTN_WIDTH / 2 + 5, FALSE_BUTTON);
@@ -98,19 +94,12 @@ static void show_sheet(lv_color_t color, const char *symbol, const char *text, b
 
     sheet = zsw_ui_screen_create(root_page, color);
 
-    lv_obj_t *symbol_label = lv_label_create(sheet);
-    lv_label_set_text(symbol_label, symbol);
-    lv_obj_set_style_text_font(symbol_label, ZSW_FONT_HEADLINE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(symbol_label, color, LV_PART_MAIN);
+    lv_obj_t *symbol_label = zsw_ui_label_create(sheet, symbol, ZSW_FONT_HEADLINE, color);
     lv_obj_align(symbol_label, LV_ALIGN_TOP_MID, 0, 44);
     zsw_ui_slide_in(symbol_label, 0);
 
-    lv_obj_t *text_label = lv_label_create(sheet);
+    lv_obj_t *text_label = zsw_ui_label_create(sheet, text, ZSW_FONT_TITLE, ZSW_COLOR_TEXT);
     lv_obj_set_width(text_label, 180);
-    lv_label_set_text(text_label, text);
-    lv_obj_set_style_text_align(text_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_set_style_text_font(text_label, ZSW_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(text_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
     lv_obj_align(text_label, LV_ALIGN_CENTER, 0, -8);
 
     lv_obj_t *close_btn = zsw_ui_round_button_create(sheet, LV_SYMBOL_CLOSE, SHEET_BTN_SIZE, ZSW_COLOR_SURFACE_HIGH);

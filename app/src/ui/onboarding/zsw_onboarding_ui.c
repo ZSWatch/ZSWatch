@@ -21,6 +21,7 @@
 #include <lvgl.h>
 #include <zephyr/logging/log.h>
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 LOG_MODULE_REGISTER(zsw_onboarding_ui, LOG_LEVEL_INF);
 
@@ -79,11 +80,7 @@ static void update_page_indicator(int active_page)
 static lv_obj_t *add_label(lv_obj_t *parent, const char *text, const lv_font_t *font,
                            lv_color_t color, lv_align_t align, int x_ofs, int y_ofs)
 {
-    lv_obj_t *lbl = lv_label_create(parent);
-    lv_label_set_text(lbl, text);
-    lv_obj_set_style_text_font(lbl, font, 0);
-    lv_obj_set_style_text_color(lbl, color, 0);
-    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_t *lbl = zsw_ui_label_create(parent, text, font, color);
     lv_obj_set_width(lbl, 200);
     lv_obj_align(lbl, align, x_ofs, y_ofs);
     return lbl;

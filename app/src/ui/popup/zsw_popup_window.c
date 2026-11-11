@@ -132,14 +132,10 @@ static void show_popup_request(popup_request_t *req)
         start_countdown(current_popup.close_after_seconds);
     }
 
-    lv_obj_t *title = lv_label_create(mbox);
-    lv_label_set_text(title, current_popup.title);
+    lv_obj_t *title = zsw_ui_label_create(mbox, current_popup.title, ZSW_FONT_TITLE, ZSW_COLOR_TEXT);
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title, 140);
     lv_obj_set_height(title, lv_font_get_line_height(ZSW_FONT_TITLE));
-    lv_obj_set_style_text_font(title, ZSW_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(title, ZSW_COLOR_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 30);
 
     // The body scrolls when it does not fit
@@ -149,13 +145,9 @@ static void show_popup_request(popup_request_t *req)
     lv_obj_align(body_scroll, LV_ALIGN_TOP_MID, 0, 62);
     lv_obj_set_scroll_dir(body_scroll, LV_DIR_VER);
 
-    lv_obj_t *body = lv_label_create(body_scroll);
-    lv_label_set_text(body, current_popup.body);
+    lv_obj_t *body = zsw_ui_label_create(body_scroll, current_popup.body, ZSW_FONT_TEXT, ZSW_COLOR_TEXT_DIM);
     lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(body, LV_PCT(100));
-    lv_obj_set_style_text_font(body, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(body, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
-    lv_obj_set_style_text_align(body, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_base_dir(body, LV_BASE_DIR_AUTO, LV_PART_MAIN);
 
     if (current_popup.display_yes_no) {

@@ -89,10 +89,7 @@ void timer_ui_show(lv_obj_t *root, on_timer_created on_create, on_timer_event on
     page_init(&alarm_page, lv_tileview_add_tile(tv, 1, 0, LV_DIR_HOR), "ALARMS", "No alarms", ALARM_COLOR);
 
     // The alarm page shows the time of day above its title, to set an alarm against
-    ui_label_clock = lv_label_create(alarm_page.tile);
-    lv_label_set_text(ui_label_clock, "");
-    lv_obj_set_style_text_font(ui_label_clock, ZSW_FONT_CAPTION, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ui_label_clock, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    ui_label_clock = zsw_ui_label_create(alarm_page.tile, "", ZSW_FONT_CAPTION, ZSW_COLOR_TEXT);
     lv_obj_align(ui_label_clock, LV_ALIGN_TOP_MID, 0, 9);
 
     ui_page_indicator = zsw_ui_page_dots_create(root_page, 2);
@@ -276,10 +273,7 @@ static void create_key(lv_obj_t *parent, const char *text, uint32_t key, lv_colo
     lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
     lv_obj_add_event_cb(button, ui_event_picker_button_pressed, LV_EVENT_CLICKED, (void *)(uintptr_t)key);
 
-    lv_obj_t *label = lv_label_create(button);
-    lv_label_set_text(label, text);
-    lv_obj_set_style_text_font(label, ZSW_FONT_BODY, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_t *label = zsw_ui_label_create(button, text, ZSW_FONT_BODY, ZSW_COLOR_TEXT);
     lv_obj_center(label);
 }
 
@@ -294,10 +288,7 @@ static void create_timer_popup(lv_obj_t *parent)
     ui_time_popup = zsw_ui_screen_create(parent, TIMER_COLOR);
     lv_obj_add_flag(ui_time_popup, LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_CLICKABLE);
 
-    ui_picker_new_alarm_time = lv_label_create(ui_time_popup);
-    lv_label_set_text(ui_picker_new_alarm_time, "00:00:00");
-    lv_obj_set_style_text_font(ui_picker_new_alarm_time, ZSW_FONT_HEADLINE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ui_picker_new_alarm_time, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    ui_picker_new_alarm_time = zsw_ui_label_create(ui_time_popup, "00:00:00", ZSW_FONT_HEADLINE, ZSW_COLOR_TEXT);
     lv_obj_align(ui_picker_new_alarm_time, LV_ALIGN_TOP_MID, 0, 22);
 
     for (int i = 0; i < ARRAY_SIZE(digits); i++) {
