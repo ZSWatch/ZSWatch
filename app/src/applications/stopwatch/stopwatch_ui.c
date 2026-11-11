@@ -22,6 +22,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
+
+#define STOPWATCH_COLOR         ZSW_COLOR_ORANGE
+/* The ring is the second hand: one turn per minute */
+#define RING_PERIOD_MS          60000
 
 static void on_start_pause_clicked(lv_event_t *e);
 static void on_reset_clicked(lv_event_t *e);
@@ -31,12 +36,14 @@ static void format_time(uint32_t ms, char *buf, size_t buf_size);
 typedef struct {
     lv_obj_t *root_page;
     lv_obj_t *time_label;
+    lv_obj_t *centis_label;
     lv_obj_t *start_pause_btn;
     lv_obj_t *reset_btn;
     lv_obj_t *lap_btn;
     lv_obj_t *lap_list;
     lv_obj_t *progress_arc;
     int lap_count;
+    uint32_t shown_seconds;
 } stopwatch_ui_t;
 
 static stopwatch_ui_t ui = {0};
@@ -58,98 +65,51 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
     reset_cb = reset_callback;
     lap_cb = lap_callback;
 
-    // Create the root container
-    ui.root_page = lv_obj_create(root);
-    lv_obj_set_style_border_width(ui.root_page, 0, LV_PART_MAIN);
-    lv_obj_set_size(ui.root_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_scrollbar_mode(ui.root_page, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_clear_flag(ui.root_page, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(ui.root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_all(ui.root_page, 0, LV_PART_MAIN);
+    ui.root_page = zsw_ui_screen_create(root, STOPWATCH_COLOR);
+    ui.progress_arc = zsw_ui_ring_create(ui.root_page, STOPWATCH_COLOR);
+    ui.shown_seconds = UINT32_MAX;
 
-    // Progress arc around the screen perimeter (1 second is one lap)
-    ui.progress_arc = lv_arc_create(ui.root_page);
-    lv_obj_set_size(ui.progress_arc, LV_PCT(100), LV_PCT(100));
-    lv_obj_center(ui.progress_arc);
-    lv_arc_set_range(ui.progress_arc, 0, 1000);
-    lv_arc_set_value(ui.progress_arc, 0);
-    lv_arc_set_rotation(ui.progress_arc, 270);
-    lv_arc_set_bg_angles(ui.progress_arc, 0, 360);
-    lv_obj_set_style_arc_width(ui.progress_arc, 4, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(ui.progress_arc, zsw_color_gray(), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(ui.progress_arc, 4, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_color(ui.progress_arc, zsw_color_blue(), LV_PART_INDICATOR);
-    lv_obj_remove_style(ui.progress_arc, NULL, LV_PART_KNOB);
-    lv_obj_clear_flag(ui.progress_arc, LV_OBJ_FLAG_CLICKABLE);
-
-    // The stopwatch time label
+    // Minutes and seconds are large, the hundredths smaller in the app color next to them.
+    // They are two labels so the large one is only redrawn once per second.
     ui.time_label = lv_label_create(ui.root_page);
-    lv_label_set_text(ui.time_label, "00:00.00");
-    lv_obj_set_style_text_font(ui.time_label, ZSW_FONT_HEADLINE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ui.time_label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_align(ui.time_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_text(ui.time_label, "00:00");
+    lv_obj_set_style_text_font(ui.time_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.time_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.time_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_width(ui.time_label, 150); // Fixed width to prevent jumping
-    lv_obj_align(ui.time_label, LV_ALIGN_CENTER, 0, -60);
+    lv_obj_align(ui.time_label, LV_ALIGN_TOP_LEFT, 12, 44);
 
-    // Buttons container
-    lv_obj_t *btn_container = lv_obj_create(ui.root_page);
-    lv_obj_set_style_border_width(btn_container, 0, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(btn_container, 0, LV_PART_MAIN);
-    lv_obj_set_size(btn_container, 200, 50);
-    lv_obj_align(btn_container, LV_ALIGN_CENTER, 0, -10);
-    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    ui.centis_label = lv_label_create(ui.root_page);
+    lv_label_set_text(ui.centis_label, ".00");
+    lv_obj_set_style_text_font(ui.centis_label, ZSW_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.centis_label, STOPWATCH_COLOR, LV_PART_MAIN);
+    lv_obj_set_width(ui.centis_label, 40);
+    lv_obj_align(ui.centis_label, LV_ALIGN_TOP_LEFT, 164, 67);
 
-    // Lap button
-    ui.lap_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(ui.lap_btn, 45, 45);
+    ui.lap_btn = zsw_ui_round_button_create(ui.root_page, LV_SYMBOL_LIST, 44, ZSW_COLOR_SURFACE_HIGH);
+    lv_obj_align(ui.lap_btn, LV_ALIGN_TOP_MID, -58, 110);
     lv_obj_add_event_cb(ui.lap_btn, on_lap_clicked, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_bg_color(ui.lap_btn, zsw_color_gray(), LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.lap_btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
     lv_obj_add_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN); // Hidden unless running
 
-    lv_obj_t *lap_label = lv_label_create(ui.lap_btn);
-    lv_label_set_text(lap_label, LV_SYMBOL_LIST);
-    lv_obj_set_style_text_color(lap_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(lap_label, ZSW_FONT_BODY, LV_PART_MAIN);
-    lv_obj_center(lap_label);
-
-    // Play/Pause button
-    ui.start_pause_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(ui.start_pause_btn, 50, 50);
+    ui.start_pause_btn = zsw_ui_round_button_create(ui.root_page, LV_SYMBOL_PLAY, 56, STOPWATCH_COLOR);
+    lv_obj_align(ui.start_pause_btn, LV_ALIGN_TOP_MID, 0, 104);
     lv_obj_add_event_cb(ui.start_pause_btn, on_start_pause_clicked, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_bg_color(ui.start_pause_btn, zsw_color_gray(), LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.start_pause_btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
 
-    lv_obj_t *start_pause_label = lv_label_create(ui.start_pause_btn);
-    lv_label_set_text(start_pause_label, LV_SYMBOL_PLAY);
-    lv_obj_set_style_text_color(start_pause_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(start_pause_label, ZSW_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_center(start_pause_label);
-
-    // Reset button
-    ui.reset_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(ui.reset_btn, 45, 45);
+    ui.reset_btn = zsw_ui_round_button_create(ui.root_page, LV_SYMBOL_REFRESH, 44, ZSW_COLOR_SURFACE_HIGH);
+    lv_obj_align(ui.reset_btn, LV_ALIGN_TOP_MID, 58, 110);
     lv_obj_add_event_cb(ui.reset_btn, on_reset_clicked, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_bg_color(ui.reset_btn, zsw_color_gray(), LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.reset_btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
 
-    lv_obj_t *reset_label = lv_label_create(ui.reset_btn);
-    lv_label_set_text(reset_label, LV_SYMBOL_REFRESH);
-    lv_obj_set_style_text_color(reset_label, zsw_color_red(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(reset_label, ZSW_FONT_BODY, LV_PART_MAIN);
-    lv_obj_center(reset_label);
-
-    // Lap times container
+    // Lap times, the latest one is scrolled into view
     ui.lap_list = lv_obj_create(ui.root_page);
-    lv_obj_set_size(ui.lap_list, LV_PCT(85), 90);
-    lv_obj_align(ui.lap_list, LV_ALIGN_BOTTOM_MID, 0, -15);
-    lv_obj_set_style_bg_opa(ui.lap_list, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(ui.lap_list, 0, LV_PART_MAIN);
+    lv_obj_remove_style_all(ui.lap_list);
+    lv_obj_set_size(ui.lap_list, 130, 50);
+    lv_obj_align(ui.lap_list, LV_ALIGN_TOP_MID, 0, 168);
     lv_obj_set_flex_flow(ui.lap_list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_all(ui.lap_list, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(ui.lap_list, 3, LV_PART_MAIN);
     lv_obj_set_scrollbar_mode(ui.lap_list, LV_SCROLLBAR_MODE_OFF);
+
+    zsw_ui_slide_in(ui.start_pause_btn, 0);
+    zsw_ui_slide_in(ui.reset_btn, 40);
 
     lv_group_focus_obj(ui.start_pause_btn);
 }
@@ -164,28 +124,20 @@ void stopwatch_ui_remove(void)
 
 void stopwatch_ui_update_time(uint32_t elapsed_ms)
 {
-    if (ui.time_label) {
-        char time_str[16];
-        format_time(elapsed_ms, time_str, sizeof(time_str));
-        lv_label_set_text(ui.time_label, time_str);
+    uint32_t total_seconds = elapsed_ms / 1000;
+
+    if (ui.time_label && total_seconds != ui.shown_seconds) {
+        ui.shown_seconds = total_seconds;
+        lv_label_set_text_fmt(ui.time_label, "%02u:%02u", total_seconds / 60, total_seconds % 60);
     }
 
-    // Update the spinning arc
-    if (ui.progress_arc && current_state == STOPWATCH_STATE_RUNNING) {
-        uint32_t total_seconds = elapsed_ms / 1000;
-        uint32_t ms_in_current_second = elapsed_ms % 1000;
+    if (ui.centis_label) {
+        lv_label_set_text_fmt(ui.centis_label, ".%02u", (elapsed_ms % 1000) / 10);
+    }
 
-        // To make a nice animating effect, the arc fills in one second, then
-        // goes back to the start of the next second and so on.
-        if (total_seconds % 2 == 0) {
-            // Clockwise
-            lv_arc_set_mode(ui.progress_arc, LV_ARC_MODE_NORMAL);
-            lv_arc_set_value(ui.progress_arc, ms_in_current_second);
-        } else {
-            // Counter-clockwise
-            lv_arc_set_mode(ui.progress_arc, LV_ARC_MODE_REVERSE);
-            lv_arc_set_value(ui.progress_arc, 1000 - ms_in_current_second);
-        }
+    // Only the part of the ring passed since the last update is redrawn.
+    if (ui.progress_arc) {
+        zsw_ui_ring_set_value(ui.progress_arc, ((elapsed_ms % RING_PERIOD_MS) * ZSW_UI_RING_MAX) / RING_PERIOD_MS, false);
     }
 }
 
@@ -197,22 +149,20 @@ void stopwatch_ui_update_state(stopwatch_state_t state)
         return;
     }
 
-    lv_obj_t *label = lv_obj_get_child(ui.start_pause_btn, 0);
-
     switch (state) {
         case STOPWATCH_STATE_STOPPED:
-            lv_label_set_text(label, LV_SYMBOL_PLAY);
+            zsw_ui_round_button_set_symbol(ui.start_pause_btn, LV_SYMBOL_PLAY);
             lv_obj_add_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN);
-            if (ui.progress_arc) {
-                lv_arc_set_value(ui.progress_arc, 0);
-            }
             break;
         case STOPWATCH_STATE_RUNNING:
-            lv_label_set_text(label, LV_SYMBOL_PAUSE);
-            lv_obj_clear_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN);
+            zsw_ui_round_button_set_symbol(ui.start_pause_btn, LV_SYMBOL_PAUSE);
+            if (lv_obj_has_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN)) {
+                lv_obj_clear_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN);
+                zsw_ui_slide_in(ui.lap_btn, 0);
+            }
             break;
         case STOPWATCH_STATE_PAUSED:
-            lv_label_set_text(label, LV_SYMBOL_PLAY);
+            zsw_ui_round_button_set_symbol(ui.start_pause_btn, LV_SYMBOL_PLAY);
             lv_obj_clear_flag(ui.lap_btn, LV_OBJ_FLAG_HIDDEN);
             break;
     }
@@ -228,10 +178,11 @@ void stopwatch_ui_add_lap_time(uint32_t lap_time, uint32_t total_time)
     format_time(lap_time, time_str, sizeof(time_str));
     ui.lap_count++;
 
-    // Lap time label
+    // Lap number in the app color, time in white
     lv_obj_t *lap_item = lv_label_create(ui.lap_list);
-    lv_label_set_text_fmt(lap_item, "L%d %s", ui.lap_count, time_str);
-    lv_obj_set_style_text_color(lap_item, lv_color_white(), LV_PART_MAIN);
+    lv_label_set_recolor(lap_item, true);
+    lv_label_set_text_fmt(lap_item, "#FF9500 LAP %d#  %s", ui.lap_count, time_str);
+    lv_obj_set_style_text_color(lap_item, ZSW_COLOR_TEXT, LV_PART_MAIN);
     lv_obj_set_style_text_font(lap_item, ZSW_FONT_TEXT, LV_PART_MAIN);
     lv_obj_set_width(lap_item, LV_PCT(100));
     lv_obj_set_style_text_align(lap_item, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
