@@ -69,7 +69,7 @@ static lv_obj_t *create_flex_button(lv_obj_t *parent, const char *text, lv_color
     lv_label_set_text(label, text);
     lv_obj_center(label);
     lv_obj_set_style_text_color(label, text_color, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, ZSW_FONT_TEXT, LV_PART_MAIN);
 
     lv_obj_set_user_data(btn, event);
     lv_obj_add_event_cb(btn, calculator_event_handler, LV_EVENT_CLICKED, NULL);
@@ -120,8 +120,7 @@ void calculator_ui_show(lv_obj_t *root)
     // Display area at top
     lv_obj_t *display_panel = lv_obj_create(root_page);
     lv_obj_set_size(display_panel, CONTAINER_WIDTH, 25);
-    lv_obj_set_style_bg_opa(display_panel, LV_OPA_20, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(display_panel, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(display_panel, ZSW_COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_border_width(display_panel, 0, LV_PART_MAIN);
     lv_obj_set_style_radius(display_panel, 6, LV_PART_MAIN);
     lv_obj_set_style_pad_left(display_panel, 4, LV_PART_MAIN);
@@ -141,9 +140,9 @@ void calculator_ui_show(lv_obj_t *root)
     lv_obj_align(result_label, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(result_label, "0");
 
-    lv_color_t number_color = lv_color_hex(0x505050);    // Dark gray for numbers
-    lv_color_t operator_color = lv_color_hex(0xFF9500);  // Orange for operators
-    lv_color_t function_color = lv_color_hex(0xA6A6A6);  // Light gray for functions
+    lv_color_t number_color = ZSW_COLOR_SURFACE_HIGH;
+    lv_color_t operator_color = ZSW_COLOR_ORANGE;
+    lv_color_t function_color = ZSW_COLOR_TEXT_DIM;
     lv_color_t white_text = lv_color_white();
     lv_color_t black_text = lv_color_black();
 
