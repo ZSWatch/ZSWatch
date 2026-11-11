@@ -22,15 +22,11 @@
 
 /*
  * The world of the Sand watchface: a grid of grains inside the round display.
+ * Loose sand falls the way gravity points, one cell per step. The digits of the
+ * time are grains that are held in place. When the time changes, the digits
+ * that changed are let go, and grains from the pile fly up to form the new ones.
  *
- * Sand trickles in all day, each part of the day in its own color, so the pile grows in
- * layers and shows how far the day has come. It is emptied at midnight. Loose sand falls
- * the way gravity points, one cell per step, so turning the watch mixes the layers.
- *
- * When a digit of the time changes the old one falls apart into dust, which fades on its
- * way down.
- *
- * No drawing here: the UI asks for the cells and draws them.
+ * No drawing here: the UI asks for the cells and the flying grains and draws them.
  */
 
 #define SAND_GRID_SIZE      120
@@ -40,12 +36,28 @@
 #define SAND_BAND_ROWS      8
 #define SAND_NUM_BANDS      (SAND_GRID_SIZE / SAND_BAND_ROWS)
 
-/* What a cell holds: nothing, sand in one of the colors of the day, or dust of a digit. */
-#define SAND_CELL_EMPTY     0
-#define SAND_NUM_COLORS     12
-#define SAND_CELL_DUST      (SAND_NUM_COLORS + 1)
+#define SAND_MAX_FLYING     192
 
-/** Empties the world. The pile is poured by the first sand_sim_set_time(). */
+typedef enum {
+    SAND_CELL_EMPTY,
+    SAND_CELL_SAND,
+    SAND_CELL_DIGIT,
+} sand_cell_type_t;
+
+/* Four shades per grain type give the sand its texture. A grain keeps its shade when it moves. */
+#define SAND_NUM_SHADES     4
+
+#define SAND_CELL_TYPE(cell)    ((sand_cell_type_t)((cell) & 0x3))
+#define SAND_CELL_SHADE(cell)   (((cell) >> 2) & 0x3)
+
+/* A grain on its way from the pile to a digit, in pixels. */
+typedef struct {
+    int16_t x;
+    int16_t y;
+    uint8_t shade;
+} sand_flying_t;
+
+/** Empties the world, pours the pile and places the colon. No digits until sand_sim_set_time(). */
 void sand_sim_init(uint32_t seed);
 
 /**
@@ -56,21 +68,10 @@ void sand_sim_init(uint32_t seed);
  */
 bool sand_sim_set_gravity(int x, int y);
 
-/**
- * Tells the time of day. The first call pours the pile for the day so far at once.
- * After that the sand that is missing trickles in, and at midnight the pile blows away.
- */
+/** Shows a new time: digits that changed crumble and are built again from the pile. */
 void sand_sim_set_time(int hour, int minute);
 
-/**
- * Turns a shape into dust: one grain for each set bit, where there is room for it.
- *
- * @param cell_x,cell_y Top left cell of the shape.
- * @param rows          One entry per row, the leftmost cell in the highest of the width bits.
- */
-void sand_sim_dissolve(int cell_x, int cell_y, const uint16_t *rows, int width, int height);
-
-/** Throws the sand up in a cloud for a moment. */
+/** Throws the sand upwards for a moment. */
 void sand_sim_shake(void);
 
 /**
@@ -81,8 +82,11 @@ void sand_sim_shake(void);
  */
 bool sand_sim_step(void);
 
-/** @return SAND_CELL_EMPTY, a color 1..SAND_NUM_COLORS or SAND_CELL_DUST. */
+/** @return Type and shade of a cell, see SAND_CELL_TYPE() and SAND_CELL_SHADE(). */
 uint8_t sand_sim_cell(int x, int y);
+
+/** @return The grains in the air right now, valid until the next step. */
+int sand_sim_get_flying(sand_flying_t *grains, int max);
 
 /**
  * Gets and clears the columns that changed in a band since it was last asked for.
