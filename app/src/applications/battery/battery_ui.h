@@ -21,7 +21,7 @@
 #include <stdbool.h>
 #include <lvgl.h>
 
-#define BATTERY_APP_SAMPLE_INTERVAL_MIN         1
+#define BATTERY_UI_MAX_RAILS    4
 
 typedef void(*on_clear_history)(void);
 
@@ -32,3 +32,6 @@ void battery_ui_remove(void);
 void battery_ui_add_measurement(int percent, int voltage);
 
 void battery_ui_update(int ttf, int tte, const char *status_text, const char *error_text, int charging);
+
+/** Shows a regulator on the power rails page (PMIC UI only). The name is not copied. */
+void battery_ui_set_rail(int index, const char *name, int millivolt, bool enabled);

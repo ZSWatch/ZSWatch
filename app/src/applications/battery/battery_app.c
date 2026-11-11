@@ -20,6 +20,7 @@
 #include <zephyr/init.h>
 #include <zephyr/zbus/zbus.h>
 #include <zephyr/settings/settings.h>
+#include <zephyr/drivers/regulator.h>
 
 #include "history/zsw_history.h"
 #include "battery/battery_ui.h"
@@ -56,6 +57,20 @@ typedef struct {
     uint8_t percent;
 } zsw_battery_sample_t;
 
+#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
+typedef struct {
+    const char *name;
+    const struct device *dev;
+} power_rail_t;
+
+#define POWER_RAIL(node) { .name = DT_NODE_FULL_NAME(node), .dev = DEVICE_DT_GET(node) },
+
+// The PMIC regulators the board uses, named as in the devicetree: BUCK1, BUCK2, LDO1, LDO2
+static const power_rail_t power_rails[] = {
+    DT_FOREACH_CHILD_STATUS_OKAY(DT_NODELABEL(npm1300_regulators), POWER_RAIL)
+};
+#endif
+
 static zsw_battery_sample_t samples[MAX_SAMPLES];
 static zsw_history_t battery_context;
 static uint64_t last_battery_sample_time = 0;
@@ -67,6 +82,22 @@ static application_t app = {
     .stop_func = battery_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,
 };
+
+// Reads what the regulators are set to right now, instead of assuming it.
+static void update_power_rails(void)
+{
+#if CONFIG_DT_HAS_NORDIC_NPM1300_ENABLED
+    for (int i = 0; i < ARRAY_SIZE(power_rails) && i < BATTERY_UI_MAX_RAILS; i++) {
+        int32_t microvolt = 0;
+        bool enabled = device_is_ready(power_rails[i].dev) && regulator_is_enabled(power_rails[i].dev);
+
+        if (enabled && regulator_get_voltage(power_rails[i].dev, &microvolt) != 0) {
+            microvolt = 0;
+        }
+        battery_ui_set_rail(i, power_rails[i].name, microvolt / 1000, enabled);
+    }
+#endif
+}
 
 static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 {
@@ -98,6 +129,7 @@ static void battery_app_start(lv_obj_t *root, lv_group_t *group)
 #endif
         battery_ui_add_measurement(initial_sample.percent, initial_sample.mV);
     }
+    update_power_rails();
 }
 
 static void battery_app_stop(void)
@@ -136,6 +168,7 @@ static void zbus_battery_sample_data_callback(const struct zbus_channel *chan)
                           "N/A",
                           event->is_charging);
 #endif
+        update_power_rails();
     }
 }
 
