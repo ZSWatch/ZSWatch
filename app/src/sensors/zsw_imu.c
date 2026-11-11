@@ -389,7 +389,8 @@ int zsw_imu_fetch_accel_f(float *x, float *y, float *z)
         return -ENODEV;
     }
 
-    if (sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ALL) != 0) {
+    // Skips reading the temperature, which is slow.
+    if (sensor_sample_fetch_chan(bmi270, SENSOR_CHAN_ACCEL_XYZ) != 0) {
         return -ENODATA;
     }
 
