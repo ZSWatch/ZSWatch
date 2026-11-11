@@ -24,6 +24,7 @@
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 LOG_MODULE_REGISTER(app_picker_ui, LOG_LEVEL_DBG);
 
@@ -448,13 +449,9 @@ static void show_folder_contents(zsw_app_category_t category)
                 set_icon(icon_bg, icon, app->icon);
             }
 
-            lv_obj_t *label = lv_label_create(app_btn);
-            lv_label_set_text(label, app->name);
+            lv_obj_t *label = zsw_ui_label_create(app_btn, app->name, ZSW_FONT_CAPTION, ZSW_COLOR_TEXT);
             lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
             lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_CLIP);
-            lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN);
-            lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, LV_PART_MAIN);
-            lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
             lv_obj_set_width(label, 60);
 
             lv_obj_set_user_data(app_btn, app);

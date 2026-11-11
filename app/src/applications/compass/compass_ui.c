@@ -53,16 +53,10 @@ static void create_ui(lv_obj_t *compass_panel)
 
     zsw_ui_title_create(compass_panel, "COMPASS", ZSW_COLOR_TEXT_DIM);
 
-    direction_label = lv_label_create(compass_panel);
-    lv_label_set_text(direction_label, "");
-    lv_obj_set_style_text_font(direction_label, ZSW_FONT_HEADLINE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(direction_label, COMPASS_COLOR, LV_PART_MAIN);
+    direction_label = zsw_ui_label_create(compass_panel, "", ZSW_FONT_HEADLINE, COMPASS_COLOR);
     lv_obj_align(direction_label, LV_ALIGN_CENTER, 0, -50);
 
-    compass_label = lv_label_create(compass_panel);
-    lv_label_set_text(compass_label, "-");
-    lv_obj_set_style_text_font(compass_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(compass_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    compass_label = zsw_ui_label_create(compass_panel, "-", ZSW_FONT_NUMBER, ZSW_COLOR_TEXT);
     lv_obj_align(compass_label, LV_ALIGN_CENTER, 0, 0);
 
     cal_btn = lv_btn_create(compass_panel);

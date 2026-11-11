@@ -23,6 +23,8 @@
 
 #define SLIDE_IN_OFFSET_PX      12
 #define RING_ANIM_TIME_MS       500
+// Round buttons from this size get the larger symbol
+#define ROUND_BUTTON_LARGE_SIZE  48
 
 ZSW_LV_IMG_DECLARE(ui_glow_top);
 
@@ -44,6 +46,17 @@ lv_obj_t *zsw_ui_screen_create(lv_obj_t *parent, lv_color_t color)
     lv_obj_remove_flag(glow, LV_OBJ_FLAG_CLICKABLE);
 
     return screen;
+}
+
+lv_obj_t *zsw_ui_label_create(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color)
+{
+    lv_obj_t *label = lv_label_create(parent);
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, color, LV_PART_MAIN);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+
+    return label;
 }
 
 lv_obj_t *zsw_ui_title_create(lv_obj_t *parent, const char *text, lv_color_t color)
@@ -116,10 +129,8 @@ lv_obj_t *zsw_ui_round_button_create(lv_obj_t *parent, const char *symbol, int32
     lv_obj_set_style_bg_color(button, color, LV_PART_MAIN);
     lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
 
-    lv_obj_t *label = lv_label_create(button);
-    lv_label_set_text(label, symbol);
-    lv_obj_set_style_text_font(label, size >= 52 ? ZSW_FONT_TITLE : ZSW_FONT_BODY, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_t *label = zsw_ui_label_create(button, symbol,
+                                          size >= ROUND_BUTTON_LARGE_SIZE ? ZSW_FONT_TITLE : ZSW_FONT_BODY, ZSW_COLOR_TEXT);
     lv_obj_center(label);
 
     return button;

@@ -71,10 +71,7 @@ void stopwatch_ui_show(lv_obj_t *root, stopwatch_event_cb_t start_callback, stop
 
     // Minutes and seconds are large, the hundredths smaller in the app color next to them.
     // They are two labels so the large one is only redrawn once per second.
-    ui.time_label = lv_label_create(ui.root_page);
-    lv_label_set_text(ui.time_label, "00:00");
-    lv_obj_set_style_text_font(ui.time_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ui.time_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    ui.time_label = zsw_ui_label_create(ui.root_page, "00:00", ZSW_FONT_NUMBER, ZSW_COLOR_TEXT);
     lv_obj_set_style_text_align(ui.time_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_set_width(ui.time_label, 150); // Fixed width to prevent jumping
     lv_obj_align(ui.time_label, LV_ALIGN_TOP_LEFT, 12, 44);

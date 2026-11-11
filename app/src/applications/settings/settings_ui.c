@@ -20,6 +20,7 @@
 #include "assert.h"
 #include <stdio.h>
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 #define ROW_ICON_SIZE   30
 
@@ -265,10 +266,7 @@ static void create_icon_disc(lv_obj_t *parent, const char *symbol, lv_color_t co
     lv_obj_set_style_bg_opa(disc, LV_OPA_COVER, 0);
     lv_obj_remove_flag(disc, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *label = lv_label_create(disc);
-    lv_label_set_text(label, symbol);
-    lv_obj_set_style_text_font(label, ZSW_FONT_TEXT, 0);
-    lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, 0);
+    lv_obj_t *label = zsw_ui_label_create(disc, symbol, ZSW_FONT_TEXT, ZSW_COLOR_TEXT);
     lv_obj_center(label);
 }
 
@@ -351,10 +349,7 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
         lv_obj_set_style_text_font(label, ZSW_FONT_BODY, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_text(label, pages[i].name);
         lv_obj_set_flex_grow(label, 1);
-        label = lv_label_create(cont);
-        lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT_DISABLED, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_label_set_text(label, LV_SYMBOL_RIGHT);
+        label = zsw_ui_label_create(cont, LV_SYMBOL_RIGHT, ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DISABLED);
         lv_menu_set_load_page_event(_menu, cont, sub_page);
         lv_group_add_obj(input_group, cont);
         lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);

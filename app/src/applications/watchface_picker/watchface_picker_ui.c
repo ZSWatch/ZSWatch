@@ -63,15 +63,11 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_obj_add_flag( ui_facePreview, LV_OBJ_FLAG_ADV_HITTEST );   /// Flags
     lv_obj_clear_flag( ui_facePreview, LV_OBJ_FLAG_SCROLLABLE );    /// Flags
 
-    lv_obj_t *ui_faceLabel = lv_label_create(ui_faceItem);
+    lv_obj_t *ui_faceLabel = zsw_ui_label_create(ui_faceItem, name, ZSW_FONT_BODY, ZSW_COLOR_TEXT);
     lv_obj_set_width( ui_faceLabel, 160);
     lv_obj_set_height( ui_faceLabel, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_align( ui_faceLabel, LV_ALIGN_BOTTOM_MID );
     lv_label_set_long_mode(ui_faceLabel, LV_LABEL_LONG_DOT);
-    lv_label_set_text(ui_faceLabel, name);
-    lv_obj_set_style_text_align(ui_faceLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_faceLabel, ZSW_FONT_BODY, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(ui_faceLabel, ZSW_COLOR_TEXT, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_faceItem, on_watchface_selected, LV_EVENT_ALL, (void *)index);
 
@@ -123,10 +119,7 @@ void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_
     lv_obj_t *title = zsw_ui_title_create(ui_root, "WATCH FACES", ZSW_COLOR_TEXT_DIM);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 12);
 
-    lv_obj_t *hint = lv_label_create(ui_root);
-    lv_label_set_text(hint, "Tap to select");
-    lv_obj_set_style_text_font(hint, ZSW_FONT_CAPTION, 0);
-    lv_obj_set_style_text_color(hint, ZSW_COLOR_TEXT_DISABLED, 0);
+    lv_obj_t *hint = zsw_ui_label_create(ui_root, "Tap to select", ZSW_FONT_CAPTION, ZSW_COLOR_TEXT_DISABLED);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -10);
 }
 

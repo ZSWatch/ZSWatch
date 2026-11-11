@@ -161,29 +161,17 @@ static void overview_init(lv_obj_t *tile)
     overview_ring = zsw_ui_ring_create(screen, ZSW_COLOR_GREEN);
     zsw_ui_title_create(screen, "BATTERY", ZSW_COLOR_TEXT_DIM);
 
-    overview_charge_icon = lv_label_create(screen);
-    lv_label_set_text(overview_charge_icon, LV_SYMBOL_CHARGE);
-    lv_obj_set_style_text_font(overview_charge_icon, ZSW_FONT_TITLE, LV_PART_MAIN);
-    lv_obj_set_style_text_color(overview_charge_icon, ZSW_COLOR_GREEN, LV_PART_MAIN);
+    overview_charge_icon = zsw_ui_label_create(screen, LV_SYMBOL_CHARGE, ZSW_FONT_TITLE, ZSW_COLOR_GREEN);
     lv_obj_align(overview_charge_icon, LV_ALIGN_TOP_MID, 0, 46);
     lv_obj_add_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN);
 
-    overview_percent_label = lv_label_create(screen);
-    lv_label_set_text(overview_percent_label, "--%");
-    lv_obj_set_style_text_font(overview_percent_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
-    lv_obj_set_style_text_color(overview_percent_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    overview_percent_label = zsw_ui_label_create(screen, "--%", ZSW_FONT_NUMBER, ZSW_COLOR_TEXT);
     lv_obj_align(overview_percent_label, LV_ALIGN_CENTER, 0, -8);
 
-    overview_voltage_label = lv_label_create(screen);
-    lv_label_set_text(overview_voltage_label, "");
-    lv_obj_set_style_text_font(overview_voltage_label, ZSW_FONT_BODY, LV_PART_MAIN);
-    lv_obj_set_style_text_color(overview_voltage_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    overview_voltage_label = zsw_ui_label_create(screen, "", ZSW_FONT_BODY, ZSW_COLOR_TEXT_DIM);
     lv_obj_align(overview_voltage_label, LV_ALIGN_CENTER, 0, 32);
 
-    overview_status_label = lv_label_create(screen);
-    lv_label_set_text(overview_status_label, "");
-    lv_obj_set_style_text_font(overview_status_label, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(overview_status_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    overview_status_label = zsw_ui_label_create(screen, "", ZSW_FONT_TEXT, ZSW_COLOR_TEXT);
     lv_obj_align(overview_status_label, LV_ALIGN_CENTER, 0, 58);
 }
 

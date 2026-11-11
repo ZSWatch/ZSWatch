@@ -140,14 +140,10 @@ static lv_obj_t *create_button(lv_obj_t *parent, const void *icon, const char *t
 static lv_obj_t *create_text(lv_obj_t *parent, const char *text, lv_color_t color, lv_label_long_mode_t mode,
                              int width)
 {
-    lv_obj_t *label = lv_label_create(parent);
-    lv_label_set_text(label, text);
+    lv_obj_t *label = zsw_ui_label_create(parent, text, ZSW_FONT_TEXT, color);
     lv_obj_set_width(label, width);
     lv_label_set_long_mode(label, mode);
-    lv_obj_set_style_text_font(label, ZSW_FONT_TEXT, 0);
-    lv_obj_set_style_text_color(label, color, 0);
     lv_obj_set_style_base_dir(label, LV_BASE_DIR_AUTO, 0);
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     return label;
 }
 
