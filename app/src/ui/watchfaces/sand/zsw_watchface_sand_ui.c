@@ -56,8 +56,14 @@ LOG_MODULE_REGISTER(watchface_sand, LOG_LEVEL_INF);
 
 ZSW_LV_IMG_DECLARE(face_sand_preview);
 ZSW_LV_IMG_DECLARE(face_sand_sky);
-ZSW_LV_IMG_DECLARE(face_sand_skier_right);
-ZSW_LV_IMG_DECLARE(face_sand_skier_left);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_a_right);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_a_left);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_b_right);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_b_left);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_slide_right);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_slide_left);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_fallen_right);
+ZSW_LV_IMG_DECLARE(face_sand_penguin_fallen_left);
 
 static void reset_cached_values(void);
 
@@ -80,23 +86,39 @@ typedef struct {
 } flake_t;
 
 /*
- * A skier crosses the snow now and then, and when the face is tapped. Positions are in
- * 1/16 pixel, the point where the skis touch the snow.
+ * A penguin crosses the snow now and then, and when the face is tapped. He waddles on the
+ * flat and uphill, slides on his belly downhill, and now and then trips and ends up head
+ * first in the snow. Positions are in 1/16 pixel, the point where he touches the snow.
  */
-#define SKIER_FP                16
-#define SKIER_WIDTH             32
-#define SKIER_HEIGHT            28
-#define SKIER_SPEED             (2 * SKIER_FP + 6)
-#define SKIER_SPEED_MIN         (1 * SKIER_FP + 4)
-#define SKIER_SPEED_MAX         (4 * SKIER_FP)
-#define SKIER_GRAVITY           14
-#define SKIER_JUMP              (5 * SKIER_FP)
+#define PENGUIN_FP              16
+#define PENGUIN_WIDTH           32
+#define PENGUIN_HEIGHT          28
+#define PENGUIN_WALK_SPEED      (PENGUIN_FP + 2)
+#define PENGUIN_SLIDE_SPEED     (2 * PENGUIN_FP + 8)
+#define PENGUIN_SPEED_MAX       (4 * PENGUIN_FP)
+#define PENGUIN_GRAVITY         14
+#define PENGUIN_JUMP            (5 * PENGUIN_FP)
 /* The ground has to fall away this fast for him to leave it */
-#define SKIER_DROP_FP           (6 * SKIER_FP)
-#define SKIER_SPRAY_EVERY       3
+#define PENGUIN_DROP_FP         (6 * PENGUIN_FP)
+/* He looks this far ahead to tell a slope: it has to drop this much to slide, and less than half to get up */
+#define PENGUIN_LOOK_AHEAD_PX   10
+#define PENGUIN_SLOPE_PX        5
+#define PENGUIN_WADDLE_FRAMES   5
+#define PENGUIN_SPRAY_EVERY     3
+/* He trips about once in this many frames, which is about once per crossing, and when a jump ends on a slope */
+#define PENGUIN_TRIP_ONE_IN     200
+#define PENGUIN_FALLEN_FRAMES   32
+/* How deep his head goes into the snow */
+#define PENGUIN_FALLEN_SINK_PX  6
 /* Rest ticks (REST_PERIOD_MS each): he comes about every this many, and soon after the face wakes */
-#define SKIER_RANDOM_TICKS      70
-#define SKIER_WAKE_TICKS        5
+#define PENGUIN_RANDOM_TICKS    70
+#define PENGUIN_WAKE_TICKS      5
+
+typedef enum {
+    PENGUIN_WALKING,
+    PENGUIN_SLIDING,
+    PENGUIN_FALLEN,
+} penguin_state_t;
 
 typedef struct {
     lv_obj_t *img;
@@ -106,8 +128,13 @@ typedef struct {
     int8_t dir;
     bool active;
     bool airborne;
-    uint8_t frame;
-} skier_t;
+    /* In the air because of a tap, not because the ground dropped away */
+    bool jumped;
+    penguin_state_t state;
+    /* Frames in the current state */
+    uint16_t frames;
+    const void *shown;
+} penguin_t;
 
 static lv_obj_t *root_page;
 static lv_obj_t *sand_obj;
@@ -115,8 +142,8 @@ static lv_obj_t *ui_date;
 static lv_timer_t *frame_timer;
 static lv_timer_t *flake_timer;
 static flake_t flakes[NUM_FLAKES];
-static skier_t skier;
-static uint8_t skier_wait_ticks;
+static penguin_t penguin;
+static uint8_t penguin_wait_ticks;
 static bool face_active;
 static bool paused;
 static uint8_t rest_frames;
@@ -322,115 +349,202 @@ static int ground_at(int x_px)
     return surface < SAND_GRID_SIZE ? surface * SAND_CELL_PX : -1;
 }
 
-static void skier_stop(void)
+static void penguin_stop(void)
 {
-    skier.active = false;
-    lv_obj_add_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
+    penguin.active = false;
+    lv_obj_add_flag(penguin.img, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void skier_place(void)
+static void penguin_set_state(penguin_state_t state)
 {
-    lv_obj_set_pos(skier.img, skier.x / SKIER_FP - SKIER_WIDTH / 2, skier.y / SKIER_FP - SKIER_HEIGHT);
+    penguin.state = state;
+    penguin.frames = 0;
 }
 
-/* He starts at the end of the snow that is higher up, to get a run downhill. */
-static void skier_start(void)
+/* Moves the image to where he is, in the pose that fits what he is doing. */
+static void penguin_show(void)
+{
+    bool right = penguin.dir > 0;
+    const void *src;
+    int sink = 0;
+
+    if (penguin.state == PENGUIN_FALLEN) {
+        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_fallen_right) : ZSW_LV_IMG_USE(face_sand_penguin_fallen_left);
+        sink = PENGUIN_FALLEN_SINK_PX;
+    } else if (penguin.state == PENGUIN_SLIDING || penguin.airborne) {
+        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_slide_right) : ZSW_LV_IMG_USE(face_sand_penguin_slide_left);
+    } else if ((penguin.frames / PENGUIN_WADDLE_FRAMES) & 1) {
+        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_walk_b_right) : ZSW_LV_IMG_USE(face_sand_penguin_walk_b_left);
+    } else {
+        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_walk_a_right) : ZSW_LV_IMG_USE(face_sand_penguin_walk_a_left);
+    }
+
+    if (src != penguin.shown) {
+        penguin.shown = src;
+        lv_image_set_src(penguin.img, src);
+    }
+    lv_obj_set_pos(penguin.img, penguin.x / PENGUIN_FP - PENGUIN_WIDTH / 2,
+                   penguin.y / PENGUIN_FP - PENGUIN_HEIGHT + sink);
+}
+
+/* He starts at the end of the snow that is higher up, to get a slide downhill. */
+static void penguin_start(void)
 {
     int left = -1;
     int right = -1;
 
-    if (skier.active || !sand_sim_is_level()) {
+    if (penguin.active || !sand_sim_is_level()) {
         return;
     }
 
-    for (int x = SKIER_WIDTH; x < FACE_SIZE - SKIER_WIDTH && left < 0; x += SAND_CELL_PX) {
+    for (int x = PENGUIN_WIDTH / 2; x < FACE_SIZE - PENGUIN_WIDTH / 2 && left < 0; x += SAND_CELL_PX) {
         if (ground_at(x) >= 0) {
             left = x;
         }
     }
-    for (int x = FACE_SIZE - SKIER_WIDTH; x > left && right < 0; x -= SAND_CELL_PX) {
+    for (int x = FACE_SIZE - PENGUIN_WIDTH / 2; x > left && right < 0; x -= SAND_CELL_PX) {
         if (ground_at(x) >= 0) {
             right = x;
         }
     }
-    if (left < 0 || right - left < 4 * SKIER_WIDTH) {
-        /* Not enough snow to ski on */
+    if (left < 0 || right - left < 3 * PENGUIN_WIDTH) {
+        /* Not enough snow to walk on */
         return;
     }
 
-    skier.dir = ground_at(left) <= ground_at(right) ? 1 : -1;
-    skier.x = (skier.dir > 0 ? left : right) * SKIER_FP;
-    skier.y = ground_at(skier.x / SKIER_FP) * SKIER_FP;
-    skier.dy = 0;
-    skier.airborne = false;
-    skier.frame = 0;
-    skier.active = true;
-    lv_image_set_src(skier.img, skier.dir > 0 ? ZSW_LV_IMG_USE(face_sand_skier_right) :
-                     ZSW_LV_IMG_USE(face_sand_skier_left));
-    skier_place();
-    lv_obj_remove_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
+    penguin.dir = ground_at(left) <= ground_at(right) ? 1 : -1;
+    penguin.x = (penguin.dir > 0 ? left : right) * PENGUIN_FP;
+    penguin.y = ground_at(penguin.x / PENGUIN_FP) * PENGUIN_FP;
+    penguin.dy = 0;
+    penguin.airborne = false;
+    penguin.jumped = false;
+    penguin.active = true;
+    penguin_set_state(PENGUIN_WALKING);
+    penguin_show();
+    lv_obj_remove_flag(penguin.img, LV_OBJ_FLAG_HIDDEN);
     wake_sand();
 }
 
 /* A tap while he is out makes him jump. */
-static void skier_jump(void)
+static void penguin_jump(void)
 {
-    if (!skier.airborne) {
-        skier.airborne = true;
-        skier.dy = -SKIER_JUMP;
+    if (!penguin.airborne && penguin.state != PENGUIN_FALLEN) {
+        penguin.airborne = true;
+        penguin.jumped = true;
+        penguin.dy = -PENGUIN_JUMP;
     }
 }
 
-/* One frame of the skier: faster downhill, off the ground over a crest, spray behind the skis. */
-static void skier_step(void)
+/* Head first into the snow, with a puff of it thrown up around him. */
+static void penguin_trip(void)
+{
+    int column = penguin.x / PENGUIN_FP / SAND_CELL_PX;
+
+    penguin_set_state(PENGUIN_FALLEN);
+    penguin.dy = 0;
+    for (int i = -5; i <= 5; i += 2) {
+        sand_sim_kick(column + i);
+    }
+}
+
+/* @return How much lower the snow is a bit ahead of him, in pixels. Negative is uphill. */
+static int penguin_slope(void)
+{
+    int here = ground_at(penguin.x / PENGUIN_FP);
+    int ahead = ground_at(penguin.x / PENGUIN_FP + penguin.dir * PENGUIN_LOOK_AHEAD_PX);
+
+    return (here < 0 || ahead < 0) ? 0 : ahead - here;
+}
+
+/* One frame of the penguin. */
+static void penguin_step(void)
 {
     int ground;
-    int speed = SKIER_SPEED;
+    int speed;
+    int slope;
 
-    if (!skier.active) {
+    if (!penguin.active) {
         return;
     }
 
-    if (!skier.airborne) {
-        /* dy is how much the ground fell in the last frame: positive is downhill */
-        speed = LV_CLAMP(SKIER_SPEED_MIN, SKIER_SPEED + skier.dy, SKIER_SPEED_MAX);
-    }
-    skier.x += skier.dir * speed;
-    skier.frame++;
+    penguin.frames++;
 
-    ground = ground_at(skier.x / SKIER_FP);
-    if (ground < 0 || !sand_sim_is_level()) {
-        /* Out of snow, or the watch was turned and the snow is sliding away under him */
-        skier_stop();
+    if (!sand_sim_is_level()) {
+        /* The watch was turned and the snow is sliding away under him */
+        penguin_stop();
         return;
     }
-    ground *= SKIER_FP;
 
-    if (skier.airborne) {
-        skier.dy += SKIER_GRAVITY;
-        skier.y += skier.dy;
-        if (skier.y >= ground) {
-            skier.y = ground;
-            skier.airborne = false;
-            skier.dy = 0;
-            sand_sim_kick(skier.x / SKIER_FP / SAND_CELL_PX);
+    if (penguin.state == PENGUIN_FALLEN) {
+        /* He stays where he fell for a while, then gets up and goes on */
+        ground = ground_at(penguin.x / PENGUIN_FP);
+        if (ground < 0) {
+            penguin_stop();
+            return;
+        }
+        penguin.y = ground * PENGUIN_FP;
+        if (penguin.frames >= PENGUIN_FALLEN_FRAMES) {
+            penguin_set_state(PENGUIN_WALKING);
+        }
+        penguin_show();
+        return;
+    }
+
+    slope = penguin_slope();
+    if (!penguin.airborne) {
+        if (penguin.state == PENGUIN_WALKING && slope >= PENGUIN_SLOPE_PX) {
+            penguin_set_state(PENGUIN_SLIDING);
+        } else if (penguin.state == PENGUIN_SLIDING && slope < PENGUIN_SLOPE_PX / 2) {
+            penguin_set_state(PENGUIN_WALKING);
+        }
+    }
+
+    /* Faster the steeper it is */
+    speed = penguin.state == PENGUIN_SLIDING ?
+            LV_MIN(PENGUIN_SLIDE_SPEED + slope * PENGUIN_FP / 4, PENGUIN_SPEED_MAX) : PENGUIN_WALK_SPEED;
+    penguin.x += penguin.dir * speed;
+
+    ground = ground_at(penguin.x / PENGUIN_FP);
+    if (ground < 0) {
+        /* Out of snow: he has crossed */
+        penguin_stop();
+        return;
+    }
+    ground *= PENGUIN_FP;
+
+    if (penguin.airborne) {
+        penguin.dy += PENGUIN_GRAVITY;
+        penguin.y += penguin.dy;
+        if (penguin.y >= ground) {
+            penguin.y = ground;
+            penguin.airborne = false;
+            if (penguin.jumped && (slope >= PENGUIN_SLOPE_PX || slope <= -PENGUIN_SLOPE_PX)) {
+                /* A jump that lands on a slope never ends well */
+                penguin_trip();
+            } else {
+                penguin.dy = 0;
+                sand_sim_kick(penguin.x / PENGUIN_FP / SAND_CELL_PX);
+            }
+            penguin.jumped = false;
         }
     } else {
-        int fall = ground - skier.y;
+        int fall = ground - penguin.y;
 
-        if (fall > SKIER_DROP_FP || (skier.dy < -SKIER_FP && fall > 0)) {
-            /* The ground dropped away, or he came over a crest with speed: he keeps going as he was */
-            skier.airborne = true;
+        if (fall > PENGUIN_DROP_FP) {
+            /* The ground dropped away under him */
+            penguin.airborne = true;
         } else {
-            skier.y = ground;
-            skier.dy = fall;
-            if (skier.frame % SKIER_SPRAY_EVERY == 0) {
-                sand_sim_kick(skier.x / SKIER_FP / SAND_CELL_PX - skier.dir * 7);
+            penguin.y = ground;
+            penguin.dy = fall;
+            if (penguin.frames > PENGUIN_WADDLE_FRAMES * 4 && lv_rand(0, PENGUIN_TRIP_ONE_IN - 1) == 0) {
+                penguin_trip();
+            } else if (penguin.state == PENGUIN_SLIDING && penguin.frames % PENGUIN_SPRAY_EVERY == 0) {
+                sand_sim_kick(penguin.x / PENGUIN_FP / SAND_CELL_PX - penguin.dir * 7);
             }
         }
     }
 
-    skier_place();
+    penguin_show();
 }
 
 static void frame_timer_cb(lv_timer_t *timer)
@@ -440,12 +554,12 @@ static void frame_timer_cb(lv_timer_t *timer)
     ARG_UNUSED(timer);
 
     if (rest_frames >= REST_AFTER_FRAMES) {
-        /* At rest: only look for the wrist turning, and now and then send the skier out */
+        /* At rest: only look for the wrist turning, and now and then send the penguin out */
         if (read_gravity()) {
             wake_sand();
-        } else if (skier_wait_ticks > 0 && --skier_wait_ticks == 0) {
-            skier_wait_ticks = lv_rand(SKIER_RANDOM_TICKS / 2, SKIER_RANDOM_TICKS * 3 / 2);
-            skier_start();
+        } else if (penguin_wait_ticks > 0 && --penguin_wait_ticks == 0) {
+            penguin_wait_ticks = lv_rand(PENGUIN_RANDOM_TICKS / 2, PENGUIN_RANDOM_TICKS * 3 / 2);
+            penguin_start();
         }
         return;
     }
@@ -455,11 +569,11 @@ static void frame_timer_cb(lv_timer_t *timer)
         read_gravity();
     }
 
-    skier_step();
+    penguin_step();
     for (int i = 0; i < STEPS_PER_FRAME; i++) {
         moving |= sand_sim_step();
     }
-    moving |= skier.active;
+    moving |= penguin.active;
     invalidate_dirty();
 
     rest_frames = moving ? 0 : rest_frames + 1;
@@ -493,10 +607,10 @@ static void root_clicked_cb(lv_event_t *e)
         /* A long press throws the snow up */
         sand_sim_shake();
         wake_sand();
-    } else if (skier.active) {
-        skier_jump();
+    } else if (penguin.active) {
+        penguin_jump();
     } else {
-        skier_start();
+        penguin_start();
     }
 }
 
@@ -515,7 +629,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_bg_color(root_page, lv_color_black(), LV_PART_MAIN);
     /* A night sky behind the sand, drawn straight from the resource filesystem */
     lv_obj_set_style_bg_image_src(root_page, ZSW_LV_IMG_USE(face_sand_sky), LV_PART_MAIN);
-    /* A tap sends the skier out, or makes him jump. A long press throws the snow up. */
+    /* A tap sends the penguin out, or makes him jump. A long press throws the snow up. */
     lv_obj_add_flag(root_page, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_page, root_clicked_cb, LV_EVENT_SHORT_CLICKED, NULL);
     lv_obj_add_event_cb(root_page, root_clicked_cb, LV_EVENT_LONG_PRESSED, NULL);
@@ -525,6 +639,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     paused = false;
     gravity_frames = 0;
 
+    /* The same seed at every start would make the penguin trip at the same place every time */
+    lv_rand_set_seed(k_cycle_get_32());
     sand_sim_init(k_cycle_get_32());
 
     sand_obj = lv_obj_create(root_page);
@@ -538,11 +654,12 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_style_text_letter_space(ui_date, 1, LV_PART_MAIN);
     lv_obj_align(ui_date, LV_ALIGN_TOP_MID, 0, 30);
 
-    skier.img = lv_image_create(root_page);
-    skier.active = false;
-    lv_obj_add_flag(skier.img, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(skier.img, LV_OBJ_FLAG_CLICKABLE);
-    skier_wait_ticks = SKIER_WAKE_TICKS;
+    penguin.img = lv_image_create(root_page);
+    penguin.active = false;
+    penguin.shown = NULL;
+    lv_obj_add_flag(penguin.img, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(penguin.img, LV_OBJ_FLAG_CLICKABLE);
+    penguin_wait_ticks = PENGUIN_WAKE_TICKS;
 
     for (int i = 0; i < NUM_FLAKES; i++) {
         flake_respawn(&flakes[i], true);
@@ -566,7 +683,7 @@ static void watchface_remove(void)
         frame_timer = NULL;
         flake_timer = NULL;
     }
-    skier.active = false;
+    penguin.active = false;
     lv_obj_delete(root_page);
     root_page = NULL;
     sand_obj = NULL;
@@ -581,8 +698,8 @@ static void watchface_set_display_active(bool active)
     face_active = active;
     update_timer_state();
     if (active) {
-        /* Every other time the watch is looked at, the skier comes by soon after */
-        skier_wait_ticks = lv_rand(0, 1) ? SKIER_WAKE_TICKS : SKIER_RANDOM_TICKS;
+        /* Every other time the watch is looked at, the penguin comes by soon after */
+        penguin_wait_ticks = lv_rand(0, 1) ? PENGUIN_WAKE_TICKS : PENGUIN_RANDOM_TICKS;
         wake_sand();
     }
 }
