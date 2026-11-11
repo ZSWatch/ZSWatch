@@ -33,8 +33,7 @@
 #define CHART_MIN_MV        3000
 #define CHART_MAX_MV        4300
 
-#define INFO_ROW_WIDTH      176
-#define INFO_ROW_HEIGHT     30
+#define INFO_LIST_WIDTH     176
 
 static void overview_init(lv_obj_t *tile);
 static void history_init(lv_obj_t *tile);
@@ -259,67 +258,17 @@ static void history_init(lv_obj_t *tile)
     lv_obj_align(history_value_label, LV_ALIGN_BOTTOM_MID, 0, -30);
 }
 
-// A pill with a dim key to the left. Returns the value label to the right.
-static lv_obj_t *info_row_create(lv_obj_t *list, const char *key, lv_obj_t **dot)
-{
-    lv_obj_t *row = lv_obj_create(list);
-    lv_obj_set_size(row, INFO_ROW_WIDTH, INFO_ROW_HEIGHT);
-    lv_obj_set_style_radius(row, ZSW_RADIUS_PILL, LV_PART_MAIN);
-    lv_obj_set_style_pad_hor(row, 14, LV_PART_MAIN);
-    lv_obj_set_style_pad_ver(row, 0, LV_PART_MAIN);
-    lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-
-    lv_obj_t *key_label = lv_label_create(row);
-    lv_label_set_text(key_label, key);
-    lv_obj_set_style_text_font(key_label, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(key_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
-    lv_obj_align(key_label, LV_ALIGN_LEFT_MID, dot ? 14 : 0, 0);
-
-    if (dot) {
-        *dot = lv_obj_create(row);
-        lv_obj_set_size(*dot, 8, 8);
-        lv_obj_set_style_radius(*dot, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(*dot, ZSW_COLOR_OUTLINE, LV_PART_MAIN);
-        lv_obj_align(*dot, LV_ALIGN_LEFT_MID, 0, 0);
-    }
-
-    lv_obj_t *value_label = lv_label_create(row);
-    lv_label_set_text(value_label, "-");
-    lv_label_set_long_mode(value_label, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(value_label, 92);
-    lv_obj_set_style_text_align(value_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-    lv_obj_set_style_text_font(value_label, ZSW_FONT_TEXT, LV_PART_MAIN);
-    lv_obj_set_style_text_color(value_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
-    lv_obj_align(value_label, LV_ALIGN_RIGHT_MID, 0, 0);
-
-    return value_label;
-}
-
-static lv_obj_t *info_list_create(lv_obj_t *screen)
-{
-    lv_obj_t *list = lv_obj_create(screen);
-
-    lv_obj_remove_style_all(list);
-    lv_obj_set_size(list, INFO_ROW_WIDTH, LV_SIZE_CONTENT);
-    lv_obj_align(list, LV_ALIGN_CENTER, 0, 2);
-    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(list, 5, LV_PART_MAIN);
-    lv_obj_remove_flag(list, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
-
-    return list;
-}
-
 static void charger_init(lv_obj_t *tile)
 {
     lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
-    lv_obj_t *list = info_list_create(screen);
+    lv_obj_t *list = zsw_ui_info_list_create(screen, INFO_LIST_WIDTH);
 
     zsw_ui_title_create(screen, "CHARGER", ZSW_COLOR_TEXT_DIM);
 
-    charger_status_label = info_row_create(list, "Status", NULL);
-    charger_error_label = info_row_create(list, "Error", NULL);
-    charger_ttf_label = info_row_create(list, "Full in", NULL);
-    charger_tte_label = info_row_create(list, "Empty in", NULL);
+    charger_status_label = zsw_ui_info_row_create(list, "Status", true);
+    charger_error_label = zsw_ui_info_row_create(list, "Error", true);
+    charger_ttf_label = zsw_ui_info_row_create(list, "Full in", true);
+    charger_tte_label = zsw_ui_info_row_create(list, "Empty in", true);
 }
 
 static void rails_init(lv_obj_t *tile)
@@ -328,7 +277,7 @@ static void rails_init(lv_obj_t *tile)
 
     zsw_ui_title_create(screen, "POWER RAILS", ZSW_COLOR_TEXT_DIM);
     // The rows are added by battery_ui_set_rail()
-    rails_list = info_list_create(screen);
+    rails_list = zsw_ui_info_list_create(screen, INFO_LIST_WIDTH);
 }
 
 void battery_ui_add_measurement(int percent, int voltage)
@@ -407,7 +356,13 @@ void battery_ui_set_rail(int index, const char *name, int millivolt, bool enable
 
     // Rails are reported in order, so the row for a new index goes last in the list
     if (rail_dots[index] == NULL) {
-        rail_value_labels[index] = info_row_create(rails_list, name, &rail_dots[index]);
+        rail_value_labels[index] = zsw_ui_info_row_create(rails_list, name, true);
+
+        // A dot before the name tells if the rail is on
+        rail_dots[index] = lv_obj_create(lv_obj_get_parent(rail_value_labels[index]));
+        lv_obj_set_size(rail_dots[index], 8, 8);
+        lv_obj_set_style_radius(rail_dots[index], LV_RADIUS_CIRCLE, LV_PART_MAIN);
+        lv_obj_move_to_index(rail_dots[index], 0);
     }
 
     lv_obj_set_style_bg_color(rail_dots[index], enabled ? ZSW_COLOR_OK : ZSW_COLOR_OUTLINE, LV_PART_MAIN);

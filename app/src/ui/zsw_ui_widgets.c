@@ -185,3 +185,52 @@ void zsw_ui_page_dots_set_page(lv_obj_t *dots, uint8_t page)
         lv_obj_set_style_bg_color(dot, selected ? ZSW_COLOR_TEXT : ZSW_COLOR_OUTLINE, LV_PART_MAIN);
     }
 }
+
+lv_obj_t *zsw_ui_info_list_create(lv_obj_t *parent, int32_t width)
+{
+    lv_obj_t *list = lv_obj_create(parent);
+
+    lv_obj_remove_style_all(list);
+    lv_obj_set_size(list, width, LV_SIZE_CONTENT);
+    lv_obj_align(list, LV_ALIGN_CENTER, 0, 2);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(list, 5, LV_PART_MAIN);
+    lv_obj_remove_flag(list, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+
+    return list;
+}
+
+lv_obj_t *zsw_ui_info_row_create(lv_obj_t *list, const char *key, bool pill)
+{
+    const lv_font_t *font = pill ? ZSW_FONT_TEXT : ZSW_FONT_CAPTION;
+    lv_obj_t *row = lv_obj_create(list);
+
+    lv_obj_remove_style_all(row);
+    lv_obj_set_size(row, LV_PCT(100), pill ? 30 : LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(row, 6, LV_PART_MAIN);
+    lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    if (pill) {
+        lv_obj_set_style_radius(row, ZSW_RADIUS_PILL, LV_PART_MAIN);
+        lv_obj_set_style_bg_color(row, ZSW_COLOR_SURFACE, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_pad_hor(row, 14, LV_PART_MAIN);
+    }
+
+    lv_obj_t *key_label = lv_label_create(row);
+    lv_label_set_text(key_label, key);
+    lv_obj_set_style_text_font(key_label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(key_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+
+    lv_obj_t *value_label = lv_label_create(row);
+    lv_label_set_text(value_label, "-");
+    lv_label_set_long_mode(value_label, LV_LABEL_LONG_DOT);
+    lv_obj_set_flex_grow(value_label, 1);
+    lv_obj_set_height(value_label, lv_font_get_line_height(font));
+    lv_obj_set_style_text_align(value_label, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(value_label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(value_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+
+    return value_label;
+}

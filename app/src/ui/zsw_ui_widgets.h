@@ -70,3 +70,16 @@ lv_obj_t *zsw_ui_page_dots_create(lv_obj_t *parent, uint8_t num_pages);
 
 /** Shows which page is the current one. */
 void zsw_ui_page_dots_set_page(lv_obj_t *dots, uint8_t page);
+
+/**
+ * A column of key/value rows, centered on the parent. Add rows with zsw_ui_info_row_create().
+ */
+lv_obj_t *zsw_ui_info_list_create(lv_obj_t *parent, int32_t width);
+
+/**
+ * A row with a dim key to the left and a value to the right, which ends in dots when it is too long.
+ * With pill the row is a rounded card, without it a tight line of small text for pages with many values.
+ *
+ * @return The value label. Its parent is the row.
+ */
+lv_obj_t *zsw_ui_info_row_create(lv_obj_t *list, const char *key, bool pill);
