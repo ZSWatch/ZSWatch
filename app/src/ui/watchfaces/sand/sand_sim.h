@@ -94,3 +94,15 @@ int sand_sim_get_flying(sand_flying_t *grains, int max);
  * @return false if nothing changed in the band.
  */
 bool sand_sim_pop_dirty(int band, int *x_first, int *x_last);
+
+/**
+ * @return The row of the top of the pile in a column, when the watch is held upright.
+ *         SAND_GRID_SIZE if there is no sand at the bottom of the column.
+ */
+int sand_sim_surface(int x);
+
+/** Throws the top grain of a column a little into the air, like spray. */
+void sand_sim_kick(int x);
+
+/** @return true if the sand falls straight down on the display and is not being shaken. */
+bool sand_sim_is_level(void);

@@ -17,7 +17,7 @@ HEIGHT = 27
 # Each grain is rendered as SCALE x SCALE pixels and is sand when more than half of it is covered.
 SCALE = 8
 # The font weight in pixels at render scale, to get strokes about three grains wide.
-EMBOLDEN = 6
+EMBOLDEN = 3
 
 
 def render(font, digit):
