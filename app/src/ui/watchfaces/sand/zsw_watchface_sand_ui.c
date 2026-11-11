@@ -17,6 +17,7 @@
 
 #include <lvgl.h>
 #include <misc/lv_area_private.h>
+#include <draw/lv_draw_private.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -154,19 +155,10 @@ static int last_minute = -1;
 static int last_hour = -1;
 static int last_day = -1;
 
-static void fill_cells(lv_layer_t *layer, lv_draw_rect_dsc_t *dsc, const lv_area_t *origin, int x_first, int x_last,
-                       int y, uint32_t color)
-{
-    lv_area_t area = {
-        .x1 = origin->x1 + x_first * SAND_CELL_PX,
-        .y1 = origin->y1 + y * SAND_CELL_PX,
-        .x2 = origin->x1 + (x_last + 1) * SAND_CELL_PX - 1,
-        .y2 = origin->y1 + (y + 1) * SAND_CELL_PX - 1,
-    };
-
-    dsc->bg_color = lv_color_hex(color);
-    lv_draw_rect(layer, dsc, &area);
-}
+/* RGB565 of each cell value, and of the grains on top and the flakes */
+static uint16_t cell_colors[16];
+static uint16_t color_top;
+static uint16_t color_flake;
 
 static void flake_area(const flake_t *flake, const lv_area_t *origin, lv_area_t *area)
 {
@@ -176,70 +168,98 @@ static void flake_area(const flake_t *flake, const lv_area_t *origin, lv_area_t 
     area->y2 = area->y1 + FLAKE_SIZE - 1;
 }
 
+/* All the draw tasks before this one are done, so the pixels under the sand are in the buffer */
+static bool layer_drawn(const lv_layer_t *layer)
+{
+    for (const lv_draw_task_t *t = layer->draw_task_head; t != NULL; t = t->next) {
+        if (t->state != LV_DRAW_TASK_STATE_FINISHED) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static void fill_block(lv_layer_t *layer, const lv_area_t *clip, const lv_area_t *block, uint16_t color)
+{
+    lv_area_t area;
+
+    if (!lv_area_intersect(&area, clip, block)) {
+        return;
+    }
+    for (int32_t y = area.y1; y <= area.y2; y++) {
+        uint16_t *pixel = lv_draw_layer_go_to_xy(layer, area.x1 - layer->buf_area.x1, y - layer->buf_area.y1);
+
+        for (int32_t x = area.x1; x <= area.x2; x++) {
+            *pixel++ = color;
+        }
+    }
+}
+
 /*
- * Each row is drawn as runs of grains in the base shade, with the grains of other shades on
- * top one by one, and a lighter one where the sand meets the sky. That is far fewer
- * rectangles than one per grain.
+ * The grains are written straight into the draw buffer: one lv_draw_rect() per grain, or even
+ * per run of grains, is far too slow when much of the screen changes at once. That needs the
+ * draw tasks of what is behind the sand to have run already, which they have without a draw
+ * thread.
  */
+#if LV_USE_OS != LV_OS_NONE
+#error "The Sand watchface draws into the layer from the event and needs LVGL without a draw thread"
+#endif
+
 static void sand_draw_cb(lv_event_t *e)
 {
     lv_layer_t *layer = lv_event_get_layer(e);
-    lv_draw_rect_dsc_t dsc;
     lv_area_t coords;
     lv_area_t clip;
     sand_flying_t flying[SAND_MAX_FLYING];
+    uint16_t row_colors[SAND_GRID_SIZE];
 
     lv_obj_get_coords(sand_obj, &coords);
     if (!lv_area_intersect(&clip, &layer->_clip_area, &coords)) {
         return;
     }
-
-    lv_draw_rect_dsc_init(&dsc);
-    dsc.bg_opa = LV_OPA_COVER;
+    if (layer->color_format != LV_COLOR_FORMAT_RGB565 || !layer_drawn(layer)) {
+        LV_LOG_WARN("Can't draw the sand into this layer");
+        return;
+    }
 
     /* The falling snow first, so that it is behind the pile and the digits */
-    dsc.bg_color = lv_color_hex(COLOR_FLAKE);
     for (int i = 0; i < NUM_FLAKES; i++) {
         lv_area_t area;
 
         flake_area(&flakes[i], &coords, &area);
-        if (lv_area_is_on(&area, &clip)) {
-            lv_draw_rect(layer, &dsc, &area);
-        }
+        fill_block(layer, &clip, &area, color_flake);
     }
 
-    int x0 = (clip.x1 - coords.x1) / SAND_CELL_PX;
-    int x1 = (clip.x2 - coords.x1) / SAND_CELL_PX;
     int y0 = (clip.y1 - coords.y1) / SAND_CELL_PX;
     int y1 = (clip.y2 - coords.y1) / SAND_CELL_PX;
 
     for (int y = y0; y <= y1; y++) {
-        int run_start = 0;
-        sand_cell_type_t run_type = SAND_CELL_EMPTY;
-
-        for (int x = x0; x <= x1 + 1; x++) {
-            sand_cell_type_t type = x <= x1 ? SAND_CELL_TYPE(sand_sim_cell(x, y)) : SAND_CELL_EMPTY;
-
-            if (type == run_type) {
-                continue;
-            }
-            if (run_type != SAND_CELL_EMPTY) {
-                fill_cells(layer, &dsc, &coords, run_start, x - 1, y,
-                           run_type == SAND_CELL_SAND ? sand_colors[0] : digit_colors[0]);
-            }
-            run_start = x;
-            run_type = type;
-        }
-
-        for (int x = x0; x <= x1; x++) {
+        /* 0 is a cell to leave as it is: no grain is black */
+        for (int x = (clip.x1 - coords.x1) / SAND_CELL_PX; x <= (clip.x2 - coords.x1) / SAND_CELL_PX; x++) {
             uint8_t cell = sand_sim_cell(x, y);
             sand_cell_type_t type = SAND_CELL_TYPE(cell);
-            uint8_t shade = SAND_CELL_SHADE(cell);
 
             if (type == SAND_CELL_SAND && (y == 0 || SAND_CELL_TYPE(sand_sim_cell(x, y - 1)) == SAND_CELL_EMPTY)) {
-                fill_cells(layer, &dsc, &coords, x, x, y, COLOR_SAND_TOP);
-            } else if (shade != 0 && type != SAND_CELL_EMPTY) {
-                fill_cells(layer, &dsc, &coords, x, x, y, type == SAND_CELL_SAND ? sand_colors[shade] : digit_colors[shade]);
+                /* The grains where the sand meets the sky catch the light */
+                row_colors[x] = color_top;
+            } else {
+                row_colors[x] = type == SAND_CELL_EMPTY ? 0 : cell_colors[cell];
+            }
+        }
+
+        int32_t first = LV_MAX(clip.y1, coords.y1 + y * SAND_CELL_PX);
+        int32_t last = LV_MIN(clip.y2, coords.y1 + (y + 1) * SAND_CELL_PX - 1);
+
+        for (int32_t py = first; py <= last; py++) {
+            uint16_t *pixel = lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, py - layer->buf_area.y1);
+
+            for (int32_t px = clip.x1; px <= clip.x2; px++, pixel++) {
+                uint16_t color = row_colors[(px - coords.x1) / SAND_CELL_PX];
+
+                if (color != 0) {
+                    *pixel = color;
+                }
             }
         }
     }
@@ -255,9 +275,18 @@ static void sand_draw_cb(lv_event_t *e)
 
         area.x2 = area.x1 + SAND_CELL_PX - 1;
         area.y2 = area.y1 + SAND_CELL_PX - 1;
-        dsc.bg_color = lv_color_hex(digit_colors[flying[i].shade]);
-        lv_draw_rect(layer, &dsc, &area);
+        fill_block(layer, &clip, &area, cell_colors[SAND_CELL_DIGIT | (flying[i].shade << 2)]);
     }
+}
+
+static void init_colors(void)
+{
+    for (int shade = 0; shade < SAND_NUM_SHADES; shade++) {
+        cell_colors[SAND_CELL_SAND | (shade << 2)] = lv_color_to_u16(lv_color_hex(sand_colors[shade]));
+        cell_colors[SAND_CELL_DIGIT | (shade << 2)] = lv_color_to_u16(lv_color_hex(digit_colors[shade]));
+    }
+    color_top = lv_color_to_u16(lv_color_hex(COLOR_SAND_TOP));
+    color_flake = lv_color_to_u16(lv_color_hex(COLOR_FLAKE));
 }
 
 static void invalidate_dirty(void)
@@ -318,7 +347,8 @@ static void flake_respawn(flake_t *flake, bool anywhere)
 static void flake_timer_cb(lv_timer_t *timer)
 {
     lv_area_t coords;
-    lv_area_t area;
+    lv_area_t before;
+    lv_area_t after;
 
     ARG_UNUSED(timer);
 
@@ -326,8 +356,7 @@ static void flake_timer_cb(lv_timer_t *timer)
     for (int i = 0; i < NUM_FLAKES; i++) {
         flake_t *flake = &flakes[i];
 
-        flake_area(flake, &coords, &area);
-        lv_obj_invalidate_area(sand_obj, &area);
+        flake_area(flake, &coords, &before);
 
         flake->y += 1 + (i & 1);
         flake->x += (int)lv_rand(0, 2) - 1;
@@ -336,8 +365,14 @@ static void flake_timer_cb(lv_timer_t *timer)
             flake_respawn(flake, false);
         }
 
-        flake_area(flake, &coords, &area);
-        lv_obj_invalidate_area(sand_obj, &area);
+        flake_area(flake, &coords, &after);
+        /* Every area is a redraw of its own: one around both places unless it started over at the top */
+        if (after.y1 >= before.y1 && after.y1 <= before.y2 + FLAKE_SIZE) {
+            lv_area_join(&before, &before, &after);
+        } else {
+            lv_obj_invalidate_area(sand_obj, &after);
+        }
+        lv_obj_invalidate_area(sand_obj, &before);
     }
 }
 
@@ -641,6 +676,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     /* The same seed at every start would make the penguin trip at the same place every time */
     lv_rand_set_seed(k_cycle_get_32());
+    init_colors();
     sand_sim_init(k_cycle_get_32());
 
     sand_obj = lv_obj_create(root_page);
