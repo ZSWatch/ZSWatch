@@ -48,6 +48,7 @@
 
 #define SHAKE_STEPS         18
 #define EVEN_OUT_MAX_STEPS  600
+#define EVEN_OUT_PER_STEP   4
 /* How far up a grain is thrown by sand_sim_kick() */
 #define KICK_HEIGHT         3
 
@@ -535,12 +536,46 @@ static bool step_flying(void)
     return active;
 }
 
-/* Digits differ in size, so the pile drifts. Add or remove a grain at a time until it is back. */
-static bool even_out_pile(void)
+/* One grain off the top of the pile, or one onto it. */
+static void even_out_grain(void)
 {
     int x;
     int y;
 
+    if (world.sand_count > PILE_GRAINS) {
+        if (find_surface_grain(&x, &y)) {
+            set_cell(x, y, SAND_CELL_EMPTY);
+            world.sand_count--;
+        }
+        return;
+    }
+
+    /*
+     * A grain is put straight on top of the pile, as if it had fallen in from the edge the sand
+     * falls away from. Letting it fall all the way would keep the world awake for many steps per
+     * grain. Grains that would land on a digit are not added.
+     */
+    random_cell(&x, &y);
+    while (inside(x - world.fall[0][0], y - world.fall[0][1])) {
+        x -= world.fall[0][0];
+        y -= world.fall[0][1];
+    }
+    if (is_empty(x, y)) {
+        while (is_empty(x + world.fall[0][0], y + world.fall[0][1])) {
+            x += world.fall[0][0];
+            y += world.fall[0][1];
+        }
+        if (!inside(x + world.fall[0][0], y + world.fall[0][1]) ||
+            SAND_CELL_TYPE(get_cell(x + world.fall[0][0], y + world.fall[0][1])) == SAND_CELL_SAND) {
+            set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
+            world.sand_count++;
+        }
+    }
+}
+
+/* Digits differ in size, so the pile drifts. Add or remove a few grains a step until it is back. */
+static bool even_out_pile(void)
+{
     if (world.sand_count == PILE_GRAINS) {
         world.even_out_steps = 0;
         return false;
@@ -552,23 +587,8 @@ static bool even_out_pile(void)
         return false;
     }
 
-    if (world.sand_count > PILE_GRAINS) {
-        if (find_surface_grain(&x, &y)) {
-            set_cell(x, y, SAND_CELL_EMPTY);
-            world.sand_count--;
-        }
-        return true;
-    }
-
-    /* A grain trickles in from the edge the sand falls away from */
-    random_cell(&x, &y);
-    while (inside(x - world.fall[0][0], y - world.fall[0][1])) {
-        x -= world.fall[0][0];
-        y -= world.fall[0][1];
-    }
-    if (is_empty(x, y)) {
-        set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
-        world.sand_count++;
+    for (int i = 0; i < EVEN_OUT_PER_STEP && world.sand_count != PILE_GRAINS; i++) {
+        even_out_grain();
     }
 
     return true;
