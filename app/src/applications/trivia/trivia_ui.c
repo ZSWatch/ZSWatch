@@ -16,132 +16,131 @@
  */
 
 #include "trivia_ui.h"
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
 #include <lvgl.h>
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
-#define CLOSE_TXT "Close"
+#define TRIVIA_COLOR        lv_color_hex(0xC026D3)
+
+#define ANSWER_BTN_WIDTH    84
+#define ANSWER_BTN_HEIGHT   38
+#define SHEET_BTN_SIZE      46
 
 static lv_obj_t *root_page = NULL;
 static lv_obj_t *question_lb;
-static lv_obj_t *mbox;
+static lv_obj_t *sheet;
 static on_button_press_cb_t click_callback;
-static lv_obj_t *more_btn;
-static lv_obj_t *close_btn;
 
-static void click_event_cb(lv_event_t *e);
-static void click_popup_event_cb(lv_event_t *e);
+static void click_event_cb(lv_event_t *e)
+{
+    click_callback((trivia_button_t)(uintptr_t)lv_event_get_user_data(e));
+}
+
+static void create_answer_button(lv_obj_t *parent, const char *text, lv_color_t color, int32_t x,
+                                 trivia_button_t button)
+{
+    lv_obj_t *btn = lv_button_create(parent);
+    lv_obj_set_size(btn, ANSWER_BTN_WIDTH, ANSWER_BTN_HEIGHT);
+    lv_obj_set_style_bg_color(btn, color, LV_PART_MAIN);
+    lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, x, -42);
+    lv_obj_add_event_cb(btn, click_event_cb, LV_EVENT_CLICKED, (void *)(uintptr_t)button);
+
+    lv_obj_t *label = lv_label_create(btn);
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_font(label, ZSW_FONT_BODY, LV_PART_MAIN);
+    lv_obj_center(label);
+}
 
 void trivia_ui_show(lv_obj_t *root, on_button_press_cb_t on_button_click_cb)
 {
     assert(root_page == NULL);
     click_callback = on_button_click_cb;
 
-    // Create the root container
-    root_page = lv_obj_create(root);
-    // Remove the default border
-    lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
-    // Make root container fill the screen
-    lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
-    // Don't want it to be scollable. Putting anything close the edges
-    // then LVGL automatically makes the page scrollable and shows a scroll bar.
-    // Does not loog very good on the round display.
-    lv_obj_set_scrollbar_mode(root_page, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_bg_opa(root_page, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+    root_page = zsw_ui_screen_create(root, TRIVIA_COLOR);
+    zsw_ui_title_create(root_page, "TRIVIA", ZSW_COLOR_TEXT_DIM);
 
-    /* Create field for the question */
+    // The question comes from the phone, so it needs the font with all characters
     question_lb = lv_label_create(root_page);
-    lv_obj_set_width(question_lb, LV_PCT(100));
-    lv_label_set_long_mode(question_lb, LV_LABEL_LONG_WRAP);            /*Break the long lines*/
-    lv_obj_align(question_lb, LV_ALIGN_TOP_MID, 0, 35);                 /*Aling to the center of screen*/
-    lv_obj_set_style_text_align(question_lb, LV_TEXT_ALIGN_CENTER, 0);  /*Allign text center*/
-    lv_obj_set_style_text_font(question_lb, ZSW_FONT_BODY, 0); /*Change font size*/
+    lv_obj_set_width(question_lb, 184);
+    lv_label_set_long_mode(question_lb, LV_LABEL_LONG_WRAP);
+    lv_obj_align(question_lb, LV_ALIGN_TOP_MID, 0, 48);
+    lv_obj_set_style_text_align(question_lb, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_font(question_lb, ZSW_FONT_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_color(question_lb, ZSW_COLOR_TEXT, LV_PART_MAIN);
     lv_label_set_text(question_lb, "-");
 
-    /*Create Buttons*/
-    lv_obj_t *btn_true = lv_btn_create(root_page);
-    static trivia_button_t trivia_button_true = TRUE_BUTTON;
-    lv_obj_add_event_cb(btn_true, click_event_cb, LV_EVENT_CLICKED, &trivia_button_true);
-    lv_obj_align(btn_true, LV_ALIGN_CENTER, -45, 45);
-
-    lv_obj_t *label_true = lv_label_create(btn_true);
-    lv_label_set_text(label_true, "True");
-    lv_obj_center(label_true);
-
-    lv_obj_t *btn_false = lv_btn_create(root_page);
-    static trivia_button_t trivia_button_false = FALSE_BUTTON;
-    lv_obj_add_event_cb(btn_false, click_event_cb, LV_EVENT_CLICKED, &trivia_button_false);
-    lv_obj_align(btn_false, LV_ALIGN_CENTER, 45, 45);
-
-    lv_obj_t *label_false = lv_label_create(btn_false);
-    lv_label_set_text(label_false, "False");
-    lv_obj_center(label_false);
+    create_answer_button(root_page, "True", ZSW_COLOR_GREEN, -(ANSWER_BTN_WIDTH / 2 + 5), TRUE_BUTTON);
+    create_answer_button(root_page, "False", ZSW_COLOR_RED, ANSWER_BTN_WIDTH / 2 + 5, FALSE_BUTTON);
 }
 
 void trivia_ui_remove(void)
 {
-    trivia_ui_close_popup();
-
     lv_obj_del(root_page);
     root_page = NULL;
+    sheet = NULL;
 }
 
+// Called from the buttons on the sheet, so the sheet is hidden here and deleted when the next one is shown.
 void trivia_ui_close_popup(void)
 {
-    if (mbox != NULL) {
-        lv_msgbox_close(mbox);
+    if (sheet != NULL) {
+        lv_obj_add_flag(sheet, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// A sheet over the question: a symbol, a line of text and Close, plus Next when there is more to play.
+static void show_sheet(lv_color_t color, const char *symbol, const char *text, bool can_continue)
+{
+    if (sheet != NULL) {
+        lv_obj_del(sheet);
+    }
+
+    sheet = zsw_ui_screen_create(root_page, color);
+
+    lv_obj_t *symbol_label = lv_label_create(sheet);
+    lv_label_set_text(symbol_label, symbol);
+    lv_obj_set_style_text_font(symbol_label, ZSW_FONT_HEADLINE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(symbol_label, color, LV_PART_MAIN);
+    lv_obj_align(symbol_label, LV_ALIGN_TOP_MID, 0, 44);
+    zsw_ui_slide_in(symbol_label, 0);
+
+    lv_obj_t *text_label = lv_label_create(sheet);
+    lv_obj_set_width(text_label, 180);
+    lv_label_set_text(text_label, text);
+    lv_obj_set_style_text_align(text_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_font(text_label, ZSW_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(text_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_align(text_label, LV_ALIGN_CENTER, 0, -8);
+
+    lv_obj_t *close_btn = zsw_ui_round_button_create(sheet, LV_SYMBOL_CLOSE, SHEET_BTN_SIZE, ZSW_COLOR_SURFACE_HIGH);
+    lv_obj_add_event_cb(close_btn, click_event_cb, LV_EVENT_CLICKED, (void *)(uintptr_t)CLOSE_BUTTON);
+
+    if (can_continue) {
+        lv_obj_t *more_btn = zsw_ui_round_button_create(sheet, LV_SYMBOL_RIGHT, SHEET_BTN_SIZE, TRIVIA_COLOR);
+        lv_obj_add_event_cb(more_btn, click_event_cb, LV_EVENT_CLICKED, (void *)(uintptr_t)PLAY_MORE_BUTTON);
+        lv_obj_align(close_btn, LV_ALIGN_BOTTOM_MID, -34, -32);
+        lv_obj_align(more_btn, LV_ALIGN_BOTTOM_MID, 34, -32);
+    } else {
+        lv_obj_align(close_btn, LV_ALIGN_BOTTOM_MID, 0, -32);
     }
 }
 
 void trivia_ui_guess_feedback(bool correct)
 {
-    char msg[sizeof("Your answer is correct!")];
-
-    sprintf(msg, "Your answer is %s!", correct ? "Correct" : "Wrong");
-
-    mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_text(mbox, msg);
-    more_btn = lv_msgbox_add_footer_button(mbox, "More");
-    close_btn = lv_msgbox_add_footer_button(mbox, CLOSE_TXT);
-    lv_obj_add_event_cb(more_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_event_cb(close_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_center(mbox);
+    if (correct) {
+        show_sheet(ZSW_COLOR_GREEN, LV_SYMBOL_OK, "Correct!", true);
+    } else {
+        show_sheet(ZSW_COLOR_RED, LV_SYMBOL_CLOSE, "Wrong!", true);
+    }
 }
 
 void trivia_ui_not_supported()
 {
-    mbox = lv_msgbox_create(NULL);
-    lv_msgbox_add_text(mbox, "Your phone does not support this app");
-    close_btn = lv_msgbox_add_footer_button(mbox, CLOSE_TXT);
-    lv_obj_add_event_cb(close_btn, click_popup_event_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_center(mbox);
-}
-
-static void click_popup_event_cb(lv_event_t *e)
-{
-    lv_obj_t *obj = lv_event_get_target_obj(e);
-    trivia_button_t trivia_button;
-
-    if (obj == close_btn) {
-        trivia_button = CLOSE_BUTTON;
-    } else if (obj == more_btn) {
-        trivia_button = PLAY_MORE_BUTTON;
-    } else {
-        return;
-    }
-
-    click_callback(trivia_button);
-}
-
-static void click_event_cb(lv_event_t *e)
-{
-    trivia_button_t trivia_button = *(trivia_button_t *)lv_event_get_user_data(e);
-    click_callback(trivia_button);
+    show_sheet(ZSW_COLOR_ORANGE, LV_SYMBOL_WARNING, "Your phone does not\nsupport this app", false);
 }
 
 void trivia_ui_update_question(const char *buff)
 {
-    lv_label_set_text_fmt(question_lb, "%s", buff);
+    lv_label_set_text(question_lb, buff);
 }
