@@ -21,6 +21,7 @@
 #include "watchface_picker_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 
 static lv_obj_t *ui_root;
 static lv_obj_t *ui_faceSelect;
@@ -67,6 +68,7 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_label_set_text(ui_faceLabel, name);
     lv_obj_set_style_text_align(ui_faceLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_faceLabel, ZSW_FONT_BODY, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_faceLabel, ZSW_COLOR_TEXT, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_faceItem, on_watchface_selected, LV_EVENT_ALL, (void *)index);
 
@@ -78,9 +80,10 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_obj_set_style_bg_opa(ui_face_outline, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_radius(ui_face_outline, LV_RADIUS_CIRCLE, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_face_outline, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_color(ui_face_outline, lv_color_hex(0xFFBAAF), LV_PART_MAIN | LV_STATE_DEFAULT );
+    // The current watchface gets the accent color, see watchface_picker_ui_set_selected()
+    lv_obj_set_style_outline_color(ui_face_outline, ZSW_COLOR_OUTLINE, LV_PART_MAIN | LV_STATE_DEFAULT );
     lv_obj_set_style_outline_opa(ui_face_outline, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_width(ui_face_outline, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_outline_width(ui_face_outline, 3, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_outline_pad(ui_face_outline, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
@@ -105,29 +108,33 @@ void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_
     lv_obj_set_style_bg_color(ui_faceSelect, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT );
     lv_obj_set_style_bg_opa(ui_faceSelect, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(ui_faceSelect, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui_faceSelect, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui_faceSelect, 30, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // A swipe stops with a watchface in the middle
+    lv_obj_set_scroll_snap_x(ui_faceSelect, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_style_pad_left(ui_faceSelect, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui_faceSelect, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_faceSelect, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(ui_faceSelect, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_row(ui_faceSelect, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(ui_faceSelect, 15, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    lv_obj_t *title = lv_label_create(ui_root);
-    lv_label_set_text(title, "Watch faces");
-    lv_obj_set_style_text_font(title, ZSW_FONT_BODY, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 7);
+    lv_obj_t *title = zsw_ui_title_create(ui_root, "WATCH FACES", ZSW_COLOR_TEXT_DIM);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 12);
 
     lv_obj_t *hint = lv_label_create(ui_root);
-    lv_label_set_text(hint, "Swipe for more\nTap to select");
+    lv_label_set_text(hint, "Tap to select");
     lv_obj_set_style_text_font(hint, ZSW_FONT_CAPTION, 0);
-    lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_set_style_text_color(hint, ZSW_COLOR_TEXT_DISABLED, 0);
+    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -10);
 }
 
 void watchface_picker_ui_set_selected(int index)
 {
     if (index < lv_obj_get_child_cnt(ui_faceSelect)) {
-        lv_obj_scroll_to_view(lv_obj_get_child(ui_faceSelect, index), LV_ANIM_ON);
+        lv_obj_t *item = lv_obj_get_child(ui_faceSelect, index);
+
+        // The outline is the last child of the item
+        lv_obj_set_style_outline_color(lv_obj_get_child(item, -1), ZSW_COLOR_ACCENT, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_scroll_to_view(item, LV_ANIM_ON);
     }
 }
 
