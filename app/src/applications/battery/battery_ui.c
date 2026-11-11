@@ -19,16 +19,23 @@
 #include "battery_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
 #include <lvgl.h>
+#include "ui/zsw_ui_theme.h"
+#include "ui/zsw_ui_widgets.h"
 #include <assert.h>
 
 // Common
-static void create_page_indicator(lv_obj_t *container, uint8_t num_leds);
 static void on_tileview_change(lv_event_t *e);
 static lv_obj_t *tv;
 static lv_obj_t *ui_page_indicator;
-static lv_obj_t *led1;
-static lv_obj_t *led2;
-static lv_obj_t *led3;
+
+// Overview page
+static void overview_init(lv_obj_t *tile);
+static lv_obj_t *overview_ring;
+static lv_obj_t *overview_percent_label;
+static lv_obj_t *overview_voltage_label;
+static lv_obj_t *overview_status_label;
+static lv_obj_t *overview_charge_icon;
+static int overview_percent;
 
 static bool pmic_ui_enabled;
 
@@ -123,14 +130,88 @@ void battery_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_sam
     // Remove scroolbar on tv
     lv_obj_set_scrollbar_mode(tv, LV_SCROLLBAR_MODE_OFF);
 
-    ui_Screen1_screen_init(lv_tileview_add_tile(tv, 0, 0, LV_DIR_HOR));
+    overview_init(lv_tileview_add_tile(tv, 0, 0, LV_DIR_HOR));
+    ui_Screen1_screen_init(lv_tileview_add_tile(tv, 1, 0, LV_DIR_HOR));
     if (include_pmic_ui) {
-        ui_Screen2_screen_init(lv_tileview_add_tile(tv, 1, 0, LV_DIR_HOR));
-        ui_Screen3_screen_init(lv_tileview_add_tile(tv, 2, 0, LV_DIR_HOR));
-        create_page_indicator(root_page, 3);
-        // Add callback to tileview when new page changed, call set_indicator_page
-        lv_obj_add_event_cb(tv, on_tileview_change, LV_EVENT_VALUE_CHANGED, NULL);
+        ui_Screen2_screen_init(lv_tileview_add_tile(tv, 2, 0, LV_DIR_HOR));
+        ui_Screen3_screen_init(lv_tileview_add_tile(tv, 3, 0, LV_DIR_HOR));
     }
+    ui_page_indicator = zsw_ui_page_dots_create(root_page, include_pmic_ui ? 4 : 2);
+    lv_obj_add_event_cb(tv, on_tileview_change, LV_EVENT_VALUE_CHANGED, NULL);
+}
+
+static lv_color_t level_color(int percent)
+{
+    if (percent > 40) {
+        return ZSW_COLOR_GREEN;
+    } else if (percent > 15) {
+        return ZSW_COLOR_ORANGE;
+    }
+    return ZSW_COLOR_RED;
+}
+
+static void charge_icon_anim_exec(void *icon, int32_t value)
+{
+    lv_obj_set_style_text_opa(icon, value, LV_PART_MAIN);
+}
+
+// The charge symbol fades in and out while charging: a few pixels, so it costs next to nothing.
+static void set_charging(bool charging)
+{
+    if (charging == !lv_obj_has_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+
+    lv_anim_delete(overview_charge_icon, charge_icon_anim_exec);
+    if (!charging) {
+        lv_obj_add_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    lv_obj_remove_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN);
+
+    lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, overview_charge_icon);
+    lv_anim_set_exec_cb(&anim, charge_icon_anim_exec);
+    lv_anim_set_values(&anim, LV_OPA_30, LV_OPA_COVER);
+    lv_anim_set_duration(&anim, 900);
+    lv_anim_set_reverse_duration(&anim, 900);
+    lv_anim_set_repeat_count(&anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&anim);
+}
+
+static void overview_init(lv_obj_t *tile)
+{
+    lv_obj_t *screen = zsw_ui_screen_create(tile, ZSW_COLOR_GREEN);
+
+    overview_percent = -1;
+    overview_ring = zsw_ui_ring_create(screen, ZSW_COLOR_GREEN);
+    zsw_ui_title_create(screen, "BATTERY", ZSW_COLOR_TEXT_DIM);
+
+    overview_charge_icon = lv_label_create(screen);
+    lv_label_set_text(overview_charge_icon, LV_SYMBOL_CHARGE);
+    lv_obj_set_style_text_font(overview_charge_icon, ZSW_FONT_TITLE, LV_PART_MAIN);
+    lv_obj_set_style_text_color(overview_charge_icon, ZSW_COLOR_GREEN, LV_PART_MAIN);
+    lv_obj_align(overview_charge_icon, LV_ALIGN_TOP_MID, 0, 46);
+    lv_obj_add_flag(overview_charge_icon, LV_OBJ_FLAG_HIDDEN);
+
+    overview_percent_label = lv_label_create(screen);
+    lv_label_set_text(overview_percent_label, "--%");
+    lv_obj_set_style_text_font(overview_percent_label, ZSW_FONT_NUMBER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(overview_percent_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_align(overview_percent_label, LV_ALIGN_CENTER, 0, -8);
+
+    overview_voltage_label = lv_label_create(screen);
+    lv_label_set_text(overview_voltage_label, "");
+    lv_obj_set_style_text_font(overview_voltage_label, ZSW_FONT_BODY, LV_PART_MAIN);
+    lv_obj_set_style_text_color(overview_voltage_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
+    lv_obj_align(overview_voltage_label, LV_ALIGN_CENTER, 0, 32);
+
+    overview_status_label = lv_label_create(screen);
+    lv_label_set_text(overview_status_label, "");
+    lv_obj_set_style_text_font(overview_status_label, ZSW_FONT_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_color(overview_status_label, ZSW_COLOR_TEXT, LV_PART_MAIN);
+    lv_obj_align(overview_status_label, LV_ALIGN_CENTER, 0, 58);
 }
 
 void battery_ui_remove(void)
@@ -146,12 +227,42 @@ void battery_ui_add_measurement(int percent, int voltage)
         lv_chart_set_next_value(ui_charge_chart, ui_charge_chart_series_1, percent);
         lv_chart_set_next_value(ui_charge_chart, ui_charge_chart_series_2, voltage);
         lv_label_set_text_fmt(ui_percent_voltage_label, "%d%% / %.2fV", percent, voltage / 1000.0);
+
+        // Called once per stored sample when the app opens: only the first one animates the ring.
+        lv_color_t color = level_color(percent);
+        zsw_ui_ring_set_color(overview_ring, color);
+        zsw_ui_ring_set_value(overview_ring, percent * ZSW_UI_RING_MAX / 100, overview_percent == -1);
+        lv_obj_set_style_text_color(overview_charge_icon, color, LV_PART_MAIN);
+        lv_label_set_text_fmt(overview_percent_label, "%d%%", percent);
+        lv_label_set_text_fmt(overview_voltage_label, "%.2f V", voltage / 1000.0);
+        overview_percent = percent;
     }
 }
 
 void battery_ui_update(int ttf, int tte, const char *status_text, const char *error_text, int charging)
 {
     int days, hours, minutes;
+
+    if (root_page) {
+        set_charging(charging);
+        if (charging && ttf > 0) {
+            zsw_ui_utils_seconds_to_day_hour_min(ttf, &days, &hours, &minutes);
+            lv_label_set_text_fmt(overview_status_label, "Full in %dh %dm", days * 24 + hours, minutes);
+        } else if (charging) {
+            lv_label_set_text(overview_status_label, "Charging");
+        } else if (tte > 0) {
+            zsw_ui_utils_seconds_to_day_hour_min(tte, &days, &hours, &minutes);
+            if (days > 0) {
+                lv_label_set_text_fmt(overview_status_label, "%dd %dh left", days, hours);
+            } else if (hours == 0) {
+                lv_label_set_text_fmt(overview_status_label, "%dm left", minutes);
+            } else {
+                lv_label_set_text_fmt(overview_status_label, "%dh %dm left", hours, minutes);
+            }
+        } else {
+            lv_label_set_text(overview_status_label, "");
+        }
+    }
 
     if (root_page && pmic_ui_enabled) {
         zsw_ui_utils_seconds_to_day_hour_min(ttf, &days, &hours, &minutes);
@@ -171,61 +282,6 @@ void battery_ui_update(int ttf, int tte, const char *status_text, const char *er
         lv_label_set_text(ui_charging_label_error, error_text);
         lv_label_set_text(ui_charging_label_state, charging ? "Charging" : "-");
         lv_label_set_text_fmt(ui_charging_label, "Chg: %s", charging ? "Yes" : "No");
-    }
-}
-
-static void create_page_indicator(lv_obj_t *container, uint8_t num_leds)
-{
-    ui_page_indicator = lv_obj_create(container);
-    lv_obj_set_width(ui_page_indicator, 100);
-    lv_obj_set_height(ui_page_indicator, 10);
-
-    lv_obj_align(ui_page_indicator, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_clear_flag(ui_page_indicator, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_page_indicator, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_page_indicator, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_page_indicator, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_page_indicator, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    led1  = lv_led_create(ui_page_indicator);
-    lv_obj_align(led1, LV_ALIGN_CENTER, -10, 0);
-    lv_obj_set_size(led1, 7, 7);
-    lv_led_off(led1);
-
-    led2  = lv_led_create(ui_page_indicator);
-    lv_obj_align(led2, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_size(led2, 7, 7);
-    lv_led_off(led2);
-
-    led3  = lv_led_create(ui_page_indicator);
-    lv_obj_align(led3, LV_ALIGN_CENTER, 10, 0);
-    lv_obj_set_size(led3, 7, 7);
-    lv_led_off(led3);
-}
-
-static void set_indicator_page(int page)
-{
-    lv_color_t on_color = lv_color_hex(0xE6898B);
-    lv_color_t off_color = lv_color_hex(0xFFFFFF);
-
-    switch (page) {
-        case 0:
-            lv_led_set_color(led1, on_color);
-            lv_led_set_color(led2, off_color);
-            lv_led_set_color(led3, off_color);
-            break;
-        case 1:
-            lv_led_set_color(led1, off_color);
-            lv_led_set_color(led2, on_color);
-            lv_led_set_color(led3, off_color);
-            break;
-        case 2:
-            lv_led_set_color(led1, off_color);
-            lv_led_set_color(led2, off_color);
-            lv_led_set_color(led3, on_color);
-            break;
-        default:
-            break;
     }
 }
 
@@ -746,17 +802,7 @@ static void scale_event(lv_event_t *e)
 
 static void on_tileview_change(lv_event_t *e)
 {
-    lv_event_code_t event_code = lv_event_get_code(e);
-    if (event_code == LV_EVENT_VALUE_CHANGED) {
-        lv_obj_t *curent = lv_tileview_get_tile_act(tv);
-        if (lv_obj_get_parent(ui_root1) == curent) {
-            set_indicator_page(0);
-        } else if (lv_obj_get_parent(ui_root2) == curent) {
-            set_indicator_page(1);
-        } else if (lv_obj_get_parent(ui_root3) == curent) {
-            set_indicator_page(2);
-        } else {
-            LV_LOG_ERROR("Failed finding parent!\n");
-        }
-    }
+    lv_obj_t *current = lv_tileview_get_tile_active(tv);
+
+    zsw_ui_page_dots_set_page(ui_page_indicator, lv_obj_get_x(current) / lv_obj_get_width(current));
 }
