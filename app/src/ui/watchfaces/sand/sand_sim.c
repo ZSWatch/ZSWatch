@@ -18,74 +18,59 @@
 #include <string.h>
 
 #include "sand_sim.h"
-#include "sand_glyphs.h"
 
 #define GRID                SAND_GRID_SIZE
 
-/* Grains in the pile. Sand that is lost or left over in a time change is evened out afterwards. */
-#define PILE_GRAINS         560
+/* Grains in the pile at the end of the day: it then fills about the lower third of the display. */
+#define GRAINS_PER_DAY      2600
+#define MINUTES_PER_DAY     (24 * 60)
 
-/* The time is four digits and a colon: HH:MM, a bit above the middle so the pile has room. */
-#define NUM_SLOTS           4
-#define DIGIT_GAP           2
-#define COLON_WIDTH         8
-#define TIME_WIDTH          (NUM_SLOTS * SAND_GLYPH_WIDTH + 2 * DIGIT_GAP + COLON_WIDTH)
-#define TIME_X              ((GRID - TIME_WIDTH) / 2)
-#define TIME_Y              22
-#define COLON_X             (TIME_X + 2 * SAND_GLYPH_WIDTH + DIGIT_GAP + COLON_WIDTH / 2 - 1)
+/* Sand that is owed comes in from the top, one grain every this many steps. */
+#define TRICKLE_EVERY_STEPS 2
+#define TRICKLE_SPREAD      3
+#define TRICKLE_CATCH_UP    120
+/* How far from the middle the sand of the day so far is dropped: a wide, low dune */
+#define POUR_SPREAD         34
 
-/* A flying grain takes this many steps, and the build of new digits waits for the old to fall away. */
-#define FLIGHT_STEPS        16
-#define CRUMBLE_STEPS       10
-#define BUILD_DELAY_STEPS   14
-#define MAX_LAUNCH_PER_STEP 6
-#define FLIGHT_SWIRL_PX     14
+#define SHAKE_STEPS         16
 
-#define SHAKE_STEPS         14
-#define EVEN_OUT_MAX_STEPS  600
+/* Dust is gone after about this many steps, a bit more than half way down to the pile. */
+#define DUST_LIFE_STEPS     28
 
 /* In-plane gravity below this (0.2 g) means the watch lies flat: keep the last direction. */
 #define GRAVITY_MIN         26
 
-#define NO_DIGIT            0xFF
-#define FLYING_FREE         0xFF
-
 typedef struct {
-    uint8_t from_x;
-    uint8_t from_y;
-    uint8_t to_x;
-    uint8_t to_y;
-    uint8_t step;       /* FLYING_FREE when unused */
-    uint8_t shade;
-} flying_grain_t;
-
-typedef struct {
-    uint8_t digit;      /* The digit shown, or being built */
-    uint8_t build_row;  /* Next glyph row to build, from the bottom. SAND_GLYPH_HEIGHT when done. */
-    uint8_t build_col;
-    uint8_t crumble_steps;  /* Steps left of letting go of the previous digit */
-} slot_t;
-
-typedef struct {
-    /* Four bits per cell: type in the low two, shade in the high two */
+    /* Four bits per cell */
     uint8_t cells[GRID * GRID / 2];
     /* First column inside the round display for each row. The last is its mirror. */
     uint8_t row_first[GRID];
     uint8_t dirty_first[SAND_NUM_BANDS];
     uint8_t dirty_last[SAND_NUM_BANDS];
-    flying_grain_t flying[SAND_MAX_FLYING];
-    slot_t slots[NUM_SLOTS];
+    /*
+     * The box where something moved in the last step. Only cells in it, and next to it, can
+     * move in the next step, so that is all a step looks at. Empty when x0 > x1.
+     */
+    uint8_t active_x0;
+    uint8_t active_y0;
+    uint8_t active_x1;
+    uint8_t active_y1;
+    uint8_t next_x0;
+    uint8_t next_y0;
+    uint8_t next_x1;
+    uint8_t next_y1;
     uint32_t rng;
     uint32_t step_count;
-    int16_t sand_count;
+    /* Grains poured so far today, and how many of them have not come in yet */
+    int16_t poured;
+    int16_t owed;
+    int16_t minute_of_day;
     int8_t gravity_x;
     int8_t gravity_y;
     /* The neighbour sand falls to, and the two it slides to when that one is taken. */
     int8_t fall[3][2];
-    uint8_t build_delay;
     uint8_t shake_steps;
-    uint8_t next_slot;
-    uint16_t even_out_steps;
+    bool blowing_away;
 } sand_world_t;
 
 static sand_world_t world;
@@ -104,27 +89,9 @@ static uint32_t random_next(void)
     return world.rng;
 }
 
-static uint8_t random_shade(void)
-{
-    uint32_t value = random_next() % 10;
-
-    /* Mostly the base shade, some darker and some lighter grains */
-    return value < 6 ? 0 : (value < 8 ? 1 : 2);
-}
-
 static inline bool inside(int x, int y)
 {
     return y >= 0 && y < GRID && x >= world.row_first[y] && x <= GRID - 1 - world.row_first[y];
-}
-
-/* A cell inside the display. The first and last row have none. */
-static void random_cell(int *x, int *y)
-{
-    int first;
-
-    *y = 1 + random_next() % (GRID - 2);
-    first = world.row_first[*y];
-    *x = first + random_next() % (GRID - 2 * first);
 }
 
 static inline uint8_t get_cell(int x, int y)
@@ -134,15 +101,19 @@ static inline uint8_t get_cell(int x, int y)
     return (world.cells[index >> 1] >> ((index & 1) * 4)) & 0xF;
 }
 
-static void mark_dirty(int x, int y)
+static void mark_active(int x, int y)
 {
-    int band = y / SAND_BAND_ROWS;
-
-    if (x < world.dirty_first[band]) {
-        world.dirty_first[band] = x;
+    if (x < world.next_x0) {
+        world.next_x0 = x;
     }
-    if (x > world.dirty_last[band]) {
-        world.dirty_last[band] = x;
+    if (x > world.next_x1) {
+        world.next_x1 = x;
+    }
+    if (y < world.next_y0) {
+        world.next_y0 = y;
+    }
+    if (y > world.next_y1) {
+        world.next_y1 = y;
     }
 }
 
@@ -150,36 +121,41 @@ static void set_cell(int x, int y, uint8_t cell)
 {
     int index = y * GRID + x;
     int shift = (index & 1) * 4;
+    int band = y / SAND_BAND_ROWS;
 
     world.cells[index >> 1] = (world.cells[index >> 1] & ~(0xF << shift)) | (cell << shift);
-    mark_dirty(x, y);
+
+    if (x < world.dirty_first[band]) {
+        world.dirty_first[band] = x;
+    }
+    if (x > world.dirty_last[band]) {
+        world.dirty_last[band] = x;
+    }
+    mark_active(x, y);
 }
 
 static inline bool is_empty(int x, int y)
 {
-    return inside(x, y) && SAND_CELL_TYPE(get_cell(x, y)) == SAND_CELL_EMPTY;
+    return inside(x, y) && get_cell(x, y) == SAND_CELL_EMPTY;
 }
 
-static int slot_x(int slot)
+static void activate_all(void)
 {
-    int x = TIME_X + slot * SAND_GLYPH_WIDTH;
-
-    if (slot >= 1) {
-        x += DIGIT_GAP;
-    }
-    if (slot >= 2) {
-        x += COLON_WIDTH;
-    }
-    if (slot >= 3) {
-        x += DIGIT_GAP;
-    }
-
-    return x;
+    world.next_x0 = 0;
+    world.next_y0 = 0;
+    world.next_x1 = GRID - 1;
+    world.next_y1 = GRID - 1;
 }
 
-static inline bool glyph_bit(int digit, int col, int row)
+/* The color of the sand that falls at a time of day: a new one every two hours. */
+static uint8_t color_at(int minute_of_day)
 {
-    return (sand_glyphs[digit][row] >> (SAND_GLYPH_WIDTH - 1 - col)) & 1;
+    return 1 + (minute_of_day * SAND_NUM_COLORS / MINUTES_PER_DAY) % SAND_NUM_COLORS;
+}
+
+static int grains_at(int minute_of_day)
+{
+    return minute_of_day * GRAINS_PER_DAY / MINUTES_PER_DAY;
 }
 
 /* Picks the neighbour to fall to from the gravity vector, and the two next to it to slide to. */
@@ -217,22 +193,29 @@ static void update_fall_directions(void)
     world.fall[2][1] = directions[second][1];
 }
 
-static bool move_grain(int x, int y, uint8_t cell)
+static void move_grain(int x, int y, uint8_t cell)
 {
     uint32_t random = random_next();
+    bool dust = cell == SAND_CELL_DUST;
     /* Straight gravity has no side to prefer: pick one at random so that piles grow evenly */
     int swap = (world.fall[0][0] == 0 || world.fall[0][1] == 0) ? (random & 1) : 0;
     int first = 0;
 
-    if (world.shake_steps > 0) {
+    if (world.blowing_away && (random >> 8) % 12 == 0) {
+        set_cell(x, y, SAND_CELL_EMPTY);
+        return;
+    }
+
+    if (dust) {
+        if ((random >> 8) % DUST_LIFE_STEPS == 0) {
+            set_cell(x, y, SAND_CELL_EMPTY);
+            return;
+        }
+        /* Dust drifts: it takes any of the three ways down, and rests every other step */
+        first = (random >> 1) % 3;
+    } else if (world.shake_steps > 0) {
         /* Thrown up: any of the three ways, so that the pile bursts into a cloud */
         first = (random >> 1) % 3;
-    } else if (((random >> 1) & 7) == 0) {
-        /*
-         * Now and then a grain hangs back a step, or falling sand would move as one solid piece.
-         * Not counted as movement: a pile at rest would never be seen as resting.
-         */
-        return false;
     }
 
     for (int i = first; i < 3; i++) {
@@ -240,49 +223,67 @@ static bool move_grain(int x, int y, uint8_t cell)
         int nx = x + world.fall[choice][0];
         int ny = y + world.fall[choice][1];
 
-        if (is_empty(nx, ny)) {
+        if (!is_empty(nx, ny)) {
+            continue;
+        }
+
+        /*
+         * Now and then a grain hangs back a step, or falling sand would move as one solid piece.
+         * It still counts as moving, or it would be left hanging when all around it has come to rest.
+         */
+        if (((random >> 4) & 7) == 0 || (dust && ((random >> 7) & 1))) {
+            mark_active(x, y);
+        } else {
             set_cell(x, y, SAND_CELL_EMPTY);
             set_cell(nx, ny, cell);
-            return true;
         }
+        return;
     }
 
-    return false;
+    if (dust) {
+        /* Dust that lands is gone, it never piles up */
+        set_cell(x, y, SAND_CELL_EMPTY);
+    } else if (world.blowing_away) {
+        mark_active(x, y);
+    }
 }
 
 /*
  * Cells are visited from the side the sand falls to, so that a grain always moves into a cell
  * that was already visited and is not moved twice in a step.
  */
-static bool step_sand(void)
+static void step_sand(void)
 {
-    bool moved = false;
     int fx = world.fall[0][0];
     int fy = world.fall[0][1];
     bool reverse = world.step_count & 1;
+    int x0 = world.active_x0;
+    int x1 = world.active_x1;
+    int y0 = world.active_y0;
+    int y1 = world.active_y1;
 
     if (fy != 0) {
-        for (int i = 0; i < GRID; i++) {
-            int y = fy > 0 ? GRID - 1 - i : i;
-            int first = world.row_first[y];
-            int last = GRID - 1 - first;
+        for (int i = y0; i <= y1; i++) {
+            int y = fy > 0 ? y1 - (i - y0) : i;
+            int first = world.row_first[y] > x0 ? world.row_first[y] : x0;
+            int last = GRID - 1 - world.row_first[y] < x1 ? GRID - 1 - world.row_first[y] : x1;
             bool right_to_left = fx > 0 || (fx == 0 && reverse);
 
             for (int j = first; j <= last; j++) {
                 int x = right_to_left ? last - (j - first) : j;
                 uint8_t cell = get_cell(x, y);
 
-                if (SAND_CELL_TYPE(cell) == SAND_CELL_SAND) {
-                    moved |= move_grain(x, y, cell);
+                if (cell != SAND_CELL_EMPTY) {
+                    move_grain(x, y, cell);
                 }
             }
         }
     } else {
-        for (int i = 0; i < GRID; i++) {
-            int x = fx > 0 ? GRID - 1 - i : i;
+        for (int i = x0; i <= x1; i++) {
+            int x = fx > 0 ? x1 - (i - x0) : i;
 
-            for (int j = 0; j < GRID; j++) {
-                int y = reverse ? GRID - 1 - j : j;
+            for (int j = y0; j <= y1; j++) {
+                int y = reverse ? y1 - (j - y0) : j;
 
                 if (!inside(x, y)) {
                     continue;
@@ -290,272 +291,105 @@ static bool step_sand(void)
 
                 uint8_t cell = get_cell(x, y);
 
-                if (SAND_CELL_TYPE(cell) == SAND_CELL_SAND) {
-                    moved |= move_grain(x, y, cell);
+                if (cell != SAND_CELL_EMPTY) {
+                    move_grain(x, y, cell);
                 }
             }
         }
     }
-
-    return moved;
 }
 
-/* A grain of sand with nothing on top of it, to lift from the pile. */
-static bool find_surface_grain(int *grain_x, int *grain_y)
+/* Takes the box of what moved in the last step, grown by one cell, as what to look at now. */
+static bool next_active_box(void)
 {
-    for (int i = 0; i < 24; i++) {
-        int x;
-        int y;
-
-        random_cell(&x, &y);
-        if (SAND_CELL_TYPE(get_cell(x, y)) == SAND_CELL_SAND &&
-            is_empty(x - world.fall[0][0], y - world.fall[0][1])) {
-            *grain_x = x;
-            *grain_y = y;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/* Finds the next grain missing in the digit of a slot, bottom row first, and steps past it. */
-static bool next_build_cell(slot_t *slot, int *col, int *row)
-{
-    while (slot->build_row < SAND_GLYPH_HEIGHT) {
-        int glyph_row = SAND_GLYPH_HEIGHT - 1 - slot->build_row;
-
-        while (slot->build_col < SAND_GLYPH_WIDTH) {
-            /* Every other row goes the other way, like sweeping back and forth */
-            int glyph_col = (slot->build_row & 1) ? SAND_GLYPH_WIDTH - 1 - slot->build_col : slot->build_col;
-
-            slot->build_col++;
-            if (glyph_bit(slot->digit, glyph_col, glyph_row)) {
-                *col = glyph_col;
-                *row = glyph_row;
-                return true;
-            }
-        }
-        slot->build_col = 0;
-        slot->build_row++;
-    }
-
-    return false;
-}
-
-static bool building(void)
-{
-    for (int i = 0; i < NUM_SLOTS; i++) {
-        if (world.slots[i].digit != NO_DIGIT && world.slots[i].build_row < SAND_GLYPH_HEIGHT) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-static void launch_grain(flying_grain_t *grain)
-{
-    for (int i = 0; i < NUM_SLOTS; i++) {
-        int index = (world.next_slot + i) % NUM_SLOTS;
-        slot_t *slot = &world.slots[index];
-        int col;
-        int row;
-        int from_x;
-        int from_y;
-
-        if (slot->digit == NO_DIGIT || !next_build_cell(slot, &col, &row)) {
-            continue;
-        }
-
-        grain->to_x = slot_x(index) + col;
-        grain->to_y = TIME_Y + row;
-        if (find_surface_grain(&from_x, &from_y)) {
-            grain->shade = SAND_CELL_SHADE(get_cell(from_x, from_y));
-            set_cell(from_x, from_y, SAND_CELL_EMPTY);
-            world.sand_count--;
-        } else {
-            /* The pile is out of reach: the grain comes in from the edge below its place */
-            from_x = grain->to_x;
-            from_y = GRID - 1;
-            grain->shade = random_shade();
-        }
-        grain->from_x = from_x;
-        grain->from_y = from_y;
-        grain->step = 0;
-        world.next_slot = (index + 1) % NUM_SLOTS;
-        return;
-    }
-}
-
-static void flying_position(const flying_grain_t *grain, int *x, int *y)
-{
-    /* Ease out: fast off the pile, slow into place */
-    int left = FLIGHT_STEPS - grain->step;
-    int progress = 256 - (left * left * 256) / (FLIGHT_STEPS * FLIGHT_STEPS);
-    /* A bow to one side or the other, largest halfway, makes the grains swirl up */
-    int swirl = (progress * (256 - progress) * FLIGHT_SWIRL_PX) >> 14;
-    int center = SAND_CELL_PX / 2;
-
-    *x = ((grain->from_x * (256 - progress) + grain->to_x * progress) * SAND_CELL_PX >> 8) + center;
-    *y = ((grain->from_y * (256 - progress) + grain->to_y * progress) * SAND_CELL_PX >> 8) + center;
-    *x += ((grain->to_x + grain->to_y) & 1) ? swirl : -swirl;
-}
-
-static void mark_flying_dirty(const flying_grain_t *grain)
-{
-    int x;
-    int y;
-
-    flying_position(grain, &x, &y);
-    /* It is drawn one cell large around its position, so it can touch four cells */
-    for (int i = 0; i < 4; i++) {
-        int cell_x = (x + ((i & 1) ? 1 : -1)) / SAND_CELL_PX;
-        int cell_y = (y + ((i & 2) ? 1 : -1)) / SAND_CELL_PX;
-
-        if (cell_x >= 0 && cell_x < GRID && cell_y >= 0 && cell_y < GRID) {
-            mark_dirty(cell_x, cell_y);
-        }
-    }
-}
-
-static bool step_flying(void)
-{
-    bool active = false;
-    int launches = 0;
-    bool launch = world.build_delay == 0 && building();
-
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
-        flying_grain_t *grain = &world.flying[i];
-
-        if (grain->step == FLYING_FREE) {
-            if (launch && launches < MAX_LAUNCH_PER_STEP) {
-                launch_grain(grain);
-                launches++;
-            }
-            if (grain->step == FLYING_FREE) {
-                continue;
-            }
-        }
-
-        active = true;
-        mark_flying_dirty(grain);
-        grain->step++;
-        if (grain->step >= FLIGHT_STEPS) {
-            if (SAND_CELL_TYPE(get_cell(grain->to_x, grain->to_y)) == SAND_CELL_SAND) {
-                /* Loose sand was in the way and becomes part of the digit */
-                world.sand_count--;
-            }
-            set_cell(grain->to_x, grain->to_y, SAND_CELL_DIGIT | (grain->shade << 2));
-            grain->step = FLYING_FREE;
-        } else {
-            mark_flying_dirty(grain);
-        }
-    }
-
-    return active;
-}
-
-/* Digits differ in size, so the pile drifts. Add or remove a grain at a time until it is back. */
-static bool even_out_pile(void)
-{
-    int x;
-    int y;
-
-    if (world.sand_count == PILE_GRAINS) {
-        world.even_out_steps = 0;
+    if (world.next_x0 > world.next_x1) {
+        world.active_x0 = 1;
+        world.active_x1 = 0;
         return false;
     }
 
-    /* Never keep the world awake for this: give up if there is no grain to take or no room to add */
-    if (++world.even_out_steps > EVEN_OUT_MAX_STEPS) {
-        world.sand_count = PILE_GRAINS;
-        return false;
-    }
+    world.active_x0 = world.next_x0 > 0 ? world.next_x0 - 1 : 0;
+    world.active_y0 = world.next_y0 > 0 ? world.next_y0 - 1 : 0;
+    world.active_x1 = world.next_x1 < GRID - 1 ? world.next_x1 + 1 : GRID - 1;
+    world.active_y1 = world.next_y1 < GRID - 1 ? world.next_y1 + 1 : GRID - 1;
 
-    if (world.sand_count > PILE_GRAINS) {
-        if (find_surface_grain(&x, &y)) {
-            set_cell(x, y, SAND_CELL_EMPTY);
-            world.sand_count--;
-        }
-        return true;
-    }
-
-    /* A grain trickles in from the edge the sand falls away from */
-    random_cell(&x, &y);
-    while (inside(x - world.fall[0][0], y - world.fall[0][1])) {
-        x -= world.fall[0][0];
-        y -= world.fall[0][1];
-    }
-    if (is_empty(x, y)) {
-        set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
-        world.sand_count++;
-    }
+    world.next_x0 = GRID - 1;
+    world.next_y0 = GRID - 1;
+    world.next_x1 = 0;
+    world.next_y1 = 0;
 
     return true;
 }
 
-/*
- * Lets go of the grains of an old digit, a random quarter of them per step so that it crumbles
- * instead of falling in one piece. The last step takes what is left.
- */
-static void crumble_slot(int slot, bool all)
+/* A grain of the sand that is owed comes in at the edge the sand falls away from. */
+static void trickle(void)
 {
-    int x0 = slot_x(slot);
+    int x = GRID / 2 + (int)(random_next() % (2 * TRICKLE_SPREAD + 1)) - TRICKLE_SPREAD;
+    int y = GRID / 2;
 
-    for (int row = 0; row < SAND_GLYPH_HEIGHT; row++) {
-        for (int col = 0; col < SAND_GLYPH_WIDTH; col++) {
-            uint8_t cell = get_cell(x0 + col, TIME_Y + row);
+    while (inside(x - world.fall[0][0], y - world.fall[0][1])) {
+        x -= world.fall[0][0];
+        y -= world.fall[0][1];
+    }
 
-            if (SAND_CELL_TYPE(cell) == SAND_CELL_DIGIT && (all || (random_next() & 3) == 0)) {
-                set_cell(x0 + col, TIME_Y + row, SAND_CELL_SAND | (SAND_CELL_SHADE(cell) << 2));
-                world.sand_count++;
+    /* If the pile is in the way the grain is dropped, or the world would wait for room for ever */
+    if (is_empty(x, y)) {
+        set_cell(x, y, color_at(world.minute_of_day));
+    }
+    world.owed--;
+}
+
+/*
+ * Pours the sand of the day so far without showing it fall: each grain is dropped near the
+ * middle and comes to rest as it would have, so the layers get the shape of a real pile.
+ */
+static void pour_day_so_far(void)
+{
+    int grains = grains_at(world.minute_of_day);
+
+    for (int i = 0; i < grains; i++) {
+        /* The sum of two random numbers: most grains near the middle, few far out */
+        int x = GRID / 2 + (int)(random_next() % POUR_SPREAD) + (int)(random_next() % POUR_SPREAD) - (POUR_SPREAD - 1);
+        int y = world.row_first[x] + 1;
+        uint8_t color = color_at(i * MINUTES_PER_DAY / GRAINS_PER_DAY);
+
+        if (!is_empty(x, y)) {
+            continue;
+        }
+
+        while (true) {
+            int side = (random_next() & 1) ? 1 : -1;
+
+            if (is_empty(x, y + 1)) {
+                y++;
+            } else if (is_empty(x + side, y + 1)) {
+                x += side;
+                y++;
+            } else if (is_empty(x - side, y + 1)) {
+                x -= side;
+                y++;
+            } else {
+                break;
             }
         }
-    }
-}
-
-static bool step_crumble(void)
-{
-    bool active = false;
-
-    for (int i = 0; i < NUM_SLOTS; i++) {
-        if (world.slots[i].crumble_steps > 0) {
-            world.slots[i].crumble_steps--;
-            crumble_slot(i, world.slots[i].crumble_steps == 0);
-            active = true;
-        }
+        set_cell(x, y, color);
     }
 
-    return active;
-}
-
-static void release_slot(int slot)
-{
-    int x0 = slot_x(slot);
-
-    /* Grains still on their way to this digit would land in the wrong one */
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
-        flying_grain_t *grain = &world.flying[i];
-
-        if (grain->step != FLYING_FREE && grain->to_x >= x0 && grain->to_x < x0 + SAND_GLYPH_WIDTH) {
-            mark_flying_dirty(grain);
-            grain->step = FLYING_FREE;
-        }
-    }
-
-    world.slots[slot].crumble_steps = CRUMBLE_STEPS;
+    world.poured = grains;
+    world.owed = 0;
 }
 
 void sand_sim_init(uint32_t seed)
 {
     /* Half a cell is left free at the edge, the display is not a perfect circle of cells */
     const int radius_sq_x4 = (GRID - 1) * (GRID - 1);
-    int poured = 0;
 
     memset(&world, 0, sizeof(world));
     world.rng = seed | 1;
     world.gravity_y = 127;
+    world.minute_of_day = -1;
+    world.next_x0 = GRID - 1;
+    world.next_y0 = GRID - 1;
 
     for (int y = 0; y < GRID; y++) {
         int dy = 2 * y - (GRID - 1);
@@ -567,29 +401,6 @@ void sand_sim_init(uint32_t seed)
         world.row_first[y] = x;
     }
 
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
-        world.flying[i].step = FLYING_FREE;
-    }
-    for (int i = 0; i < NUM_SLOTS; i++) {
-        world.slots[i].digit = NO_DIGIT;
-    }
-
-    for (int y = GRID - 1; y >= 0 && poured < PILE_GRAINS; y--) {
-        for (int x = world.row_first[y]; x <= GRID - 1 - world.row_first[y] && poured < PILE_GRAINS; x++) {
-            set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
-            poured++;
-        }
-    }
-    world.sand_count = poured;
-
-    for (int dot = 0; dot < 2; dot++) {
-        int y = TIME_Y + (dot == 0 ? 5 : 11);
-
-        for (int i = 0; i < 4; i++) {
-            set_cell(COLON_X + (i & 1), y + (i >> 1), SAND_CELL_DIGIT);
-        }
-    }
-
     update_fall_directions();
 }
 
@@ -597,38 +408,58 @@ bool sand_sim_set_gravity(int x, int y)
 {
     int8_t before_x = world.fall[0][0];
     int8_t before_y = world.fall[0][1];
+    int8_t new_x = x > 127 ? 127 : (x < -127 ? -127 : x);
+    int8_t new_y = y > 127 ? 127 : (y < -127 ? -127 : y);
 
     if (x * x + y * y < GRAVITY_MIN * GRAVITY_MIN) {
         return false;
     }
 
-    world.gravity_x = x > 127 ? 127 : (x < -127 ? -127 : x);
-    world.gravity_y = y > 127 ? 127 : (y < -127 ? -127 : y);
+    world.gravity_x = new_x;
+    world.gravity_y = new_y;
     update_fall_directions();
+    if (before_x == world.fall[0][0] && before_y == world.fall[0][1]) {
+        /* Still the same way: nothing that was at rest can move */
+        return false;
+    }
 
-    return before_x != world.fall[0][0] || before_y != world.fall[0][1];
+    activate_all();
+
+    return true;
 }
 
 void sand_sim_set_time(int hour, int minute)
 {
-    const uint8_t digits[NUM_SLOTS] = { hour / 10 % 10, hour % 10, minute / 10 % 10, minute % 10 };
-    bool released = false;
+    int minute_of_day = (hour * 60 + minute) % MINUTES_PER_DAY;
+    bool first = world.minute_of_day < 0;
+    bool new_day = minute_of_day < world.minute_of_day;
 
-    for (int i = 0; i < NUM_SLOTS; i++) {
-        if (world.slots[i].digit == digits[i]) {
-            continue;
-        }
-        if (world.slots[i].digit != NO_DIGIT) {
-            release_slot(i);
-            released = true;
-        }
-        world.slots[i].digit = digits[i];
-        world.slots[i].build_row = 0;
-        world.slots[i].build_col = 0;
+    world.minute_of_day = minute_of_day;
+
+    if (first) {
+        pour_day_so_far();
+    } else if (new_day) {
+        /* The pile blows away, and the new day starts from nothing */
+        world.blowing_away = true;
+        world.poured = 0;
+        world.owed = grains_at(minute_of_day);
+        activate_all();
+    } else {
+        int grains = grains_at(minute_of_day);
+
+        world.owed += grains - world.poured;
+        world.poured = grains;
     }
+}
 
-    if (released) {
-        world.build_delay = BUILD_DELAY_STEPS;
+void sand_sim_dissolve(int cell_x, int cell_y, const uint16_t *rows, int width, int height)
+{
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+            if (((rows[row] >> (width - 1 - col)) & 1) && is_empty(cell_x + col, cell_y + row)) {
+                set_cell(cell_x + col, cell_y + row, SAND_CELL_DUST);
+            }
+        }
     }
 }
 
@@ -636,6 +467,7 @@ void sand_sim_shake(void)
 {
     world.shake_steps = SHAKE_STEPS;
     update_fall_directions();
+    activate_all();
 }
 
 bool sand_sim_step(void)
@@ -648,49 +480,30 @@ bool sand_sim_step(void)
         world.shake_steps--;
         if (world.shake_steps == 0) {
             update_fall_directions();
+            activate_all();
         }
+    }
+
+    if (!world.blowing_away && world.step_count % TRICKLE_EVERY_STEPS == 0) {
+        /* A thin stream, thicker when a lot is owed after the watch has been asleep for long */
+        for (int i = world.owed / TRICKLE_CATCH_UP; i >= 0 && world.owed > 0; i--) {
+            trickle();
+        }
+    }
+
+    active = next_active_box();
+    if (active) {
         step_sand();
-        return true;
+    } else {
+        world.blowing_away = false;
     }
 
-    if (world.build_delay > 0) {
-        world.build_delay--;
-    }
-
-    active = step_crumble();
-    active |= step_flying();
-    active |= step_sand();
-    active |= world.build_delay > 0 || building();
-    if (!active) {
-        active = even_out_pile();
-    }
-
-    return active;
+    return active || world.shake_steps > 0 || world.owed > 0;
 }
 
 uint8_t sand_sim_cell(int x, int y)
 {
     return get_cell(x, y);
-}
-
-int sand_sim_get_flying(sand_flying_t *grains, int max)
-{
-    int count = 0;
-
-    for (int i = 0; i < SAND_MAX_FLYING && count < max; i++) {
-        if (world.flying[i].step != FLYING_FREE) {
-            int x;
-            int y;
-
-            flying_position(&world.flying[i], &x, &y);
-            grains[count].x = x;
-            grains[count].y = y;
-            grains[count].shade = world.flying[i].shade;
-            count++;
-        }
-    }
-
-    return count;
 }
 
 bool sand_sim_pop_dirty(int band, int *x_first, int *x_last)
