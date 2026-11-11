@@ -28,6 +28,9 @@ typedef struct {
     lv_obj_t *ui_day_day;
 } lv_obj_forecasts_t;
 
+#define WEATHER_TEXT_COLOR      lv_color_hex(0x12324F)
+#define WEATHER_FORECAST_COLOR  lv_color_hex(0x2F6DB5)
+
 static void add_forecast_day(lv_obj_t *parent, lv_obj_forecasts_t *storage);
 
 static lv_obj_t *root_page = NULL;
@@ -58,6 +61,8 @@ void weather_ui_show(lv_obj_t *root)
 
     // Create the root container
     root_page = lv_obj_create(root);
+    // Dark text: white is hard to read on the light sky
+    lv_obj_set_style_text_color(root_page, WEATHER_TEXT_COLOR, LV_PART_MAIN);
     // Remove the default border
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
     // Make root container fill the screen
@@ -236,7 +241,7 @@ static void add_forecast_day(lv_obj_t *parent, lv_obj_forecasts_t *storage)
     lv_obj_set_width(storage->ui_day_temp, LV_SIZE_CONTENT);
     lv_obj_set_height(storage->ui_day_temp, LV_SIZE_CONTENT);
     lv_obj_set_align(storage->ui_day_temp, LV_ALIGN_CENTER);
-    lv_obj_set_style_text_color(storage->ui_day_temp, lv_color_hex(0x5AA1EE), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(storage->ui_day_temp, WEATHER_FORECAST_COLOR, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(storage->ui_day_temp, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     storage->ui_day_icon = lv_img_create(storage->ui_day);
@@ -252,7 +257,7 @@ static void add_forecast_day(lv_obj_t *parent, lv_obj_forecasts_t *storage)
     lv_obj_set_width(storage->ui_day_day, LV_SIZE_CONTENT);
     lv_obj_set_height(storage->ui_day_day, LV_SIZE_CONTENT);
     lv_obj_set_align(storage->ui_day_day, LV_ALIGN_CENTER);
-    lv_obj_set_style_text_color(storage->ui_day_day, lv_color_hex(0x5AA1EE), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(storage->ui_day_day, WEATHER_FORECAST_COLOR, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(storage->ui_day_day, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(storage->ui_day_day, ZSW_FONT_CAPTION, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
@@ -275,7 +280,7 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
     }
 
     lv_label_set_text_fmt(ui_today_temp, "%.1f°", current_weather.temperature);
-    lv_label_set_text_fmt(ui_today_min_max_temp, "%.1f° / %.1f°", weather_ui_forecast_data_t[0].low_temp,
+    lv_label_set_text_fmt(ui_today_min_max_temp, "%.0f° / %.0f°", weather_ui_forecast_data_t[0].low_temp,
                           weather_ui_forecast_data_t[0].high_temp);
     lv_label_set_text_fmt(ui_today_rain, "%d%%", weather_ui_forecast_data_t[0].rain_percent);
     lv_img_set_src(ui_today_icon, current_weather.icon);
@@ -286,7 +291,7 @@ void weather_ui_set_weather_data(weather_ui_current_weather_data_t current_weath
             continue;
         }
         lv_obj_clear_flag(ui_forecasts[i].ui_day, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text_fmt(ui_forecasts[i].ui_day_temp, "%.1f°", weather_ui_forecast_data_t[i].temperature);
+        lv_label_set_text_fmt(ui_forecasts[i].ui_day_temp, "%.0f°", weather_ui_forecast_data_t[i].temperature);
         lv_label_set_text(ui_forecasts[i].ui_day_day, weather_ui_forecast_data_t[i].day);
         lv_img_set_src(ui_forecasts[i].ui_day_icon, weather_ui_forecast_data_t[i].icon);
     }
