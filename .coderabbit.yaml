@@ -10,6 +10,12 @@ reviews:
     enabled: true
     drafts: true
   in_progress_fortune: false
+  # Generated image data, images are .bin resources (see image_resources.md).
+  path_filters:
+    - "!app/src/images/**/*.c"
+    - "!app/src/images/**/*.gif"
+    - "!app/src/applications/chronos/assets/**/*.c"
+    - "!app/src/applications/notification/ui_export/images/**"
   tools:
     github-checks:
       enabled: false
