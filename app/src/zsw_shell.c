@@ -36,6 +36,7 @@
 #include "events/ble_event.h"
 #include "sensors/zsw_floor_counter.h"
 #include "ble/ble_comm.h"
+#include "ui/watchfaces/sand/zsw_watchface_sand.h"
 #if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
@@ -1157,9 +1158,33 @@ static int cmd_watchface_set(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+#ifdef CONFIG_WATCHFACE_SAND
+static int cmd_watchface_gravity(const struct shell *sh, size_t argc, char **argv)
+{
+    long x = 0;
+    long y = 0;
+    bool enable = argc == 3;
+
+    if ((argc == 2 && strcmp(argv[1], "off") != 0) ||
+        (enable && (!parse_long(argv[1], -127, 127, &x) || !parse_long(argv[2], -127, 127, &y)))) {
+        shell_error(sh, "Usage: watchface gravity <x> <y> | off (x right, y down, 127 is 1 g)");
+        return -EINVAL;
+    }
+
+    lvgl_lock();
+    zsw_watchface_sand_override_gravity(enable, x, y);
+    lvgl_unlock();
+    return 0;
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_watchface,
                                SHELL_CMD_ARG(list, NULL, "List watchfaces, * marks the current one", cmd_watchface_list, 1, 0),
                                SHELL_CMD_ARG(set, NULL, "Switch watchface: watchface set <index>", cmd_watchface_set, 2, 0),
+#ifdef CONFIG_WATCHFACE_SAND
+                               SHELL_CMD_ARG(gravity, NULL, "Sand watchface: tilt the watch, watchface gravity <x> <y> | off",
+                                             cmd_watchface_gravity, 2, 1),
+#endif
                                SHELL_SUBCMD_SET_END
                               );
 
