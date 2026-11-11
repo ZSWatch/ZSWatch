@@ -27,11 +27,11 @@
 static void x_ray_app_start(lv_obj_t *root, lv_group_t *group);
 static void x_ray_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(circuit_icon);
+ZSW_LV_IMG_DECLARE(app_icon_x_ray);
 
 static application_t app = {
     .name = "X-ray",
-    .icon = ZSW_LV_IMG_USE(circuit_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_x_ray),
     .start_func = x_ray_app_start,
     .stop_func = x_ray_app_stop,
     .category = ZSW_APP_CATEGORY_RANDOM

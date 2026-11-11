@@ -29,11 +29,11 @@ LOG_MODULE_REGISTER(watchface_picker_app, CONFIG_ZSW_REMOTE_APP_LOG_LEVEL);
 static void watchface_picker_app_start(lv_obj_t *root, lv_group_t *group);
 static void watchface_picker_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(watchface_picker_icon);
+ZSW_LV_IMG_DECLARE(app_icon_watchface);
 
 static application_t app = {
     .name = "Face",
-    .icon = ZSW_LV_IMG_USE(watchface_picker_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_watchface),
     .start_func = watchface_picker_app_start,
     .stop_func = watchface_picker_app_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM

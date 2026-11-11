@@ -37,13 +37,13 @@ static void trivia_app_stop(void);
 static void on_button_click(trivia_button_t trivia_button);
 static void request_new_question(void);
 
-ZSW_LV_IMG_DECLARE(quiz);
+ZSW_LV_IMG_DECLARE(app_icon_trivia);
 
 static bool current_correct_answer;
 
 static application_t app = {
     .name = "Trivia",
-    .icon = ZSW_LV_IMG_USE(quiz),
+    .icon = ZSW_LV_IMG_USE(app_icon_trivia),
     .start_func = trivia_app_start,
     .stop_func = trivia_app_stop,
     .category = ZSW_APP_CATEGORY_GAMES

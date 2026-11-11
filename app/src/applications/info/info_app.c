@@ -65,11 +65,11 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
     .security_changed = security_changed,
 };
 
-ZSW_LV_IMG_DECLARE(statistic_icon);
+ZSW_LV_IMG_DECLARE(app_icon_debug);
 
 static application_t app = {
     .name = "Debug",
-    .icon = ZSW_LV_IMG_USE(statistic_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_debug),
     .start_func = info_app_start,
     .stop_func = info_app_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM,

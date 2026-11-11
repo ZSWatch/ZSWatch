@@ -42,7 +42,7 @@ static void zbus_periodic_100ms_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(stopwatch_app_100ms_event_listener, zbus_periodic_100ms_callback);
 
-ZSW_LV_IMG_DECLARE(stopwatch_app_icon);
+ZSW_LV_IMG_DECLARE(app_icon_stopwatch);
 
 typedef struct {
     stopwatch_state_t state;
@@ -62,7 +62,7 @@ static stopwatch_data_t stopwatch_data = {
 
 static application_t app = {
     .name = "Lap Time",
-    .icon = ZSW_LV_IMG_USE(stopwatch_app_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_stopwatch),
     .start_func = stopwatch_app_start,
     .stop_func = stopwatch_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT,

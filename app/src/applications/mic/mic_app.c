@@ -42,11 +42,11 @@ static void on_play_stop_toggle(void);
 static void on_gain_changed(float new_gain);
 static void mic_event_callback(zsw_mic_event_t event, zsw_mic_event_data_t *data, void *user_data);
 
-ZSW_LV_IMG_DECLARE(statistic_icon);
+ZSW_LV_IMG_DECLARE(app_icon_mic);
 
 static application_t app = {
     .name = "Mic",
-    .icon = ZSW_LV_IMG_USE(statistic_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_mic),
     .start_func = mic_app_start,
     .stop_func = mic_app_stop,
 };

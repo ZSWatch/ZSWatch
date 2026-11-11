@@ -42,14 +42,14 @@ static void on_close_fusion(void);
 static void cube_timer_cb(lv_timer_t *t);
 static void on_zero_yaw(void);
 
-ZSW_LV_IMG_DECLARE(imu_sensor_icon);
+ZSW_LV_IMG_DECLARE(app_icon_fusion);
 
 ZBUS_CHAN_DECLARE(periodic_event_100ms_chan);
 ZBUS_LISTENER_DEFINE(accel_app_lis, zbus_fetch_fusion_data_callback);
 
 static application_t app = {
     .name = "Fusion",
-    .icon = ZSW_LV_IMG_USE(imu_sensor_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_fusion),
     .start_func = fusion_app_start,
     .stop_func = fusion_app_stop,
     .category = ZSW_APP_CATEGORY_SENSORS,

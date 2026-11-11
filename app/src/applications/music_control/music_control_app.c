@@ -46,11 +46,11 @@ static K_WORK_DEFINE(update_ui_work, handle_update_ui);
 static ble_comm_music_info_t last_music_info;
 static ble_comm_music_state_t last_music_state = {.position = -1};
 
-ZSW_LV_IMG_DECLARE(music);
+ZSW_LV_IMG_DECLARE(app_icon_music);
 
 static application_t app = {
     .name = "Music",
-    .icon = ZSW_LV_IMG_USE(music),
+    .icon = ZSW_LV_IMG_USE(app_icon_music),
     .start_func = music_control_app_start,
     .stop_func = music_control_app_stop,
     .ui_available_func = app_on_ui_available,
