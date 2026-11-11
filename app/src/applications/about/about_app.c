@@ -42,16 +42,23 @@ static application_t app = {
 static void about_app_start(lv_obj_t *root, lv_group_t *group)
 {
     char version[50];
-    char sdk_version[50];
-    char build_time[50];
-    char fs_stats[50];
+    char fs_stats[32];
 
-    snprintf(fs_stats, sizeof(fs_stats), "%d Files (%.2f MB)", zsw_filesytem_get_num_rawfs_files(),
+    snprintf(fs_stats, sizeof(fs_stats), "%d (%.2f MB)", zsw_filesytem_get_num_rawfs_files(),
              zsw_filesytem_get_total_size() / 1000000.0);
-    snprintf(build_time, sizeof(build_time), "%s %s", __DATE__, __TIME__);
-    snprintf(sdk_version, sizeof(sdk_version), "NCS: %s - Zephyr: %s", NCS_VERSION_STRING, KERNEL_VERSION_STRING);
     snprintf(version, sizeof(version), "v%s-%s", APP_VERSION_STRING, STRINGIFY(APP_BUILD_VERSION));
-    about_ui_show(root, CONFIG_BOARD_TARGET, version, build_time, sdk_version, fs_stats, zsw_app_manager_get_num_apps());
+
+    about_ui_info_t info = {
+        .board = CONFIG_BOARD_TARGET,
+        .fw_version = version,
+        .build_time = __DATE__ " " __TIME__,
+        .ncs_version = NCS_VERSION_STRING,
+        .zephyr_version = KERNEL_VERSION_STRING,
+        .fs_stats = fs_stats,
+        .num_apps = zsw_app_manager_get_num_apps(),
+    };
+
+    about_ui_show(root, &info);
 }
 
 static void about_app_stop(void)
