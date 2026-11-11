@@ -29,11 +29,11 @@
 static void about_app_start(lv_obj_t *root, lv_group_t *group);
 static void about_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(templates);
+ZSW_LV_IMG_DECLARE(app_icon_about);
 
 static application_t app = {
     .name = "About",
-    .icon = ZSW_LV_IMG_USE(templates),
+    .icon = ZSW_LV_IMG_USE(app_icon_about),
     .start_func = about_app_start,
     .stop_func = about_app_stop,
     .category = ZSW_APP_CATEGORY_SYSTEM,

@@ -62,13 +62,13 @@ static void fitness_app_stop(void);
 
 static void step_sample_work(struct k_work *work);
 
-ZSW_LV_IMG_DECLARE(fitness);
+ZSW_LV_IMG_DECLARE(app_icon_fitness);
 
 static application_t app = {
     .name = "Fitness",
     .start_func = fitness_app_start,
     .stop_func = fitness_app_stop,
-    .icon = ZSW_LV_IMG_USE(fitness),
+    .icon = ZSW_LV_IMG_USE(app_icon_fitness),
     .category = ZSW_APP_CATEGORY_ROOT
 };
 

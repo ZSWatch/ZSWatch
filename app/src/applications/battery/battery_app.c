@@ -47,7 +47,7 @@ ZBUS_CHAN_DECLARE(battery_sample_data_chan);
 ZBUS_LISTENER_DEFINE(battery_app_battery_event, zbus_battery_sample_data_callback);
 ZBUS_CHAN_ADD_OBS(battery_sample_data_chan, battery_app_battery_event, 1);
 
-ZSW_LV_IMG_DECLARE(battery_app_icon);
+ZSW_LV_IMG_DECLARE(app_icon_battery);
 
 LOG_MODULE_REGISTER(pmic_app, LOG_LEVEL_WRN);
 
@@ -62,7 +62,7 @@ static uint64_t last_battery_sample_time = 0;
 
 static application_t app = {
     .name = "Battery",
-    .icon = ZSW_LV_IMG_USE(battery_app_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_battery),
     .start_func = battery_app_start,
     .stop_func = battery_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,

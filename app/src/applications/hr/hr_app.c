@@ -85,11 +85,11 @@ static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
                                   int rr, int rr_conf, int skin_contact, int activity);
 
 // Application registration
-ZSW_LV_IMG_DECLARE(heart_beat);
+ZSW_LV_IMG_DECLARE(app_icon_hr);
 
 static application_t app = {
     .name = "HR",
-    .icon = ZSW_LV_IMG_USE(heart_beat),
+    .icon = ZSW_LV_IMG_USE(app_icon_hr),
     .start_func = hr_app_start,
     .stop_func = hr_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT,

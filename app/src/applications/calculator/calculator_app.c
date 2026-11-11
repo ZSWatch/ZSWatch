@@ -13,11 +13,11 @@ LOG_MODULE_REGISTER(calculator_app, LOG_LEVEL_DBG);
 static void calculator_app_start(lv_obj_t *root, lv_group_t *group);
 static void calculator_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(statistic_icon);
+ZSW_LV_IMG_DECLARE(app_icon_calculator);
 
 static application_t app = {
     .name = "Calc",
-    .icon = ZSW_LV_IMG_USE(statistic_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_calculator),
     .start_func = calculator_app_start,
     .stop_func = calculator_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,

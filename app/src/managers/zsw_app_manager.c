@@ -44,13 +44,13 @@ static void zbus_activity_event_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(activity_state_data_chan);
 ZBUS_LISTENER_DEFINE(app_manager_activity_state_event_lis, zbus_activity_event_callback);
 
-ZSW_LV_IMG_DECLARE(folder);
-ZSW_LV_IMG_DECLARE(tools);
-ZSW_LV_IMG_DECLARE(fitness);
-ZSW_LV_IMG_DECLARE(system);
-ZSW_LV_IMG_DECLARE(random_category_icon);
-ZSW_LV_IMG_DECLARE(sensors);
-ZSW_LV_IMG_DECLARE(games);
+ZSW_LV_IMG_DECLARE(folder_icon_root);
+ZSW_LV_IMG_DECLARE(folder_icon_tools);
+ZSW_LV_IMG_DECLARE(folder_icon_fitness);
+ZSW_LV_IMG_DECLARE(folder_icon_system);
+ZSW_LV_IMG_DECLARE(folder_icon_random);
+ZSW_LV_IMG_DECLARE(folder_icon_sensors);
+ZSW_LV_IMG_DECLARE(folder_icon_games);
 
 static application_t *apps[MAX_APPS];
 static uint8_t num_apps;
@@ -65,47 +65,46 @@ static lv_timer_t *async_app_start_timer;
 static lv_timer_t *async_app_close_timer;
 static bool screen_is_on = true;
 
-// TODO: Add icons for app folders
 static const zsw_app_folder_info_t app_folders[ZSW_APP_CATEGORY_COUNT] = {
     [ZSW_APP_CATEGORY_ROOT] = {
         .name = "Root",
-        .icon = ZSW_LV_IMG_USE(folder),
+        .icon = ZSW_LV_IMG_USE(folder_icon_root),
         .color = LV_COLOR_MAKE(0x9E, 0x9E, 0x9E),
         .category = ZSW_APP_CATEGORY_ROOT
     },
     [ZSW_APP_CATEGORY_TOOLS] = {
         .name = "Tools",
-        .icon = ZSW_LV_IMG_USE(tools),
+        .icon = ZSW_LV_IMG_USE(folder_icon_tools),
         .color = LV_COLOR_MAKE(0xFF, 0x98, 0x00),
         .category = ZSW_APP_CATEGORY_TOOLS
     },
     [ZSW_APP_CATEGORY_FITNESS] = {
         .name = "Fitness",
-        .icon = ZSW_LV_IMG_USE(fitness),
+        .icon = ZSW_LV_IMG_USE(folder_icon_fitness),
         .color = LV_COLOR_MAKE(0x4C, 0xAF, 0x50),
         .category = ZSW_APP_CATEGORY_FITNESS
     },
     [ZSW_APP_CATEGORY_SYSTEM] = {
         .name = "System",
-        .icon = ZSW_LV_IMG_USE(system),
+        .icon = ZSW_LV_IMG_USE(folder_icon_system),
         .color = LV_COLOR_MAKE(0xF4, 0x43, 0x36),
         .category = ZSW_APP_CATEGORY_SYSTEM
     },
     [ZSW_APP_CATEGORY_RANDOM] = {
         .name = "Random",
-        .icon = ZSW_LV_IMG_USE(random_category_icon),
+        .icon = ZSW_LV_IMG_USE(folder_icon_random),
         .color = LV_COLOR_MAKE(0xE9, 0x1E, 0x63),
         .category = ZSW_APP_CATEGORY_RANDOM
     },
     [ZSW_APP_CATEGORY_SENSORS] = {
         .name = "Sensors",
-        .icon = ZSW_LV_IMG_USE(sensors),
+        .icon = ZSW_LV_IMG_USE(folder_icon_sensors),
         .color = LV_COLOR_MAKE(0x00, 0xBC, 0xD4),
         .category = ZSW_APP_CATEGORY_SENSORS
     },
     [ZSW_APP_CATEGORY_GAMES] = {
         .name = "Games",
-        .icon = ZSW_LV_IMG_USE(games),
+        .icon = ZSW_LV_IMG_USE(folder_icon_games),
         .color = LV_COLOR_MAKE(0x21, 0x96, 0xF3),
         .category = ZSW_APP_CATEGORY_GAMES
     },

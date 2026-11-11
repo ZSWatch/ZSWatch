@@ -29,14 +29,14 @@ static void zbus_periodic_1s_callback(const struct zbus_channel *chan);
 ZBUS_CHAN_DECLARE(periodic_event_1s_chan);
 ZBUS_LISTENER_DEFINE(timer_app_1s_event_listener, zbus_periodic_1s_callback);
 
-ZSW_LV_IMG_DECLARE(timer_app_icon);
+ZSW_LV_IMG_DECLARE(app_icon_timer);
 
 static timer_app_timer_t timers[TIMER_UI_MAX_TIMERS];
 static bool app_is_open;
 
 static application_t app = {
     .name = "Timers",
-    .icon = ZSW_LV_IMG_USE(timer_app_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_timer),
     .start_func = timer_app_start,
     .stop_func = timer_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT

@@ -35,11 +35,11 @@ static void on_prev(void);
 // Functions related to app functionality
 static void timer_callback(lv_timer_t *timer);
 
-ZSW_LV_IMG_DECLARE(remote_control);
+ZSW_LV_IMG_DECLARE(app_icon_ppt_remote);
 
 static application_t app = {
     .name = "Ppt_remote",
-    .icon = ZSW_LV_IMG_USE(remote_control),
+    .icon = ZSW_LV_IMG_USE(app_icon_ppt_remote),
     .start_func = ppt_remote_app_start,
     .stop_func = ppt_remote_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,

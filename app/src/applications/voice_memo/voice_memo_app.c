@@ -31,7 +31,7 @@ LOG_MODULE_REGISTER(voice_memo_app, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
 #define UI_UPDATE_INTERVAL_MS  200
 
-ZSW_LV_IMG_DECLARE(mic_icon);
+ZSW_LV_IMG_DECLARE(app_icon_voice_memo);
 
 static void voice_memo_app_start(lv_obj_t *root, lv_group_t *group);
 static void voice_memo_app_stop(void);
@@ -41,7 +41,7 @@ static void voice_memo_app_ui_available(void);
 
 static application_t app = {
     .name = "Memos",
-    .icon = ZSW_LV_IMG_USE(mic_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_voice_memo),
     .start_func = voice_memo_app_start,
     .stop_func = voice_memo_app_stop,
     .back_func = voice_memo_app_back,

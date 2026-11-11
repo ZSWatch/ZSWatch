@@ -39,11 +39,11 @@ LOG_MODULE_REGISTER(update_app, LOG_LEVEL_INF);
 static void update_app_start(lv_obj_t *root, lv_group_t *group);
 static void update_app_stop(void);
 
-ZSW_LV_IMG_DECLARE(templates);
+ZSW_LV_IMG_DECLARE(app_icon_update);
 
 static application_t app = {
     .name = "Update",
-    .icon = ZSW_LV_IMG_USE(templates),
+    .icon = ZSW_LV_IMG_USE(app_icon_update),
     .start_func = update_app_start,
     .stop_func = update_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT

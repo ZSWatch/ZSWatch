@@ -36,11 +36,11 @@ static void compass_app_stop(void);
 static void timer_callback(lv_timer_t *timer);
 static void on_start_calibration(void);
 
-ZSW_LV_IMG_DECLARE(move);
+ZSW_LV_IMG_DECLARE(app_icon_compass);
 
 static application_t app = {
     .name = "Compass",
-    .icon = ZSW_LV_IMG_USE(move),
+    .icon = ZSW_LV_IMG_USE(app_icon_compass),
     .start_func = compass_app_start,
     .stop_func = compass_app_stop,
     .category = ZSW_APP_CATEGORY_ROOT,

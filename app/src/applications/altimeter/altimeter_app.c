@@ -128,11 +128,11 @@ static altimeter_ui_data_t ui_data = {
     .has_data = false
 };
 
-ZSW_LV_IMG_DECLARE(altimeter_icon);
+ZSW_LV_IMG_DECLARE(app_icon_altimeter);
 
 static application_t app = {
     .name = "Altimeter",
-    .icon = ZSW_LV_IMG_USE(altimeter_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_altimeter),
     .start_func = altimeter_app_start,
     .stop_func = altimeter_app_stop,
     .ui_available_func = altimeter_app_ui_available,

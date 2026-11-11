@@ -66,7 +66,7 @@ K_WORK_DEFINE(weather_ui_work, update_weather_ui);
 
 #define WEATHER_DATA_TIMEOUT_S  20
 
-ZSW_LV_IMG_DECLARE(weather_app_icon);
+ZSW_LV_IMG_DECLARE(app_icon_weather);
 
 static uint64_t last_update_weather_time;
 static double pending_lat;
@@ -106,7 +106,7 @@ BT_CONN_CB_DEFINE(weather_conn_callbacks) = {
 
 static application_t app = {
     .name = "Weather",
-    .icon = ZSW_LV_IMG_USE(weather_app_icon),
+    .icon = ZSW_LV_IMG_USE(app_icon_weather),
     .start_func = weather_app_start,
     .stop_func = weather_app_stop,
     .ui_available_func = weather_app_on_ui_available,

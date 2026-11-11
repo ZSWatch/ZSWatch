@@ -27,7 +27,7 @@
 
 LOG_MODULE_REGISTER(da7212_test, LOG_LEVEL_INF);
 
-ZSW_LV_IMG_DECLARE(music);
+ZSW_LV_IMG_DECLARE(app_icon_audio_test);
 
 #define SAMPLE_FREQUENCY    48000
 
@@ -127,7 +127,7 @@ static void da7212_test_app_stop(void);
 
 static application_t app = {
     .name = "DA7212 Test",
-    .icon = ZSW_LV_IMG_USE(music),
+    .icon = ZSW_LV_IMG_USE(app_icon_audio_test),
     .start_func = da7212_test_app_start,
     .stop_func = da7212_test_app_stop,
     .category = ZSW_APP_CATEGORY_TOOLS,
