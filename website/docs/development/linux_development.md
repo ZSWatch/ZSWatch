@@ -113,5 +113,7 @@ Builds with `boards/test_mode.conf` expose the Zephyr shell on a pseudo terminal
 | `event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]` | Inject a weather update as if it came from the phone. `code` is an [OpenWeatherMap condition code](https://openweathermap.org/weather-conditions), e.g. `800` clear, `803` clouds, `501` rain, `601` snow, `741` fog, `211` thunderstorm |
 | `event time <hour> <minute>` | Inject a phone time sync, keeping today's date |
 | `event battery <percent> [charging]` | Inject a battery sample |
+| `event notification <sender> <body> [reply]` | Inject a phone notification, which shows the notification popup. `reply` marks it as one the phone accepts a reply to |
+| `popup <title> <body> [yesno]` | Show a popup. It closes after 10 s, or with `yesno` when answered |
 | `lv_timers` | Count LVGL timers and running animations, to check nothing keeps animating |
 | `lv_heap` | LVGL heap use and its peak since boot. Needs `CONFIG_SYS_HEAP_RUNTIME_STATS=y`; `kernel heap` shows the system heap the same way |
