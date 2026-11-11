@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the app and folder icons used by the app picker.
+"""Generates the app and folder icons used by the app picker, and the glow behind the app screens.
 
 Every icon is a 56x56 RGB565A8 image: a colored disc with a white Font Awesome
 glyph for apps, a dark disc with a colored ring and glyph for folders. Add a row
@@ -134,6 +134,33 @@ def write_rgb565a8(img, path):
     path.write_bytes(data)
 
 
+def write_a8(img, path):
+    """LVGL v9 binary alpha-only image. Draw it with image_recolor to give it a color."""
+    data = bytearray(struct.pack("<BBHHHHH", 0x19, 0x0E, 0, img.width, img.height, img.width, 0))
+    data += img.tobytes()
+    path.write_bytes(data)
+
+
+def render_glow(width=240, height=120, strength=150):
+    """Soft light from the top edge of the display, the background of the app screens.
+
+    Noise is added before rounding (dithering): a smooth gradient this dark would show
+    bands on the 16 bit display otherwise.
+    """
+    import random
+    random.seed(1)
+    img = Image.new("L", (width, height))
+    pixels = img.load()
+    for y in range(height):
+        for x in range(width):
+            dx = (x - width / 2) / (width * 0.62)
+            dy = y / height
+            falloff = max(0.0, 1.0 - (dx * dx + dy * dy) ** 0.5)
+            value = strength * falloff ** 1.6 + random.uniform(-2.0, 2.0)
+            pixels[x, y] = max(0, min(255, round(value)))
+    return img
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--preview", help="Also write a PNG contact sheet of all icons")
@@ -147,6 +174,8 @@ def main():
         img = render(codepoint, color, glyph_scale, folder)
         write_rgb565a8(img, OUT_DIR / f"{name}.bin")
         rendered.append(img)
+
+    write_a8(render_glow(), OUT_DIR / "ui_glow_top.bin")
 
     if args.preview:
         cols = 7
