@@ -52,22 +52,18 @@
 #define ZSW_COLOR_ERROR         ZSW_COLOR_RED
 
 /*
- * Fonts, see scripts/generate_fonts.sh. ZSW_FONT_TEXT is the only one with
- * Latin-1, Hebrew and emoji: use it for all text that comes from the phone.
+ * Fonts. ZSW_FONT_TEXT is the only one with Latin-1, Hebrew and emoji: use it
+ * for all text that comes from the phone.
  */
-LV_FONT_DECLARE(zsw_font_12);
-LV_FONT_DECLARE(zsw_font_14);
-LV_FONT_DECLARE(zsw_font_16);
-LV_FONT_DECLARE(zsw_font_20);
-LV_FONT_DECLARE(zsw_font_28);
+LV_FONT_DECLARE(lv_font_montserrat_14_full);
 LV_FONT_DECLARE(zsw_font_48);
 
-#define ZSW_FONT_CAPTION        (&zsw_font_12)
-#define ZSW_FONT_TEXT           (&zsw_font_14)
-#define ZSW_FONT_BODY           (&zsw_font_16)
-#define ZSW_FONT_TITLE          (&zsw_font_20)
-#define ZSW_FONT_HEADLINE       (&zsw_font_28)
-/* Digits, ':', '.', '%', '+', '-', '/' and '°' only. */
+#define ZSW_FONT_CAPTION        (&lv_font_montserrat_12)
+#define ZSW_FONT_TEXT           (&lv_font_montserrat_14_full)
+#define ZSW_FONT_BODY           (&lv_font_montserrat_16)
+#define ZSW_FONT_TITLE          (&lv_font_montserrat_20)
+#define ZSW_FONT_HEADLINE       (&lv_font_montserrat_28)
+/* Digits, ':', '.', '%', '+', '-', '/' and '°' only, see scripts/generate_fonts.sh. */
 #define ZSW_FONT_NUMBER         (&zsw_font_48)
 
 #define ZSW_RADIUS_CARD         16

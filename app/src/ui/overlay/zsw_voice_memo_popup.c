@@ -121,21 +121,21 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     /* Type icon */
     lv_obj_t *icon = lv_label_create(popup_container);
     lv_label_set_text(icon, type_icon);
-    lv_obj_set_style_text_font(icon, &zsw_font_28, 0);
+    lv_obj_set_style_text_font(icon, ZSW_FONT_HEADLINE, 0);
     lv_obj_set_style_text_color(icon, type_color, 0);
     lv_obj_align(icon, LV_ALIGN_TOP_MID, 0, 30);
 
     /* Type label (e.g. "Calendar Event") */
     lv_obj_t *header = lv_label_create(popup_container);
     lv_label_set_text(header, type_label);
-    lv_obj_set_style_text_font(header, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(header, ZSW_FONT_BODY, 0);
     lv_obj_set_style_text_color(header, type_color, 0);
     lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 65);
 
     /* Title — the main action text, large and white */
     lv_obj_t *title_lbl = lv_label_create(popup_container);
     lv_label_set_text(title_lbl, pending_title);
-    lv_obj_set_style_text_font(title_lbl, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(title_lbl, ZSW_FONT_BODY, 0);
     lv_obj_set_style_text_color(title_lbl, lv_color_white(), 0);
     lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(title_lbl, DISP_WIDTH - 50);
@@ -155,7 +155,7 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
 
         lv_obj_t *dt_lbl = lv_label_create(popup_container);
         lv_label_set_text(dt_lbl, time_buf);
-        lv_obj_set_style_text_font(dt_lbl, &zsw_font_16, 0);
+        lv_obj_set_style_text_font(dt_lbl, ZSW_FONT_BODY, 0);
         lv_obj_set_style_text_color(dt_lbl, lv_color_make(0xbb, 0xbb, 0xbb), 0);
         lv_obj_set_style_text_align(dt_lbl, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_width(dt_lbl, DISP_WIDTH - 40);
@@ -175,7 +175,7 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
 
     lv_obj_t *undo_label = lv_label_create(undo_btn);
     lv_label_set_text(undo_label, "Undo");
-    lv_obj_set_style_text_font(undo_label, &zsw_font_16, 0);
+    lv_obj_set_style_text_font(undo_label, ZSW_FONT_BODY, 0);
     lv_obj_set_style_text_color(undo_label, lv_color_white(), 0);
     lv_obj_center(undo_label);
 }

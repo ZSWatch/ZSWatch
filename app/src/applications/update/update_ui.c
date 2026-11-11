@@ -52,7 +52,7 @@ static lv_obj_t *create_toggle_btn(lv_obj_t *parent, const char *symbol,
 
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, symbol);
-    lv_obj_set_style_text_font(label, &zsw_font_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, ZSW_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
     lv_obj_center(label);
 
@@ -92,7 +92,7 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
     // Title
     lv_obj_t *title_label = lv_label_create(root_page);
     lv_label_set_text(title_label, LV_SYMBOL_DOWNLOAD "  Update");
-    lv_obj_set_style_text_font(title_label, &zsw_font_20, LV_PART_MAIN);
+    lv_obj_set_style_text_font(title_label, ZSW_FONT_TITLE, LV_PART_MAIN);
     lv_obj_set_style_text_color(title_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 28);
 
@@ -101,7 +101,7 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
     lv_obj_set_width(status_label, 180);
     lv_label_set_text(status_label, "Ready");
     lv_label_set_long_mode(status_label, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR);
-    lv_obj_set_style_text_font(status_label, &zsw_font_12, LV_PART_MAIN);
+    lv_obj_set_style_text_font(status_label, ZSW_FONT_CAPTION, LV_PART_MAIN);
     lv_obj_set_style_text_color(status_label, zsw_color_blue(), LV_PART_MAIN);
     lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(status_label, LV_ALIGN_TOP_MID, 0, 54);
@@ -109,7 +109,7 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
     // Progress percentage label
     progress_pct_label = lv_label_create(root_page);
     lv_label_set_text(progress_pct_label, "0%");
-    lv_obj_set_style_text_font(progress_pct_label, &zsw_font_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(progress_pct_label, ZSW_FONT_TEXT, LV_PART_MAIN);
     lv_obj_set_style_text_color(progress_pct_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_align(progress_pct_label, LV_ALIGN_CENTER, 0, -30);
     lv_obj_add_flag(progress_pct_label, LV_OBJ_FLAG_HIDDEN);
@@ -118,7 +118,7 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
     lv_obj_t *help_label = lv_label_create(root_page);
     lv_label_set_text(help_label, "BLE update: always on\nUSB update: tap below");
     lv_obj_set_width(help_label, 180);
-    lv_obj_set_style_text_font(help_label, &zsw_font_12, LV_PART_MAIN);
+    lv_obj_set_style_text_font(help_label, ZSW_FONT_CAPTION, LV_PART_MAIN);
     lv_obj_set_style_text_color(help_label, zsw_color_gray(), LV_PART_MAIN);
     lv_obj_set_style_text_align(help_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_label_set_long_mode(help_label, LV_LABEL_LONG_MODE_WRAP);
@@ -145,7 +145,7 @@ void update_ui_show(lv_obj_t *root, bool (*usb_toggle_cb)(void))
 
     lv_obj_t *usb_label = lv_label_create(label_row);
     lv_label_set_text(usb_label, "USB");
-    lv_obj_set_style_text_font(usb_label, &zsw_font_12, LV_PART_MAIN);
+    lv_obj_set_style_text_font(usb_label, ZSW_FONT_CAPTION, LV_PART_MAIN);
     lv_obj_set_style_text_color(usb_label, lv_color_white(), LV_PART_MAIN);
 }
 

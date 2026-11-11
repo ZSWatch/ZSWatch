@@ -69,7 +69,7 @@ static lv_obj_t *create_flex_button(lv_obj_t *parent, const char *text, lv_color
     lv_label_set_text(label, text);
     lv_obj_center(label);
     lv_obj_set_style_text_color(label, text_color, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, &zsw_font_12, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN);
 
     lv_obj_set_user_data(btn, event);
     lv_obj_add_event_cb(btn, calculator_event_handler, LV_EVENT_CLICKED, NULL);
@@ -136,7 +136,7 @@ void calculator_ui_show(lv_obj_t *root)
     lv_label_set_long_mode(result_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_align(result_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(result_label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_font(result_label, &zsw_font_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(result_label, ZSW_FONT_BODY, LV_PART_MAIN);
     lv_obj_set_style_pad_top(result_label, 5, LV_PART_MAIN);
     lv_obj_align(result_label, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(result_label, "0");
