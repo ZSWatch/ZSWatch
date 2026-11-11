@@ -24,4 +24,9 @@ menu "Watchface"
         prompt "Add Living Sky watchface (animated weather and sky tint)"
         default y
 
+    config WATCHFACE_SAND
+        bool
+        prompt "Add Sand watchface (digits of sand that fall the way the watch is held)"
+        default y
+
 endmenu
