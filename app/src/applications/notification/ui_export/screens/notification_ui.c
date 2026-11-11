@@ -132,13 +132,15 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     source = zsw_ui_utils_source_from_notification(not->src);
 
     ui_Panel = lv_obj_create(parent);
+    lv_obj_remove_style_all(ui_Panel);
     lv_obj_set_width(ui_Panel, 200);
-    lv_obj_set_height(ui_Panel, 100);
+    lv_obj_set_height(ui_Panel, 96);
     lv_obj_set_align(ui_Panel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_Panel, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_set_style_bg_color(ui_Panel, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui_Panel, 22, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Panel, ZSW_COLOR_SURFACE, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_Panel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_side(ui_Panel, LV_BORDER_SIDE_NONE, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_Panel, ZSW_COLOR_SURFACE_HIGH, LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_add_event_cb(ui_Panel, notification_on_long_pressed_callback, LV_EVENT_LONG_PRESSED, (void *)(uintptr_t)not->id);
     lv_obj_add_event_cb(ui_Panel, notification_on_short_clicked_callback, LV_EVENT_SHORT_CLICKED,
                         (void *)(uintptr_t)not->id);
@@ -146,22 +148,23 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     ui_LabelSource = lv_label_create(ui_Panel);
     lv_obj_set_width(ui_LabelSource, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_LabelSource, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelSource, 15);
+    lv_obj_set_x(ui_LabelSource, 36);
     lv_obj_set_y(ui_LabelSource, -30);
     lv_obj_set_align(ui_LabelSource, LV_ALIGN_LEFT_MID);
     lv_label_set_text(ui_LabelSource, source);
     lv_obj_clear_flag(ui_LabelSource, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                       LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelSource, lv_color_hex(0x8C8C8C), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_LabelSource, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LabelSource, ZSW_FONT_CAPTION, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelSource, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LabelTimeDelta = lv_label_create(ui_Panel);
     lv_obj_set_width(ui_LabelTimeDelta, LV_SIZE_CONTENT);
     lv_obj_set_height(ui_LabelTimeDelta, LV_SIZE_CONTENT);
-    lv_obj_set_x(ui_LabelTimeDelta, 70);
+    lv_obj_set_x(ui_LabelTimeDelta, -14);
     lv_obj_set_y(ui_LabelTimeDelta, -30);
-    lv_obj_set_align(ui_LabelTimeDelta, LV_ALIGN_CENTER);
+    lv_obj_set_align(ui_LabelTimeDelta, LV_ALIGN_RIGHT_MID);
 
     notification_delta2char(time(NULL) - not->timestamp, buf);
     lv_label_set_text(ui_LabelTimeDelta, buf);
@@ -169,7 +172,8 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     lv_obj_clear_flag(ui_LabelTimeDelta,
                       LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE | LV_OBJ_FLAG_SNAPPABLE |
                       LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelTimeDelta, lv_color_hex(0x8C8C8C), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_LabelTimeDelta, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_LabelTimeDelta, ZSW_FONT_CAPTION, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelTimeDelta, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     active_notifications[index].panel = ui_Panel;
@@ -180,7 +184,7 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
 
     // Tapping opens the notification, where it can be answered.
     if (not->can_reply && IS_ENABLED(CONFIG_ZSW_NOTIFICATION_REPLY)) {
-        lv_obj_t *ui_ImageReply = zsw_ui_utils_create_icon(ui_Panel, ZSW_LV_IMG_USE(mic_icon), 16, zsw_color_blue());
+        lv_obj_t *ui_ImageReply = zsw_ui_utils_create_icon(ui_Panel, ZSW_LV_IMG_USE(mic_icon), 16, ZSW_COLOR_ACCENT);
         lv_obj_set_align(ui_ImageReply, LV_ALIGN_CENTER);
         lv_obj_set_pos(ui_ImageReply, 42, -30);
     }
@@ -188,26 +192,26 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     ui_ImageIcon = lv_img_create(ui_Panel);
     lv_obj_set_width(ui_ImageIcon, 16);
     lv_obj_set_height(ui_ImageIcon, 16);
-    lv_obj_set_x(ui_ImageIcon, -85);
+    lv_obj_set_x(ui_ImageIcon, 14);
     lv_obj_set_y(ui_ImageIcon, -30);
-    lv_obj_set_align(ui_ImageIcon, LV_ALIGN_CENTER);
+    lv_obj_set_align(ui_ImageIcon, LV_ALIGN_LEFT_MID);
     lv_img_set_src(ui_ImageIcon, image_source);
     lv_obj_clear_flag(ui_ImageIcon, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                       LV_OBJ_FLAG_SCROLL_CHAIN);
 
     ui_LabelHeader = lv_label_create(ui_Panel);
-    lv_obj_set_width(ui_LabelHeader, 180);
+    lv_obj_set_width(ui_LabelHeader, 172);
     lv_obj_set_height(ui_LabelHeader, LV_SIZE_CONTENT);
     lv_obj_set_x(ui_LabelHeader, 0);
-    lv_obj_set_y(ui_LabelHeader, 0);
+    lv_obj_set_y(ui_LabelHeader, -8);
     lv_obj_set_align(ui_LabelHeader, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LabelHeader, not->sender);
     lv_label_set_long_mode(ui_LabelHeader, LV_LABEL_LONG_DOT);
     lv_obj_clear_flag(ui_LabelHeader, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                       LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelHeader, lv_color_hex(0x587BF8), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_LabelHeader, ZSW_COLOR_TEXT, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelHeader, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_LabelHeader, ZSW_FONT_TEXT,
                                LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -215,26 +219,23 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
     lv_obj_set_style_text_align(ui_LabelHeader, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_LabelBody = lv_label_create(ui_Panel);
-    lv_obj_set_width(ui_LabelBody, 180);
-    lv_obj_set_height(ui_LabelBody, 25);
+    lv_obj_set_width(ui_LabelBody, 172);
+    lv_obj_set_height(ui_LabelBody, 2 * lv_font_get_line_height(ZSW_FONT_TEXT));
     lv_obj_set_x(ui_LabelBody, 0);
-    lv_obj_set_y(ui_LabelBody, 30);
+    lv_obj_set_y(ui_LabelBody, 21);
     lv_obj_set_align(ui_LabelBody, LV_ALIGN_CENTER);
     lv_label_set_text(ui_LabelBody, not->body);
-    lv_label_set_long_mode(ui_LabelBody, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    // Two lines ending in dots. A scrolling label would keep every entry redrawing, a tap shows it all.
+    lv_label_set_long_mode(ui_LabelBody, LV_LABEL_LONG_DOT);
     lv_obj_clear_flag(ui_LabelBody, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE | LV_OBJ_FLAG_GESTURE_BUBBLE |
                       LV_OBJ_FLAG_SNAPPABLE | LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC | LV_OBJ_FLAG_SCROLL_MOMENTUM |
                       LV_OBJ_FLAG_SCROLL_CHAIN);
-    lv_obj_set_style_text_color(ui_LabelBody, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui_LabelBody, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(ui_LabelBody, ZSW_FONT_TEXT,
                                LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_base_dir(ui_LabelBody, LV_BASE_DIR_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_LabelBody, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_LabelBody, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_LabelBody, zsw_color_gray(), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui_LabelBody, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui_LabelBody, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(ui_LabelBody, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -254,10 +255,14 @@ void notifications_ui_page_init(on_notification_remove_cb_t not_removed_cb, on_n
 void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
 {
     main_page = lv_obj_create(parent);
+    lv_obj_remove_style_all(main_page);
     lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
 
     lv_obj_set_size(main_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_border_side(main_page, LV_BORDER_SIDE_NONE, 0);
+    lv_obj_set_style_bg_color(main_page, ZSW_COLOR_BG, 0);
+    lv_obj_set_style_bg_opa(main_page, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_row(main_page, 8, 0);
+    lv_obj_set_flex_align(main_page, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_center(main_page);
 
     lv_obj_set_flex_flow(main_page, LV_FLEX_FLOW_COLUMN);
@@ -266,9 +271,10 @@ void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_scrollbar_mode(main_page, LV_SCROLLBAR_MODE_OFF);
 
     empty_label = lv_label_create(parent);
-    lv_label_set_text(empty_label, "No notifications");
-    lv_obj_set_style_text_font(empty_label, ZSW_FONT_TEXT, 0);
-    lv_obj_set_style_text_color(empty_label, lv_color_hex(0x8C8C8C), 0);
+    lv_label_set_text(empty_label, LV_SYMBOL_BELL "\n\nNo notifications");
+    lv_obj_set_style_text_font(empty_label, ZSW_FONT_BODY, 0);
+    lv_obj_set_style_text_align(empty_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(empty_label, ZSW_COLOR_TEXT_DISABLED, 0);
     lv_obj_center(empty_label);
 
     /*
