@@ -3,8 +3,8 @@
 
 #include "../notification_ui.h"
 #include "ui/zsw_ui.h"
+#include "ui/zsw_ui_theme.h"
 
-LV_FONT_DECLARE(lv_font_montserrat_14_full)
 ZSW_LV_IMG_DECLARE(mic_icon);
 
 static on_notification_remove_cb_t notification_removed_callback;
@@ -209,7 +209,7 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
                       LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_text_color(ui_LabelHeader, lv_color_hex(0x587BF8), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelHeader, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelHeader, &lv_font_montserrat_14_full,
+    lv_obj_set_style_text_font(ui_LabelHeader, &zsw_font_14,
                                LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_base_dir(ui_LabelHeader, LV_BASE_DIR_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_LabelHeader, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -227,7 +227,7 @@ static void build_notification_entry(lv_obj_t *parent, const zsw_not_mngr_notifi
                       LV_OBJ_FLAG_SCROLL_CHAIN);
     lv_obj_set_style_text_color(ui_LabelBody, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_LabelBody, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_LabelBody, &lv_font_montserrat_14_full,
+    lv_obj_set_style_text_font(ui_LabelBody, &zsw_font_14,
                                LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_base_dir(ui_LabelBody, LV_BASE_DIR_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_LabelBody, LV_TEXT_ALIGN_AUTO, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -267,7 +267,7 @@ void notifications_ui_page_create(lv_obj_t *parent, lv_group_t *group)
 
     empty_label = lv_label_create(parent);
     lv_label_set_text(empty_label, "No notifications");
-    lv_obj_set_style_text_font(empty_label, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_font(empty_label, &zsw_font_14, 0);
     lv_obj_set_style_text_color(empty_label, lv_color_hex(0x8C8C8C), 0);
     lv_obj_center(empty_label);
 

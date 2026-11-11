@@ -33,6 +33,7 @@
 #include "zsw_retained_ram_storage.h"
 #include "applications/watchface/watchface_app.h"
 #include "ui/watchfaces/zsw_watchface_dropdown_ui.h"
+#include "ui/zsw_ui_theme.h"
 #include "drivers/zsw_display_control.h"
 #include "drivers/zsw_vibration_motor.h"
 #include "fuel_gauge/zsw_pmic.h"
@@ -43,7 +44,7 @@
 #include "ui/zsw_ui.h"
 #include "ui/zsw_overlay_manager.h"
 #include "ui/onboarding/zsw_onboarding_ui.h"
-#include "lvgl_editor_gen.h"
+#include "lvgl_editor.h"
 
 typedef enum ui_state {
     INIT_STATE,
@@ -462,8 +463,10 @@ static int settings_load_handler_swipe_back(const char *key, size_t len,
 
 int zsw_ui_controller_init(void)
 {
+    zsw_ui_theme_init();
+
     // Initialize LVGL Editor subjects and assets
-    lvgl_editor_init_gen("");
+    lvgl_editor_init("");
 
     root_screen = lv_scr_act();
     lv_obj_add_event_cb(root_screen, on_root_screen_gesture, LV_EVENT_GESTURE, NULL);

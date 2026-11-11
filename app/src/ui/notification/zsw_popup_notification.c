@@ -23,6 +23,7 @@
 #include "ui/zsw_overlay_manager.h"
 #include "ui/zsw_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui_theme.h"
 
 #define EXTENDED_TIMEOUT_MS 20000
 #define BODY_TOP            70
@@ -51,7 +52,6 @@ static zsw_overlay_t overlay = {
     .back = popup_back,
 };
 
-LV_FONT_DECLARE(lv_font_montserrat_14_full)
 ZSW_LV_IMG_DECLARE(mic_icon);
 
 void zsw_notification_popup_show(const zsw_not_mngr_notification_t *notification, on_close_notif_cb_t close_cb,
@@ -143,7 +143,7 @@ static lv_obj_t *create_text(lv_obj_t *parent, const char *text, lv_color_t colo
     lv_label_set_text(label, text);
     lv_obj_set_width(label, width);
     lv_label_set_long_mode(label, mode);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_font(label, &zsw_font_14, 0);
     lv_obj_set_style_text_color(label, color, 0);
     lv_obj_set_style_base_dir(label, LV_BASE_DIR_AUTO, 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -206,11 +206,11 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_t *app = lv_label_create(source);
     lv_label_set_text(app, notif.src == NOTIFICATION_SRC_NONE && notif.title[0] != '\0' ? notif.title :
                       zsw_ui_utils_source_from_notification(notif.src));
-    lv_obj_set_style_text_font(app, &lv_font_montserrat_14_full, 0);
+    lv_obj_set_style_text_font(app, &zsw_font_14, 0);
     lv_obj_set_style_text_color(app, lv_palette_main(LV_PALETTE_GREY), 0);
 
     lv_obj_t *title = create_text(panel, sender, zsw_color_blue(), LV_LABEL_LONG_DOT, 176);
-    lv_obj_set_height(title, lv_font_get_line_height(&lv_font_montserrat_14_full));
+    lv_obj_set_height(title, lv_font_get_line_height(&zsw_font_14));
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 44);
 
     // The body scrolls when it does not fit, sideways swipes still dismiss.

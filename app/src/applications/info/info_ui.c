@@ -21,6 +21,7 @@
 #include <zsw_coredump.h>
 #include "assert.h"
 #include <stdio.h>
+#include "ui/zsw_ui_theme.h"
 
 static void seconds_to_time_chunks(uint32_t time_seconds, int *days, int *hours, int *minutes, int *seconds);
 
@@ -71,7 +72,7 @@ static void create_page_info_ui(lv_obj_t *parent)
 {
     lv_obj_t *temp_obj;
     lv_obj_t *title_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(title_label, &zsw_font_20, 0);
     lv_label_set_text(title_label, "System info");
     lv_obj_set_style_text_decor(title_label, LV_TEXT_DECOR_UNDERLINE, LV_PART_MAIN);
     lv_obj_align_to(title_label, parent, LV_ALIGN_TOP_MID, 0, 0);
@@ -140,7 +141,7 @@ static void create_page_info_ui(lv_obj_t *parent)
 static void create_page_ble_ui(lv_obj_t *parent)
 {
     lv_obj_t *title_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title_label, &zsw_font_16, 0);
     lv_label_set_text(title_label, "Bluetooth Local");
     lv_obj_set_style_text_decor(title_label, LV_TEXT_DECOR_UNDERLINE, LV_PART_MAIN);
     lv_obj_align_to(title_label, parent, LV_ALIGN_TOP_MID, 0, 20);
@@ -150,7 +151,7 @@ static void create_page_ble_ui(lv_obj_t *parent)
     lv_obj_align_to(mac_addr_label, title_label, LV_ALIGN_BOTTOM_MID, 0, 15);
 
     title_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title_label, &zsw_font_16, 0);
     lv_label_set_text(title_label, "Remote MAC");
     lv_obj_set_style_text_decor(title_label, LV_TEXT_DECOR_UNDERLINE, LV_PART_MAIN);
     lv_obj_align_to(title_label, mac_addr_label, LV_ALIGN_BOTTOM_MID, 0, 15);
@@ -219,7 +220,7 @@ static void create_coredump_page_ui(lv_obj_t *parent, zsw_coredump_sumary_t *cor
     lv_obj_set_y(ui_title, 17);
     lv_obj_set_align(ui_title, LV_ALIGN_TOP_MID);
     lv_label_set_text(ui_title, "Coredump");
-    lv_obj_set_style_text_font(ui_title, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_title, &zsw_font_20, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_coredump_list = lv_obj_create(parent);
     lv_obj_remove_style_all(ui_coredump_list);

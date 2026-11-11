@@ -20,6 +20,7 @@
 
 #include "watchface_picker_ui.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui_theme.h"
 
 static lv_obj_t *ui_root;
 static lv_obj_t *ui_faceSelect;
@@ -65,7 +66,7 @@ void watchface_picker_ui_add_watchface(const lv_img_dsc_t *src, const char *name
     lv_label_set_long_mode(ui_faceLabel, LV_LABEL_LONG_DOT);
     lv_label_set_text(ui_faceLabel, name);
     lv_obj_set_style_text_align(ui_faceLabel, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_faceLabel, &lv_font_montserrat_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_faceLabel, &zsw_font_16, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     lv_obj_add_event_cb(ui_faceItem, on_watchface_selected, LV_EVENT_ALL, (void *)index);
 
@@ -113,12 +114,12 @@ void watchface_picker_ui_show(lv_obj_t *root, on_watchface_selected_cb_t select_
 
     lv_obj_t *title = lv_label_create(ui_root);
     lv_label_set_text(title, "Watch faces");
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(title, &zsw_font_16, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 7);
 
     lv_obj_t *hint = lv_label_create(ui_root);
     lv_label_set_text(hint, "Swipe for more\nTap to select");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(hint, &zsw_font_12, 0);
     lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -8);
 }

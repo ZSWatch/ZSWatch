@@ -20,6 +20,7 @@
 #include <math.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
+#include "ui/zsw_ui_theme.h"
 
 LOG_MODULE_REGISTER(mic_app_ui, LOG_LEVEL_DBG);
 
@@ -75,7 +76,7 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     gain_label = lv_label_create(app_root_container);
     lv_label_set_text_fmt(gain_label, "Gain: %.1f", initial_gain);
-    lv_obj_set_style_text_font(gain_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(gain_label, &zsw_font_14, 0);
     lv_obj_set_style_text_color(gain_label, lv_color_white(), 0);
     lv_obj_align(gain_label, LV_ALIGN_TOP_MID, 0, 10);
 
@@ -89,7 +90,7 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     status_label = lv_label_create(app_root_container);
     lv_label_set_text(status_label, "Ready");
-    lv_obj_set_style_text_font(status_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(status_label, &zsw_font_16, 0);
     lv_obj_set_style_text_color(status_label, lv_color_white(), 0);
     lv_obj_align(status_label, LV_ALIGN_BOTTOM_MID, 0, -50);
 
@@ -100,7 +101,7 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     button_label = lv_label_create(toggle_button);
     lv_label_set_text(button_label, "Start");
-    lv_obj_set_style_text_font(button_label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(button_label, &zsw_font_12, 0);
     lv_obj_center(button_label);
 
     lv_obj_t *gain_minus_btn = lv_btn_create(app_root_container);
@@ -110,7 +111,7 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     lv_obj_t *minus_label = lv_label_create(gain_minus_btn);
     lv_label_set_text(minus_label, LV_SYMBOL_MINUS);
-    lv_obj_set_style_text_font(minus_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(minus_label, &zsw_font_20, 0);
     lv_obj_center(minus_label);
 
     lv_obj_t *gain_plus_btn = lv_btn_create(app_root_container);
@@ -120,7 +121,7 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
 
     lv_obj_t *plus_label = lv_label_create(gain_plus_btn);
     lv_label_set_text(plus_label, LV_SYMBOL_PLUS);
-    lv_obj_set_style_text_font(plus_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(plus_label, &zsw_font_20, 0);
     lv_obj_center(plus_label);
 
     memset(current_bar_vals, 0, sizeof(current_bar_vals));

@@ -22,6 +22,7 @@
 #include "managers/zsw_recording_manager.h"
 #include "ui/zsw_ui.h"
 #include "ui/zsw_overlay_manager.h"
+#include "ui/zsw_ui_theme.h"
 
 LOG_MODULE_REGISTER(zsw_recording_overlay, LOG_LEVEL_INF);
 
@@ -115,14 +116,14 @@ static void overlay_show(lv_obj_t *parent, lv_group_t *group)
     /* "Recording" label */
     lv_obj_t *rec_label = lv_label_create(overlay_container);
     lv_label_set_text(rec_label, "Recording");
-    lv_obj_set_style_text_font(rec_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(rec_label, &zsw_font_16, 0);
     lv_obj_set_style_text_color(rec_label, zsw_color_red(), 0);
     lv_obj_align(rec_label, LV_ALIGN_TOP_MID, 0, 75);
 
     /* Elapsed time */
     time_label = lv_label_create(overlay_container);
     lv_label_set_text(time_label, "00:00");
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(time_label, &zsw_font_28, 0);
     lv_obj_set_style_text_color(time_label, lv_color_white(), 0);
     lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -10);
 
@@ -147,7 +148,7 @@ static void overlay_show(lv_obj_t *parent, lv_group_t *group)
 
     lv_obj_t *stop_label = lv_label_create(stop_btn);
     lv_label_set_text(stop_label, LV_SYMBOL_STOP " Stop");
-    lv_obj_set_style_text_font(stop_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(stop_label, &zsw_font_16, 0);
     lv_obj_set_style_text_color(stop_label, lv_color_white(), 0);
     lv_obj_center(stop_label);
 

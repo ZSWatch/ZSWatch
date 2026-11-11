@@ -33,6 +33,7 @@
 #include "managers/zsw_notification_manager.h"
 #include "managers/zsw_power_manager.h"
 #include "managers/zsw_recording_manager.h"
+#include "ui/zsw_ui_theme.h"
 
 LOG_MODULE_REGISTER(zsw_notification_reply, CONFIG_ZSW_NOTIFICATION_REPLY_LOG_LEVEL);
 
@@ -49,7 +50,6 @@ LOG_MODULE_REGISTER(zsw_notification_reply, CONFIG_ZSW_NOTIFICATION_REPLY_LOG_LE
 #define BUTTON_BOTTOM           -32
 #define LEVEL_RING_SIZE         96
 
-LV_FONT_DECLARE(lv_font_montserrat_14_full);
 ZSW_LV_IMG_DECLARE(mic_icon);
 
 typedef enum {
@@ -233,7 +233,7 @@ static lv_obj_t *create_button(const char *text, lv_color_t color, lv_color_t te
     lv_group_add_obj(lv_group_get_default(), btn);
 
     if (text) {
-        lv_obj_t *label = create_label(btn, text, &lv_font_montserrat_14, text_color);
+        lv_obj_t *label = create_label(btn, text, &zsw_font_14, text_color);
         lv_obj_center(label);
     }
     return btn;
@@ -264,7 +264,7 @@ static void create_scroll_text(const char *text, lv_color_t color)
     lv_obj_set_scrollbar_mode(scroll, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_align(scroll, LV_ALIGN_TOP_MID, 0, TEXT_TOP);
 
-    lv_obj_t *label = create_label(scroll, text, &lv_font_montserrat_14_full, color);
+    lv_obj_t *label = create_label(scroll, text, &zsw_font_14, color);
     lv_obj_set_width(label, 196);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_base_dir(label, LV_BASE_DIR_AUTO, 0);
@@ -282,7 +282,7 @@ static lv_obj_t *create_status_badge(const char *symbol, lv_color_t color)
     lv_obj_clear_flag(badge, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(badge, LV_ALIGN_CENTER, 0, -18);
 
-    lv_obj_t *icon = create_label(badge, symbol, &lv_font_montserrat_28, lv_color_white());
+    lv_obj_t *icon = create_label(badge, symbol, &zsw_font_28, lv_color_white());
     lv_obj_center(icon);
     return badge;
 }
@@ -312,7 +312,7 @@ static void render_recording(void)
     lv_obj_t *mic = zsw_ui_utils_create_icon(reply.body, ZSW_LV_IMG_USE(mic_icon), 36, lv_color_white());
     lv_obj_align_to(mic, ring, LV_ALIGN_CENTER, 0, -10);
 
-    reply.time_label = create_label(reply.body, "0:00", &lv_font_montserrat_14, lv_color_make(0xbb, 0xbb, 0xbb));
+    reply.time_label = create_label(reply.body, "0:00", &zsw_font_14, lv_color_make(0xbb, 0xbb, 0xbb));
     lv_obj_align_to(reply.time_label, ring, LV_ALIGN_CENTER, 0, 22);
 
     create_cancel_button(-46);
@@ -329,7 +329,7 @@ static void render_waiting(const char *text)
     lv_obj_set_style_arc_color(spinner, zsw_color_blue(), LV_PART_INDICATOR);
     lv_obj_align(spinner, LV_ALIGN_CENTER, 0, -14);
 
-    lv_obj_t *label = create_label(reply.body, text, &lv_font_montserrat_14, lv_color_make(0xbb, 0xbb, 0xbb));
+    lv_obj_t *label = create_label(reply.body, text, &zsw_font_14, lv_color_make(0xbb, 0xbb, 0xbb));
     lv_obj_align(label, LV_ALIGN_CENTER, 0, 26);
 }
 
@@ -346,7 +346,7 @@ static void render_draft(void)
 static void render_sent(void)
 {
     lv_obj_t *badge = create_status_badge(LV_SYMBOL_OK, lv_color_make(0x2e, 0x9e, 0x5b));
-    lv_obj_t *label = create_label(reply.body, reply.status[0] ? reply.status : "Sent", &lv_font_montserrat_14_full,
+    lv_obj_t *label = create_label(reply.body, reply.status[0] ? reply.status : "Sent", &zsw_font_14,
                                    lv_color_white());
     lv_obj_set_width(label, 180);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
@@ -367,7 +367,7 @@ static void render_sent(void)
 
 static void render_failed(void)
 {
-    lv_obj_t *label = create_label(reply.body, reply.status, &lv_font_montserrat_14_full, lv_color_white());
+    lv_obj_t *label = create_label(reply.body, reply.status, &zsw_font_14, lv_color_white());
     lv_obj_set_width(label, 180);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, -10);
@@ -479,9 +479,9 @@ static void popup_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_bg_color(reply.cont, lv_color_hex(0x0C0C1A), 0);
     lv_obj_set_style_bg_opa(reply.cont, LV_OPA_COVER, 0);
 
-    lv_obj_t *title = create_label(reply.cont, "", &lv_font_montserrat_14_full, zsw_color_blue());
+    lv_obj_t *title = create_label(reply.cont, "", &zsw_font_14, zsw_color_blue());
     lv_label_set_text_fmt(title, "Reply to %s", reply.sender);
-    lv_obj_set_size(title, 150, lv_font_get_line_height(&lv_font_montserrat_14_full));
+    lv_obj_set_size(title, 150, lv_font_get_line_height(&zsw_font_14));
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
 
