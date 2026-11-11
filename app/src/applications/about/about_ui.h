@@ -20,7 +20,16 @@
 #include <inttypes.h>
 #include <lvgl.h>
 
-void about_ui_show(lv_obj_t *root, char *board, char *fw_version, char *fw_version_info, char *sdk_version,
-                   char *fs_stats, int num_apps);
+typedef struct {
+    const char *board;
+    const char *fw_version;
+    const char *build_time;
+    const char *ncs_version;
+    const char *zephyr_version;
+    const char *fs_stats;
+    int num_apps;
+} about_ui_info_t;
+
+void about_ui_show(lv_obj_t *root, const about_ui_info_t *info);
 
 void about_ui_remove(void);
