@@ -61,7 +61,7 @@ static void on_reboot_changed(lv_setting_value_t value, bool final);
 static void on_swipe_back_changed(lv_setting_value_t value, bool final);
 static void on_watchface_tick_interval_changed(lv_setting_value_t value, bool final);
 
-ZSW_LV_IMG_DECLARE(settings);
+ZSW_LV_IMG_DECLARE(app_icon_settings);
 
 typedef struct setting_app {
     zsw_settings_brightness_t           brightness;
@@ -94,7 +94,7 @@ static setting_app_t settings_app = {
 
 static application_t app = {
     .name = "Settings",
-    .icon = ZSW_LV_IMG_USE(settings),
+    .icon = ZSW_LV_IMG_USE(app_icon_settings),
     .start_func = settings_app_start,
     .stop_func = settings_app_stop,
     .back_func = settings_app_back,
@@ -316,31 +316,43 @@ static lv_settings_item_t controls_page_items[] = {
 static lv_settings_page_t settings_menu[] = {
     {
         .name = "Display",
+        .icon = LV_SYMBOL_EYE_OPEN,
+        .color = 0x2AA7E8,
         .num_items = ARRAY_SIZE(display_page_items),
         .items = display_page_items
     },
     {
         .name = "Bluetooth",
+        .icon = LV_SYMBOL_BLUETOOTH,
+        .color = 0x3B82F6,
         .num_items = ARRAY_SIZE(bluetooth_page_items),
         .items = bluetooth_page_items
     },
     {
         .name = "Watchface",
+        .icon = LV_SYMBOL_IMAGE,
+        .color = 0xA855F7,
         .num_items = ARRAY_SIZE(ui_page_items),
         .items = ui_page_items
     },
     {
         .name = "General",
+        .icon = LV_SYMBOL_SETTINGS,
+        .color = 0x6E7A8F,
         .num_items = ARRAY_SIZE(general_page_items),
         .items = general_page_items
     },
     {
         .name = "Controls",
+        .icon = LV_SYMBOL_SHUFFLE,
+        .color = 0xFF9500,
         .num_items = ARRAY_SIZE(controls_page_items),
         .items = controls_page_items
     },
     {
         .name = "Developer",
+        .icon = LV_SYMBOL_USB,
+        .color = 0x22C55E,
         .num_items = ARRAY_SIZE(developer_page_items),
         .items = developer_page_items
     },

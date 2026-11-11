@@ -87,6 +87,8 @@ typedef struct lv_settings_item {
 
 typedef struct lv_settings_page {
     const char         *name;
+    const char         *icon;   /* LV_SYMBOL_* shown on the main page */
+    uint32_t            color;  /* 0xRRGGBB, color of the disc behind the icon */
     on_close_cb_t       closed_cb;
     uint8_t             num_items;
     lv_settings_item_t *items;

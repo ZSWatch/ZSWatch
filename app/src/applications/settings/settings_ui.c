@@ -19,9 +19,9 @@
 #include "lvgl.h"
 #include "assert.h"
 #include <stdio.h>
+#include "ui/zsw_ui_theme.h"
 
-#define LV_SETTINGS_ANIM_TIME   300 /*[ms]*/
-#define LV_SETTINGS_MAX_WIDTH   250
+#define ROW_ICON_SIZE   30
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
@@ -32,6 +32,38 @@ static on_close_cb_t close_callback;
 static lv_obj_t *_menu = NULL;
 static lv_obj_t *_mainPage;
 static lv_obj_t *active_sub_page;
+
+static lv_style_t style_row;
+static lv_style_t style_row_pressed;
+static lv_style_t style_row_focused;
+
+static void init_styles(void)
+{
+    static bool inited;
+
+    if (inited) {
+        return;
+    }
+    inited = true;
+
+    lv_style_init(&style_row);
+    lv_style_set_bg_color(&style_row, ZSW_COLOR_SURFACE);
+    lv_style_set_bg_opa(&style_row, LV_OPA_COVER);
+    lv_style_set_radius(&style_row, ZSW_RADIUS_CARD);
+    lv_style_set_pad_hor(&style_row, 10);
+    lv_style_set_pad_ver(&style_row, 7);
+    lv_style_set_pad_column(&style_row, 8);
+    lv_style_set_min_height(&style_row, 44);
+
+    lv_style_init(&style_row_pressed);
+    lv_style_set_bg_color(&style_row_pressed, ZSW_COLOR_SURFACE_HIGH);
+    lv_style_set_bg_opa(&style_row_pressed, LV_OPA_COVER);
+
+    // Shown on the row selected with the buttons
+    lv_style_init(&style_row_focused);
+    lv_style_set_border_color(&style_row_focused, ZSW_COLOR_ACCENT);
+    lv_style_set_border_width(&style_row_focused, 2);
+}
 
 static void close_button_pressed(lv_event_t *e)
 {
@@ -61,6 +93,7 @@ static lv_obj_t *create_text(lv_obj_t *parent, const char *icon, const char *txt
                              lv_menu_builder_variant_t builder_variant)
 {
     lv_obj_t *obj = lv_menu_cont_create(parent);
+    lv_obj_add_style(obj, &style_row, 0);
     lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
     lv_obj_t *img = NULL;
@@ -69,12 +102,14 @@ static lv_obj_t *create_text(lv_obj_t *parent, const char *icon, const char *txt
     if (icon) {
         img = lv_image_create(obj);
         lv_image_set_src(img, icon);
+        lv_obj_set_style_text_color(img, ZSW_COLOR_TEXT_DIM, 0);
     }
 
     if (txt) {
+        // Wraps instead of scrolling: a scrolling label keeps redrawing for as long as it is shown.
         label = lv_label_create(obj);
         lv_label_set_text(label, txt);
-        lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
         lv_obj_set_flex_grow(label, 1);
     }
 
@@ -101,9 +136,8 @@ static lv_obj_t *create_button(lv_obj_t *parent, const char *icon, const char *t
     lv_obj_t *btn = lv_btn_create(obj);
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, btn_txt);
-    lv_obj_set_style_pad_right(label, 5, LV_PART_MAIN);
-    lv_obj_set_style_pad_left(label, 5, LV_PART_MAIN);
-    lv_obj_set_style_radius(btn, 20, 0);
+    lv_obj_set_style_pad_hor(btn, 14, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(btn, 7, LV_PART_MAIN);
     lv_obj_center(label);
 
     return btn;
@@ -190,7 +224,7 @@ static void populate_page(lv_obj_t *page, lv_settings_page_t *settings_page)
                 obj = create_text(page, item->icon, item->item.label.name, LV_MENU_ITEM_BUILDER_VARIANT_1);
                 lv_obj_t *label = lv_obj_get_child(obj, -1);
                 lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-                lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+                lv_obj_set_style_text_font(label, &zsw_font_12, 0);
                 lv_obj_set_style_text_line_space(label, 5, 0);
                 break;
             case LV_SETTINGS_TYPE_SWITCH:
@@ -211,6 +245,31 @@ static void populate_page(lv_obj_t *page, lv_settings_page_t *settings_page)
                 printf("Unsupported settings type %d\n", item->type);
         }
     }
+}
+
+static void style_page(lv_obj_t *page)
+{
+    lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_pad_row(page, 6, 0);
+    // Room to scroll the last row up from the narrow bottom of the round display
+    lv_obj_set_style_pad_bottom(page, 50, 0);
+}
+
+static void create_icon_disc(lv_obj_t *parent, const char *symbol, lv_color_t color)
+{
+    lv_obj_t *disc = lv_obj_create(parent);
+    lv_obj_remove_style_all(disc);
+    lv_obj_set_size(disc, ROW_ICON_SIZE, ROW_ICON_SIZE);
+    lv_obj_set_style_radius(disc, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(disc, color, 0);
+    lv_obj_set_style_bg_opa(disc, LV_OPA_COVER, 0);
+    lv_obj_remove_flag(disc, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *label = lv_label_create(disc);
+    lv_label_set_text(label, symbol);
+    lv_obj_set_style_text_font(label, ZSW_FONT_TEXT, 0);
+    lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, 0);
+    lv_obj_center(label);
 }
 
 static void menu_page_changed(lv_event_t *e)
@@ -237,14 +296,8 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     lv_obj_t *label;
     lv_obj_t *cont;
     lv_obj_t *sub_page = NULL;
-    static lv_style_t outline_primary;
 
-    // Border around selected menu row when focused
-    lv_style_init(&outline_primary);
-    lv_style_set_border_color(&outline_primary, lv_color_hex(0xF99B7D));
-    lv_style_set_border_width(&outline_primary, lv_display_dpx(lv_display_get_next(NULL), 3));
-    lv_style_set_border_opa(&outline_primary, LV_OPA_50);
-    lv_style_set_border_side(&outline_primary, LV_BORDER_SIDE_BOTTOM);
+    init_styles();
 
     assert(_menu == NULL);
 
@@ -257,39 +310,51 @@ void lv_settings_create(lv_obj_t *root, lv_settings_page_t *pages, uint8_t num_p
     lv_obj_add_event_cb(_menu, menu_page_changed, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_set_size(_menu, LV_PCT(100), LV_PCT(100));
     lv_obj_set_pos(_menu, 0, 0);
-    lv_obj_set_style_pad_top(_menu, 25, LV_PART_MAIN);
-    lv_obj_set_style_pad_left(_menu, 20, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(_menu, 20, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(_menu, 25, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(_menu, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_pad_top(_menu, 14, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(_menu, 26, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(_menu, 26, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(_menu, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(_menu, ZSW_COLOR_BG, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(_menu, LV_OPA_COVER, LV_PART_MAIN);
 
     // Disable the back button
     lv_menu_set_mode_root_back_button(_menu, LV_MENU_ROOT_BACK_BUTTON_DISABLED);
     lv_obj_t *header = lv_menu_get_main_header(_menu);
     lv_obj_set_flex_align(header, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_text_font(header, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(header, lv_color_hex(0xF99B7D), 0);
+    lv_obj_set_style_text_font(header, ZSW_FONT_TEXT, 0);
+    lv_obj_set_style_text_color(header, ZSW_COLOR_TEXT_DIM, 0);
+    lv_obj_set_style_pad_bottom(header, 6, 0);
     lv_obj_t *header_title = lv_obj_get_child(header, 1);
-    lv_obj_set_width(header_title, 140);
+    lv_obj_set_width(header_title, 110);
     lv_obj_set_style_text_align(header_title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_t *back_btn = lv_menu_get_main_header_back_button(_menu);
     lv_obj_add_flag(back_btn, LV_OBJ_FLAG_IGNORE_LAYOUT);
-    lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 12, 0);
+    lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 22, -3);
 
     // Main page
     _mainPage = lv_menu_page_create(_menu, "Settings");
+    style_page(_mainPage);
 
     for (int i = 0; i < num_pages; i++) {
         sub_page = lv_menu_page_create(_menu, pages[i].name);
         lv_obj_set_user_data(sub_page, &pages[i]);
-        lv_obj_set_scrollbar_mode(sub_page, LV_SCROLLBAR_MODE_OFF);
+        style_page(sub_page);
         // Create a main page item
         cont = lv_menu_cont_create(_mainPage);
-        lv_obj_add_style(cont, &outline_primary, LV_STATE_FOCUS_KEY);
+        lv_obj_add_style(cont, &style_row, 0);
+        lv_obj_add_style(cont, &style_row_pressed, LV_STATE_PRESSED);
+        lv_obj_add_style(cont, &style_row_focused, LV_STATE_FOCUS_KEY);
+        if (pages[i].icon) {
+            create_icon_disc(cont, pages[i].icon, lv_color_hex(pages[i].color));
+        }
         label = lv_label_create(cont);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(label, ZSW_FONT_BODY, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_label_set_text(label, pages[i].name);
+        lv_obj_set_flex_grow(label, 1);
+        label = lv_label_create(cont);
+        lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT_DISABLED, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_label_set_text(label, LV_SYMBOL_RIGHT);
         lv_menu_set_load_page_event(_menu, cont, sub_page);
         lv_group_add_obj(input_group, cont);
         lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
