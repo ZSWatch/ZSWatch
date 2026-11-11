@@ -11,7 +11,7 @@ import struct
 
 from PIL import Image
 
-OUT = "src/images/binaries/S/face_sand_penguin_{}_{}.bin"
+OUT = "src/images/binaries/S/face_sand_peng_{}_{}.bin"
 # Display pixels per pixel of the drawing: the same as a grain of the watchface
 SCALE = 2
 
@@ -125,8 +125,8 @@ def main():
     for name, rows in POSES.items():
         assert len({len(row) for row in rows}) == 1, name
         right = build(rows)
-        write_rgb565a8(right, OUT.format(name, "right"))
-        write_rgb565a8(right.transpose(Image.FLIP_LEFT_RIGHT), OUT.format(name, "left"))
+        write_rgb565a8(right, OUT.format(name, "r"))
+        write_rgb565a8(right.transpose(Image.FLIP_LEFT_RIGHT), OUT.format(name, "l"))
         images.append(right)
 
     if args.preview:

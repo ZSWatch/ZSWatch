@@ -56,14 +56,14 @@ LOG_MODULE_REGISTER(watchface_sand, LOG_LEVEL_INF);
 
 ZSW_LV_IMG_DECLARE(face_sand_preview);
 ZSW_LV_IMG_DECLARE(face_sand_sky);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_a_right);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_a_left);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_b_right);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_walk_b_left);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_slide_right);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_slide_left);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_fallen_right);
-ZSW_LV_IMG_DECLARE(face_sand_penguin_fallen_left);
+ZSW_LV_IMG_DECLARE(face_sand_peng_walk_a_r);
+ZSW_LV_IMG_DECLARE(face_sand_peng_walk_a_l);
+ZSW_LV_IMG_DECLARE(face_sand_peng_walk_b_r);
+ZSW_LV_IMG_DECLARE(face_sand_peng_walk_b_l);
+ZSW_LV_IMG_DECLARE(face_sand_peng_slide_r);
+ZSW_LV_IMG_DECLARE(face_sand_peng_slide_l);
+ZSW_LV_IMG_DECLARE(face_sand_peng_fallen_r);
+ZSW_LV_IMG_DECLARE(face_sand_peng_fallen_l);
 
 static void reset_cached_values(void);
 
@@ -369,14 +369,14 @@ static void penguin_show(void)
     int sink = 0;
 
     if (penguin.state == PENGUIN_FALLEN) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_fallen_right) : ZSW_LV_IMG_USE(face_sand_penguin_fallen_left);
+        src = right ? ZSW_LV_IMG_USE(face_sand_peng_fallen_r) : ZSW_LV_IMG_USE(face_sand_peng_fallen_l);
         sink = PENGUIN_FALLEN_SINK_PX;
     } else if (penguin.state == PENGUIN_SLIDING || penguin.airborne) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_slide_right) : ZSW_LV_IMG_USE(face_sand_penguin_slide_left);
+        src = right ? ZSW_LV_IMG_USE(face_sand_peng_slide_r) : ZSW_LV_IMG_USE(face_sand_peng_slide_l);
     } else if ((penguin.frames / PENGUIN_WADDLE_FRAMES) & 1) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_walk_b_right) : ZSW_LV_IMG_USE(face_sand_penguin_walk_b_left);
+        src = right ? ZSW_LV_IMG_USE(face_sand_peng_walk_b_r) : ZSW_LV_IMG_USE(face_sand_peng_walk_b_l);
     } else {
-        src = right ? ZSW_LV_IMG_USE(face_sand_penguin_walk_a_right) : ZSW_LV_IMG_USE(face_sand_penguin_walk_a_left);
+        src = right ? ZSW_LV_IMG_USE(face_sand_peng_walk_a_r) : ZSW_LV_IMG_USE(face_sand_peng_walk_a_l);
     }
 
     if (src != penguin.shown) {
