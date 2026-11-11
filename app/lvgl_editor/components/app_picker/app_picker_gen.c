@@ -57,7 +57,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
         lv_style_set_width(&style_root, 240);
         lv_style_set_height(&style_root, 240);
         lv_style_set_bg_color(&style_root, lv_color_hex(0x000000));
-        lv_style_set_bg_opa(&style_root, 210);
+        lv_style_set_bg_opa(&style_root, 255);
         lv_style_set_border_width(&style_root, 0);
         lv_style_set_pad_all(&style_root, 0);
 
@@ -70,48 +70,49 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
 
         lv_style_init(&style_app_slot);
         lv_style_set_width(&style_app_slot, 57);
-        lv_style_set_height(&style_app_slot, 70);
+        lv_style_set_height(&style_app_slot, 72);
         lv_style_set_bg_opa(&style_app_slot, 0);
         lv_style_set_border_width(&style_app_slot, 0);
         lv_style_set_pad_all(&style_app_slot, 0);
 
         lv_style_init(&style_app_icon_bg);
-        lv_style_set_width(&style_app_icon_bg, 55);
-        lv_style_set_height(&style_app_icon_bg, 55);
+        lv_style_set_width(&style_app_icon_bg, 56);
+        lv_style_set_height(&style_app_icon_bg, 56);
         lv_style_set_radius(&style_app_icon_bg, 28);
-        lv_style_set_bg_opa(&style_app_icon_bg, 255);
+        lv_style_set_bg_opa(&style_app_icon_bg, 0);
         lv_style_set_border_width(&style_app_icon_bg, 0);
         lv_style_set_pad_all(&style_app_icon_bg, 0);
 
         lv_style_init(&style_app_icon_img);
-        lv_style_set_width(&style_app_icon_img, 40);
-        lv_style_set_height(&style_app_icon_img, 40);
+        lv_style_set_width(&style_app_icon_img, 56);
+        lv_style_set_height(&style_app_icon_img, 56);
 
         lv_style_init(&style_app_label);
         lv_style_set_text_align(&style_app_label, LV_TEXT_ALIGN_CENTER);
         lv_style_set_width(&style_app_label, 60);
-        lv_style_set_text_color(&style_app_label, lv_color_hex(0xFFBAAF));
+        lv_style_set_text_color(&style_app_label, lv_color_hex(0xFFFFFF));
         lv_style_set_text_font(&style_app_label, montserrat_12);
 
         lv_style_init(&style_folder_overlay);
         lv_style_set_width(&style_folder_overlay, 240);
         lv_style_set_height(&style_folder_overlay, 240);
         lv_style_set_bg_color(&style_folder_overlay, lv_color_hex(0x000000));
-        lv_style_set_bg_opa(&style_folder_overlay, 205);
+        lv_style_set_bg_opa(&style_folder_overlay, 255);
         lv_style_set_border_width(&style_folder_overlay, 0);
         lv_style_set_pad_all(&style_folder_overlay, 0);
 
         lv_style_init(&style_folder_title);
         lv_style_set_text_align(&style_folder_title, LV_TEXT_ALIGN_CENTER);
-        lv_style_set_text_color(&style_folder_title, lv_color_hex(0xffffff));
+        lv_style_set_text_color(&style_folder_title, lv_color_hex(0xA0A6B4));
+        lv_style_set_text_font(&style_folder_title, montserrat_14);
 
         lv_style_init(&style_folder_grid);
         lv_style_set_layout(&style_folder_grid, LV_LAYOUT_FLEX);
         lv_style_set_flex_flow(&style_folder_grid, LV_FLEX_FLOW_ROW_WRAP);
         lv_style_set_flex_main_place(&style_folder_grid, LV_FLEX_ALIGN_CENTER);
         lv_style_set_flex_cross_place(&style_folder_grid, LV_FLEX_ALIGN_CENTER);
-        lv_style_set_pad_all(&style_folder_grid, 8);
-        lv_style_set_pad_row(&style_folder_grid, 8);
+        lv_style_set_pad_all(&style_folder_grid, 0);
+        lv_style_set_pad_row(&style_folder_grid, 2);
         lv_style_set_pad_column(&style_folder_grid, 8);
         lv_style_set_bg_opa(&style_folder_grid, 0);
         lv_style_set_border_width(&style_folder_grid, 0);
@@ -136,30 +137,31 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
         lv_style_init(&style_folder_app_label);
         lv_style_set_text_align(&style_folder_app_label, LV_TEXT_ALIGN_CENTER);
         lv_style_set_width(&style_folder_app_label, 60);
-        lv_style_set_text_color(&style_folder_app_label, lv_color_hex(0xFFBAAF));
+        lv_style_set_text_color(&style_folder_app_label, lv_color_hex(0xFFFFFF));
         lv_style_set_text_font(&style_folder_app_label, montserrat_12);
 
         lv_style_init(&style_folder_close);
-        lv_style_set_width(&style_folder_close, 55);
-        lv_style_set_height(&style_folder_close, 55);
-        lv_style_set_radius(&style_folder_close, 28);
-        lv_style_set_bg_color(&style_folder_close, lv_color_hex(0x1e2028));
+        lv_style_set_width(&style_folder_close, 44);
+        lv_style_set_height(&style_folder_close, 44);
+        lv_style_set_radius(&style_folder_close, 22);
+        lv_style_set_bg_color(&style_folder_close, lv_color_hex(0x262A33));
         lv_style_set_bg_opa(&style_folder_close, 255);
         lv_style_set_border_width(&style_folder_close, 0);
         lv_style_set_pad_all(&style_folder_close, 0);
 
         lv_style_init(&style_nav_arrow);
-        lv_style_set_width(&style_nav_arrow, 28);
-        lv_style_set_height(&style_nav_arrow, 90);
-        lv_style_set_radius(&style_nav_arrow, 14);
-        lv_style_set_bg_color(&style_nav_arrow, lv_color_hex(0x1e2028));
+        lv_style_set_width(&style_nav_arrow, 24);
+        lv_style_set_height(&style_nav_arrow, 64);
+        lv_style_set_radius(&style_nav_arrow, 12);
+        lv_style_set_bg_color(&style_nav_arrow, lv_color_hex(0x16181D));
         lv_style_set_bg_opa(&style_nav_arrow, 255);
+        lv_style_set_shadow_width(&style_nav_arrow, 0);
         lv_style_set_border_width(&style_nav_arrow, 0);
         lv_style_set_pad_all(&style_nav_arrow, 0);
 
         lv_style_init(&style_nav_arrow_label);
-        lv_style_set_text_color(&style_nav_arrow_label, lv_color_hex(0xFFBAAF));
-        lv_style_set_text_font(&style_nav_arrow_label, montserrat_14);
+        lv_style_set_text_color(&style_nav_arrow_label, lv_color_hex(0xA0A6B4));
+        lv_style_set_text_font(&style_nav_arrow_label, montserrat_12);
 
         style_inited = true;
     }
@@ -196,7 +198,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_0 = lv_label_create(app_slot_0);
     lv_obj_set_name(app_label_0, "app_label_0");
     lv_obj_set_align(app_label_0, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_0, 2);
+    lv_obj_set_y(app_label_0, 0);
     lv_label_set_text(app_label_0, "App 0");
     lv_obj_set_flag(app_label_0, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_0, LV_LABEL_LONG_MODE_CLIP);
@@ -226,7 +228,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_1 = lv_label_create(app_slot_1);
     lv_obj_set_name(app_label_1, "app_label_1");
     lv_obj_set_align(app_label_1, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_1, 2);
+    lv_obj_set_y(app_label_1, 0);
     lv_label_set_text(app_label_1, "App 1");
     lv_obj_set_flag(app_label_1, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_1, LV_LABEL_LONG_MODE_CLIP);
@@ -256,7 +258,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_2 = lv_label_create(app_slot_2);
     lv_obj_set_name(app_label_2, "app_label_2");
     lv_obj_set_align(app_label_2, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_2, 2);
+    lv_obj_set_y(app_label_2, 0);
     lv_label_set_text(app_label_2, "App 2");
     lv_obj_set_flag(app_label_2, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_2, LV_LABEL_LONG_MODE_CLIP);
@@ -286,7 +288,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_3 = lv_label_create(app_slot_3);
     lv_obj_set_name(app_label_3, "app_label_3");
     lv_obj_set_align(app_label_3, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_3, 2);
+    lv_obj_set_y(app_label_3, 0);
     lv_label_set_text(app_label_3, "App 3");
     lv_obj_set_flag(app_label_3, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_3, LV_LABEL_LONG_MODE_CLIP);
@@ -316,7 +318,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_4 = lv_label_create(app_slot_4);
     lv_obj_set_name(app_label_4, "app_label_4");
     lv_obj_set_align(app_label_4, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_4, 2);
+    lv_obj_set_y(app_label_4, 0);
     lv_label_set_text(app_label_4, "App 4");
     lv_obj_set_flag(app_label_4, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_4, LV_LABEL_LONG_MODE_CLIP);
@@ -346,7 +348,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_5 = lv_label_create(app_slot_5);
     lv_obj_set_name(app_label_5, "app_label_5");
     lv_obj_set_align(app_label_5, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_5, 2);
+    lv_obj_set_y(app_label_5, 0);
     lv_label_set_text(app_label_5, "App 5");
     lv_obj_set_flag(app_label_5, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_5, LV_LABEL_LONG_MODE_CLIP);
@@ -376,7 +378,7 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * app_label_6 = lv_label_create(app_slot_6);
     lv_obj_set_name(app_label_6, "app_label_6");
     lv_obj_set_align(app_label_6, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(app_label_6, 2);
+    lv_obj_set_y(app_label_6, 0);
     lv_label_set_text(app_label_6, "Center");
     lv_obj_set_flag(app_label_6, LV_OBJ_FLAG_CLICKABLE, false);
     lv_label_set_long_mode(app_label_6, LV_LABEL_LONG_MODE_CLIP);
@@ -422,21 +424,21 @@ lv_obj_t * app_picker_create(lv_obj_t * parent)
     lv_obj_t * folder_title = lv_label_create(folder_overlay);
     lv_obj_set_name(folder_title, "folder_title");
     lv_obj_set_align(folder_title, LV_ALIGN_TOP_MID);
-    lv_obj_set_y(folder_title, 20);
+    lv_obj_set_y(folder_title, 16);
     lv_label_bind_text(folder_title, &app_picker_folder_title, NULL);
     lv_obj_add_style(folder_title, &style_folder_title, 0);
     
     lv_obj_t * folder_grid = lv_obj_create(folder_overlay);
     lv_obj_set_name(folder_grid, "folder_grid");
     lv_obj_set_align(folder_grid, LV_ALIGN_CENTER);
-    lv_obj_set_y(folder_grid, -10);
+    lv_obj_set_y(folder_grid, -6);
     lv_obj_set_flag(folder_grid, LV_OBJ_FLAG_SCROLLABLE, false);
     lv_obj_add_style(folder_grid, &style_folder_grid, 0);
     
     lv_obj_t * folder_close_btn = lv_button_create(folder_overlay);
     lv_obj_set_name(folder_close_btn, "folder_close_btn");
     lv_obj_set_align(folder_close_btn, LV_ALIGN_BOTTOM_MID);
-    lv_obj_set_y(folder_close_btn, -15);
+    lv_obj_set_y(folder_close_btn, -6);
     lv_obj_set_flag(folder_close_btn, LV_OBJ_FLAG_CLICKABLE, true);
     lv_obj_add_style(folder_close_btn, &style_folder_close, 0);
     lv_obj_t * folder_close_icon = lv_image_create(folder_close_btn);
