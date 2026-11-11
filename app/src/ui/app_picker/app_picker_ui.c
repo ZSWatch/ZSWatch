@@ -23,6 +23,7 @@
 #include "lvgl_editor_gen.h"
 #include "managers/zsw_app_manager.h"
 #include "ui/utils/zsw_ui_utils.h"
+#include "ui/zsw_ui_theme.h"
 
 LOG_MODULE_REGISTER(app_picker_ui, LOG_LEVEL_DBG);
 
@@ -35,7 +36,12 @@ LOG_MODULE_REGISTER(app_picker_ui, LOG_LEVEL_DBG);
 /* Maximum number of picker items (apps + folders) */
 #define MAX_PICKER_ITEMS 32
 
-ZSW_LV_IMG_DECLARE(close_icon);
+/* Icons made by scripts/generate_app_icons.py are this size and include their own disc */
+#define FULL_ICON_SIZE 56
+
+/* The slots of a page appear one after the other, each sliding up a few pixels */
+#define SLOT_ANIM_OFFSET_PX 10
+#define SLOT_ANIM_STAGGER_MS 20
 
 typedef enum {
     PICKER_ITEM_APP,
@@ -94,6 +100,7 @@ static void folder_app_clicked_cb(lv_event_t *e);
 static void next_page(void);
 static void prev_page(void);
 static void on_swipe_event(lv_event_t *e);
+static void add_press_feedback(lv_obj_t *slot);
 
 /**
  * @brief Cache object references from the XML-generated UI
@@ -128,6 +135,7 @@ static void cache_object_references(void)
             }
 
             lv_obj_set_user_data(app_slots[i], (void *)(intptr_t)i);
+            add_press_feedback(app_slots[i]);
         }
     }
 
@@ -139,7 +147,8 @@ static void cache_object_references(void)
         if (folder_close_btn != NULL) {
             folder_close_icon = lv_obj_get_child(folder_close_btn, 0);
             if (folder_close_icon != NULL) {
-                lv_image_set_src(folder_close_icon, ZSW_LV_IMG_USE(close_icon));
+                lv_image_set_src(folder_close_icon, LV_SYMBOL_CLOSE);
+                lv_obj_set_style_text_color(folder_close_icon, ZSW_COLOR_TEXT, LV_PART_MAIN);
             }
         }
     }
@@ -225,6 +234,70 @@ static void on_swipe_event(lv_event_t *e)
     lv_indev_wait_release(lv_indev_get_act());
 }
 
+/**
+ * @brief Show an icon, with a dark disc behind it if it is one of the older small ones.
+ */
+static void set_icon(lv_obj_t *icon_bg, lv_obj_t *icon, const void *src)
+{
+    lv_image_header_t header;
+    bool has_disc = (lv_image_decoder_get_info(src, &header) == LV_RESULT_OK) && (header.w >= FULL_ICON_SIZE);
+
+    lv_image_set_src(icon, src);
+    lv_obj_set_style_bg_color(icon_bg, ZSW_COLOR_SURFACE_HIGH, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(icon_bg, has_disc ? LV_OPA_TRANSP : LV_OPA_COVER, LV_PART_MAIN);
+}
+
+static void slot_anim_exec(void *var, int32_t value)
+{
+    lv_obj_t *slot = var;
+    lv_obj_t *icon = lv_obj_get_child(lv_obj_get_child(slot, 0), 0);
+
+    /* Only the slot itself is redrawn, and no layer is needed as with the opa style */
+    lv_obj_set_style_translate_y(slot, SLOT_ANIM_OFFSET_PX - (value * SLOT_ANIM_OFFSET_PX) / 255, LV_PART_MAIN);
+    lv_obj_set_style_image_opa(icon, value, LV_PART_MAIN);
+    lv_obj_set_style_text_opa(slot, value, LV_PART_MAIN);
+}
+
+static void animate_slots_in(void)
+{
+    int delay = 0;
+
+    for (int i = 0; i < NUM_SLOTS; i++) {
+        if (app_slots[i] == NULL || lv_obj_has_flag(app_slots[i], LV_OBJ_FLAG_HIDDEN)) {
+            continue;
+        }
+
+        lv_anim_t anim;
+        lv_anim_init(&anim);
+        lv_anim_set_var(&anim, app_slots[i]);
+        lv_anim_set_exec_cb(&anim, slot_anim_exec);
+        lv_anim_set_values(&anim, 0, 255);
+        lv_anim_set_duration(&anim, ZSW_ANIM_TIME);
+        lv_anim_set_delay(&anim, delay);
+        lv_anim_set_early_apply(&anim, true);
+        lv_anim_set_path_cb(&anim, lv_anim_path_ease_out);
+        lv_anim_start(&anim);
+
+        delay += SLOT_ANIM_STAGGER_MS;
+    }
+}
+
+static void on_slot_pressed_event(lv_event_t *e)
+{
+    lv_obj_t *icon = lv_obj_get_child(lv_obj_get_child(lv_event_get_target_obj(e), 0), 0);
+    bool pressed = lv_event_get_code(e) == LV_EVENT_PRESSED;
+
+    lv_obj_set_style_image_recolor(icon, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_image_recolor_opa(icon, pressed ? LV_OPA_40 : LV_OPA_TRANSP, LV_PART_MAIN);
+}
+
+static void add_press_feedback(lv_obj_t *slot)
+{
+    lv_obj_add_event_cb(slot, on_slot_pressed_event, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(slot, on_slot_pressed_event, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(slot, on_slot_pressed_event, LV_EVENT_PRESS_LOST, NULL);
+}
+
 static void populate_slot(int slot_index, picker_item_t *item)
 {
     if (slot_index < 0 || slot_index >= NUM_SLOTS) {
@@ -247,32 +320,20 @@ static void populate_slot(int slot_index, picker_item_t *item)
     if (item->type == PICKER_ITEM_APP) {
         application_t *app = item->app;
 
-        if (app_icons[slot_index] && app->icon) {
-            lv_image_set_src(app_icons[slot_index], app->icon);
-            lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_TRANSP, LV_PART_MAIN);
+        if (app_icons[slot_index] && app_icon_bgs[slot_index] && app->icon) {
+            set_icon(app_icon_bgs[slot_index], app_icons[slot_index], app->icon);
         }
 
         if (app_labels[slot_index] && app->name) {
             lv_label_set_text(app_labels[slot_index], app->name);
         }
-
-        if (app_icon_bgs[slot_index]) {
-            lv_obj_set_style_bg_color(app_icon_bgs[slot_index],
-                                      lv_color_hex(0x1e2028), LV_PART_MAIN);
-        }
     } else {
-        if (app_icons[slot_index] && item->folder.icon) {
-            lv_image_set_src(app_icons[slot_index], item->folder.icon);
-            lv_obj_set_style_image_recolor_opa(app_icons[slot_index], LV_OPA_TRANSP, LV_PART_MAIN);
+        if (app_icons[slot_index] && app_icon_bgs[slot_index] && item->folder.icon) {
+            set_icon(app_icon_bgs[slot_index], app_icons[slot_index], item->folder.icon);
         }
 
         if (app_labels[slot_index] && item->folder.name) {
             lv_label_set_text(app_labels[slot_index], item->folder.name);
-        }
-
-        if (app_icon_bgs[slot_index]) {
-            lv_obj_set_style_bg_color(app_icon_bgs[slot_index],
-                                      item->folder.color, LV_PART_MAIN);
         }
     }
 }
@@ -296,6 +357,7 @@ static void populate_page(int page_index)
     lv_subject_set_int(&app_picker_page_index, current_page);
 
     update_nav_arrows();
+    animate_slots_in();
 }
 
 static void update_nav_arrows(void)
@@ -364,7 +426,7 @@ static void show_folder_contents(zsw_app_category_t category)
         application_t *app = zsw_app_manager_get_app(i);
         if (app && !app->hidden && app->category == category) {
             lv_obj_t *app_btn = lv_obj_create(folder_grid);
-            lv_obj_set_size(app_btn, 55, 70);
+            lv_obj_set_size(app_btn, 57, 72);
             lv_obj_set_style_bg_opa(app_btn, LV_OPA_TRANSP, LV_PART_MAIN);
             lv_obj_set_style_border_width(app_btn, 0, LV_PART_MAIN);
             lv_obj_set_style_pad_all(app_btn, 0, LV_PART_MAIN);
@@ -372,29 +434,32 @@ static void show_folder_contents(zsw_app_category_t category)
             lv_obj_add_flag(app_btn, LV_OBJ_FLAG_CLICKABLE);
 
             lv_obj_t *icon_bg = lv_obj_create(app_btn);
-            lv_obj_set_size(icon_bg, 55, 55);
+            lv_obj_set_size(icon_bg, FULL_ICON_SIZE, FULL_ICON_SIZE);
             lv_obj_align(icon_bg, LV_ALIGN_TOP_MID, 0, 0);
-            lv_obj_set_style_radius(icon_bg, 28, LV_PART_MAIN);
-            lv_obj_set_style_bg_color(icon_bg, lv_color_hex(0x1e2028), LV_PART_MAIN);
+            lv_obj_set_style_radius(icon_bg, LV_RADIUS_CIRCLE, LV_PART_MAIN);
             lv_obj_set_style_border_width(icon_bg, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(icon_bg, 0, LV_PART_MAIN);
             lv_obj_remove_flag(icon_bg, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_remove_flag(icon_bg, LV_OBJ_FLAG_CLICKABLE);
 
+            lv_obj_t *icon = lv_image_create(icon_bg);
+            lv_obj_center(icon);
             if (app->icon) {
-                lv_obj_t *icon = lv_image_create(icon_bg);
-                lv_image_set_src(icon, app->icon);
-                lv_obj_center(icon);
+                set_icon(icon_bg, icon, app->icon);
             }
 
             lv_obj_t *label = lv_label_create(app_btn);
             lv_label_set_text(label, app->name);
             lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, 0);
-            lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+            lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_CLIP);
+            lv_obj_set_style_text_font(label, ZSW_FONT_CAPTION, LV_PART_MAIN);
+            lv_obj_set_style_text_color(label, ZSW_COLOR_TEXT, LV_PART_MAIN);
             lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
             lv_obj_set_width(label, 60);
 
             lv_obj_set_user_data(app_btn, app);
             lv_obj_add_event_cb(app_btn, folder_app_clicked_cb, LV_EVENT_SHORT_CLICKED, NULL);
+            add_press_feedback(app_btn);
         }
     }
 
