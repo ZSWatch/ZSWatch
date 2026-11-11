@@ -77,8 +77,8 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
     gain_label = lv_label_create(app_root_container);
     lv_label_set_text_fmt(gain_label, "Gain: %.1f", initial_gain);
     lv_obj_set_style_text_font(gain_label, ZSW_FONT_TEXT, 0);
-    lv_obj_set_style_text_color(gain_label, lv_color_white(), 0);
-    lv_obj_align(gain_label, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_text_color(gain_label, ZSW_COLOR_TEXT_DIM, 0);
+    lv_obj_align(gain_label, LV_ALIGN_TOP_MID, 0, 14);
 
     spectrum_obj = lv_obj_create(app_root_container);
     lv_obj_remove_flag(spectrum_obj, LV_OBJ_FLAG_SCROLLABLE);
@@ -95,33 +95,37 @@ lv_obj_t *mic_app_ui_create(lv_obj_t *parent, watch_ui_toggle_cb_t toggle_cb,
     lv_obj_align(status_label, LV_ALIGN_BOTTOM_MID, 0, -50);
 
     lv_obj_t *toggle_button = lv_btn_create(app_root_container);
-    lv_obj_set_size(toggle_button, 80, 30);
+    lv_obj_set_size(toggle_button, 84, 32);
     lv_obj_align(toggle_button, LV_ALIGN_BOTTOM_MID, 0, -17);
     lv_obj_add_event_cb(toggle_button, toggle_button_event_cb, LV_EVENT_CLICKED, NULL);
 
     button_label = lv_label_create(toggle_button);
     lv_label_set_text(button_label, "Start");
-    lv_obj_set_style_text_font(button_label, ZSW_FONT_CAPTION, 0);
+    lv_obj_set_style_text_font(button_label, ZSW_FONT_TEXT, 0);
     lv_obj_center(button_label);
 
     lv_obj_t *gain_minus_btn = lv_btn_create(app_root_container);
-    lv_obj_set_size(gain_minus_btn, 30, 25);
+    lv_obj_set_size(gain_minus_btn, 34, 34);
+    lv_obj_set_style_bg_color(gain_minus_btn, ZSW_COLOR_SURFACE_HIGH, 0);
+    lv_obj_set_style_pad_all(gain_minus_btn, 0, 0);
     lv_obj_align_to(gain_minus_btn, toggle_button, LV_ALIGN_OUT_LEFT_MID, -25, -25);
     lv_obj_add_event_cb(gain_minus_btn, gain_minus_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *minus_label = lv_label_create(gain_minus_btn);
     lv_label_set_text(minus_label, LV_SYMBOL_MINUS);
-    lv_obj_set_style_text_font(minus_label, ZSW_FONT_TITLE, 0);
+    lv_obj_set_style_text_font(minus_label, ZSW_FONT_BODY, 0);
     lv_obj_center(minus_label);
 
     lv_obj_t *gain_plus_btn = lv_btn_create(app_root_container);
-    lv_obj_set_size(gain_plus_btn, 30, 25);
+    lv_obj_set_size(gain_plus_btn, 34, 34);
+    lv_obj_set_style_bg_color(gain_plus_btn, ZSW_COLOR_SURFACE_HIGH, 0);
+    lv_obj_set_style_pad_all(gain_plus_btn, 0, 0);
     lv_obj_align_to(gain_plus_btn, toggle_button, LV_ALIGN_OUT_RIGHT_MID, 25, -25);
     lv_obj_add_event_cb(gain_plus_btn, gain_plus_event_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *plus_label = lv_label_create(gain_plus_btn);
     lv_label_set_text(plus_label, LV_SYMBOL_PLUS);
-    lv_obj_set_style_text_font(plus_label, ZSW_FONT_TITLE, 0);
+    lv_obj_set_style_text_font(plus_label, ZSW_FONT_BODY, 0);
     lv_obj_center(plus_label);
 
     memset(current_bar_vals, 0, sizeof(current_bar_vals));

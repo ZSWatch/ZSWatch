@@ -189,7 +189,7 @@ static void entry_delete_btn_cb(lv_event_t *e)
 
         lv_obj_set_size(ui.delete_msgbox, 180, LV_SIZE_CONTENT);
         lv_obj_set_style_radius(ui.delete_msgbox, 5, 0);
-        lv_obj_set_style_bg_color(ui.delete_msgbox, lv_color_hex(0x2C3333), 0);
+        lv_obj_set_style_bg_color(ui.delete_msgbox, ZSW_COLOR_SURFACE_HIGH, 0);
         lv_obj_clear_flag(ui.delete_msgbox, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(ui.delete_msgbox, LV_SCROLLBAR_MODE_OFF);
         lv_obj_center(ui.delete_msgbox);
@@ -216,7 +216,7 @@ static void create_list_screen(void)
     ui.storage_label = lv_label_create(ui.list_screen);
     lv_label_set_text(ui.storage_label, "");
     lv_obj_set_style_text_font(ui.storage_label, ZSW_FONT_CAPTION, 0);
-    lv_obj_set_style_text_color(ui.storage_label, zsw_color_gray(), 0);
+    lv_obj_set_style_text_color(ui.storage_label, ZSW_COLOR_TEXT_DIM, 0);
     lv_obj_align(ui.storage_label, LV_ALIGN_TOP_MID, 0, 32);
 
     /* Scrollable list container */
@@ -234,7 +234,7 @@ static void create_list_screen(void)
     ui.empty_label = lv_label_create(ui.list_container);
     lv_label_set_text(ui.empty_label, LV_SYMBOL_AUDIO "\nNo recordings\nTap to record");
     lv_obj_set_style_text_align(ui.empty_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ui.empty_label, zsw_color_gray(), 0);
+    lv_obj_set_style_text_color(ui.empty_label, ZSW_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(ui.empty_label, ZSW_FONT_TEXT, 0);
     lv_obj_center(ui.empty_label);
 
@@ -242,7 +242,7 @@ static void create_list_screen(void)
     ui.record_btn = lv_btn_create(ui.list_screen);
     lv_obj_set_size(ui.record_btn, 50, 50);
     lv_obj_set_style_radius(ui.record_btn, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(ui.record_btn, zsw_color_red(), 0);
+    lv_obj_set_style_bg_color(ui.record_btn, ZSW_COLOR_RED, 0);
     lv_obj_set_style_bg_opa(ui.record_btn, LV_OPA_COVER, 0);
     lv_obj_align(ui.record_btn, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_obj_add_event_cb(ui.record_btn, record_btn_cb, LV_EVENT_CLICKED, NULL);
@@ -266,7 +266,7 @@ static void create_recording_screen(void)
     ui.rec_indicator = lv_obj_create(ui.rec_screen);
     lv_obj_set_size(ui.rec_indicator, 20, 20);
     lv_obj_set_style_radius(ui.rec_indicator, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(ui.rec_indicator, zsw_color_red(), 0);
+    lv_obj_set_style_bg_color(ui.rec_indicator, ZSW_COLOR_RED, 0);
     lv_obj_set_style_bg_opa(ui.rec_indicator, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(ui.rec_indicator, 0, 0);
     lv_obj_align(ui.rec_indicator, LV_ALIGN_TOP_MID, 0, 40);
@@ -286,22 +286,22 @@ static void create_recording_screen(void)
     lv_obj_set_size(ui.level_bar, 140, 8);
     lv_bar_set_range(ui.level_bar, 0, 100);
     lv_bar_set_value(ui.level_bar, 0, LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(ui.level_bar, zsw_color_dark_gray(), 0);
-    lv_obj_set_style_bg_color(ui.level_bar, zsw_color_blue(), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(ui.level_bar, ZSW_COLOR_SURFACE, 0);
+    lv_obj_set_style_bg_color(ui.level_bar, ZSW_COLOR_ACCENT, LV_PART_INDICATOR);
     lv_obj_align(ui.level_bar, LV_ALIGN_CENTER, 0, -10);
 
     /* Remaining time label */
     ui.remaining_label = lv_label_create(ui.rec_screen);
     lv_label_set_text(ui.remaining_label, "");
     lv_obj_set_style_text_font(ui.remaining_label, ZSW_FONT_CAPTION, 0);
-    lv_obj_set_style_text_color(ui.remaining_label, zsw_color_gray(), 0);
+    lv_obj_set_style_text_color(ui.remaining_label, ZSW_COLOR_TEXT_DIM, 0);
     lv_obj_align(ui.remaining_label, LV_ALIGN_CENTER, 0, 15);
 
     /* Stop button */
     ui.stop_btn = lv_btn_create(ui.rec_screen);
     lv_obj_set_size(ui.stop_btn, 60, 60);
     lv_obj_set_style_radius(ui.stop_btn, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(ui.stop_btn, zsw_color_red(), 0);
+    lv_obj_set_style_bg_color(ui.stop_btn, ZSW_COLOR_RED, 0);
     lv_obj_set_style_bg_opa(ui.stop_btn, LV_OPA_COVER, 0);
     lv_obj_align(ui.stop_btn, LV_ALIGN_BOTTOM_MID, 0, -20);
     lv_obj_add_event_cb(ui.stop_btn, stop_btn_cb, LV_EVENT_CLICKED, NULL);
@@ -369,7 +369,7 @@ void voice_memo_ui_show_recording(void)
     /* Reset display, including what show_saving changed */
     lv_obj_remove_flag(ui.stop_btn, LV_OBJ_FLAG_HIDDEN);
     lv_obj_remove_flag(ui.level_bar, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_bg_color(ui.rec_indicator, zsw_color_red(), 0);
+    lv_obj_set_style_bg_color(ui.rec_indicator, ZSW_COLOR_RED, 0);
     lv_obj_set_style_opa(ui.rec_indicator, LV_OPA_COVER, 0);
     lv_label_set_text(ui.time_label, "00:00");
     lv_bar_set_value(ui.level_bar, 0, LV_ANIM_OFF);
@@ -386,7 +386,7 @@ void voice_memo_ui_show_saving(void)
     // Hide the stop button so repeated taps can't land on anything while saving.
     lv_obj_add_flag(ui.stop_btn, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ui.level_bar, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_bg_color(ui.rec_indicator, zsw_color_gray(), 0);
+    lv_obj_set_style_bg_color(ui.rec_indicator, ZSW_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_opa(ui.rec_indicator, LV_OPA_COVER, 0);
     lv_label_set_text(ui.remaining_label, "Saving...");
 }
@@ -477,7 +477,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
 
         lv_obj_t *entry = lv_obj_create(ui.list_container);
         lv_obj_set_size(entry, lv_disp_get_hor_res(NULL) - 40, 44);
-        lv_obj_set_style_bg_color(entry, zsw_color_dark_gray(), 0);
+        lv_obj_set_style_bg_color(entry, ZSW_COLOR_SURFACE, 0);
         lv_obj_set_style_bg_opa(entry, LV_OPA_COVER, 0);
         lv_obj_set_style_radius(entry, 8, 0);
         lv_obj_set_style_pad_all(entry, 6, 0);
@@ -487,7 +487,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
         lv_obj_t *del_btn = lv_button_create(entry);
         lv_obj_set_size(del_btn, 28, 28);
         lv_obj_align(del_btn, LV_ALIGN_RIGHT_MID, 0, 0);
-        lv_obj_set_style_bg_color(del_btn, zsw_color_red(), 0);
+        lv_obj_set_style_bg_color(del_btn, ZSW_COLOR_RED, 0);
         lv_obj_set_style_bg_opa(del_btn, LV_OPA_60, 0);
         lv_obj_set_style_radius(del_btn, 6, 0);
         lv_obj_set_style_pad_all(del_btn, 0, 0);
@@ -514,7 +514,7 @@ void voice_memo_ui_update_list(const zsw_recording_entry_t *entries, int count,
                               dur_s / 60, dur_s % 60,
                               entries[i].size_bytes / 1024);
         lv_obj_set_style_text_font(info, ZSW_FONT_CAPTION, 0);
-        lv_obj_set_style_text_color(info, zsw_color_gray(), 0);
+        lv_obj_set_style_text_color(info, ZSW_COLOR_TEXT_DIM, 0);
         lv_obj_align(info, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     }
 }
@@ -537,7 +537,7 @@ void voice_memo_ui_show_back_confirm(void)
 
     lv_obj_set_size(ui.back_confirm_msgbox, 180, LV_SIZE_CONTENT);
     lv_obj_set_style_radius(ui.back_confirm_msgbox, 5, 0);
-    lv_obj_set_style_bg_color(ui.back_confirm_msgbox, lv_color_hex(0x2C3333), 0);
+    lv_obj_set_style_bg_color(ui.back_confirm_msgbox, ZSW_COLOR_SURFACE_HIGH, 0);
     lv_obj_clear_flag(ui.back_confirm_msgbox, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scrollbar_mode(ui.back_confirm_msgbox, LV_SCROLLBAR_MODE_OFF);
     lv_obj_center(ui.back_confirm_msgbox);

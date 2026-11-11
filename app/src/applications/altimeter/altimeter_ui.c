@@ -2,6 +2,8 @@
 #include "ui/zsw_ui.h"
 #include "ui/zsw_ui_theme.h"
 
+#define ALTIMETER_COLOR lv_color_hex(0x2F9E6E)
+
 #define RUNOUT_DURATION_S 10
 
 static lv_obj_t *root_page = NULL;
@@ -33,7 +35,8 @@ void altimeter_ui_show(lv_obj_t *root)
 {
     root_page = lv_obj_create(root);
     lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(root_page, zsw_color_bg(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(root_page, ZSW_COLOR_BG, LV_PART_MAIN);
+    lv_obj_set_style_radius(root_page, 0, LV_PART_MAIN);
     lv_obj_set_style_border_width(root_page, 0, LV_PART_MAIN);
 
     // Altitude Number (Large Font)
@@ -44,7 +47,7 @@ void altimeter_ui_show(lv_obj_t *root)
 
     // Floors title, above the up/down counts
     floors_title_label = lv_label_create(root_page);
-    lv_obj_set_style_text_color(floors_title_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(floors_title_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
     lv_label_set_text(floors_title_label, "Floors");
     lv_obj_align(floors_title_label, LV_ALIGN_TOP_MID, 0, 66);
 
@@ -61,13 +64,13 @@ void altimeter_ui_show(lv_obj_t *root)
 
     // Raw Pressure text (Small, Gray), tucked above the calibration status
     pressure_label = lv_label_create(root_page);
-    lv_obj_set_style_text_color(pressure_label, zsw_color_gray(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(pressure_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
     lv_label_set_text(pressure_label, "-- hPa");
     lv_obj_align(pressure_label, LV_ALIGN_BOTTOM_MID, 0, -35);
 
     // Network Calibration Status
     status_label = lv_label_create(root_page);
-    lv_obj_set_style_text_color(status_label, zsw_color_red(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(status_label, ZSW_COLOR_WARNING, LV_PART_MAIN);
     lv_label_set_text(status_label, "Uncalibrated");
     lv_obj_align(status_label, LV_ALIGN_BOTTOM_MID, 0, -15); // Pushed to BOTTOM
 
@@ -77,11 +80,12 @@ void altimeter_ui_show(lv_obj_t *root)
     lv_obj_align(chart, LV_ALIGN_CENTER, 0, 15);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
     lv_obj_set_style_line_width(chart, 3, LV_PART_ITEMS);
-    lv_obj_set_style_bg_opa(chart, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(chart, ZSW_COLOR_SURFACE, LV_PART_MAIN);
+    lv_obj_set_style_border_width(chart, 0, LV_PART_MAIN);
+    lv_obj_set_style_radius(chart, ZSW_RADIUS_CARD, LV_PART_MAIN);
     lv_chart_set_point_count(chart, 24);
     lv_chart_set_div_line_count(chart, 0, 0);
-    lv_obj_set_style_line_color(chart, zsw_color_red(), LV_PART_ITEMS);
-    chart_series = lv_chart_add_series(chart, zsw_color_blue(), LV_CHART_AXIS_PRIMARY_Y);
+    chart_series = lv_chart_add_series(chart, ALTIMETER_COLOR, LV_CHART_AXIS_PRIMARY_Y);
 
     // Runout ring: shrinks over RUNOUT_DURATION_S while waiting for the first sample/calibration
     runout_arc = lv_arc_create(root_page);
@@ -92,9 +96,9 @@ void altimeter_ui_show(lv_obj_t *root)
     lv_arc_set_range(runout_arc, 0, 100);
     lv_arc_set_value(runout_arc, 100);
     lv_obj_set_style_arc_width(runout_arc, 4, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(runout_arc, zsw_color_gray(), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(runout_arc, ZSW_COLOR_SURFACE_HIGH, LV_PART_MAIN);
     lv_obj_set_style_arc_width(runout_arc, 4, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_color(runout_arc, zsw_color_blue(), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(runout_arc, ALTIMETER_COLOR, LV_PART_INDICATOR);
     lv_obj_remove_style(runout_arc, NULL, LV_PART_KNOB);
     lv_obj_clear_flag(runout_arc, LV_OBJ_FLAG_CLICKABLE);
 
@@ -142,7 +146,7 @@ void altimeter_ui_update(altimeter_ui_data_t *data)
 
     if (data->is_calibrated) {
         lv_label_set_text(status_label, "Calibrated");
-        lv_obj_set_style_text_color(status_label, zsw_color_blue(), LV_PART_MAIN);
+        lv_obj_set_style_text_color(status_label, ALTIMETER_COLOR, LV_PART_MAIN);
     }
 
     // Update Chart
