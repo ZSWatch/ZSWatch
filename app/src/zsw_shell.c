@@ -28,6 +28,7 @@
 #include "drivers/zsw_vibration_motor.h"
 #include "drivers/zsw_display_control.h"
 #include "ui/zsw_ui_controller.h"
+#include "ui/popup/zsw_popup_window.h"
 #include "applications/watchface/watchface_app.h"
 #include "events/battery_event.h"
 #include "events/pressure_event.h"
@@ -1000,6 +1001,45 @@ static int cmd_event_time(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+static int cmd_event_notification(const struct shell *sh, size_t argc, char **argv)
+{
+    static uint32_t next_id = 1000;
+    bool can_reply = argc > 3 && strcmp(argv[3], "reply") == 0;
+
+    if (argc > 3 && !can_reply) {
+        shell_error(sh, "Usage: event notification <sender> <body> [reply]");
+        return -EINVAL;
+    }
+
+    ble_comm_cb_data_t *data = ble_data_claim();
+    if (data == NULL) {
+        shell_error(sh, "Failed to claim BLE data channel");
+        return -EBUSY;
+    }
+
+    // The strings are only used while the listeners run, which is before publish returns.
+    data->type = BLE_COMM_DATA_TYPE_NOTIFY;
+    data->data.notify.id = next_id++;
+    data->data.notify.src = "Messenger";
+    data->data.notify.src_len = strlen("Messenger");
+    data->data.notify.sender = argv[1];
+    data->data.notify.sender_len = strlen(argv[1]);
+    data->data.notify.title = argv[1];
+    data->data.notify.title_len = strlen(argv[1]);
+    data->data.notify.body = argv[2];
+    data->data.notify.body_len = strlen(argv[2]);
+    data->data.notify.can_reply = can_reply;
+
+    int ret = ble_data_publish();
+    if (ret != 0) {
+        shell_error(sh, "Failed to publish notification: %d", ret);
+        return ret;
+    }
+
+    shell_print(sh, "Injected notification %u", next_id - 1);
+    return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
                                SHELL_CMD_ARG(battery,  NULL, "Inject battery event: event battery <percent> [charging:0|1]",
                                              cmd_event_battery, 2, 1),
@@ -1012,10 +1052,31 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
                                              cmd_event_weather, 3, 3),
                                SHELL_CMD_ARG(time, NULL, "Inject phone time sync: event time <hour> <minute>",
                                              cmd_event_time, 3, 0),
+                               SHELL_CMD_ARG(notification, NULL,
+                                             "Inject a phone notification: event notification <sender> <body> [reply]",
+                                             cmd_event_notification, 3, 1),
                                SHELL_SUBCMD_SET_END
                               );
 
 SHELL_CMD_REGISTER(event, &sub_event, "Event injection commands", NULL);
+
+static int cmd_popup(const struct shell *sh, size_t argc, char **argv)
+{
+    bool yes_no = argc > 3 && strcmp(argv[3], "yesno") == 0;
+
+    if (argc > 3 && !yes_no) {
+        shell_error(sh, "Usage: popup <title> <body> [yesno]");
+        return -EINVAL;
+    }
+
+    lvgl_lock();
+    zsw_popup_show(argv[1], argv[2], NULL, yes_no ? 0 : 10, yes_no);
+    lvgl_unlock();
+
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(popup, NULL, "Show a popup: popup <title> <body> [yesno]", cmd_popup, 3, 1);
 
 static int cmd_lv_timers(const struct shell *sh, size_t argc, char **argv)
 {
