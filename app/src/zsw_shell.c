@@ -37,6 +37,7 @@
 #include "sensors/zsw_floor_counter.h"
 #include "ble/ble_comm.h"
 #include "ui/watchfaces/sand/zsw_watchface_sand.h"
+#include "ui/watchfaces/diorama/zsw_watchface_diorama.h"
 #if defined(CONFIG_DT_HAS_MAXIM_MAX32664C_ENABLED)
 #include "drivers/zsw_hr.h"
 #include "managers/zsw_hr_manager.h"
@@ -1178,12 +1179,46 @@ static int cmd_watchface_gravity(const struct shell *sh, size_t argc, char **arg
 }
 #endif
 
+#ifdef CONFIG_WATCHFACE_DIORAMA
+static int cmd_watchface_diorama(const struct shell *sh, size_t argc, char **argv)
+{
+    long values[6] = { 0, 0, 0, 1, 0, 0 };
+    static const long max[6] = { 23, 59, 4, 3, 127, 127 };
+    static const long min[6] = { 0, 0, 0, 1, -127, -127 };
+    bool enable = argc >= 3;
+
+    if (argc == 2 && strcmp(argv[1], "off") != 0) {
+        enable = false;
+        argc = 0;
+    }
+    for (size_t i = 1; enable && i < argc; i++) {
+        if (!parse_long(argv[i], min[i - 1], max[i - 1], &values[i - 1])) {
+            argc = 0;
+        }
+    }
+    if (argc == 0) {
+        shell_error(sh, "Usage: watchface diorama <hour> <minute> [weather 0-4] [intensity 1-3] [tilt x] [tilt y] | off");
+        return -EINVAL;
+    }
+
+    lvgl_lock();
+    zsw_watchface_diorama_override(enable, values[0] * 60 + values[1], values[2], values[3], values[4], values[5]);
+    lvgl_unlock();
+    return 0;
+}
+#endif
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_watchface,
                                SHELL_CMD_ARG(list, NULL, "List watchfaces, * marks the current one", cmd_watchface_list, 1, 0),
                                SHELL_CMD_ARG(set, NULL, "Switch watchface: watchface set <index>", cmd_watchface_set, 2, 0),
 #ifdef CONFIG_WATCHFACE_SAND
                                SHELL_CMD_ARG(gravity, NULL, "Sand watchface: tilt the watch, watchface gravity <x> <y> | off",
                                              cmd_watchface_gravity, 2, 1),
+#endif
+#ifdef CONFIG_WATCHFACE_DIORAMA
+                               SHELL_CMD_ARG(diorama, NULL,
+                                             "Diorama watchface: watchface diorama <hour> <minute> [weather] [intensity] [tilt x] [tilt y] | off",
+                                             cmd_watchface_diorama, 2, 5),
 #endif
                                SHELL_SUBCMD_SET_END
                               );

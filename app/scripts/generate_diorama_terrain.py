@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 ZSWatch Project
+# SPDX-License-Identifier: Apache-2.0
+"""Generates the landscape of the Diorama watchface: the skyline of each layer and the clouds.
+
+A layer is stored as the display row of its top edge for every column. The layers are wider
+than the display, the extra columns come into view when the watch is tilted.
+
+Run from app/: python scripts/generate_diorama_terrain.py
+"""
+
+import math
+import random
+
+OUT = "src/ui/watchfaces/diorama/diorama_terrain.h"
+
+SIZE = 240
+MARGIN = 16
+WIDTH = SIZE + 2 * MARGIN
+# First row of the lake. A column with this value has no land in that layer.
+LAKE_Y = 170
+
+
+def ridge(rng, lo, hi, roughness, detail):
+    """Midpoint displacement: a skyline between rows lo (highest peak) and hi."""
+    n = 1
+    while n < WIDTH:
+        n *= 2
+    pts = [0.0] * (n + 1)
+    pts[0] = rng.uniform(-1, 1)
+    pts[n] = rng.uniform(-1, 1)
+    step = n
+    amp = 1.0
+    while step > 1:
+        half = step // 2
+        for i in range(half, n, step):
+            pts[i] = (pts[i - half] + pts[i + half]) / 2 + rng.uniform(-amp, amp)
+        amp *= roughness
+        step = half
+        if step <= detail:
+            amp *= 0.5
+    pts = pts[:WIDTH]
+    low, high = min(pts), max(pts)
+    return [hi - (p - low) / (high - low) * (hi - lo) for p in pts]
+
+
+def peaks(rng, lo, hi, count):
+    """Pointed mountains: the highest of a row of triangles with a little noise on the slopes."""
+    tops = [float(hi)] * WIDTH
+    for i in range(count):
+        cx = (i + rng.uniform(0.2, 0.8)) * WIDTH / count
+        top = rng.uniform(lo, lo + (hi - lo) * 0.55)
+        left = rng.uniform(0.75, 1.25)
+        right = rng.uniform(0.75, 1.25)
+        for x in range(WIDTH):
+            d = x - cx
+            y = top + abs(d) * (left if d < 0 else right)
+            tops[x] = min(tops[x], y)
+    noise = ridge(rng, -2.5, 2.5, 0.75, 2)
+    return [min(hi, t + n) for t, n in zip(tops, noise)]
+
+
+def add_pines(rng, base, lo_h, hi_h, spacing, keep=lambda x: True):
+    """Fir trees standing on the skyline base: tiered triangles."""
+    tops = list(base)
+    x = rng.uniform(0, spacing)
+    while x < WIDTH:
+        h = rng.uniform(lo_h, hi_h)
+        half = h * rng.uniform(0.24, 0.32)
+        tiers = max(2, int(h / 5))
+        foot = base[min(WIDTH - 1, int(x))]
+        if keep(x):
+            for px in range(int(x - half) - 1, int(x + half) + 2):
+                if 0 <= px < WIDTH:
+                    d = abs(px + 0.5 - x) / half
+                    if d < 1:
+                        # Each tier of branches reaches a bit further out than a plain triangle
+                        tier = math.floor(d * tiers)
+                        frac = d * tiers - tier
+                        up = 1 - (tier + frac * 0.55 + 0.45) / tiers if tier < tiers - 1 else (1 - d) * 0.6
+                        up = max(up, 1 - d - 0.02)
+                        tops[px] = min(tops[px], foot - h * max(0.0, up) - 1)
+        x += rng.uniform(spacing * 0.55, spacing * 1.45)
+    return tops
+
+
+def cloud(rng, width, puffs):
+    """A cloud as the rows above and below its base line, for every column."""
+    top = [0.0] * width
+    bottom = [0.0] * width
+    for i in range(puffs):
+        cx = (i + 0.5) * width / puffs + rng.uniform(-2, 2)
+        edge = min(i, puffs - 1 - i)
+        r = width / puffs * rng.uniform(0.75, 1.0) * (0.75 + 0.35 * min(edge, 2))
+        for x in range(width):
+            d = (x + 0.5 - cx) / r
+            if abs(d) < 1:
+                h = r * math.sqrt(1 - d * d)
+                top[x] = max(top[x], h * 0.95)
+                bottom[x] = max(bottom[x], h * 0.28)
+    return [round(v) for v in top], [round(v) for v in bottom]
+
+
+def c_array(name, values, ctype="uint8_t"):
+    lines = []
+    for i in range(0, len(values), 20):
+        lines.append("    " + ", ".join(str(v) for v in values[i:i + 20]) + ",")
+    return "static const {} {}[{}] = {{\n{}\n}};\n".format(ctype, name, len(values), "\n".join(lines))
+
+
+def main():
+    rng = random.Random(7)
+
+    far = peaks(rng, 98, 150, 5)
+    # Snow lies down to a ragged line below the highest peaks
+    snow_noise = ridge(rng, -3, 3, 0.8, 1)
+    snow = [max(0, min(40, round((124 + n * 1.6 - t) * 0.55))) for t, n in zip(far, snow_noise)]
+
+    mid = ridge(rng, 122, 152, 0.55, 4)
+
+    hills = ridge(rng, 146, 160, 0.5, 8)
+    forest = add_pines(rng, hills, 7, 15, 6.5)
+
+    # The nearest shore only stands at the sides, the lake reaches the forest in the middle
+    def shore_base(x):
+        d = abs(x - WIDTH / 2) / (WIDTH / 2)
+        return LAKE_Y + 6 - max(0.0, d - 0.42) * 46
+
+    shore = [shore_base(x) for x in range(WIDTH)]
+    near = add_pines(rng, shore, 20, 40, 13, keep=lambda x: shore_base(x) < LAKE_Y)
+
+    layers = [far, mid, forest, near]
+    layers = [[max(0, min(LAKE_Y, round(v))) for v in layer] for layer in layers]
+
+    out = [
+        "/*",
+        " * Generated by scripts/generate_diorama_terrain.py, do not edit.",
+        " * SPDX-License-Identifier: GPL-3.0-only",
+        " */",
+        "",
+        "#pragma once",
+        "",
+        "#include <stdint.h>",
+        "",
+        "#define DIORAMA_TERRAIN_WIDTH   {}".format(WIDTH),
+        "#define DIORAMA_TERRAIN_MARGIN  {}".format(MARGIN),
+        "#define DIORAMA_LAKE_Y          {}".format(LAKE_Y),
+        "#define DIORAMA_NUM_LAYERS      {}".format(len(layers)),
+        "",
+        "/* Row of the top edge of each layer, from the farthest to the nearest */",
+        "static const uint8_t diorama_layer_top[DIORAMA_NUM_LAYERS][DIORAMA_TERRAIN_WIDTH] = {",
+    ]
+    for layer in layers:
+        out.append("    {")
+        for i in range(0, WIDTH, 20):
+            out.append("        " + ", ".join(str(v) for v in layer[i:i + 20]) + ",")
+        out.append("    },")
+    out.append("};")
+    out.append("")
+    out.append("/* Highest and lowest top edge of each layer */")
+    out.append("static const uint8_t diorama_layer_min_top[DIORAMA_NUM_LAYERS] = {{ {} }};".format(
+        ", ".join(str(min(layer)) for layer in layers)))
+    out.append("static const uint8_t diorama_layer_max_top[DIORAMA_NUM_LAYERS] = {{ {} }};".format(
+        ", ".join(str(max(layer)) for layer in layers)))
+    out.append("")
+    out.append("/* Rows of snow below the top edge of the farthest layer */")
+    out.append(c_array("diorama_snow", snow))
+
+    clouds = [cloud(rng, 58, 5), cloud(rng, 40, 4), cloud(rng, 74, 6)]
+    out.append("#define DIORAMA_NUM_CLOUD_SHAPES {}".format(len(clouds)))
+    out.append("")
+    for i, (top, bottom) in enumerate(clouds):
+        out.append(c_array("diorama_cloud{}_top".format(i), top))
+        out.append(c_array("diorama_cloud{}_bottom".format(i), bottom))
+    out.append("typedef struct {")
+    out.append("    uint8_t width;")
+    out.append("    const uint8_t *top;")
+    out.append("    const uint8_t *bottom;")
+    out.append("} diorama_cloud_shape_t;")
+    out.append("")
+    out.append("static const diorama_cloud_shape_t diorama_cloud_shapes[DIORAMA_NUM_CLOUD_SHAPES] = {")
+    for i, (top, _) in enumerate(clouds):
+        out.append("    {{ {}, diorama_cloud{}_top, diorama_cloud{}_bottom }},".format(len(top), i, i))
+    out.append("};")
+    out.append("")
+
+    with open(OUT, "w") as f:
+        f.write("\n".join(out))
+    print("wrote", OUT)
+
+
+if __name__ == "__main__":
+    main()

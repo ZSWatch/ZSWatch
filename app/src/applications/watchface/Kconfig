@@ -29,4 +29,9 @@ menu "Watchface"
         prompt "Add Sand watchface (digits of sand that fall the way the watch is held)"
         default y
 
+    config WATCHFACE_DIORAMA
+        bool
+        prompt "Add Diorama watchface (a landscape with depth that follows the sun and the weather)"
+        default y
+
 endmenu
