@@ -141,14 +141,28 @@ def write_a8(img, path):
     path.write_bytes(data)
 
 
+# 8x8 ordered dither thresholds
+BAYER8 = [
+    [0, 32, 8, 40, 2, 34, 10, 42],
+    [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44, 4, 36, 14, 46, 6, 38],
+    [60, 28, 52, 20, 62, 30, 54, 22],
+    [3, 35, 11, 43, 1, 33, 9, 41],
+    [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47, 7, 39, 13, 45, 5, 37],
+    [63, 31, 55, 23, 61, 29, 53, 21],
+]
+# LVGL blends onto RGB565 with the opacity rounded to 32 steps of this size
+BLEND_STEP = 8
+
+
 def render_glow(width=240, height=120, strength=150):
     """Soft light from the top edge of the display, the background of the app screens.
 
-    Noise is added before rounding (dithering): a smooth gradient this dark would show
-    bands on the 16 bit display otherwise.
+    A gradient this dark gets only a few levels on the 16 bit display, and LVGL rounds the
+    opacity to 32 steps when it blends. Without dithering that shows as rings, so the
+    opacity is dithered by one blend step in an ordered pattern.
     """
-    import random
-    random.seed(1)
     img = Image.new("L", (width, height))
     pixels = img.load()
     for y in range(height):
@@ -156,7 +170,9 @@ def render_glow(width=240, height=120, strength=150):
             dx = (x - width / 2) / (width * 0.62)
             dy = y / height
             falloff = max(0.0, 1.0 - (dx * dx + dy * dy) ** 0.5)
-            value = strength * falloff ** 1.6 + random.uniform(-2.0, 2.0)
+            value = strength * falloff ** 1.6
+            if value > 0.5:
+                value += ((BAYER8[y % 8][x % 8] + 0.5) / 64 - 0.5) * 2 * BLEND_STEP
             pixels[x, y] = max(0, min(255, round(value)))
     return img
 
