@@ -36,6 +36,7 @@
 #include "sensors/zsw_imu.h"
 #include "zsw_clock.h"
 #include "zsw_weather.h"
+#include "diorama_icons.h"
 #include "diorama_scene.h"
 #include "diorama_sky.h"
 #include "zsw_watchface_diorama.h"
@@ -67,6 +68,26 @@ LOG_MODULE_REGISTER(watchface_diorama, LOG_LEVEL_INF);
 
 #define COLOR_TEXT              0xFFFFFF
 #define COLOR_SHADOW            0x000000
+#define COLOR_UNREAD            0xFFC460
+#define COLOR_DISCONNECTED      0xFF8A7A
+#define COLOR_BATTERY_LOW       0xFF6B5E
+#define COLOR_CHARGING          0x8CE99A
+#define COLOR_BOLT              0x10151D
+
+/* Row of the date, and of what is shown on the lake */
+#define DATE_Y                  16
+#define INFO_Y                  186
+#define SUN_EVENT_Y             212
+/* Space between an icon and its text, and between the date and what stands next to it */
+#define ICON_GAP                4
+#define DATE_GAP                7
+/* The inside of the battery icon: where the charge is drawn */
+#define BATTERY_FILL_X          3
+#define BATTERY_FILL_Y          3
+#define BATTERY_FILL_WIDTH      12
+#define BATTERY_FILL_HEIGHT     4
+#define BATTERY_LOW_PERCENT     20
+#define MAX_UNREAD_SHOWN        9
 
 ZSW_LV_IMG_DECLARE(face_diorama_preview);
 
@@ -89,6 +110,7 @@ static lv_obj_t *scene_obj;
 static lv_obj_t *ui_time;
 static lv_obj_t *ui_time_shadow;
 static lv_obj_t *ui_date;
+static lv_obj_t *ui_unread;
 static lv_obj_t *ui_temperature;
 static lv_obj_t *ui_steps;
 static lv_obj_t *ui_battery;
@@ -125,10 +147,109 @@ static int last_day = -1;
 static int last_steps = -1;
 static int last_battery = -1;
 static int last_temperature = INT32_MIN;
+static int unread;
+static bool connected = true;
+static bool charging;
 
 #if LV_USE_OS != LV_OS_NONE
 #error "The Diorama watchface draws into the layer from the event and needs LVGL without a draw thread"
 #endif
+
+/* An area of the display in one color, at most as far as clip, with opa of 255 parts of it */
+static void fill_area(lv_layer_t *layer, const lv_area_t *clip, const lv_area_t *area, uint32_t color,
+                      const uint8_t *cover,
+                      int cover_stride)
+{
+    uint32_t r = (color >> 16) & 0xFF;
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = color & 0xFF;
+    lv_area_t part;
+
+    if (!lv_area_intersect(&part, clip, area)) {
+        return;
+    }
+    for (int32_t y = part.y1; y <= part.y2; y++) {
+        uint16_t *dst = lv_draw_layer_go_to_xy(layer, part.x1 - layer->buf_area.x1, y - layer->buf_area.y1);
+        const uint8_t *opa = cover ? &cover[(y - area->y1) * cover_stride + (part.x1 - area->x1)] : NULL;
+
+        for (int32_t x = part.x1; x <= part.x2; x++, dst++) {
+            uint32_t a = opa ? *opa++ : 255;
+            uint32_t bg = *dst;
+
+            if (a == 0) {
+                continue;
+            }
+            *dst = (uint16_t)(((((bg >> 8) & 0xF8) * (255 - a) + r * a) / 255 >> 3 << 11) |
+                              ((((bg >> 3) & 0xFC) * (255 - a) + g * a) / 255 >> 2 << 5) |
+                              ((((bg << 3) & 0xF8) * (255 - a) + b * a) / 255 >> 3));
+        }
+    }
+}
+
+/* x and y are in the landscape */
+static void draw_icon(lv_layer_t *layer, const lv_area_t *clip, const diorama_icon_t *icon, int32_t x, int32_t y,
+                      uint32_t color)
+{
+    lv_area_t area;
+
+    lv_obj_get_coords(scene_obj, &area);
+    area.x1 += x;
+    area.y1 += y;
+    area.x2 = area.x1 + icon->width - 1;
+    area.y2 = area.y1 + icon->height - 1;
+    fill_area(layer, clip, &area, color, icon->cover, icon->width);
+}
+
+/* Where an icon goes that stands in front of a label, in the landscape */
+static void icon_place(const lv_obj_t *label, const diorama_icon_t *icon, int32_t *x, int32_t *y)
+{
+    lv_area_t coords;
+    lv_area_t label_coords;
+
+    lv_obj_get_coords(scene_obj, &coords);
+    lv_obj_get_coords(label, &label_coords);
+    *x = label_coords.x1 - coords.x1 - ICON_GAP - icon->width;
+    *y = label_coords.y1 - coords.y1 + (lv_area_get_height(&label_coords) - icon->height) / 2;
+}
+
+/* The icons are part of the landscape: nothing is read from the file system to draw them */
+static void draw_icons(lv_layer_t *layer, const lv_area_t *clip)
+{
+    uint32_t battery_color = last_battery >= 0 && last_battery < BATTERY_LOW_PERCENT ? COLOR_BATTERY_LOW :
+                             (charging ? COLOR_CHARGING : COLOR_TEXT);
+    lv_area_t coords;
+    lv_area_t fill;
+    int32_t x;
+    int32_t y;
+
+    lv_obj_get_coords(scene_obj, &coords);
+
+    icon_place(ui_temperature, &diorama_icon_thermometer, &x, &y);
+    draw_icon(layer, clip, &diorama_icon_thermometer, x, y, COLOR_TEXT);
+    icon_place(ui_steps, &diorama_icon_steps, &x, &y);
+    draw_icon(layer, clip, &diorama_icon_steps, x, y, COLOR_TEXT);
+
+    icon_place(ui_battery, &diorama_icon_battery, &x, &y);
+    draw_icon(layer, clip, &diorama_icon_battery, x, y, COLOR_TEXT);
+    fill.x1 = coords.x1 + x + BATTERY_FILL_X;
+    fill.y1 = coords.y1 + y + BATTERY_FILL_Y;
+    fill.x2 = fill.x1 + MAX(2, BATTERY_FILL_WIDTH * CLAMP(last_battery, 0, 100) / 100) - 1;
+    fill.y2 = fill.y1 + BATTERY_FILL_HEIGHT - 1;
+    fill_area(layer, clip, &fill, battery_color, NULL, 0);
+    if (charging) {
+        draw_icon(layer, clip, &diorama_icon_bolt, x + BATTERY_FILL_X + (BATTERY_FILL_WIDTH - diorama_icon_bolt.width) / 2,
+                  y + 1, COLOR_BOLT);
+    }
+
+    if (unread > 0) {
+        icon_place(ui_unread, &diorama_icon_bell, &x, &y);
+        draw_icon(layer, clip, &diorama_icon_bell, x + 2, y, COLOR_UNREAD);
+    }
+    if (!connected) {
+        icon_place(ui_date, &diorama_icon_phone_off, &x, &y);
+        draw_icon(layer, clip, &diorama_icon_phone_off, x, y, COLOR_DISCONNECTED);
+    }
+}
 
 /* The landscape is rendered straight into the draw buffer, it is the background of the face */
 static void scene_draw_cb(lv_event_t *e)
@@ -149,6 +270,7 @@ static void scene_draw_cb(lv_event_t *e)
     diorama_scene_render(clip.x1 - coords.x1, clip.y1 - coords.y1, clip.x2 - coords.x1, clip.y2 - coords.y1,
                          lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, clip.y1 - layer->buf_area.y1),
                          layer->draw_buf->header.stride);
+    draw_icons(layer, &clip);
 }
 
 /* The landscape fills its object: nothing behind it needs to be drawn */
@@ -221,8 +343,12 @@ static void show_sun_event(void)
     int now = override.enabled ? override.minute_of_day : last_hour * 60 + last_minute;
     bool day;
 
-    if (!has_place || sun_events.sunrise < 0 || last_hour < 0) {
+    if (!has_place || last_hour < 0) {
         lv_label_set_text(ui_sun_event, "");
+        return;
+    }
+    if (sun_events.sunrise < 0) {
+        lv_label_set_text(ui_sun_event, sun_events.polar_day ? "MIDNIGHT SUN" : "POLAR NIGHT");
         return;
     }
     day = now >= sun_events.sunrise && now < sun_events.sunset;
@@ -239,10 +365,12 @@ static void update_sky(void)
 
 static void apply_view(void)
 {
+    int first_row;
+
     view.tilt_x = (int8_t)(tilt_x / 16);
     view.tilt_y = (int8_t)(tilt_y / 16);
-    if (diorama_scene_set_view(&view)) {
-        lv_obj_invalidate(scene_obj);
+    if (diorama_scene_set_view(&view, &first_row)) {
+        scene_dirty(0, first_row, DIORAMA_SIZE - 1, DIORAMA_SIZE - 1);
     }
 }
 
@@ -370,13 +498,45 @@ static void on_zbus_ble_data(const struct zbus_channel *chan)
     k_work_submit(&place_work);
 }
 
-static lv_obj_t *info_label_create(lv_align_t align, int32_t x, int32_t y)
+/* A label on the lake with an icon in front of it: the two are centered on x together */
+static lv_obj_t *info_label_create(const diorama_icon_t *icon, int32_t x)
 {
-    lv_obj_t *label = zsw_ui_label_create(root_page, "", ZSW_FONT_TEXT, lv_color_hex(COLOR_TEXT));
+    /* Until the value is known */
+    lv_obj_t *label = zsw_ui_label_create(root_page, "--", ZSW_FONT_TEXT, lv_color_hex(COLOR_TEXT));
 
-    lv_obj_align(label, align, x, y);
+    lv_obj_align(label, LV_ALIGN_TOP_MID, x + (icon->width + ICON_GAP) / 2, INFO_Y);
 
     return label;
+}
+
+/* The icons are drawn with the landscape, so that is what has to be drawn again when they change */
+static void invalidate_row(int32_t y)
+{
+    scene_dirty(0, y - 4, DIORAMA_SIZE - 1, y + 22);
+}
+
+/* The date in the middle, with the phone in front of it when it is gone and the unread notifications after it */
+static void layout_date(void)
+{
+    int32_t date_width;
+    int32_t before = connected ? 0 : diorama_icon_phone_off.width + ICON_GAP;
+    int32_t after = 0;
+    int32_t x;
+
+    if (unread > 0) {
+        lv_label_set_text_fmt(ui_unread, unread > MAX_UNREAD_SHOWN ? "%d+" : "%d", (int)MIN(unread, MAX_UNREAD_SHOWN));
+        lv_obj_remove_flag(ui_unread, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_update_layout(ui_unread);
+        after = DATE_GAP + diorama_icon_bell.width + ICON_GAP - 2 + lv_obj_get_width(ui_unread);
+    } else {
+        lv_obj_add_flag(ui_unread, LV_OBJ_FLAG_HIDDEN);
+    }
+    lv_obj_update_layout(ui_date);
+    date_width = lv_obj_get_width(ui_date);
+    x = (DIORAMA_SIZE - (before + date_width + after)) / 2 + before;
+    lv_obj_set_pos(ui_date, x, DATE_Y);
+    lv_obj_set_pos(ui_unread, x + date_width + after - lv_obj_get_width(ui_unread), DATE_Y);
+    invalidate_row(DATE_Y);
 }
 
 static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, zsw_settings_watchface_t *settings)
@@ -413,8 +573,10 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_add_event_cb(scene_obj, scene_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
     lv_obj_add_event_cb(scene_obj, scene_cover_cb, LV_EVENT_COVER_CHECK, NULL);
 
-    ui_date = info_label_create(LV_ALIGN_TOP_MID, 0, 16);
+    ui_date = zsw_ui_label_create(root_page, "", ZSW_FONT_TEXT, lv_color_hex(COLOR_TEXT));
     lv_obj_set_style_text_letter_space(ui_date, 1, LV_PART_MAIN);
+    ui_unread = zsw_ui_label_create(root_page, "", ZSW_FONT_TEXT, lv_color_hex(COLOR_UNREAD));
+    layout_date();
 
     /* A soft shadow keeps the time readable in front of clouds and a bright sky */
     ui_time_shadow = zsw_ui_label_create(root_page, "", ZSW_FONT_NUMBER, lv_color_hex(COLOR_SHADOW));
@@ -424,13 +586,13 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_align(ui_time, LV_ALIGN_TOP_MID, 0, 34);
 
     /* On the lake */
-    ui_temperature = info_label_create(LV_ALIGN_TOP_MID, -58, 190);
-    ui_steps = info_label_create(LV_ALIGN_TOP_MID, 0, 190);
-    ui_battery = info_label_create(LV_ALIGN_TOP_MID, 58, 190);
+    ui_temperature = info_label_create(&diorama_icon_thermometer, -61);
+    ui_steps = info_label_create(&diorama_icon_steps, 0);
+    ui_battery = info_label_create(&diorama_icon_battery, 61);
     ui_sun_event = zsw_ui_label_create(root_page, "", ZSW_FONT_CAPTION, lv_color_hex(COLOR_TEXT));
     lv_obj_set_style_text_opa(ui_sun_event, LV_OPA_80, LV_PART_MAIN);
     lv_obj_set_style_text_letter_space(ui_sun_event, 1, LV_PART_MAIN);
-    lv_obj_align(ui_sun_event, LV_ALIGN_TOP_MID, 0, 212);
+    lv_obj_align(ui_sun_event, LV_ALIGN_TOP_MID, 0, SUN_EVENT_Y);
 
     view.weather = DIORAMA_WEATHER_CLEAR;
     view.intensity = 1;
@@ -515,6 +677,7 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
     if (date != last_day) {
         last_day = date;
         lv_label_set_text_fmt(ui_date, "%s %d %s", days[day_of_week % 7], date, months[month % 12]);
+        layout_date();
     }
 }
 
@@ -525,6 +688,7 @@ static void watchface_set_battery_percent(int32_t percent, int32_t battery)
     if (root_page && percent != last_battery) {
         last_battery = percent;
         lv_label_set_text_fmt(ui_battery, "%d%%", (int)percent);
+        invalidate_row(INFO_Y);
     }
 }
 
@@ -542,17 +706,38 @@ static void watchface_set_step(int32_t steps, int32_t distance, int32_t kcal)
     if (root_page && steps != last_steps) {
         last_steps = steps;
         lv_label_set_text_fmt(ui_steps, "%d", (int)steps);
+        invalidate_row(INFO_Y);
     }
 }
 
-static void watchface_set_ble_connected(bool connected)
+static void watchface_set_ble_connected(bool is_connected)
 {
-    ARG_UNUSED(connected);
+    if (is_connected != connected) {
+        connected = is_connected;
+        if (root_page) {
+            layout_date();
+        }
+    }
 }
 
 static void watchface_set_num_notifcations(int32_t number)
 {
-    ARG_UNUSED(number);
+    if (number != unread) {
+        unread = number;
+        if (root_page) {
+            layout_date();
+        }
+    }
+}
+
+static void watchface_set_charging(bool is_charging)
+{
+    if (is_charging != charging) {
+        charging = is_charging;
+        if (root_page) {
+            invalidate_row(INFO_Y);
+        }
+    }
 }
 
 static void set_weather(diorama_weather_t weather, int intensity)
@@ -575,6 +760,7 @@ static void watchface_set_weather(int8_t temperature, int weather_code, uint16_t
     if (temperature != last_temperature) {
         last_temperature = temperature;
         lv_label_set_text_fmt(ui_temperature, "%d°", temperature);
+        invalidate_row(INFO_Y);
     }
 
     switch (condition.type) {
@@ -660,6 +846,7 @@ static watchface_ui_api_t ui_api = {
     .set_ble_connected = watchface_set_ble_connected,
     .set_num_notifcations = watchface_set_num_notifcations,
     .set_weather = watchface_set_weather,
+    .set_charging = watchface_set_charging,
     .set_watch_env_sensors = watchface_set_watch_env_sensors,
     .set_watchface_bg = watchface_set_bg,
     .set_display_active = watchface_set_display_active,
