@@ -17,12 +17,12 @@
 
 #include <string.h>
 
-#include "sand_sim.h"
-#include "sand_glyphs.h"
+#include "snow_sim.h"
+#include "snow_glyphs.h"
 
-#define GRID                SAND_GRID_SIZE
+#define GRID                SNOW_GRID_SIZE
 
-/* Grains in the pile. Sand that is lost or left over in a time change is evened out afterwards. */
+/* Grains in the pile. Snow that is lost or left over in a time change is evened out afterwards. */
 #define PILE_GRAINS         1250
 /* About what four digits take. Poured on top at the start, as the first digits are built from the pile. */
 #define FIRST_DIGITS_GRAINS 1000
@@ -31,13 +31,13 @@
 #define NUM_SLOTS           4
 #define DIGIT_GAP           3
 #define COLON_WIDTH         10
-#define TIME_WIDTH          (NUM_SLOTS * SAND_GLYPH_WIDTH + 2 * DIGIT_GAP + COLON_WIDTH)
+#define TIME_WIDTH          (NUM_SLOTS * SNOW_GLYPH_WIDTH + 2 * DIGIT_GAP + COLON_WIDTH)
 #define TIME_X              ((GRID - TIME_WIDTH) / 2)
 #define TIME_Y              28
 #define COLON_DOT_SIZE      4
 #define COLON_DOT_1_Y       7
 #define COLON_DOT_2_Y       17
-#define COLON_X             (TIME_X + 2 * SAND_GLYPH_WIDTH + DIGIT_GAP + (COLON_WIDTH - COLON_DOT_SIZE) / 2)
+#define COLON_X             (TIME_X + 2 * SNOW_GLYPH_WIDTH + DIGIT_GAP + (COLON_WIDTH - COLON_DOT_SIZE) / 2)
 
 /* A flying grain takes this many steps, and the build of new digits waits for the old to fall away. */
 #define FLIGHT_STEPS        18
@@ -49,7 +49,7 @@
 #define SHAKE_STEPS         18
 #define EVEN_OUT_MAX_STEPS  600
 #define EVEN_OUT_PER_STEP   4
-/* How far up a grain is thrown by sand_sim_kick() */
+/* How far up a grain is thrown by snow_sim_kick() */
 #define KICK_HEIGHT         3
 
 /* In-plane gravity below this (0.2 g) means the watch lies flat: keep the last direction. */
@@ -69,7 +69,7 @@ typedef struct {
 
 typedef struct {
     uint8_t digit;      /* The digit shown, or being built */
-    uint8_t build_row;  /* Next glyph row to build, from the bottom. SAND_GLYPH_HEIGHT when done. */
+    uint8_t build_row;  /* Next glyph row to build, from the bottom. SNOW_GLYPH_HEIGHT when done. */
     uint8_t build_col;
     uint8_t crumble_steps;  /* Steps left of letting go of the previous digit */
 } slot_t;
@@ -79,8 +79,8 @@ typedef struct {
     uint8_t cells[GRID * GRID / 2];
     /* First column inside the round display for each row. The last is its mirror. */
     uint8_t row_first[GRID];
-    uint8_t dirty_first[SAND_NUM_BANDS];
-    uint8_t dirty_last[SAND_NUM_BANDS];
+    uint8_t dirty_first[SNOW_NUM_BANDS];
+    uint8_t dirty_last[SNOW_NUM_BANDS];
     /*
      * The box where something moved in the last step. Only cells in it, and next to it, can
      * move in the next step, so that is all a step looks at. Empty when x0 > x1.
@@ -93,22 +93,22 @@ typedef struct {
     uint8_t next_y0;
     uint8_t next_x1;
     uint8_t next_y1;
-    flying_grain_t flying[SAND_MAX_FLYING];
+    flying_grain_t flying[SNOW_MAX_FLYING];
     slot_t slots[NUM_SLOTS];
     uint32_t rng;
     uint32_t step_count;
-    int16_t sand_count;
+    int16_t snow_count;
     int8_t gravity_x;
     int8_t gravity_y;
-    /* The neighbour sand falls to, and the two it slides to when that one is taken. */
+    /* The neighbour snow falls to, and the two it slides to when that one is taken. */
     int8_t fall[3][2];
     uint8_t build_delay;
     uint8_t shake_steps;
     uint8_t next_slot;
     uint16_t even_out_steps;
-} sand_world_t;
+} snow_world_t;
 
-static sand_world_t world;
+static snow_world_t world;
 
 static const int8_t directions[8][2] = {
     { 0, 1 }, { 1, 1 }, { 1, 0 }, { 1, -1 }, { 0, -1 }, { -1, -1 }, { -1, 0 }, { -1, 1 },
@@ -156,7 +156,7 @@ static inline uint8_t get_cell(int x, int y)
 
 static void mark_dirty(int x, int y)
 {
-    int band = y / SAND_BAND_ROWS;
+    int band = y / SNOW_BAND_ROWS;
 
     if (x < world.dirty_first[band]) {
         world.dirty_first[band] = x;
@@ -202,12 +202,12 @@ static void set_cell(int x, int y, uint8_t cell)
 
 static inline bool is_empty(int x, int y)
 {
-    return inside(x, y) && SAND_CELL_TYPE(get_cell(x, y)) == SAND_CELL_EMPTY;
+    return inside(x, y) && SNOW_CELL_TYPE(get_cell(x, y)) == SNOW_CELL_EMPTY;
 }
 
 static int slot_x(int slot)
 {
-    int x = TIME_X + slot * SAND_GLYPH_WIDTH;
+    int x = TIME_X + slot * SNOW_GLYPH_WIDTH;
 
     if (slot >= 1) {
         x += DIGIT_GAP;
@@ -224,7 +224,7 @@ static int slot_x(int slot)
 
 static inline bool glyph_bit(int digit, int col, int row)
 {
-    return (sand_glyphs[digit][row] >> (SAND_GLYPH_WIDTH - 1 - col)) & 1;
+    return (snow_glyphs[digit][row] >> (SNOW_GLYPH_WIDTH - 1 - col)) & 1;
 }
 
 /* Picks the neighbour to fall to from the gravity vector, and the two next to it to slide to. */
@@ -280,13 +280,13 @@ static void move_grain(int x, int y, uint8_t cell)
         }
 
         /*
-         * Now and then a grain hangs back a step, or falling sand would move as one solid piece.
+         * Now and then a grain hangs back a step, or falling snow would move as one solid piece.
          * It still counts as moving, or it would be left hanging when all around it has come to rest.
          */
         if (((random >> 4) & 7) == 0) {
             mark_active(x, y);
         } else {
-            set_cell(x, y, SAND_CELL_EMPTY);
+            set_cell(x, y, SNOW_CELL_EMPTY);
             set_cell(nx, ny, cell);
         }
         return;
@@ -294,10 +294,10 @@ static void move_grain(int x, int y, uint8_t cell)
 }
 
 /*
- * Cells are visited from the side the sand falls to, so that a grain always moves into a cell
+ * Cells are visited from the side the snow falls to, so that a grain always moves into a cell
  * that was already visited and is not moved twice in a step.
  */
-static void step_sand(void)
+static void step_snow(void)
 {
     int fx = world.fall[0][0];
     int fy = world.fall[0][1];
@@ -318,7 +318,7 @@ static void step_sand(void)
                 int x = right_to_left ? last - (j - first) : j;
                 uint8_t cell = get_cell(x, y);
 
-                if (SAND_CELL_TYPE(cell) == SAND_CELL_SAND) {
+                if (SNOW_CELL_TYPE(cell) == SNOW_CELL_SNOW) {
                     move_grain(x, y, cell);
                 }
             }
@@ -336,7 +336,7 @@ static void step_sand(void)
 
                 uint8_t cell = get_cell(x, y);
 
-                if (SAND_CELL_TYPE(cell) == SAND_CELL_SAND) {
+                if (SNOW_CELL_TYPE(cell) == SNOW_CELL_SNOW) {
                     move_grain(x, y, cell);
                 }
             }
@@ -365,8 +365,8 @@ static bool next_active_box(void)
 }
 
 /*
- * A grain of sand with nothing on top of it, to lift from the pile: the first one met when
- * following the way the sand falls from a random place on the edge.
+ * A grain of snow with nothing on top of it, to lift from the pile: the first one met when
+ * following the way the snow falls from a random place on the edge.
  */
 static bool find_surface_grain(int *grain_x, int *grain_y)
 {
@@ -385,14 +385,14 @@ static bool find_surface_grain(int *grain_x, int *grain_y)
         }
 
         for (; inside(x, y); x += fx, y += fy) {
-            sand_cell_type_t type = SAND_CELL_TYPE(get_cell(x, y));
+            snow_cell_type_t type = SNOW_CELL_TYPE(get_cell(x, y));
 
-            if (type == SAND_CELL_SAND && above_empty) {
+            if (type == SNOW_CELL_SNOW && above_empty) {
                 *grain_x = x;
                 *grain_y = y;
                 return true;
             }
-            above_empty = type == SAND_CELL_EMPTY;
+            above_empty = type == SNOW_CELL_EMPTY;
         }
     }
 
@@ -402,12 +402,12 @@ static bool find_surface_grain(int *grain_x, int *grain_y)
 /* Finds the next grain missing in the digit of a slot, bottom row first, and steps past it. */
 static bool next_build_cell(slot_t *slot, int *col, int *row)
 {
-    while (slot->build_row < SAND_GLYPH_HEIGHT) {
-        int glyph_row = SAND_GLYPH_HEIGHT - 1 - slot->build_row;
+    while (slot->build_row < SNOW_GLYPH_HEIGHT) {
+        int glyph_row = SNOW_GLYPH_HEIGHT - 1 - slot->build_row;
 
-        while (slot->build_col < SAND_GLYPH_WIDTH) {
+        while (slot->build_col < SNOW_GLYPH_WIDTH) {
             /* Every other row goes the other way, like sweeping back and forth */
-            int glyph_col = (slot->build_row & 1) ? SAND_GLYPH_WIDTH - 1 - slot->build_col : slot->build_col;
+            int glyph_col = (slot->build_row & 1) ? SNOW_GLYPH_WIDTH - 1 - slot->build_col : slot->build_col;
 
             slot->build_col++;
             if (glyph_bit(slot->digit, glyph_col, glyph_row)) {
@@ -426,7 +426,7 @@ static bool next_build_cell(slot_t *slot, int *col, int *row)
 static bool building(void)
 {
     for (int i = 0; i < NUM_SLOTS; i++) {
-        if (world.slots[i].digit != NO_DIGIT && world.slots[i].build_row < SAND_GLYPH_HEIGHT) {
+        if (world.slots[i].digit != NO_DIGIT && world.slots[i].build_row < SNOW_GLYPH_HEIGHT) {
             return true;
         }
     }
@@ -451,9 +451,9 @@ static void launch_grain(flying_grain_t *grain)
         grain->to_x = slot_x(index) + col;
         grain->to_y = TIME_Y + row;
         if (find_surface_grain(&from_x, &from_y)) {
-            grain->shade = SAND_CELL_SHADE(get_cell(from_x, from_y));
-            set_cell(from_x, from_y, SAND_CELL_EMPTY);
-            world.sand_count--;
+            grain->shade = SNOW_CELL_SHADE(get_cell(from_x, from_y));
+            set_cell(from_x, from_y, SNOW_CELL_EMPTY);
+            world.snow_count--;
         } else {
             /* The pile is out of reach: the grain comes in from the edge below its place */
             from_x = grain->to_x;
@@ -475,10 +475,10 @@ static void flying_position(const flying_grain_t *grain, int *x, int *y)
     int progress = 256 - (left * left * 256) / (FLIGHT_STEPS * FLIGHT_STEPS);
     /* A bow to one side or the other, largest halfway, makes the grains swirl up */
     int swirl = (progress * (256 - progress) * FLIGHT_SWIRL_PX) >> 14;
-    int center = SAND_CELL_PX / 2;
+    int center = SNOW_CELL_PX / 2;
 
-    *x = ((grain->from_x * (256 - progress) + grain->to_x * progress) * SAND_CELL_PX >> 8) + center;
-    *y = ((grain->from_y * (256 - progress) + grain->to_y * progress) * SAND_CELL_PX >> 8) + center;
+    *x = ((grain->from_x * (256 - progress) + grain->to_x * progress) * SNOW_CELL_PX >> 8) + center;
+    *y = ((grain->from_y * (256 - progress) + grain->to_y * progress) * SNOW_CELL_PX >> 8) + center;
     *x += ((grain->to_x + grain->to_y) & 1) ? swirl : -swirl;
 }
 
@@ -490,8 +490,8 @@ static void mark_flying_dirty(const flying_grain_t *grain)
     flying_position(grain, &x, &y);
     /* It is drawn one cell large around its position, so it can touch four cells */
     for (int i = 0; i < 4; i++) {
-        int cell_x = (x + ((i & 1) ? 1 : -1)) / SAND_CELL_PX;
-        int cell_y = (y + ((i & 2) ? 1 : -1)) / SAND_CELL_PX;
+        int cell_x = (x + ((i & 1) ? 1 : -1)) / SNOW_CELL_PX;
+        int cell_y = (y + ((i & 2) ? 1 : -1)) / SNOW_CELL_PX;
 
         if (cell_x >= 0 && cell_x < GRID && cell_y >= 0 && cell_y < GRID) {
             mark_dirty(cell_x, cell_y);
@@ -505,7 +505,7 @@ static bool step_flying(void)
     int launches = 0;
     bool launch = world.build_delay == 0 && building();
 
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
+    for (int i = 0; i < SNOW_MAX_FLYING; i++) {
         flying_grain_t *grain = &world.flying[i];
 
         if (grain->step == FLYING_FREE) {
@@ -522,11 +522,11 @@ static bool step_flying(void)
         mark_flying_dirty(grain);
         grain->step++;
         if (grain->step >= FLIGHT_STEPS) {
-            if (SAND_CELL_TYPE(get_cell(grain->to_x, grain->to_y)) == SAND_CELL_SAND) {
-                /* Loose sand was in the way and becomes part of the digit */
-                world.sand_count--;
+            if (SNOW_CELL_TYPE(get_cell(grain->to_x, grain->to_y)) == SNOW_CELL_SNOW) {
+                /* Loose snow was in the way and becomes part of the digit */
+                world.snow_count--;
             }
-            set_cell(grain->to_x, grain->to_y, SAND_CELL_DIGIT | (grain->shade << 2));
+            set_cell(grain->to_x, grain->to_y, SNOW_CELL_DIGIT | (grain->shade << 2));
             grain->step = FLYING_FREE;
         } else {
             mark_flying_dirty(grain);
@@ -542,16 +542,16 @@ static void even_out_grain(void)
     int x;
     int y;
 
-    if (world.sand_count > PILE_GRAINS) {
+    if (world.snow_count > PILE_GRAINS) {
         if (find_surface_grain(&x, &y)) {
-            set_cell(x, y, SAND_CELL_EMPTY);
-            world.sand_count--;
+            set_cell(x, y, SNOW_CELL_EMPTY);
+            world.snow_count--;
         }
         return;
     }
 
     /*
-     * A grain is put straight on top of the pile, as if it had fallen in from the edge the sand
+     * A grain is put straight on top of the pile, as if it had fallen in from the edge the snow
      * falls away from. Letting it fall all the way would keep the world awake for many steps per
      * grain. Grains that would land on a digit are not added.
      */
@@ -566,9 +566,9 @@ static void even_out_grain(void)
             y += world.fall[0][1];
         }
         if (!inside(x + world.fall[0][0], y + world.fall[0][1]) ||
-            SAND_CELL_TYPE(get_cell(x + world.fall[0][0], y + world.fall[0][1])) == SAND_CELL_SAND) {
-            set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
-            world.sand_count++;
+            SNOW_CELL_TYPE(get_cell(x + world.fall[0][0], y + world.fall[0][1])) == SNOW_CELL_SNOW) {
+            set_cell(x, y, SNOW_CELL_SNOW | (random_shade() << 2));
+            world.snow_count++;
         }
     }
 }
@@ -576,18 +576,18 @@ static void even_out_grain(void)
 /* Digits differ in size, so the pile drifts. Add or remove a few grains a step until it is back. */
 static bool even_out_pile(void)
 {
-    if (world.sand_count == PILE_GRAINS) {
+    if (world.snow_count == PILE_GRAINS) {
         world.even_out_steps = 0;
         return false;
     }
 
     /* Never keep the world awake for this: give up if there is no grain to take or no room to add */
     if (++world.even_out_steps > EVEN_OUT_MAX_STEPS) {
-        world.sand_count = PILE_GRAINS;
+        world.snow_count = PILE_GRAINS;
         return false;
     }
 
-    for (int i = 0; i < EVEN_OUT_PER_STEP && world.sand_count != PILE_GRAINS; i++) {
+    for (int i = 0; i < EVEN_OUT_PER_STEP && world.snow_count != PILE_GRAINS; i++) {
         even_out_grain();
     }
 
@@ -602,13 +602,13 @@ static void crumble_slot(int slot, bool all)
 {
     int x0 = slot_x(slot);
 
-    for (int row = 0; row < SAND_GLYPH_HEIGHT; row++) {
-        for (int col = 0; col < SAND_GLYPH_WIDTH; col++) {
+    for (int row = 0; row < SNOW_GLYPH_HEIGHT; row++) {
+        for (int col = 0; col < SNOW_GLYPH_WIDTH; col++) {
             uint8_t cell = get_cell(x0 + col, TIME_Y + row);
 
-            if (SAND_CELL_TYPE(cell) == SAND_CELL_DIGIT && (all || (random_next() & 3) == 0)) {
-                set_cell(x0 + col, TIME_Y + row, SAND_CELL_SAND | (SAND_CELL_SHADE(cell) << 2));
-                world.sand_count++;
+            if (SNOW_CELL_TYPE(cell) == SNOW_CELL_DIGIT && (all || (random_next() & 3) == 0)) {
+                set_cell(x0 + col, TIME_Y + row, SNOW_CELL_SNOW | (SNOW_CELL_SHADE(cell) << 2));
+                world.snow_count++;
             }
         }
     }
@@ -634,10 +634,10 @@ static void release_slot(int slot)
     int x0 = slot_x(slot);
 
     /* Grains still on their way to this digit would land in the wrong one */
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
+    for (int i = 0; i < SNOW_MAX_FLYING; i++) {
         flying_grain_t *grain = &world.flying[i];
 
-        if (grain->step != FLYING_FREE && grain->to_x >= x0 && grain->to_x < x0 + SAND_GLYPH_WIDTH) {
+        if (grain->step != FLYING_FREE && grain->to_x >= x0 && grain->to_x < x0 + SNOW_GLYPH_WIDTH) {
             mark_flying_dirty(grain);
             grain->step = FLYING_FREE;
         }
@@ -646,7 +646,7 @@ static void release_slot(int slot)
     world.slots[slot].crumble_steps = CRUMBLE_STEPS;
 }
 
-void sand_sim_init(uint32_t seed)
+void snow_sim_init(uint32_t seed)
 {
     /* Half a cell is left free at the edge, the display is not a perfect circle of cells */
     const int radius_sq_x4 = (GRID - 1) * (GRID - 1);
@@ -669,7 +669,7 @@ void sand_sim_init(uint32_t seed)
         world.row_first[y] = x;
     }
 
-    for (int i = 0; i < SAND_MAX_FLYING; i++) {
+    for (int i = 0; i < SNOW_MAX_FLYING; i++) {
         world.flying[i].step = FLYING_FREE;
     }
     for (int i = 0; i < NUM_SLOTS; i++) {
@@ -678,24 +678,24 @@ void sand_sim_init(uint32_t seed)
 
     for (int y = GRID - 1; y >= 0 && poured < total; y--) {
         for (int x = world.row_first[y]; x <= GRID - 1 - world.row_first[y] && poured < total; x++) {
-            set_cell(x, y, SAND_CELL_SAND | (random_shade() << 2));
+            set_cell(x, y, SNOW_CELL_SNOW | (random_shade() << 2));
             poured++;
         }
     }
-    world.sand_count = poured;
+    world.snow_count = poured;
 
     for (int dot = 0; dot < 2; dot++) {
         int y = TIME_Y + (dot == 0 ? COLON_DOT_1_Y : COLON_DOT_2_Y);
 
         for (int i = 0; i < COLON_DOT_SIZE * COLON_DOT_SIZE; i++) {
-            set_cell(COLON_X + i % COLON_DOT_SIZE, y + i / COLON_DOT_SIZE, SAND_CELL_DIGIT | (random_shade() << 2));
+            set_cell(COLON_X + i % COLON_DOT_SIZE, y + i / COLON_DOT_SIZE, SNOW_CELL_DIGIT | (random_shade() << 2));
         }
     }
 
     update_fall_directions();
 }
 
-bool sand_sim_set_gravity(int x, int y)
+bool snow_sim_set_gravity(int x, int y)
 {
     int8_t before_x = world.fall[0][0];
     int8_t before_y = world.fall[0][1];
@@ -717,7 +717,7 @@ bool sand_sim_set_gravity(int x, int y)
     return true;
 }
 
-void sand_sim_set_time(int hour, int minute)
+void snow_sim_set_time(int hour, int minute)
 {
     const uint8_t digits[NUM_SLOTS] = { hour / 10 % 10, hour % 10, minute / 10 % 10, minute % 10 };
     bool released = false;
@@ -740,14 +740,14 @@ void sand_sim_set_time(int hour, int minute)
     }
 }
 
-void sand_sim_shake(void)
+void snow_sim_shake(void)
 {
     world.shake_steps = SHAKE_STEPS;
     update_fall_directions();
     activate_all();
 }
 
-bool sand_sim_step(void)
+bool snow_sim_step(void)
 {
     bool active;
 
@@ -768,7 +768,7 @@ bool sand_sim_step(void)
     active = step_crumble();
     active |= step_flying();
     if (next_active_box()) {
-        step_sand();
+        step_snow();
         active = true;
     }
     active |= world.shake_steps > 0 || world.build_delay > 0 || building();
@@ -779,16 +779,16 @@ bool sand_sim_step(void)
     return active;
 }
 
-uint8_t sand_sim_cell(int x, int y)
+uint8_t snow_sim_cell(int x, int y)
 {
     return get_cell(x, y);
 }
 
-int sand_sim_get_flying(sand_flying_t *grains, int max)
+int snow_sim_get_flying(snow_flying_t *grains, int max)
 {
     int count = 0;
 
-    for (int i = 0; i < SAND_MAX_FLYING && count < max; i++) {
+    for (int i = 0; i < SNOW_MAX_FLYING && count < max; i++) {
         if (world.flying[i].step != FLYING_FREE) {
             int x;
             int y;
@@ -804,7 +804,7 @@ int sand_sim_get_flying(sand_flying_t *grains, int max)
     return count;
 }
 
-bool sand_sim_pop_dirty(int band, int *x_first, int *x_last)
+bool snow_sim_pop_dirty(int band, int *x_first, int *x_last)
 {
     if (world.dirty_first[band] > world.dirty_last[band]) {
         return false;
@@ -818,7 +818,7 @@ bool sand_sim_pop_dirty(int band, int *x_first, int *x_last)
     return true;
 }
 
-int sand_sim_surface(int x)
+int snow_sim_surface(int x)
 {
     int top = GRID;
     int y;
@@ -829,27 +829,27 @@ int sand_sim_surface(int x)
 
     y = GRID - 1 - world.row_first[x];
 
-    /* From the edge at the bottom of the column and up, as long as it is sand */
-    for (; y >= 0 && inside(x, y) && SAND_CELL_TYPE(get_cell(x, y)) == SAND_CELL_SAND; y--) {
+    /* From the edge at the bottom of the column and up, as long as it is snow */
+    for (; y >= 0 && inside(x, y) && SNOW_CELL_TYPE(get_cell(x, y)) == SNOW_CELL_SNOW; y--) {
         top = y;
     }
 
     return top;
 }
 
-void sand_sim_kick(int x)
+void snow_sim_kick(int x)
 {
-    int y = sand_sim_surface(x);
+    int y = snow_sim_surface(x);
 
     if (y < GRID && is_empty(x, y - KICK_HEIGHT)) {
         uint8_t cell = get_cell(x, y);
 
-        set_cell(x, y, SAND_CELL_EMPTY);
+        set_cell(x, y, SNOW_CELL_EMPTY);
         set_cell(x, y - KICK_HEIGHT, cell);
     }
 }
 
-bool sand_sim_is_level(void)
+bool snow_sim_is_level(void)
 {
     return world.fall[0][0] == 0 && world.fall[0][1] == 1 && world.shake_steps == 0;
 }

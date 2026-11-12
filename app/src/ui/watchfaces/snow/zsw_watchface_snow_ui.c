@@ -27,44 +27,38 @@
 #include "ui/zsw_ui_widgets.h"
 #include "applications/watchface/watchface_app.h"
 #include "sensors/zsw_imu.h"
-#include "sand_sim.h"
-#include "zsw_watchface_sand.h"
+#include "snow_sim.h"
+#include "zsw_watchface_snow.h"
 
-LOG_MODULE_REGISTER(watchface_sand, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(watchface_snow, LOG_LEVEL_INF);
 
-#define FACE_SIZE               (SAND_GRID_SIZE * SAND_CELL_PX)
+#define FACE_SIZE               (SNOW_GRID_SIZE * SNOW_CELL_PX)
 
-/* While the sand moves a frame is two steps of the world. At rest only gravity is checked. */
+/* While the snow moves a frame is two steps of the world. At rest only gravity is checked. */
 #define FRAME_PERIOD_MS         40
 #define REST_PERIOD_MS          250
 #define STEPS_PER_FRAME         2
 /* Frames without movement before going to rest */
 #define REST_AFTER_FRAMES       4
-/* The accelerometer is read every this many frames while the sand moves */
+/* The accelerometer is read every this many frames while the snow moves */
 #define GRAVITY_EVERY_FRAMES    3
 
-/*
- * How the accelerometer axes map to the display: which axis points right and which down
- * when looking at the watch, as +1 or -1. TODO: only a guess until tried on the hardware.
- */
-#define ACCEL_TO_RIGHT(x, y)    (x)
-#define ACCEL_TO_DOWN(x, y)     (-(y))
 #define ACCEL_1G                9.81f
 
 #define COLOR_DATE              0x9FAEE0
-/* The grains where the sand meets the sky catch the light */
-#define COLOR_SAND_TOP          0xFFFFFF
+/* The grains where the snow meets the sky catch the light */
+#define COLOR_SNOW_TOP          0xFFFFFF
 
-ZSW_LV_IMG_DECLARE(face_sand_preview);
-ZSW_LV_IMG_DECLARE(face_sand_sky);
-ZSW_LV_IMG_DECLARE(face_sand_peng_walk_a_r);
-ZSW_LV_IMG_DECLARE(face_sand_peng_walk_a_l);
-ZSW_LV_IMG_DECLARE(face_sand_peng_walk_b_r);
-ZSW_LV_IMG_DECLARE(face_sand_peng_walk_b_l);
-ZSW_LV_IMG_DECLARE(face_sand_peng_slide_r);
-ZSW_LV_IMG_DECLARE(face_sand_peng_slide_l);
-ZSW_LV_IMG_DECLARE(face_sand_peng_fallen_r);
-ZSW_LV_IMG_DECLARE(face_sand_peng_fallen_l);
+ZSW_LV_IMG_DECLARE(face_snow_preview);
+ZSW_LV_IMG_DECLARE(face_snow_sky);
+ZSW_LV_IMG_DECLARE(face_snow_peng_walk_a_r);
+ZSW_LV_IMG_DECLARE(face_snow_peng_walk_a_l);
+ZSW_LV_IMG_DECLARE(face_snow_peng_walk_b_r);
+ZSW_LV_IMG_DECLARE(face_snow_peng_walk_b_l);
+ZSW_LV_IMG_DECLARE(face_snow_peng_slide_r);
+ZSW_LV_IMG_DECLARE(face_snow_peng_slide_l);
+ZSW_LV_IMG_DECLARE(face_snow_peng_fallen_r);
+ZSW_LV_IMG_DECLARE(face_snow_peng_fallen_l);
 
 static void reset_cached_values(void);
 
@@ -72,8 +66,8 @@ static void reset_cached_values(void);
  * The grains are snow. One of four shades each: the base, darker, deep shadow and lighter.
  * The digits are the same snow, a little brighter so that the time stands out.
  */
-static const uint32_t sand_colors[SAND_NUM_SHADES] = { 0xD3DFF5, 0xB4C5E6, 0x8DA2CE, 0xF2F6FF };
-static const uint32_t digit_colors[SAND_NUM_SHADES] = { 0xFFFFFF, 0xE6EEFB, 0xCBD8F0, 0xFFFFFF };
+static const uint32_t snow_colors[SNOW_NUM_SHADES] = { 0xD3DFF5, 0xB4C5E6, 0x8DA2CE, 0xF2F6FF };
+static const uint32_t digit_colors[SNOW_NUM_SHADES] = { 0xFFFFFF, 0xE6EEFB, 0xCBD8F0, 0xFFFFFF };
 
 /* Snow falls slowly all the time. Few flakes: each one is a small redraw of its own. */
 #define NUM_FLAKES              7
@@ -138,7 +132,7 @@ typedef struct {
 } penguin_t;
 
 static lv_obj_t *root_page;
-static lv_obj_t *sand_obj;
+static lv_obj_t *snow_obj;
 static lv_obj_t *ui_date;
 static lv_timer_t *frame_timer;
 static lv_timer_t *flake_timer;
@@ -168,7 +162,7 @@ static void flake_area(const flake_t *flake, const lv_area_t *origin, lv_area_t 
     area->y2 = area->y1 + FLAKE_SIZE - 1;
 }
 
-/* All the draw tasks before this one are done, so the pixels under the sand are in the buffer */
+/* All the draw tasks before this one are done, so the pixels under the snow are in the buffer */
 static bool layer_drawn(const lv_layer_t *layer)
 {
     for (const lv_draw_task_t *t = layer->draw_task_head; t != NULL; t = t->next) {
@@ -199,27 +193,27 @@ static void fill_block(lv_layer_t *layer, const lv_area_t *clip, const lv_area_t
 /*
  * The grains are written straight into the draw buffer: one lv_draw_rect() per grain, or even
  * per run of grains, is far too slow when much of the screen changes at once. That needs the
- * draw tasks of what is behind the sand to have run already, which they have without a draw
+ * draw tasks of what is behind the snow to have run already, which they have without a draw
  * thread.
  */
 #if LV_USE_OS != LV_OS_NONE
-#error "The Sand watchface draws into the layer from the event and needs LVGL without a draw thread"
+#error "The Snow watchface draws into the layer from the event and needs LVGL without a draw thread"
 #endif
 
-static void sand_draw_cb(lv_event_t *e)
+static void snow_draw_cb(lv_event_t *e)
 {
     lv_layer_t *layer = lv_event_get_layer(e);
     lv_area_t coords;
     lv_area_t clip;
-    sand_flying_t flying[SAND_MAX_FLYING];
-    uint16_t row_colors[SAND_GRID_SIZE];
+    snow_flying_t flying[SNOW_MAX_FLYING];
+    uint16_t row_colors[SNOW_GRID_SIZE];
 
-    lv_obj_get_coords(sand_obj, &coords);
+    lv_obj_get_coords(snow_obj, &coords);
     if (!lv_area_intersect(&clip, &layer->_clip_area, &coords)) {
         return;
     }
     if (layer->color_format != LV_COLOR_FORMAT_RGB565 || !layer_drawn(layer)) {
-        LV_LOG_WARN("Can't draw the sand into this layer");
+        LV_LOG_WARN("Can't draw the snow into this layer");
         return;
     }
 
@@ -231,31 +225,31 @@ static void sand_draw_cb(lv_event_t *e)
         fill_block(layer, &clip, &area, color_flake);
     }
 
-    int y0 = (clip.y1 - coords.y1) / SAND_CELL_PX;
-    int y1 = (clip.y2 - coords.y1) / SAND_CELL_PX;
+    int y0 = (clip.y1 - coords.y1) / SNOW_CELL_PX;
+    int y1 = (clip.y2 - coords.y1) / SNOW_CELL_PX;
 
     for (int y = y0; y <= y1; y++) {
         /* 0 is a cell to leave as it is: no grain is black */
-        for (int x = (clip.x1 - coords.x1) / SAND_CELL_PX; x <= (clip.x2 - coords.x1) / SAND_CELL_PX; x++) {
-            uint8_t cell = sand_sim_cell(x, y);
-            sand_cell_type_t type = SAND_CELL_TYPE(cell);
+        for (int x = (clip.x1 - coords.x1) / SNOW_CELL_PX; x <= (clip.x2 - coords.x1) / SNOW_CELL_PX; x++) {
+            uint8_t cell = snow_sim_cell(x, y);
+            snow_cell_type_t type = SNOW_CELL_TYPE(cell);
 
-            if (type == SAND_CELL_SAND && (y == 0 || SAND_CELL_TYPE(sand_sim_cell(x, y - 1)) == SAND_CELL_EMPTY)) {
-                /* The grains where the sand meets the sky catch the light */
+            if (type == SNOW_CELL_SNOW && (y == 0 || SNOW_CELL_TYPE(snow_sim_cell(x, y - 1)) == SNOW_CELL_EMPTY)) {
+                /* The grains where the snow meets the sky catch the light */
                 row_colors[x] = color_top;
             } else {
-                row_colors[x] = type == SAND_CELL_EMPTY ? 0 : cell_colors[cell];
+                row_colors[x] = type == SNOW_CELL_EMPTY ? 0 : cell_colors[cell];
             }
         }
 
-        int32_t first = LV_MAX(clip.y1, coords.y1 + y * SAND_CELL_PX);
-        int32_t last = LV_MIN(clip.y2, coords.y1 + (y + 1) * SAND_CELL_PX - 1);
+        int32_t first = LV_MAX(clip.y1, coords.y1 + y * SNOW_CELL_PX);
+        int32_t last = LV_MIN(clip.y2, coords.y1 + (y + 1) * SNOW_CELL_PX - 1);
 
         for (int32_t py = first; py <= last; py++) {
             uint16_t *pixel = lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, py - layer->buf_area.y1);
 
             for (int32_t px = clip.x1; px <= clip.x2; px++, pixel++) {
-                uint16_t color = row_colors[(px - coords.x1) / SAND_CELL_PX];
+                uint16_t color = row_colors[(px - coords.x1) / SNOW_CELL_PX];
 
                 if (color != 0) {
                     *pixel = color;
@@ -265,27 +259,27 @@ static void sand_draw_cb(lv_event_t *e)
     }
 
     /* Grains in the air heat up to the color of the digits on their way */
-    int num_flying = sand_sim_get_flying(flying, ARRAY_SIZE(flying));
+    int num_flying = snow_sim_get_flying(flying, ARRAY_SIZE(flying));
 
     for (int i = 0; i < num_flying; i++) {
         lv_area_t area = {
-            .x1 = coords.x1 + flying[i].x - SAND_CELL_PX / 2,
-            .y1 = coords.y1 + flying[i].y - SAND_CELL_PX / 2,
+            .x1 = coords.x1 + flying[i].x - SNOW_CELL_PX / 2,
+            .y1 = coords.y1 + flying[i].y - SNOW_CELL_PX / 2,
         };
 
-        area.x2 = area.x1 + SAND_CELL_PX - 1;
-        area.y2 = area.y1 + SAND_CELL_PX - 1;
-        fill_block(layer, &clip, &area, cell_colors[SAND_CELL_DIGIT | (flying[i].shade << 2)]);
+        area.x2 = area.x1 + SNOW_CELL_PX - 1;
+        area.y2 = area.y1 + SNOW_CELL_PX - 1;
+        fill_block(layer, &clip, &area, cell_colors[SNOW_CELL_DIGIT | (flying[i].shade << 2)]);
     }
 }
 
 static void init_colors(void)
 {
-    for (int shade = 0; shade < SAND_NUM_SHADES; shade++) {
-        cell_colors[SAND_CELL_SAND | (shade << 2)] = lv_color_to_u16(lv_color_hex(sand_colors[shade]));
-        cell_colors[SAND_CELL_DIGIT | (shade << 2)] = lv_color_to_u16(lv_color_hex(digit_colors[shade]));
+    for (int shade = 0; shade < SNOW_NUM_SHADES; shade++) {
+        cell_colors[SNOW_CELL_SNOW | (shade << 2)] = lv_color_to_u16(lv_color_hex(snow_colors[shade]));
+        cell_colors[SNOW_CELL_DIGIT | (shade << 2)] = lv_color_to_u16(lv_color_hex(digit_colors[shade]));
     }
-    color_top = lv_color_to_u16(lv_color_hex(COLOR_SAND_TOP));
+    color_top = lv_color_to_u16(lv_color_hex(COLOR_SNOW_TOP));
     color_flake = lv_color_to_u16(lv_color_hex(COLOR_FLAKE));
 }
 
@@ -293,28 +287,28 @@ static void invalidate_dirty(void)
 {
     lv_area_t coords;
 
-    lv_obj_get_coords(sand_obj, &coords);
-    for (int band = 0; band < SAND_NUM_BANDS; band++) {
+    lv_obj_get_coords(snow_obj, &coords);
+    for (int band = 0; band < SNOW_NUM_BANDS; band++) {
         int x_first;
         int x_last;
 
-        if (!sand_sim_pop_dirty(band, &x_first, &x_last)) {
+        if (!snow_sim_pop_dirty(band, &x_first, &x_last)) {
             continue;
         }
 
         /* One row more below: a grain is lighter when the cell above it is empty */
         lv_area_t area = {
-            .x1 = coords.x1 + x_first * SAND_CELL_PX,
-            .y1 = coords.y1 + band * SAND_BAND_ROWS * SAND_CELL_PX,
-            .x2 = coords.x1 + (x_last + 1) * SAND_CELL_PX - 1,
-                        .y2 = coords.y1 + ((band + 1) * SAND_BAND_ROWS + 1) * SAND_CELL_PX - 1,
+            .x1 = coords.x1 + x_first * SNOW_CELL_PX,
+            .y1 = coords.y1 + band * SNOW_BAND_ROWS * SNOW_CELL_PX,
+            .x2 = coords.x1 + (x_last + 1) * SNOW_CELL_PX - 1,
+                        .y2 = coords.y1 + ((band + 1) * SNOW_BAND_ROWS + 1) * SNOW_CELL_PX - 1,
         };
 
-        lv_obj_invalidate_area(sand_obj, &area);
+        lv_obj_invalidate_area(snow_obj, &area);
     }
 }
 
-static void wake_sand(void)
+static void wake_snow(void)
 {
     rest_frames = 0;
     if (frame_timer) {
@@ -322,19 +316,17 @@ static void wake_sand(void)
     }
 }
 
-/* @return true if the sand now falls another way. */
+/* @return true if the snow now falls another way. */
 static bool read_gravity(void)
 {
-    float x;
-    float y;
-    float z;
+    float right;
+    float down;
 
-    if (gravity_overridden || zsw_imu_fetch_accel_f(&x, &y, &z) != 0) {
+    if (gravity_overridden || zsw_imu_fetch_gravity_on_display(&right, &down) != 0) {
         return false;
     }
 
-    return sand_sim_set_gravity((int)(ACCEL_TO_RIGHT(x, y) * 127.0f / ACCEL_1G),
-                                (int)(ACCEL_TO_DOWN(x, y) * 127.0f / ACCEL_1G));
+    return snow_sim_set_gravity((int)(right * 127.0f / ACCEL_1G), (int)(down * 127.0f / ACCEL_1G));
 }
 
 static void flake_respawn(flake_t *flake, bool anywhere)
@@ -352,7 +344,7 @@ static void flake_timer_cb(lv_timer_t *timer)
 
     ARG_UNUSED(timer);
 
-    lv_obj_get_coords(sand_obj, &coords);
+    lv_obj_get_coords(snow_obj, &coords);
     for (int i = 0; i < NUM_FLAKES; i++) {
         flake_t *flake = &flakes[i];
 
@@ -361,7 +353,7 @@ static void flake_timer_cb(lv_timer_t *timer)
         flake->y += 1 + (i & 1);
         flake->x += (int)lv_rand(0, 2) - 1;
         if (flake->y >= FACE_SIZE - FLAKE_SIZE || flake->x < 0 || flake->x >= FACE_SIZE - FLAKE_SIZE ||
-            SAND_CELL_TYPE(sand_sim_cell(flake->x / SAND_CELL_PX, flake->y / SAND_CELL_PX)) == SAND_CELL_SAND) {
+            SNOW_CELL_TYPE(snow_sim_cell(flake->x / SNOW_CELL_PX, flake->y / SNOW_CELL_PX)) == SNOW_CELL_SNOW) {
             flake_respawn(flake, false);
         }
 
@@ -370,18 +362,18 @@ static void flake_timer_cb(lv_timer_t *timer)
         if (after.y1 >= before.y1 && after.y1 <= before.y2 + FLAKE_SIZE) {
             lv_area_join(&before, &before, &after);
         } else {
-            lv_obj_invalidate_area(sand_obj, &after);
+            lv_obj_invalidate_area(snow_obj, &after);
         }
-        lv_obj_invalidate_area(sand_obj, &before);
+        lv_obj_invalidate_area(snow_obj, &before);
     }
 }
 
 /* The height in pixels of the snow under a point, or -1 where there is none. */
 static int ground_at(int x_px)
 {
-    int surface = sand_sim_surface(x_px / SAND_CELL_PX);
+    int surface = snow_sim_surface(x_px / SNOW_CELL_PX);
 
-    return surface < SAND_GRID_SIZE ? surface * SAND_CELL_PX : -1;
+    return surface < SNOW_GRID_SIZE ? surface * SNOW_CELL_PX : -1;
 }
 
 static void penguin_stop(void)
@@ -404,14 +396,14 @@ static void penguin_show(void)
     int sink = 0;
 
     if (penguin.state == PENGUIN_FALLEN) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_peng_fallen_r) : ZSW_LV_IMG_USE(face_sand_peng_fallen_l);
+        src = right ? ZSW_LV_IMG_USE(face_snow_peng_fallen_r) : ZSW_LV_IMG_USE(face_snow_peng_fallen_l);
         sink = PENGUIN_FALLEN_SINK_PX;
     } else if (penguin.state == PENGUIN_SLIDING || penguin.airborne) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_peng_slide_r) : ZSW_LV_IMG_USE(face_sand_peng_slide_l);
+        src = right ? ZSW_LV_IMG_USE(face_snow_peng_slide_r) : ZSW_LV_IMG_USE(face_snow_peng_slide_l);
     } else if ((penguin.frames / PENGUIN_WADDLE_FRAMES) & 1) {
-        src = right ? ZSW_LV_IMG_USE(face_sand_peng_walk_b_r) : ZSW_LV_IMG_USE(face_sand_peng_walk_b_l);
+        src = right ? ZSW_LV_IMG_USE(face_snow_peng_walk_b_r) : ZSW_LV_IMG_USE(face_snow_peng_walk_b_l);
     } else {
-        src = right ? ZSW_LV_IMG_USE(face_sand_peng_walk_a_r) : ZSW_LV_IMG_USE(face_sand_peng_walk_a_l);
+        src = right ? ZSW_LV_IMG_USE(face_snow_peng_walk_a_r) : ZSW_LV_IMG_USE(face_snow_peng_walk_a_l);
     }
 
     if (src != penguin.shown) {
@@ -428,16 +420,16 @@ static void penguin_start(void)
     int left = -1;
     int right = -1;
 
-    if (penguin.active || !sand_sim_is_level()) {
+    if (penguin.active || !snow_sim_is_level()) {
         return;
     }
 
-    for (int x = PENGUIN_WIDTH / 2; x < FACE_SIZE - PENGUIN_WIDTH / 2 && left < 0; x += SAND_CELL_PX) {
+    for (int x = PENGUIN_WIDTH / 2; x < FACE_SIZE - PENGUIN_WIDTH / 2 && left < 0; x += SNOW_CELL_PX) {
         if (ground_at(x) >= 0) {
             left = x;
         }
     }
-    for (int x = FACE_SIZE - PENGUIN_WIDTH / 2; x > left && right < 0; x -= SAND_CELL_PX) {
+    for (int x = FACE_SIZE - PENGUIN_WIDTH / 2; x > left && right < 0; x -= SNOW_CELL_PX) {
         if (ground_at(x) >= 0) {
             right = x;
         }
@@ -457,7 +449,7 @@ static void penguin_start(void)
     penguin_set_state(PENGUIN_WALKING);
     penguin_show();
     lv_obj_remove_flag(penguin.img, LV_OBJ_FLAG_HIDDEN);
-    wake_sand();
+    wake_snow();
 }
 
 /* A tap while he is out makes him jump. */
@@ -473,12 +465,12 @@ static void penguin_jump(void)
 /* Head first into the snow, with a puff of it thrown up around him. */
 static void penguin_trip(void)
 {
-    int column = penguin.x / PENGUIN_FP / SAND_CELL_PX;
+    int column = penguin.x / PENGUIN_FP / SNOW_CELL_PX;
 
     penguin_set_state(PENGUIN_FALLEN);
     penguin.dy = 0;
     for (int i = -5; i <= 5; i += 2) {
-        sand_sim_kick(column + i);
+        snow_sim_kick(column + i);
     }
 }
 
@@ -504,7 +496,7 @@ static void penguin_step(void)
 
     penguin.frames++;
 
-    if (!sand_sim_is_level()) {
+    if (!snow_sim_is_level()) {
         /* The watch was turned and the snow is sliding away under him */
         penguin_stop();
         return;
@@ -558,7 +550,7 @@ static void penguin_step(void)
                 penguin_trip();
             } else {
                 penguin.dy = 0;
-                sand_sim_kick(penguin.x / PENGUIN_FP / SAND_CELL_PX);
+                snow_sim_kick(penguin.x / PENGUIN_FP / SNOW_CELL_PX);
             }
             penguin.jumped = false;
         }
@@ -574,7 +566,7 @@ static void penguin_step(void)
             if (penguin.frames > PENGUIN_WADDLE_FRAMES * 4 && lv_rand(0, PENGUIN_TRIP_ONE_IN - 1) == 0) {
                 penguin_trip();
             } else if (penguin.state == PENGUIN_SLIDING && penguin.frames % PENGUIN_SPRAY_EVERY == 0) {
-                sand_sim_kick(penguin.x / PENGUIN_FP / SAND_CELL_PX - penguin.dir * 7);
+                snow_sim_kick(penguin.x / PENGUIN_FP / SNOW_CELL_PX - penguin.dir * 7);
             }
         }
     }
@@ -591,7 +583,7 @@ static void frame_timer_cb(lv_timer_t *timer)
     if (rest_frames >= REST_AFTER_FRAMES) {
         /* At rest: only look for the wrist turning, and now and then send the penguin out */
         if (read_gravity()) {
-            wake_sand();
+            wake_snow();
         } else if (penguin_wait_ticks > 0 && --penguin_wait_ticks == 0) {
             penguin_wait_ticks = lv_rand(PENGUIN_RANDOM_TICKS / 2, PENGUIN_RANDOM_TICKS * 3 / 2);
             penguin_start();
@@ -606,7 +598,7 @@ static void frame_timer_cb(lv_timer_t *timer)
 
     penguin_step();
     for (int i = 0; i < STEPS_PER_FRAME; i++) {
-        moving |= sand_sim_step();
+        moving |= snow_sim_step();
     }
     moving |= penguin.active;
     invalidate_dirty();
@@ -640,8 +632,8 @@ static void root_clicked_cb(lv_event_t *e)
 
     if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED) {
         /* A long press throws the snow up */
-        sand_sim_shake();
-        wake_sand();
+        snow_sim_shake();
+        wake_snow();
     } else if (penguin.active) {
         penguin_jump();
     } else {
@@ -662,8 +654,8 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(root_page, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(root_page, lv_color_black(), LV_PART_MAIN);
-    /* A night sky behind the sand, drawn straight from the resource filesystem */
-    lv_obj_set_style_bg_image_src(root_page, ZSW_LV_IMG_USE(face_sand_sky), LV_PART_MAIN);
+    /* A night sky behind the snow, drawn straight from the resource filesystem */
+    lv_obj_set_style_bg_image_src(root_page, ZSW_LV_IMG_USE(face_snow_sky), LV_PART_MAIN);
     /* A tap sends the penguin out, or makes him jump. A long press throws the snow up. */
     lv_obj_add_flag(root_page, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(root_page, root_clicked_cb, LV_EVENT_SHORT_CLICKED, NULL);
@@ -677,14 +669,14 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     /* The same seed at every start would make the penguin trip at the same place every time */
     lv_rand_set_seed(k_cycle_get_32());
     init_colors();
-    sand_sim_init(k_cycle_get_32());
+    snow_sim_init(k_cycle_get_32());
 
-    sand_obj = lv_obj_create(root_page);
-    lv_obj_remove_style_all(sand_obj);
-    lv_obj_set_size(sand_obj, FACE_SIZE, FACE_SIZE);
-    lv_obj_center(sand_obj);
-    lv_obj_remove_flag(sand_obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_event_cb(sand_obj, sand_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+    snow_obj = lv_obj_create(root_page);
+    lv_obj_remove_style_all(snow_obj);
+    lv_obj_set_size(snow_obj, FACE_SIZE, FACE_SIZE);
+    lv_obj_center(snow_obj);
+    lv_obj_remove_flag(snow_obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(snow_obj, snow_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
 
     ui_date = zsw_ui_label_create(root_page, "", ZSW_FONT_TEXT, lv_color_hex(COLOR_DATE));
     lv_obj_set_style_text_letter_space(ui_date, 1, LV_PART_MAIN);
@@ -703,7 +695,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
 
     frame_timer = lv_timer_create(frame_timer_cb, FRAME_PERIOD_MS, NULL);
     flake_timer = lv_timer_create(flake_timer_cb, FLAKE_PERIOD_MS, NULL);
-    wake_sand();
+    wake_snow();
 }
 
 static void watchface_remove(void)
@@ -722,7 +714,7 @@ static void watchface_remove(void)
     penguin.active = false;
     lv_obj_delete(root_page);
     root_page = NULL;
-    sand_obj = NULL;
+    snow_obj = NULL;
 }
 
 static void watchface_set_display_active(bool active)
@@ -736,7 +728,7 @@ static void watchface_set_display_active(bool active)
     if (active) {
         /* Every other time the watch is looked at, the penguin comes by soon after */
         penguin_wait_ticks = lv_rand(0, 1) ? PENGUIN_WAKE_TICKS : PENGUIN_RANDOM_TICKS;
-        wake_sand();
+        wake_snow();
     }
 }
 
@@ -768,8 +760,8 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
         last_hour = hour;
         last_minute = minute;
         /* The digits that changed crumble and new ones rise from the pile */
-        sand_sim_set_time(hour, minute);
-        wake_sand();
+        snow_sim_set_time(hour, minute);
+        wake_snow();
     }
 
     if (date != last_day) {
@@ -840,14 +832,14 @@ static void watchface_ui_invalidate_cached(void)
 
 static const void *watchface_get_preview_img(void)
 {
-    return ZSW_LV_IMG_USE(face_sand_preview);
+    return ZSW_LV_IMG_USE(face_snow_preview);
 }
 
-void zsw_watchface_sand_override_gravity(bool enable, int x, int y)
+void zsw_watchface_snow_override_gravity(bool enable, int x, int y)
 {
     gravity_overridden = enable;
-    if (enable && root_page && sand_sim_set_gravity(x, y)) {
-        wake_sand();
+    if (enable && root_page && snow_sim_set_gravity(x, y)) {
+        wake_snow();
     }
 }
 
@@ -867,7 +859,7 @@ static watchface_ui_api_t ui_api = {
     .set_datetime = watchface_set_datetime,
     .ui_invalidate_cached = watchface_ui_invalidate_cached,
     .get_preview_img = watchface_get_preview_img,
-    .name = "Sand",
+    .name = "Snow",
 };
 
 static int watchface_init(void)

@@ -407,6 +407,22 @@ int zsw_imu_fetch_accel_f(float *x, float *y, float *z)
     return 0;
 }
 
+int zsw_imu_fetch_gravity_on_display(float *right, float *down)
+{
+    float x;
+    float y;
+    float z;
+    int rc = zsw_imu_fetch_accel_f(&x, &y, &z);
+
+    if (rc == 0) {
+        // The sensor measures the opposite of gravity, and y points up.
+        *right = -x;
+        *down = y;
+    }
+
+    return rc;
+}
+
 int zsw_imu_fetch_gyro_f(float *x, float *y, float *z)
 {
     struct sensor_value x_temp;

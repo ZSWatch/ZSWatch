@@ -20,8 +20,8 @@
 #include <stdbool.h>
 
 /**
- * Replaces the accelerometer as the source of gravity for the Sand watchface, for testing
+ * Replaces the accelerometer as the source of gravity for the Snow watchface, for testing
  * where there is none (native_sim). x to the right and y down on the display, 127 is 1 g.
  * Call with enable false to go back to the accelerometer. Call with the LVGL lock held.
  */
-void zsw_watchface_sand_override_gravity(bool enable, int x, int y);
+void zsw_watchface_snow_override_gravity(bool enable, int x, int y);

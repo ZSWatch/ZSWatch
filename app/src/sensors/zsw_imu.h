@@ -108,8 +108,22 @@ int zsw_imu_init(void);
  */
 int zsw_imu_request_step_snapshots(struct zsw_imu_step_snapshot_request *req, bool enable);
 
-/** @brief Fetch acceleration components in m/s^2. */
+/**
+ * @brief Fetch acceleration components in m/s^2.
+ *
+ * The axes are remapped for each board in devicetree: x points to the right of the display,
+ * y up and z out of the display. At rest the sensor measures the force holding it up, so a
+ * watch lying face up reads +1 g on z.
+ */
 int zsw_imu_fetch_accel_f(float *x, float *y, float *z);
+
+/**
+ * @brief Fetch which way gravity pulls, in m/s^2 along the display.
+ *
+ * @param right Positive when the right edge of the display is lower than the left.
+ * @param down Positive when the bottom edge of the display is lower than the top.
+ */
+int zsw_imu_fetch_gravity_on_display(float *right, float *down);
 
 /** @brief Fetch angular velocity components in rad/s. */
 int zsw_imu_fetch_gyro_f(float *x, float *y, float *z);

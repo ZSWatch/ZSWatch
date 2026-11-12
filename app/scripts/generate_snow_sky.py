@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
-"""Generates the night sky behind the Sand watchface as an RGB565 image for the resource filesystem.
+"""Generates the night sky behind the Snow watchface as an RGB565 image for the resource filesystem.
 
-Run from app/: python scripts/generate_sand_sky.py [--preview sky.png]
+Run from app/: python scripts/generate_snow_sky.py [--preview sky.png]
 """
 
 import argparse
@@ -12,7 +12,7 @@ import struct
 
 from PIL import Image
 
-OUT = "src/images/binaries/S/face_sand_sky.bin"
+OUT = "src/images/binaries/S/face_snow_sky.bin"
 SIZE = 240
 # The sky from the top to the horizon at the bottom: (position 0..1, color)
 GRADIENT = [(0.0, (4, 6, 22)), (0.45, (11, 17, 52)), (0.8, (30, 24, 78)), (1.0, (58, 34, 92))]

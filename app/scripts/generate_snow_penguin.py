@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 ZSWatch Project
 # SPDX-License-Identifier: Apache-2.0
-"""Generates the penguin of the Sand watchface as RGB565A8 images: each pose facing right and left.
+"""Generates the penguin of the Snow watchface as RGB565A8 images: each pose facing right and left.
 
-Run from app/: python scripts/generate_sand_penguin.py [--preview penguin.png]
+Run from app/: python scripts/generate_snow_penguin.py [--preview penguin.png]
 """
 
 import argparse
@@ -11,7 +11,7 @@ import struct
 
 from PIL import Image
 
-OUT = "src/images/binaries/S/face_sand_peng_{}_{}.bin"
+OUT = "src/images/binaries/S/face_snow_peng_{}_{}.bin"
 # Display pixels per pixel of the drawing: the same as a grain of the watchface
 SCALE = 2
 
