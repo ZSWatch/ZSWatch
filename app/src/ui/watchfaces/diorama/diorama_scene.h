@@ -62,9 +62,8 @@ typedef struct {
     diorama_weather_t weather;
     /* 1 (light) to 3 (heavy) */
     uint8_t intensity;
-    /* How the watch is held: -127 to 127, x to the right and y down on the display */
+    /* How far the right side of the watch is lowered, -127 to 127: the layers slide that way */
     int8_t tilt_x;
-    int8_t tilt_y;
     /* 0: the layers are sunk below the lake, 255: in place */
     uint8_t rise;
 } diorama_view_t;

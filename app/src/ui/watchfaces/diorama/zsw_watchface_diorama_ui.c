@@ -46,17 +46,16 @@ LOG_MODULE_REGISTER(watchface_diorama, LOG_LEVEL_INF);
 #define FRAME_PERIOD_MS         40
 /* Every this many frames the accelerometer is read */
 #define TILT_EVERY_FRAMES       2
-/* Tilting the watch this far from flat moves the layers all the way, of 127 for upright */
+/* Tilting the watch this far sideways from flat moves the layers all the way, of 127 for upright */
 #define TILT_FULL               70
 /* The tilt has to change by this much, of 127, for the layers to follow */
 #define TILT_MIN_CHANGE         4
-/*
- * How the accelerometer axes map to the display: x to the right and y down, for a watch that
- * lies flat with the display up.
- */
-#define ACCEL_TO_RIGHT(x, y)    (x)
-#define ACCEL_TO_DOWN(x, y)     (-(y))
 #define ACCEL_1G                9.81f
+
+/* A double tap runs a whole day, with all kinds of weather, in this time */
+#define DEMO_MS                 30000
+/* The weather of the demo, one after the other over the day */
+#define DEMO_WEATHER_STEPS      8
 
 /* When the display turns on the layers rise, and the sky runs through the last hours */
 #define WAKE_MS                 900
@@ -130,16 +129,23 @@ static uint32_t wake_time;
 static bool waking;
 static uint8_t tilt_frames;
 static int16_t tilt_x;
-static int16_t tilt_y;
 static int8_t tilt_target_x;
-static int8_t tilt_target_y;
 
 static struct {
     bool enabled;
     int minute_of_day;
     int tilt_x;
-    int tilt_y;
 } override;
+
+static struct {
+    bool active;
+    uint32_t start;
+    int start_minute;
+    int minute_of_day;
+    /* The weather to go back to */
+    diorama_weather_t weather;
+    uint8_t intensity;
+} demo;
 
 static int last_minute = -1;
 static int last_hour = -1;
@@ -326,7 +332,9 @@ static void compute_sky(int minutes_ago, diorama_sky_events_t *events)
     } else if (when.utc_offset_min < -12 * 60) {
         when.utc_offset_min += 24 * 60;
     }
-    if (override.enabled) {
+    if (demo.active) {
+        when.minute_of_day = demo.minute_of_day;
+    } else if (override.enabled) {
         when.minute_of_day = override.minute_of_day;
     }
     /* Going back over midnight keeps the date: a day makes no difference that can be seen */
@@ -340,7 +348,7 @@ static void compute_sky(int minutes_ago, diorama_sky_events_t *events)
 
 static void show_sun_event(void)
 {
-    int now = override.enabled ? override.minute_of_day : last_hour * 60 + last_minute;
+    int now = demo.active ? demo.minute_of_day : (override.enabled ? override.minute_of_day : last_hour * 60 + last_minute);
     bool day;
 
     if (!has_place || last_hour < 0) {
@@ -368,7 +376,6 @@ static void apply_view(void)
     int first_row;
 
     view.tilt_x = (int8_t)(tilt_x / 16);
-    view.tilt_y = (int8_t)(tilt_y / 16);
     if (diorama_scene_set_view(&view, &first_row)) {
         scene_dirty(0, first_row, DIORAMA_SIZE - 1, DIORAMA_SIZE - 1);
     }
@@ -382,26 +389,93 @@ static void start_wake(void)
     compute_sky(WAKE_REPLAY_MIN, NULL);
 }
 
+/*
+ * Only sideways: the layers slide a little towards the side that is lowered. Tilting the watch
+ * towards and away from you is how it is read, and would only make the land bob up and down.
+ */
 static void read_tilt(void)
 {
-    float x;
-    float y;
-    float z;
+    float right;
+    float down;
 
     if (override.enabled) {
         tilt_target_x = (int8_t)override.tilt_x;
-        tilt_target_y = (int8_t)override.tilt_y;
-    } else if (zsw_imu_fetch_accel_f(&x, &y, &z) == 0) {
-        int new_x = CLAMP((int)(ACCEL_TO_RIGHT(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
-        int new_y = CLAMP((int)(ACCEL_TO_DOWN(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
+    } else if (zsw_imu_fetch_gravity_on_display(&right, &down) == 0) {
+        int new_x = CLAMP((int)(right * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
 
         /* A hand is never quite still: small changes are left out */
         if (abs(new_x - tilt_target_x) >= TILT_MIN_CHANGE) {
             tilt_target_x = (int8_t)new_x;
         }
-        if (abs(new_y - tilt_target_y) >= TILT_MIN_CHANGE) {
-            tilt_target_y = (int8_t)new_y;
-        }
+    }
+}
+
+static void show_time(int minute_of_day)
+{
+    lv_label_set_text_fmt(ui_time, "%02d:%02d", minute_of_day / 60, minute_of_day % 60);
+    lv_label_set_text_fmt(ui_time_shadow, "%02d:%02d", minute_of_day / 60, minute_of_day % 60);
+}
+
+static void demo_stop(void)
+{
+    if (!demo.active) {
+        return;
+    }
+    demo.active = false;
+    view.weather = demo.weather;
+    view.intensity = demo.intensity;
+    if (last_hour >= 0) {
+        show_time(last_hour * 60 + last_minute);
+    }
+    update_sky();
+    apply_view();
+}
+
+static void demo_start(void)
+{
+    demo.active = true;
+    demo.start = lv_tick_get();
+    demo.start_minute = last_hour >= 0 ? last_hour * 60 + last_minute : 0;
+    demo.minute_of_day = demo.start_minute;
+    demo.weather = view.weather;
+    demo.intensity = view.intensity;
+    waking = false;
+    view.rise = 255;
+}
+
+/* The clock runs a day round while the weather changes */
+static void demo_step(void)
+{
+    static const diorama_weather_t weathers[DEMO_WEATHER_STEPS] = {
+        DIORAMA_WEATHER_CLEAR, DIORAMA_WEATHER_CLOUDS, DIORAMA_WEATHER_RAIN, DIORAMA_WEATHER_CLEAR,
+        DIORAMA_WEATHER_FOG, DIORAMA_WEATHER_CLEAR, DIORAMA_WEATHER_SNOW, DIORAMA_WEATHER_CLEAR,
+    };
+    uint32_t elapsed = lv_tick_elaps(demo.start);
+    int minute;
+
+    if (elapsed >= DEMO_MS) {
+        demo_stop();
+        return;
+    }
+
+    minute = (demo.start_minute + (int)((uint64_t)elapsed * 24 * 60 / DEMO_MS)) % (24 * 60);
+    if (minute != demo.minute_of_day) {
+        demo.minute_of_day = minute;
+        show_time(minute);
+    }
+    view.weather = weathers[elapsed * DEMO_WEATHER_STEPS / DEMO_MS];
+    view.intensity = 2;
+    update_sky();
+}
+
+static void root_double_clicked_cb(lv_event_t *e)
+{
+    ARG_UNUSED(e);
+
+    if (demo.active) {
+        demo_stop();
+    } else {
+        demo_start();
     }
 }
 
@@ -415,9 +489,10 @@ static void frame_timer_cb(lv_timer_t *timer)
     }
     /* The layers follow the hand softly. Kept in 1/16 steps so that they come all the way. */
     tilt_x += (tilt_target_x * 16 - tilt_x) / 4;
-    tilt_y += (tilt_target_y * 16 - tilt_y) / 4;
 
-    if (waking) {
+    if (demo.active) {
+        demo_step();
+    } else if (waking) {
         uint32_t elapsed = lv_tick_elaps(wake_time);
 
         if (elapsed >= WAKE_MS) {
@@ -555,13 +630,15 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_set_size(root_page, DIORAMA_SIZE, DIORAMA_SIZE);
     lv_obj_center(root_page);
     lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(root_page, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(root_page, root_double_clicked_cb, LV_EVENT_DOUBLE_CLICKED, NULL);
 
     reset_cached_values();
     face_active = true;
     paused = false;
     tilt_frames = 0;
     tilt_x = 0;
-    tilt_y = 0;
+    demo.active = false;
 
     diorama_scene_init(k_cycle_get_32());
 
@@ -626,6 +703,9 @@ static void watchface_set_display_active(bool active)
 
     face_active = active;
     update_timer_state();
+    if (!active) {
+        demo_stop();
+    }
     if (active) {
         start_wake();
         apply_view();
@@ -659,18 +739,20 @@ static void watchface_set_datetime(int day_of_week, int date, int day, int month
     if (hour != last_hour || minute != last_minute) {
         last_hour = hour;
         last_minute = minute;
-        lv_label_set_text_fmt(ui_time, "%02d:%02d", (int)hour, (int)minute);
-        lv_label_set_text_fmt(ui_time_shadow, "%02d:%02d", (int)hour, (int)minute);
-        if (!waking) {
-            update_sky();
-            apply_view();
-        } else {
-            diorama_view_t unused = view;
+        /* The demo has the clock and the sky until it ends */
+        if (!demo.active) {
+            show_time(hour * 60 + minute);
+            if (!waking) {
+                update_sky();
+                apply_view();
+            } else {
+                diorama_view_t unused = view;
 
-            /* The sky is in the middle of its run, only the times of the sun are needed */
-            compute_sky(0, &sun_events);
-            view = unused;
-            show_sun_event();
+                /* The sky is in the middle of its run, only the times of the sun are needed */
+                compute_sky(0, &sun_events);
+                view = unused;
+                show_sun_event();
+            }
         }
     }
 
@@ -742,6 +824,12 @@ static void watchface_set_charging(bool is_charging)
 
 static void set_weather(diorama_weather_t weather, int intensity)
 {
+    if (demo.active) {
+        /* Shown when the demo ends */
+        demo.weather = weather;
+        demo.intensity = (uint8_t)intensity;
+        return;
+    }
     view.weather = weather;
     view.intensity = (uint8_t)intensity;
     apply_view();
@@ -818,16 +906,15 @@ static const void *watchface_get_preview_img(void)
     return ZSW_LV_IMG_USE(face_diorama_preview);
 }
 
-void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather, int intensity, int tilt_x_new,
-                                    int tilt_y_new)
+void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather, int intensity, int tilt_x_new)
 {
     override.enabled = enable;
     override.minute_of_day = minute_of_day;
     override.tilt_x = tilt_x_new;
-    override.tilt_y = tilt_y_new;
     if (!root_page) {
         return;
     }
+    demo_stop();
     /* Back to clear weather until the next report comes */
     view.weather = enable ? (diorama_weather_t)weather : DIORAMA_WEATHER_CLEAR;
     view.intensity = enable ? (uint8_t)intensity : 1;
@@ -835,6 +922,13 @@ void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather,
         update_sky();
     }
     apply_view();
+}
+
+void zsw_watchface_diorama_demo(void)
+{
+    if (root_page) {
+        root_double_clicked_cb(NULL);
+    }
 }
 
 static watchface_ui_api_t ui_api = {
