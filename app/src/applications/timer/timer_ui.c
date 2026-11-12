@@ -9,11 +9,13 @@
 #define TIMER_COLOR             lv_color_hex(0x5E5CE6)
 #define ALARM_COLOR             ZSW_COLOR_ORANGE
 
-#define LIST_WIDTH              196
+#define LIST_WIDTH              208
 #define LIST_TOP                46
 #define LIST_HEIGHT             132
-#define ITEM_HEIGHT             44
-#define ITEM_BUTTON_SIZE        30
+#define ITEM_HEIGHT             52
+#define ITEM_BUTTON_SIZE        38
+// Touch area outside each row button
+#define ITEM_BUTTON_EXT_CLICK   3
 #define ADD_BUTTON_SIZE         40
 
 #define KEY_WIDTH               52
@@ -75,10 +77,8 @@ void timer_ui_show(lv_obj_t *root, on_timer_created on_create, on_timer_event on
     ring_timer_id = NO_TIMER;
     memset(ui_timers, 0, sizeof(ui_timers));
 
-    root_page = lv_obj_create(root);
-    lv_obj_remove_style_all(root_page);
-    lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    // One glow for all pages, it stays in place while the pages are swiped
+    root_page = zsw_ui_screen_create(root, TIMER_COLOR);
 
     tv = lv_tileview_create(root_page);
     lv_obj_set_size(tv, LV_PCT(100), LV_PCT(100));
@@ -187,7 +187,7 @@ static void page_init(timer_page_t *page, lv_obj_t *tile, const char *title, con
 {
     lv_obj_remove_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
 
-    page->tile = zsw_ui_screen_create(tile, color);
+    page->tile = zsw_ui_page_create(tile);
     page->ring = zsw_ui_ring_create(page->tile, color);
     zsw_ui_title_create(page->tile, title, ZSW_COLOR_TEXT_DIM);
 
@@ -216,7 +216,8 @@ static lv_obj_t *create_item_button(lv_obj_t *parent, const char *symbol, lv_col
                                     uint32_t timer_id)
 {
     lv_obj_t *button = zsw_ui_round_button_create(parent, symbol, ITEM_BUTTON_SIZE, color);
-    lv_obj_set_style_text_font(lv_obj_get_child(button, 0), ZSW_FONT_TEXT, LV_PART_MAIN);
+    lv_obj_set_style_text_font(lv_obj_get_child(button, 0), ZSW_FONT_BODY, LV_PART_MAIN);
+    lv_obj_set_ext_click_area(button, ITEM_BUTTON_EXT_CLICK);
     lv_obj_add_flag(button, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, (void *)(uintptr_t)timer_id);
 
@@ -235,9 +236,9 @@ static void create_timer_item(timer_page_t *page, timer_app_timer_t timer)
     lv_obj_set_style_radius(item->ui_timer, ITEM_HEIGHT / 2, LV_PART_MAIN);
     lv_obj_set_style_bg_color(item->ui_timer, ZSW_COLOR_SURFACE, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(item->ui_timer, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_pad_left(item->ui_timer, 14, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(item->ui_timer, 10, LV_PART_MAIN);
     lv_obj_set_style_pad_right(item->ui_timer, 7, LV_PART_MAIN);
-    lv_obj_set_style_pad_column(item->ui_timer, 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(item->ui_timer, 3, LV_PART_MAIN);
     lv_obj_set_flex_flow(item->ui_timer, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(item->ui_timer, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_remove_flag(item->ui_timer, LV_OBJ_FLAG_SCROLLABLE);
