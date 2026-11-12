@@ -201,6 +201,21 @@ static void async_turn_off_buttons_allocation(void *unused)
     is_buttons_for_lvgl = false;
 }
 
+// A long press opens the watchface picker only if the finger stayed about where it was pressed.
+#define LONG_PRESS_MAX_MOVE_PX  16
+
+static lv_point_t touch_press_point;
+
+static void on_touch_pressed(lv_event_t *e)
+{
+    lv_indev_t *indev = lv_indev_active();
+
+    ARG_UNUSED(e);
+    if (indev) {
+        lv_indev_get_point(indev, &touch_press_point);
+    }
+}
+
 static void on_touch_long_pressed(lv_event_t *e)
 {
     lv_obj_t *pressed = lv_event_get_param(e);
@@ -209,9 +224,20 @@ static void on_touch_long_pressed(lv_event_t *e)
                     lv_obj_check_type(pressed, &lv_arc_class))) {
         return;
     }
+    lv_indev_t *indev = lv_indev_active();
+    lv_point_t point;
+
+    // LVGL sends a long press also for a slow swipe, as long as nothing scrolled.
+    if (indev) {
+        lv_indev_get_point(indev, &point);
+        if (lv_indev_get_gesture_dir(indev) != LV_DIR_NONE ||
+            LV_ABS(point.x - touch_press_point.x) > LONG_PRESS_MAX_MOVE_PX ||
+            LV_ABS(point.y - touch_press_point.y) > LONG_PRESS_MAX_MOVE_PX) {
+            return;
+        }
+    }
     if (watch_state == WATCHFACE_STATE && !zsw_overlay_active()) {
         zsw_vibration_run_pattern(ZSW_VIBRATION_PATTERN_CLICK);
-        lv_indev_t *indev = lv_indev_active();
         if (indev) {
             lv_indev_wait_release(indev);
         }
@@ -495,6 +521,7 @@ int zsw_ui_controller_init(void)
             // Clicking anywhere with this below added right now will cause a vibration, which
             // is not what we want
             // touch_indev->driver->feedback_cb = click_feedback;
+            lv_indev_add_event_cb(touch_indev, on_touch_pressed, LV_EVENT_PRESSED, NULL);
             lv_indev_add_event_cb(touch_indev, on_touch_long_pressed, LV_EVENT_LONG_PRESSED, NULL);
             break;
         }
