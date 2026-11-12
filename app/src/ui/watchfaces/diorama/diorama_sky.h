@@ -38,7 +38,12 @@ typedef struct {
     /* Local time in minutes, or -1 when the sun does not rise or set that day */
     int sunrise;
     int sunset;
+    /* When the sun does neither: true if it is up all day, false if it is down all day */
+    bool polar_day;
 } diorama_sky_events_t;
 
-/* Fills in where the sun and the moon are in view, and optionally when the sun rises and sets. */
+/*
+ * Fills in where the sun and the moon are on their way over the sky and the phase of the moon,
+ * and optionally when the sun rises and sets.
+ */
 void diorama_sky_compute(const diorama_sky_time_t *when, diorama_view_t *view, diorama_sky_events_t *events);

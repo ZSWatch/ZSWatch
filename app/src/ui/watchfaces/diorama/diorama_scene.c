@@ -29,13 +29,20 @@
 #define SKY_MID_Y               88
 #define SKY_HORIZON_Y           150
 
-/* The sun and the moon travel between these columns, and rise from this row */
+/* The sun and the moon travel between these columns */
 #define ORBIT_X1                34
 #define ORBIT_X2                206
-#define ORBIT_HORIZON_Y         142
-#define ORBIT_HEIGHT            52
-/* Elevation (tenths of a degree) drawn at the top of the orbit: higher looks the same */
-#define ORBIT_MAX_ELEVATION     600
+/* Row of the middle of the sun at noon: in the depth of winter and in high summer */
+#define SUN_PEAK_LOW_Y          108
+#define SUN_PEAK_HIGH_Y         91
+#define MOON_PEAK_Y             100
+/* The least a body rises over where it comes up */
+#define ORBIT_MIN_LIFT          12
+/* A body this far past the end of its arc, of 256, is gone */
+#define ORBIT_GONE              31
+/* Rows a body sinks for a whole arc past the end, and the most it sinks */
+#define ORBIT_SINK              500
+#define ORBIT_MAX_SINK          60
 #define SUN_RADIUS              10
 #define MOON_RADIUS             8
 #define MOON_GLOW_RADIUS        26
@@ -44,6 +51,24 @@
 #define GLOW_STEPS              48
 /* Light weaker than this, of 256, never changes a pixel */
 #define GLOW_MIN_VISIBLE        4
+
+/* The northern lights: curtains that reach this many rows up from their foot, and fade below it */
+#define AURORA_BANDS            2
+#define AURORA_ROWS             40
+#define AURORA_FOOT             5
+/* No curtain reaches below this row */
+#define AURORA_LAST_ROW         103
+#define AURORA_PERIOD_MS        300
+/* The stars have to be this bright, of 255, before the northern lights show */
+#define AURORA_MIN_STARS        64
+
+#define SMOKE_PUFFS             10
+#define SMOKE_PERIOD_MS         250
+
+/* The water is darker where the steps and the battery are shown, from this row down */
+#define SHADE_Y                 174
+#define SHADE_COLOR             0x060C18
+#define LAMP_COLOR              0xFFD98A
 
 /* Rows a cloud reaches above and below its base line */
 #define CLOUD_ABOVE             32
@@ -71,7 +96,10 @@ static const int8_t parallax_x[NUM_LAYERS] = { 2, 5, 9, 14 };
 static const int8_t parallax_y[NUM_LAYERS] = { 0, 1, 2, 4 };
 static const uint8_t rise_drop[NUM_LAYERS] = { 26, 38, 50, 70 };
 /* How much of the haze the foot of each layer takes on, of 256 */
-static const uint8_t layer_mist[NUM_LAYERS] = { 185, 150, 95, 40 };
+static const uint8_t layer_mist[NUM_LAYERS] = { 184, 148, 92, 36 };
+/* The heath and the shore are browner than the forest: a color and how much of it, of 256 */
+static const uint32_t layer_tone[NUM_LAYERS] = { 0, 0, 0x8A6A3A, 0x5A4630 };
+static const uint8_t layer_tone_mix[NUM_LAYERS] = { 0, 0, 56, 51 };
 
 typedef struct {
     uint32_t sky[3];            /* Top, middle and horizon */
@@ -162,6 +190,12 @@ static const int8_t wave[32] = {
     0, -25, -49, -71, -90, -106, -117, -125, -127, -125, -117, -106, -90, -71, -49, -25,
 };
 
+/* How a curtain of the northern lights fades on the way up, of 255 */
+static const uint8_t aurora_fade[AURORA_ROWS + 1] = {
+    255, 245, 235, 225, 215, 206, 197, 187, 178, 170, 161, 152, 144, 136, 128, 120, 113, 105, 98, 91, 84,
+    77, 71, 65, 59, 53, 48, 42, 37, 32, 28, 23, 19, 16, 12, 9, 6, 4, 2, 1, 0,
+};
+
 /* Brightness of a star at each twinkle level, of 32 */
 static const uint8_t star_levels[4] = { 10, 18, 25, 32 };
 
@@ -186,14 +220,16 @@ typedef struct {
 /* What a column of the land is drawn with: the layers, and the snow on the farthest one */
 #define COLOR_SNOW              NUM_LAYERS
 #define NUM_COLORS              (NUM_LAYERS + 1)
+/* The farthest layer shows as up to four spans: snow, rock, a field of snow and rock again */
+#define MAX_SPANS               (NUM_LAYERS + 3)
 
 /*
  * What stands in a column of the display: the rows where something new comes into view, from
  * the top, and what it is drawn with (three bits each). The last row is never reached.
  */
 typedef struct {
-    uint8_t y[NUM_COLORS + 1];
-    uint16_t colors;
+    uint8_t y[MAX_SPANS + 1];
+    uint32_t colors;
 } column_t;
 
 static struct {
@@ -208,18 +244,30 @@ static struct {
     uint16_t cloud_light565;
     uint16_t cloud_shade565;
     uint16_t particle565;
+    uint16_t smoke565;
+    uint16_t sprite565[DIORAMA_NUM_SPRITE_COLORS];
+    /* Of 32. A color that is not shown now has 0. */
+    uint8_t sprite_alpha[DIORAMA_NUM_SPRITE_COLORS];
+    /* How much daylight there is, of 256, for the things with a color of their own */
+    uint16_t light;
+    /* Rows of the middle of the sun where it comes up and where it goes down */
+    int16_t rise_y;
+    int16_t set_y;
     int16_t sun_x;
     int16_t sun_y;
     int16_t moon_x;
     int16_t moon_y;
     uint8_t glow;
     bool sun_disc;
+    bool moon_up;
     uint8_t moon_alpha;
     uint8_t star_alpha;
     uint8_t fog;                /* Of 32, at the shore */
     int8_t off_x[NUM_LAYERS];
     int16_t off_y[NUM_LAYERS];
     column_t columns[SIZE];
+    /* Top edge of the nearest layer: what stands further back is behind it */
+    uint8_t near_top[SIZE];
     /* First row with land in it, and first row without sky */
     uint8_t land_top;
     uint8_t sky_bottom;
@@ -232,6 +280,16 @@ static struct {
     uint8_t num_clouds;
     particle_t particles[MAX_PARTICLES];
     uint8_t num_particles;
+    /* Strength of the northern lights, and the foot and strength of each curtain in every column */
+    uint8_t aurora;
+    uint8_t aurora_base[AURORA_BANDS][SIZE];
+    uint8_t aurora_alpha[AURORA_BANDS][SIZE];
+    uint16_t aurora565[AURORA_ROWS + 1];
+    /* The rows each curtain is in */
+    int16_t aurora_first[AURORA_BANDS];
+    int16_t aurora_last[AURORA_BANDS];
+    uint32_t aurora_step;
+    uint32_t smoke;
     uint32_t time_ms;
     uint32_t ripple;
     uint32_t twinkle;
@@ -277,6 +335,27 @@ static inline uint16_t blend565(uint16_t fg, uint16_t bg, int a)
     uint32_t r = (b + (((f - b) * a) >> 5)) & 0x07E0F81F;
 
     return (uint16_t)(r | (r >> 16));
+}
+
+/* bg with a of 256 parts of fg. What a pixel cannot hold is rounded up when d, 0 to 255, is high. */
+static inline uint16_t blend565_fine(uint16_t fg, uint16_t bg, unsigned int a, unsigned int d)
+{
+    /* Blue and red apart, so that each has room for the 8 bits of a */
+    uint32_t f = (fg & 0x001Fu) | ((uint32_t)(fg & 0xF800u) << 5);
+    uint32_t b = (bg & 0x001Fu) | ((uint32_t)(bg & 0xF800u) << 5);
+    uint32_t rb = ((f * a + b * (256 - a) + (d | (d << 16))) >> 8) & 0x001F001Fu;
+    uint32_t g = (((fg >> 5) & 0x3Fu) * a + ((bg >> 5) & 0x3Fu) * (256 - a) + d) >> 8;
+
+    return (uint16_t)((rb & 0x1F) | ((rb >> 5) & 0xF800) | (g << 5));
+}
+
+/* The sine of phase, where 65536 is a full turn: -127 to 127 */
+static int isin(uint32_t phase)
+{
+    unsigned int i = (phase >> 11) & 31;
+    int frac = (int)(phase & 2047);
+
+    return wave[i] + (wave[(i + 1) & 31] - wave[i]) * frac / 2048;
 }
 
 /*
@@ -361,11 +440,124 @@ static void blend_palette(int elevation, palette_t *pal)
     pal->stars = (uint8_t)(a->stars + (b->stars - a->stars) * t / 256);
 }
 
-static void orbit_position(int elevation, int pos, int16_t *x, int16_t *y)
+/*
+ * A body comes up over the skyline at the left, stands highest at peak_y in the middle of its
+ * arc and goes down behind the skyline at the right.
+ */
+static void orbit_position(int arc, int peak_y, int16_t *x, int16_t *y, bool *up)
 {
-    *x = (int16_t)(ORBIT_X1 + pos * (ORBIT_X2 - ORBIT_X1) / 255);
-    *y = (int16_t)(ORBIT_HORIZON_Y - clamp(elevation, -ORBIT_MAX_ELEVATION, ORBIT_MAX_ELEVATION) *
-                   ORBIT_HEIGHT / ORBIT_MAX_ELEVATION);
+    int p = clamp(arc, 0, 256);
+    int out = arc < p ? p - arc : arc - p;
+    int lift = (s.rise_y + s.set_y) / 2 - peak_y;
+    int sink = out * ORBIT_SINK / 256;
+
+    if (lift < ORBIT_MIN_LIFT) {
+        lift = ORBIT_MIN_LIFT;
+    }
+    *x = (int16_t)(ORBIT_X1 + p * (ORBIT_X2 - ORBIT_X1) / 256);
+    *y = (int16_t)(s.rise_y + (s.set_y - s.rise_y) * p / 256 - isin((uint32_t)p * 128) * lift / 127 +
+                   (sink < ORBIT_MAX_SINK ? sink : ORBIT_MAX_SINK));
+    *up = arc != DIORAMA_ARC_NONE && out < ORBIT_GONE;
+}
+
+/* Row of the skyline in a column of the display, with the watch held flat */
+static int skyline(int x)
+{
+    int top = LAKE_Y;
+
+    for (int l = 0; l < NUM_LAYERS; l++) {
+        if (diorama_layer_top[l][MARGIN + x] < top) {
+            top = diorama_layer_top[l][MARGIN + x];
+        }
+    }
+
+    return top;
+}
+
+/* A color of its own in the light of the moment: darker at night, and a little of the haze */
+static uint32_t lit(uint32_t c)
+{
+    uint32_t dim = ((((c & 0xFF00FF) * s.light) >> 8) & 0xFF00FF) | ((((c & 0x00FF00) * s.light) >> 8) & 0x00FF00);
+
+    return mix(dim, s.pal.haze, 31 + 26 * (256 - s.light) / 256);
+}
+
+/* The colors of what stands in the landscape. The palette holds the layers without their tone. */
+static void sprite_colors(int cover)
+{
+    bool dark = s.view.sun_elevation < 20;
+    uint32_t crown = mix(s.pal.layer[2], lit(0xA8CC6E), 141);
+    uint32_t grass = mix(s.pal.layer[2], lit(0x7FA85A), 115);
+
+    for (int i = 0; i < DIORAMA_NUM_SPRITE_COLORS; i++) {
+        const diorama_sprite_color_t *entry = &diorama_sprite_colors[i];
+        uint32_t color = 0;
+        int alpha = 32;
+
+        switch (entry->kind) {
+            case DIORAMA_COLOR_WINDOW:
+                color = dark ? LAMP_COLOR : overcast(lit(entry->rgb), cover);
+                break;
+            case DIORAMA_COLOR_CROWN:
+                color = crown;
+                break;
+            case DIORAMA_COLOR_CROWN_SHADE:
+                color = mix(crown, s.pal.layer[2], 115);
+                break;
+            case DIORAMA_COLOR_GRASS:
+                color = mix(grass, s.pal.layer[3], entry->param * 256 / 12);
+                break;
+            case DIORAMA_COLOR_STONE:
+                color = mix(s.pal.layer[3], lit(0xC9BFA8), entry->param);
+                break;
+            case DIORAMA_COLOR_LAMP_GLOW:
+                color = LAMP_COLOR;
+                alpha = dark ? entry->param : 0;
+                break;
+            default:
+                color = overcast(lit(entry->rgb), cover);
+                break;
+        }
+        s.sprite565[i] = to565(color);
+        s.sprite_alpha[i] = (uint8_t)alpha;
+    }
+    s.smoke565 = to565(mix(s.pal.haze, 0xFFFFFF, 102));
+}
+
+/* Where the curtains of the northern lights hang now, and how strong they are in each column */
+static void build_aurora(void)
+{
+    uint32_t t = s.aurora_step * AURORA_PERIOD_MS;
+    uint32_t sway = (uint32_t)((uint64_t)t * 2608 / 1000);
+    uint32_t wander = (uint32_t)((uint64_t)t * 4172 / 1000);
+    uint32_t pulse = (uint32_t)((uint64_t)t * 6258 / 1000);
+
+    for (int band = 0; band < AURORA_BANDS; band++) {
+        int highest = SIZE;
+        int lowest = 0;
+
+        for (int x = 0; x < SIZE; x++) {
+            int base = 52 + band * 26 + (13 * isin((uint32_t)x * 313 + sway + (uint32_t)band * 20861) +
+                                         6 * isin((uint32_t)x * 887 - wander)) / 127;
+            int strength = 115 + 141 * isin((uint32_t)x * 522 + pulse + (uint32_t)band * 10430) / 127;
+            /* Rays: every other column has a brightness of its own */
+            uint32_t hash = ((uint32_t)(x >> 1) * 2654435761u) ^ ((uint32_t)band * 0x9E3779B9u);
+            int rays = 154 + (int)(hash >> 24) * 102 / 256;
+
+            if (strength < 0) {
+                strength = 0;
+            }
+            if (band > 0) {
+                strength = strength * 141 / 256;
+            }
+            s.aurora_base[band][x] = (uint8_t)base;
+            s.aurora_alpha[band][x] = (uint8_t)(((strength * rays) >> 8) * s.aurora >> 9);
+            highest = base < highest ? base : highest;
+            lowest = base > lowest ? base : lowest;
+        }
+        s.aurora_first[band] = (int16_t)(highest - AURORA_ROWS);
+        s.aurora_last[band] = (int16_t)(lowest + AURORA_FOOT - 1);
+    }
 }
 
 /*
@@ -408,6 +600,9 @@ static void build_columns(void)
         for (int l = NUM_LAYERS - 1; l >= 0; l--) {
             int top = clamp(diorama_layer_top[l][MARGIN + s.off_x[l] + x] + s.off_y[l], 0, 254);
 
+            if (l == NUM_LAYERS - 1) {
+                s.near_top[x] = (uint8_t)top;
+            }
             if (top < front) {
                 rows[n] = (uint8_t)top;
                 layers[n] = (uint8_t)l;
@@ -418,25 +613,40 @@ static void build_columns(void)
         column->colors = 0;
         for (int i = n - 1; i >= 0; i--) {
             if (layers[i] == 0) {
-                /* The top of the farthest layer is snow, down to the next layer at the most */
+                /* The farthest layer has snow on its top edge and in a field further down */
                 int below = i > 0 ? rows[i - 1] : 255;
-                int snow_end = rows[i] + diorama_snow[MARGIN + s.off_x[0] + x];
+                int column_x = MARGIN + s.off_x[0] + x;
+                int cap_end = rows[i] + diorama_snow[column_x];
+                int field = rows[i] + diorama_snow_field[column_x];
+                int field_end = field + diorama_snow_field_rows[column_x];
 
-                if (snow_end > rows[i]) {
+                if (cap_end > rows[i]) {
                     column->y[k] = rows[i];
-                    column->colors |= (uint16_t)(COLOR_SNOW << (k * 3));
+                    column->colors |= (uint32_t)COLOR_SNOW << (k * 3);
                     k++;
-                    if (snow_end >= below) {
+                    if (cap_end >= below) {
                         continue;
                     }
-                    rows[i] = (uint8_t)snow_end;
+                    rows[i] = (uint8_t)cap_end;
+                }
+                if (field_end > field && field < below) {
+                    /* Rock, then the field, and rock again below it if it shows */
+                    column->y[k] = rows[i];
+                    k++;
+                    column->y[k] = (uint8_t)field;
+                    column->colors |= (uint32_t)COLOR_SNOW << (k * 3);
+                    k++;
+                    if (field_end >= below) {
+                        continue;
+                    }
+                    rows[i] = (uint8_t)field_end;
                 }
             }
             column->y[k] = rows[i];
-            column->colors |= (uint16_t)(layers[i] << (k * 3));
+            column->colors |= (uint32_t)layers[i] << (k * 3);
             k++;
         }
-        for (; k <= NUM_COLORS; k++) {
+        for (; k <= MAX_SPANS; k++) {
             column->y[k] = 255;
         }
         land_top = front < land_top ? front : land_top;
@@ -509,15 +719,28 @@ void diorama_scene_init(uint32_t seed)
         s.stars[i].y = (uint8_t)y;
         s.stars[i].level = (uint8_t)rnd_range(0, 3);
     }
+
+    /* The upper edge of the sun shows over the skyline when it rises */
+    s.rise_y = (int16_t)(skyline(ORBIT_X1) + SUN_RADIUS);
+    s.set_y = (int16_t)(skyline(ORBIT_X2) + SUN_RADIUS);
+
+    /* Green at the foot of a curtain of the northern lights, violet at its top */
+    for (int i = 0; i <= AURORA_ROWS; i++) {
+        s.aurora565[i] = to565(mix(0x46FF96, 0x965AFF, clamp(i * 256 * 13 / (AURORA_ROWS * 10), 0, 256)));
+    }
 }
 
-bool diorama_scene_set_view(const diorama_view_t *view)
+bool diorama_scene_set_view(const diorama_view_t *view, int *first_row)
 {
     int cover = 0;
     int fog = 0;
     int8_t off_x[NUM_LAYERS];
     int16_t off_y[NUM_LAYERS];
     bool moved = false;
+    bool sky_same;
+    bool sun_up;
+    int light;
+    int land_top = s.land_top;
 
     for (int i = 0; i < NUM_LAYERS; i++) {
         /* The nearer layers come up later */
@@ -527,11 +750,12 @@ bool diorama_scene_set_view(const diorama_view_t *view)
         off_y[i] = (int16_t)(view->tilt_y * parallax_y[i] / 127 + (255 - rise) * rise_drop[i] / 255);
         moved |= off_x[i] != s.off_x[i] || off_y[i] != s.off_y[i];
     }
+    sky_same = s.view_valid && view->sun_elevation == s.view.sun_elevation && view->sun_arc == s.view.sun_arc &&
+               view->sun_height == s.view.sun_height && view->moon_arc == s.view.moon_arc &&
+               view->moon_lit == s.view.moon_lit && view->moon_waxing == s.view.moon_waxing &&
+               view->weather == s.view.weather && view->intensity == s.view.intensity;
     /* A tilt too small to move a layer by a pixel changes nothing */
-    if (s.view_valid && !moved && view->sun_elevation == s.view.sun_elevation && view->sun_pos == s.view.sun_pos &&
-        view->moon_elevation == s.view.moon_elevation && view->moon_pos == s.view.moon_pos &&
-        view->moon_lit == s.view.moon_lit && view->moon_waxing == s.view.moon_waxing &&
-        view->weather == s.view.weather && view->intensity == s.view.intensity) {
+    if (sky_same && !moved) {
         s.view = *view;
         return false;
     }
@@ -571,6 +795,14 @@ bool diorama_scene_set_view(const diorama_view_t *view)
         s.pal.cloud_light = mix(overcast(s.pal.cloud_light, cover), s.pal.sky[0], cover / 3);
         s.pal.cloud_shade = mix(overcast(s.pal.cloud_shade, cover), s.pal.sky[0], cover / 2);
     }
+    light = clamp((view->sun_elevation + 100) * 256 / 250, 0, 256);
+    s.light = (uint16_t)(51 + 205 * ((light * light * (768 - 2 * light)) >> 16) / 256);
+    sprite_colors(cover * 2 / 3);
+    for (int i = 0; i < NUM_LAYERS; i++) {
+        if (layer_tone_mix[i]) {
+            s.pal.layer[i] = mix(s.pal.layer[i], lit(layer_tone[i]), layer_tone_mix[i]);
+        }
+    }
     if (view->weather == DIORAMA_WEATHER_SNOW) {
         /* Snow on the ground too */
         for (int i = 0; i < NUM_LAYERS; i++) {
@@ -579,9 +811,10 @@ bool diorama_scene_set_view(const diorama_view_t *view)
     }
     s.fog = (uint8_t)fog;
     s.glow = (uint8_t)(s.pal.glow * (256 - cover) / 256);
-    s.sun_disc = cover < 140;
     s.star_alpha = (uint8_t)(s.pal.stars * (256 - cover) / 256);
-    s.moon_alpha = (uint8_t)((12 + s.pal.stars * 20 / 255) * (256 - cover * 2 / 3) / 256);
+    s.moon_alpha = (uint8_t)((14 + s.pal.stars * 18 / 255) * (256 - cover * 2 / 3) / 256);
+    s.aurora = (uint8_t)(s.star_alpha > AURORA_MIN_STARS ?
+                         (s.star_alpha - AURORA_MIN_STARS) * 255 / (255 - AURORA_MIN_STARS) : 0);
 
     s.sun565 = to565(s.pal.sun);
     s.moon565 = to565(0xE6ECFF);
@@ -592,14 +825,21 @@ bool diorama_scene_set_view(const diorama_view_t *view)
     s.cloud_shade565 = to565(s.pal.cloud_shade);
     s.particle565 = to565(view->weather == DIORAMA_WEATHER_SNOW ? 0xFFFFFF : mix(s.pal.sky[2], 0xFFFFFF, 130));
 
-    orbit_position(view->sun_elevation, view->sun_pos, &s.sun_x, &s.sun_y);
-    orbit_position(view->moon_elevation, view->moon_pos, &s.moon_x, &s.moon_y);
+    orbit_position(view->sun_arc, SUN_PEAK_LOW_Y - (SUN_PEAK_LOW_Y - SUN_PEAK_HIGH_Y) * view->sun_height / 255, &s.sun_x,
+                   &s.sun_y, &sun_up);
+    orbit_position(view->moon_arc, MOON_PEAK_Y, &s.moon_x, &s.moon_y, &s.moon_up);
+    s.sun_disc = sun_up && cover < 140;
 
     memcpy(s.off_x, off_x, sizeof(s.off_x));
     memcpy(s.off_y, off_y, sizeof(s.off_y));
     build_columns();
     s.sun_reach = build_falloff(s.sun_falloff, s.glow);
     s.moon_reach = build_falloff(s.moon_falloff, s.moon_alpha * view->moon_lit / 64);
+    if (s.aurora > 0) {
+        build_aurora();
+    }
+    /* When only the land moved, the sky above it is as it was */
+    *first_row = sky_same ? (land_top < s.land_top ? land_top : s.land_top) : 0;
 
     return true;
 }
@@ -639,13 +879,33 @@ typedef struct {
     int16_t src_y;
     /* Column x of the display shows column x + shift of the scene: the ripples of the lake */
     int8_t shift;
-    /* Parts of 32 of the color of the lake that the row takes on */
+    /* Parts of 256 of the color of the lake that the row takes on */
     uint8_t tint;
+    /* Parts of 256 that the water is darkened by, behind what is shown on it */
+    uint8_t shade;
 } row_t;
+
+/* A color of the scene as it shows in a row: the water takes on the color of the lake */
+static uint32_t row_color(uint32_t c, const row_t *row)
+{
+    if (row->tint) {
+        c = mix(c, s.pal.lake, row->tint);
+        if (row->shade) {
+            c = mix(c, SHADE_COLOR, row->shade);
+        }
+    }
+
+    return c;
+}
 
 static inline uint16_t tinted(uint16_t color, const row_t *row)
 {
-    return row->tint ? blend565(s.lake565, color, row->tint) : color;
+    if (!row->tint) {
+        return color;
+    }
+    color = blend565(s.lake565, color, row->tint >> 3);
+
+    return row->shade ? blend565(0x0063 /* SHADE_COLOR */, color, row->shade >> 3) : color;
 }
 
 /*
@@ -702,14 +962,15 @@ static void draw_glow(const row_t *row, int x1, int x2, int cx, int cy, int radi
             row->dst[x - x1] = color;
             continue;
         }
-        a = (falloff[((uint32_t)here * inv) >> 16] + (dither[x & 3] >> 1)) >> 3;
+        a = falloff[((uint32_t)here * inv) >> 16];
         if (here < soft2) {
-            int edge = 32 * (soft2 - here) / (soft2 - disc2);
+            int edge = 256 * (soft2 - here) / (soft2 - disc2);
 
             a = a > edge ? a : edge;
         }
         if (a > 0) {
-            row->dst[x - x1] = blend565(color, row->dst[x - x1], a > 32 ? 32 : a);
+            /* The light fades too slowly for the steps of a pixel: the dither hides them */
+            row->dst[x - x1] = blend565_fine(color, row->dst[x - x1], (unsigned int)a, dither[x & 3] * 16u + 8u);
         }
     }
 }
@@ -747,6 +1008,37 @@ static void draw_stars(const row_t *row, int x1, int x2)
 
         if (star->y == row->src_y && x >= x1 && x <= x2) {
             row->dst[x - x1] = blend565(color, row->dst[x - x1], star_levels[star->level] * s.star_alpha / 255);
+        }
+    }
+}
+
+static void draw_aurora(const row_t *row, int x1, int x2)
+{
+    const uint8_t *dither = bayer[row->y & 3];
+    int y = row->src_y;
+
+    for (int band = 0; band < AURORA_BANDS; band++) {
+        const uint8_t *base = s.aurora_base[band];
+        const uint8_t *alpha = s.aurora_alpha[band];
+
+        if (y > s.aurora_last[band] || y < s.aurora_first[band]) {
+            continue;
+        }
+        for (int x = x1; x <= x2; x++) {
+            int column = clamp(x + row->shift, 0, SIZE - 1);
+            int up = base[column] - y;
+            int a;
+
+            if (alpha[column] == 0 || up > AURORA_ROWS || up <= -AURORA_FOOT) {
+                continue;
+            }
+            a = (up > 0 ? aurora_fade[up] : 255 + up * 255 / AURORA_FOOT) * alpha[column] >> 8;
+            if (a > 2) {
+                uint16_t color = s.aurora565[up > 0 ? up : 0];
+
+                row->dst[x - x1] = blend565_fine(row->tint ? tinted(color, row) : color, row->dst[x - x1],
+                                                 (unsigned int)a, dither[x & 3] * 16u + 8u);
+            }
         }
     }
 }
@@ -789,17 +1081,20 @@ static void render_sky_row(const row_t *row, int x1, int x2)
         color = mix(s.pal.sky[1], s.pal.sky[2],
                     clamp(y - SKY_MID_Y, 0, SKY_HORIZON_Y - SKY_MID_Y) * 256 / (SKY_HORIZON_Y - SKY_MID_Y));
     }
-    dither_row(mix(color, s.pal.lake, row->tint * 8), row->y, sky);
+    dither_row(row_color(color, row), row->y, sky);
     fill_pattern(row->dst, x1, x2 - x1 + 1, sky);
 
     if (s.star_alpha > 0) {
         draw_stars(row, x1, x2);
     }
+    if (s.aurora > 0) {
+        draw_aurora(row, x1, x2);
+    }
     if (s.glow > 0) {
         draw_glow(row, x1, x2, s.sun_x, s.sun_y, s.pal.glow_radius, s.sun_falloff, s.sun_reach,
                   s.sun_disc ? SUN_RADIUS : 0, s.sun565);
     }
-    if (s.moon_alpha > 0 && s.moon_y < ORBIT_HORIZON_Y + MOON_RADIUS) {
+    if (s.moon_alpha > 0 && s.moon_up) {
         draw_glow(row, x1, x2, s.moon_x, s.moon_y, MOON_GLOW_RADIUS, s.moon_falloff, s.moon_reach, 0, s.moon565);
         draw_moon(row, x1, x2);
     }
@@ -826,9 +1121,98 @@ static void land_colors(const row_t *row, uint16_t colors[NUM_COLORS][4])
             /* The fog on the shore shows in the water too */
             mist += (256 - mist) * s.fog * (row->src_y - (LAKE_Y - FOG_ROWS)) / (FOG_ROWS * 32);
         }
-        dither_row(mix(mix(s.pal.layer[l], s.pal.haze, mist), s.pal.lake, row->tint * 8), row->y, colors[l]);
+        dither_row(row_color(mix(s.pal.layer[l], s.pal.haze, mist), row), row->y, colors[l]);
         if (l == 0) {
-            dither_row(mix(s.pal.snow, s.pal.lake, row->tint * 8), row->y, colors[COLOR_SNOW]);
+            dither_row(row_color(mix(s.pal.snow, s.pal.haze, mist / 2), row), row->y, colors[COLOR_SNOW]);
+        }
+    }
+}
+
+/* Smoke from the chimney of the cottage: a few puffs that sway on the way up */
+static void draw_smoke(const row_t *row, int x1, int x2)
+{
+    int up = DIORAMA_CHIMNEY_Y + s.off_y[DIORAMA_CHIMNEY_LAYER] - row->src_y;
+    int puff = up / 2;
+    int x;
+
+    if (up < 0 || puff >= SMOKE_PUFFS || (up & 1)) {
+        return;
+    }
+    /* Rounded down, also when the puff sways to the left */
+    x = DIORAMA_CHIMNEY_X - s.off_x[DIORAMA_CHIMNEY_LAYER] - row->shift - 4 +
+        (isin((uint32_t)puff * 8344 + s.smoke * 2898) * 5 / 2 + puff * 76 + 63 + 4 * 127) / 127;
+    for (int i = 0; i < 2; i++) {
+        if (x + i >= x1 && x + i <= x2) {
+            row->dst[x + i - x1] = blend565(tinted(s.smoke565, row), row->dst[x + i - x1],
+                                            i == 0 ? 18 - puff * 8 / 5 : 11 - puff);
+        }
+    }
+}
+
+/* What stands in the landscape, in a row of it: the birches, the cottage and its headland */
+static void draw_sprites(const row_t *row, int x1, int x2)
+{
+    for (int g = 0; g < DIORAMA_NUM_SPRITE_GROUPS; g++) {
+        const diorama_sprite_group_t *group = &diorama_sprite_groups[g];
+        bool behind = group->layer < NUM_LAYERS - 1;
+        int group_row;
+        int offset;
+
+        if (group->layer < 0) {
+            continue;
+        }
+        group_row = row->src_y - s.off_y[group->layer] - group->first_row;
+        if (group_row < 0 || group_row >= group->num_rows) {
+            continue;
+        }
+        offset = MARGIN + s.off_x[group->layer] + row->shift;
+        for (int i = group->rows[group_row]; i < group->rows[group_row + 1]; i++) {
+            int x = (diorama_sprite_runs[i] & 0x1FF) - offset;
+            int end = x + (diorama_sprite_runs[i] >> 9) - 1;
+            int alpha = s.sprite_alpha[diorama_sprite_run_colors[i]];
+            uint16_t color;
+
+            x = x > x1 ? x : x1;
+            end = end < x2 ? end : x2;
+            if (alpha == 0 || x > end) {
+                continue;
+            }
+            color = tinted(s.sprite565[diorama_sprite_run_colors[i]], row);
+            for (; x <= end; x++) {
+                if (behind && row->src_y >= s.near_top[clamp(x + row->shift, 0, SIZE - 1)]) {
+                    continue;
+                }
+                row->dst[x - x1] = alpha >= 32 ? color : blend565(color, row->dst[x - x1], alpha);
+            }
+        }
+    }
+    draw_smoke(row, x1, x2);
+}
+
+/* What lies on the water in front of the land: the jetty and the boat */
+static void draw_afloat(const row_t *row, int x1, int x2)
+{
+    /* Not before the land has come up */
+    if (s.off_y[NUM_LAYERS - 1] > 8) {
+        return;
+    }
+    for (int g = 0; g < DIORAMA_NUM_SPRITE_GROUPS; g++) {
+        const diorama_sprite_group_t *group = &diorama_sprite_groups[g];
+        int group_row = row->y - group->first_row;
+
+        if (group->layer >= 0 || group_row < 0 || group_row >= group->num_rows) {
+            continue;
+        }
+        for (int i = group->rows[group_row]; i < group->rows[group_row + 1]; i++) {
+            /* Sideways it follows the shore it is moored at */
+            int x = (diorama_sprite_runs[i] & 0x1FF) - MARGIN - s.off_x[NUM_LAYERS - 1];
+            int end = x + (diorama_sprite_runs[i] >> 9) - 1;
+
+            x = x > x1 ? x : x1;
+            end = end < x2 ? end : x2;
+            for (; x <= end; x++) {
+                row->dst[x - x1] = s.sprite565[diorama_sprite_run_colors[i]];
+            }
         }
     }
 }
@@ -883,6 +1267,10 @@ static void render_land(const row_t *rows, int num_rows, int x1, int x2, int str
         }
     }
 
+    for (int r = 0; r < num_rows; r++) {
+        draw_sprites(&rows[r], x1, x2);
+    }
+
     if (s.fog > 0) {
         for (int r = 0; r < num_rows; r++) {
             int y = rows[r].y;
@@ -933,6 +1321,10 @@ static void render_mirrored_land(const row_t *rows, int num_rows, int x1, int x2
             }
         }
     }
+
+    for (int r = 0; r < num_rows; r++) {
+        draw_sprites(&rows[r], x1, x2);
+    }
 }
 
 /* Short streaks of light that drift over the water */
@@ -978,6 +1370,21 @@ static void draw_particles(int x1, int y1, int x2, int y2, uint16_t *dst, int st
     }
 }
 
+/* How much darker a row of the lake is: from a bit below the shore, most where the text is */
+static uint8_t lake_shade(int y)
+{
+    int below = y - SHADE_Y;
+
+    if (below < 0) {
+        return 0;
+    }
+    if (below < 20) {
+        return (uint8_t)(below * 87 / 20);
+    }
+
+    return (uint8_t)(below < 50 ? 87 + (below - 20) * 20 / 30 : 107);
+}
+
 void diorama_scene_render(int x1, int y1, int x2, int y2, uint16_t *dst, int stride)
 {
     row_t rows[CHUNK_ROWS];
@@ -1000,11 +1407,13 @@ void diorama_scene_render(int x1, int y1, int x2, int y2, uint16_t *dst, int str
                 row->src_y = (int16_t)(LAKE_Y - 1 - depth * 5 / 4);
                 row->shift = (int8_t)((wave[(row->y * 5 + (int)s.ripple * 3) & 31] * (depth / 24 + 1)) >> 7);
                 /* The water is darkest right at the shore and far out */
-                row->tint = (uint8_t)(depth == 0 ? 20 : 9 + depth * 14 / (SIZE - LAKE_Y));
+                row->tint = (uint8_t)(depth == 0 ? 160 : 72 + depth * 112 / (SIZE - LAKE_Y));
+                row->shade = lake_shade(row->y);
             } else {
                 row->src_y = row->y;
                 row->shift = 0;
                 row->tint = 0;
+                row->shade = 0;
             }
             if (row->src_y < s.sky_bottom) {
                 render_sky_row(row, x1, x2);
@@ -1015,6 +1424,7 @@ void diorama_scene_render(int x1, int y1, int x2, int y2, uint16_t *dst, int str
             render_mirrored_land(rows, num_rows, x1, x2);
             for (int r = 0; r < num_rows; r++) {
                 draw_glint(&rows[r], x1, x2);
+                draw_afloat(&rows[r], x1, x2);
             }
         } else {
             render_land(rows, num_rows, x1, x2, stride);
@@ -1044,6 +1454,22 @@ void diorama_scene_step(uint32_t elapsed_ms, diorama_dirty_cb_t dirty)
 
             star->level = (uint8_t)rnd_range(0, 3);
             dirty(star->x, star->y, star->x, star->y);
+        }
+    }
+
+    if (s.aurora > 0 && s.time_ms / AURORA_PERIOD_MS != before / AURORA_PERIOD_MS) {
+        s.aurora_step = s.time_ms / AURORA_PERIOD_MS;
+        build_aurora();
+        dirty(0, 0, SIZE - 1, AURORA_LAST_ROW);
+    }
+
+    if (s.time_ms / SMOKE_PERIOD_MS != before / SMOKE_PERIOD_MS) {
+        int x = DIORAMA_CHIMNEY_X - s.off_x[DIORAMA_CHIMNEY_LAYER];
+        int y = DIORAMA_CHIMNEY_Y + s.off_y[DIORAMA_CHIMNEY_LAYER];
+
+        s.smoke = s.time_ms / SMOKE_PERIOD_MS;
+        if (y < LAKE_Y) {
+            dirty(clamp(x - 4, 0, SIZE - 1), clamp(y - 2 * SMOKE_PUFFS, 0, SIZE - 1), clamp(x + 10, 0, SIZE - 1), y);
         }
     }
 
