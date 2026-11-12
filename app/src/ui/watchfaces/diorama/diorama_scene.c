@@ -93,7 +93,6 @@
 
 /* How far the layers move for a full tilt, and how far they sink before they rise */
 static const int8_t parallax_x[NUM_LAYERS] = { 2, 5, 9, 14 };
-static const int8_t parallax_y[NUM_LAYERS] = { 0, 1, 2, 4 };
 static const uint8_t rise_drop[NUM_LAYERS] = { 26, 38, 50, 70 };
 /* How much of the haze the foot of each layer takes on, of 256 */
 static const uint8_t layer_mist[NUM_LAYERS] = { 184, 148, 92, 36 };
@@ -747,7 +746,7 @@ bool diorama_scene_set_view(const diorama_view_t *view, int *first_row)
         int rise = clamp((view->rise - i * 24) * 255 / (255 - (NUM_LAYERS - 1) * 24), 0, 255);
 
         off_x[i] = (int8_t)(view->tilt_x * parallax_x[i] / 127);
-        off_y[i] = (int16_t)(view->tilt_y * parallax_y[i] / 127 + (255 - rise) * rise_drop[i] / 255);
+        off_y[i] = (int16_t)((255 - rise) * rise_drop[i] / 255);
         moved |= off_x[i] != s.off_x[i] || off_y[i] != s.off_y[i];
     }
     sky_same = s.view_valid && view->sun_elevation == s.view.sun_elevation && view->sun_arc == s.view.sun_arc &&

@@ -1182,11 +1182,17 @@ static int cmd_watchface_gravity(const struct shell *sh, size_t argc, char **arg
 #ifdef CONFIG_WATCHFACE_DIORAMA
 static int cmd_watchface_diorama(const struct shell *sh, size_t argc, char **argv)
 {
-    long values[6] = { 0, 0, 0, 1, 0, 0 };
-    static const long max[6] = { 23, 59, 4, 3, 127, 127 };
-    static const long min[6] = { 0, 0, 0, 1, -127, -127 };
+    long values[5] = { 0, 0, 0, 1, 0 };
+    static const long max[5] = { 23, 59, 4, 3, 127 };
+    static const long min[5] = { 0, 0, 0, 1, -127 };
     bool enable = argc >= 3;
 
+    if (argc == 2 && strcmp(argv[1], "demo") == 0) {
+        lvgl_lock();
+        zsw_watchface_diorama_demo();
+        lvgl_unlock();
+        return 0;
+    }
     if (argc == 2 && strcmp(argv[1], "off") != 0) {
         enable = false;
         argc = 0;
@@ -1197,12 +1203,12 @@ static int cmd_watchface_diorama(const struct shell *sh, size_t argc, char **arg
         }
     }
     if (argc == 0) {
-        shell_error(sh, "Usage: watchface diorama <hour> <minute> [weather 0-4] [intensity 1-3] [tilt x] [tilt y] | off");
+        shell_error(sh, "Usage: watchface diorama <hour> <minute> [weather 0-4] [intensity 1-3] [tilt] | demo | off");
         return -EINVAL;
     }
 
     lvgl_lock();
-    zsw_watchface_diorama_override(enable, values[0] * 60 + values[1], values[2], values[3], values[4], values[5]);
+    zsw_watchface_diorama_override(enable, values[0] * 60 + values[1], values[2], values[3], values[4]);
     lvgl_unlock();
     return 0;
 }
@@ -1217,8 +1223,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_watchface,
 #endif
 #ifdef CONFIG_WATCHFACE_DIORAMA
                                SHELL_CMD_ARG(diorama, NULL,
-                                             "Diorama watchface: watchface diorama <hour> <minute> [weather] [intensity] [tilt x] [tilt y] | off",
-                                             cmd_watchface_diorama, 2, 5),
+                                             "Diorama watchface: watchface diorama <hour> <minute> [weather] [intensity] [tilt] | demo | off",
+                                             cmd_watchface_diorama, 2, 4),
 #endif
                                SHELL_SUBCMD_SET_END
                               );

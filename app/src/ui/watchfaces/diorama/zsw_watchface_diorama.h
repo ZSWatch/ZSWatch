@@ -22,7 +22,10 @@
 /**
  * Replaces the clock, the weather and the accelerometer as what the Diorama watchface shows,
  * for testing. minute_of_day is the local time, weather a diorama_weather_t, intensity 1 to 3,
- * and the tilt -127 to 127 with x to the right and y down on the display. Call with enable
- * false to go back. Call with the LVGL lock held.
+ * and the tilt -127 to 127, positive for the right side lowered. Call with enable false to
+ * go back. Call with the LVGL lock held.
  */
-void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather, int intensity, int tilt_x, int tilt_y);
+void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather, int intensity, int tilt_x);
+
+/** Starts or stops the demo, the same as a double tap. Call with the LVGL lock held. */
+void zsw_watchface_diorama_demo(void);
