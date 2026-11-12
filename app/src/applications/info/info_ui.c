@@ -66,7 +66,7 @@ static void reset_btn_pressed(lv_event_t *e)
 
 static void create_page_info_ui(lv_obj_t *parent)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(parent, DEBUG_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(parent);
     lv_obj_t *list = zsw_ui_info_list_create(screen, INFO_LIST_WIDTH);
 
     zsw_ui_title_create(screen, "SYSTEM", ZSW_COLOR_TEXT_DIM);
@@ -109,7 +109,7 @@ static lv_obj_t *create_ble_label(lv_obj_t *parent, const char *text, bool heade
 
 static void create_page_ble_ui(lv_obj_t *parent)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(parent, DEBUG_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(parent);
 
     zsw_ui_title_create(screen, "BLUETOOTH", ZSW_COLOR_TEXT_DIM);
 
@@ -174,7 +174,7 @@ static lv_obj_t *create_coredump_button(lv_obj_t *parent, const char *symbol, lv
 
 static void create_coredump_page_ui(lv_obj_t *parent)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(parent, DEBUG_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(parent);
 
     zsw_ui_title_create(screen, "COREDUMP", ZSW_COLOR_TEXT_DIM);
 
@@ -220,10 +220,8 @@ void info_ui_show(lv_obj_t *root, on_reset_ui_event_cb_t reset_cb, zsw_coredump_
     assert(root_page == NULL);
 
     reset_callback = reset_cb;
-    root_page = lv_obj_create(root);
-    lv_obj_remove_style_all(root_page);
-    lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    // One glow for all pages, it stays in place while the pages are swiped
+    root_page = zsw_ui_screen_create(root, DEBUG_COLOR);
 
     lv_obj_t *tv = lv_tileview_create(root_page);
     lv_obj_set_size(tv, LV_PCT(100), LV_PCT(100));
