@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Setting up the Toolchain
 
-Using Ubuntu on Windows? Follow the [WSL Development Setup](./wsl_setup.md) guide for a fresh Linux-side toolchain, build, and simulator setup.
+On Windows, keep this setup for hardware development. To add a Linux simulator alongside it for faster UI and app iteration, follow [Windows + WSL: Native Simulator Setup](./wsl_setup.md).
 
 ## 1. Install Required Tools
 
