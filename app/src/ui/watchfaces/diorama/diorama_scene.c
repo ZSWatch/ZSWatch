@@ -745,7 +745,8 @@ bool diorama_scene_set_view(const diorama_view_t *view, int *first_row)
         /* The nearer layers come up later */
         int rise = clamp((view->rise - i * 24) * 255 / (255 - (NUM_LAYERS - 1) * 24), 0, 255);
 
-        off_x[i] = (int8_t)(view->tilt_x * parallax_x[i] / 127);
+        /* Where the layer is read from: a negative offset moves it right on the screen */
+        off_x[i] = (int8_t)(-view->tilt_x * parallax_x[i] / 127);
         off_y[i] = (int16_t)((255 - rise) * rise_drop[i] / 255);
         moved |= off_x[i] != s.off_x[i] || off_y[i] != s.off_y[i];
     }
