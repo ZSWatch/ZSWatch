@@ -16,9 +16,11 @@
  */
 
 #include <lvgl.h>
+#include <draw/lv_draw_private.h>
 
 #include "ui/zsw_ui_theme.h"
 #include "ui/zsw_ui_widgets.h"
+#include "ui/zsw_ui_glow_lut.h"
 #include "ui/utils/zsw_ui_utils.h"
 
 #define SLIDE_IN_OFFSET_PX      12
@@ -26,7 +28,129 @@
 // Round buttons from this size get the larger symbol
 #define ROUND_BUTTON_LARGE_SIZE  48
 
-ZSW_LV_IMG_DECLARE(ui_glow_top);
+/*
+ * The glow is written straight into the draw buffer, which needs the draw tasks of what is
+ * behind it to have run already. They have when LVGL has no draw thread.
+ */
+#if LV_USE_OS != LV_OS_NONE
+#error "The glow of the app screens draws into the layer from the event and needs LVGL without a draw thread"
+#endif
+
+// 4x4 ordered dither thresholds, in 1/16 of a step of the display
+static const uint8_t dither[4][4] = {
+    { 0, 8, 2, 10 },
+    { 12, 4, 14, 6 },
+    { 3, 11, 1, 9 },
+    { 15, 7, 13, 5 },
+};
+
+static bool layer_drawn(const lv_layer_t *layer)
+{
+    for (const lv_draw_task_t *t = layer->draw_task_head; t != NULL; t = t->next) {
+        if (t->state != LV_DRAW_TASK_STATE_FINISHED) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// One channel, 8 bit, blended with opa of 256 and rounded to max with the dither d added.
+static inline uint32_t mix_dithered(uint32_t bg, uint32_t fg, uint32_t opa, uint32_t max, uint32_t d)
+{
+    uint32_t v = ((((bg * (256 - opa) + fg * opa) * max) >> 12) + d) >> 4;
+
+    return MIN(v, max);
+}
+
+static void glow_blend_rgb565(uint16_t *px, lv_color_t c, uint32_t opa, uint32_t d)
+{
+    uint32_t bg = *px;
+    uint32_t r = ((bg >> 8) & 0xF8) | (bg >> 13);
+    uint32_t g = ((bg >> 3) & 0xFC) | ((bg >> 9) & 0x03);
+    uint32_t b = ((bg << 3) & 0xF8) | ((bg >> 2) & 0x07);
+
+    *px = (uint16_t)((mix_dithered(r, c.red, opa, 31, d) << 11) | (mix_dithered(g, c.green, opa, 63, d) << 5) |
+                     mix_dithered(b, c.blue, opa, 31, d));
+}
+
+static void glow_blend_argb8888(lv_color32_t *px, lv_color_t c, uint32_t opa)
+{
+    px->red = (uint8_t)((px->red * (256 - opa) + c.red * opa) >> 8);
+    px->green = (uint8_t)((px->green * (256 - opa) + c.green * opa) >> 8);
+    px->blue = (uint8_t)((px->blue * (256 - opa) + c.blue * opa) >> 8);
+    px->alpha = (uint8_t)(px->alpha + (((255 - px->alpha) * opa) >> 8));
+}
+
+/*
+ * A smooth gradient this dark gets only a few levels on the 16 bit display. LVGL blends
+ * without dithering, which shows as rings, so the glow is blended here and dithered after.
+ */
+static void glow_draw_cb(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target_obj(e);
+    lv_layer_t *layer = lv_event_get_layer(e);
+    lv_color_t color = lv_color_hex((uint32_t)(uintptr_t)lv_obj_get_user_data(obj));
+    lv_area_t coords;
+    lv_area_t clip;
+    int32_t mid;
+
+    lv_obj_get_coords(obj, &coords);
+    if (!lv_area_intersect(&clip, &layer->_clip_area, &coords)) {
+        return;
+    }
+    if ((layer->color_format != LV_COLOR_FORMAT_RGB565 && layer->color_format != LV_COLOR_FORMAT_ARGB8888) ||
+        !layer_drawn(layer)) {
+        LV_LOG_WARN("Can't draw the glow into this layer");
+        return;
+    }
+
+    mid = coords.x1 + ZSW_UI_GLOW_WIDTH / 2;
+    for (int32_t y = clip.y1; y <= clip.y2; y++) {
+        int32_t dy = y - coords.y1;
+        uint32_t index_y = (uint32_t)(dy * dy * ZSW_UI_GLOW_KY) >> 16;
+        void *row = lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, y - layer->buf_area.y1);
+
+        if (index_y >= ZSW_UI_GLOW_LUT_SIZE) {
+            break;
+        }
+        for (int32_t x = clip.x1; x <= clip.x2; x++) {
+            int32_t dx = x - mid;
+            uint32_t index = index_y + ((uint32_t)(dx * dx * ZSW_UI_GLOW_KX) >> 16);
+            uint32_t opa;
+
+            if (index >= ZSW_UI_GLOW_LUT_SIZE) {
+                continue;
+            }
+            opa = zsw_ui_glow_lut[index];
+            if (opa == 0) {
+                continue;
+            }
+            // Of 256
+            opa += opa >> 7;
+            if (layer->color_format == LV_COLOR_FORMAT_RGB565) {
+                glow_blend_rgb565((uint16_t *)row + (x - clip.x1), color, opa, dither[y & 3][x & 3]);
+            } else {
+                glow_blend_argb8888((lv_color32_t *)row + (x - clip.x1), color, opa);
+            }
+        }
+    }
+}
+
+lv_obj_t *zsw_ui_glow_create(lv_obj_t *parent, lv_color_t color)
+{
+    lv_obj_t *glow = lv_obj_create(parent);
+
+    lv_obj_remove_style_all(glow);
+    lv_obj_set_size(glow, ZSW_UI_GLOW_WIDTH, ZSW_UI_GLOW_HEIGHT);
+    lv_obj_align(glow, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_remove_flag(glow, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(glow, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_set_user_data(glow, (void *)(uintptr_t)lv_color_to_u32(color));
+    lv_obj_add_event_cb(glow, glow_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+
+    return glow;
+}
 
 lv_obj_t *zsw_ui_screen_create(lv_obj_t *parent, lv_color_t color)
 {
@@ -36,16 +160,19 @@ lv_obj_t *zsw_ui_screen_create(lv_obj_t *parent, lv_color_t color)
     lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(screen, ZSW_COLOR_BG, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
-
-    // An alpha only image: one file gives a glow in any color.
-    lv_obj_t *glow = lv_image_create(screen);
-    lv_image_set_src(glow, ZSW_LV_IMG_USE(ui_glow_top));
-    lv_obj_align(glow, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_set_style_image_recolor(glow, color, LV_PART_MAIN);
-    lv_obj_set_style_image_recolor_opa(glow, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_remove_flag(glow, LV_OBJ_FLAG_CLICKABLE);
+    zsw_ui_glow_create(screen, color);
 
     return screen;
+}
+
+lv_obj_t *zsw_ui_page_create(lv_obj_t *parent)
+{
+    lv_obj_t *page = lv_obj_create(parent);
+    lv_obj_remove_style_all(page);
+    lv_obj_set_size(page, LV_PCT(100), LV_PCT(100));
+    lv_obj_remove_flag(page, LV_OBJ_FLAG_SCROLLABLE);
+
+    return page;
 }
 
 lv_obj_t *zsw_ui_label_create(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color)

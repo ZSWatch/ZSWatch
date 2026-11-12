@@ -36,6 +36,16 @@
 lv_obj_t *zsw_ui_screen_create(lv_obj_t *parent, lv_color_t color);
 
 /**
+ * Creates a page for a screen with several pages, such as a tile of a tileview: full size,
+ * not scrollable and transparent. Put the pages on a zsw_ui_screen_create() so that the
+ * glow stays in place while the pages are swiped.
+ */
+lv_obj_t *zsw_ui_page_create(lv_obj_t *parent);
+
+/** Creates the soft glow in color at the top of the parent. Drawn dithered, not as an image. */
+lv_obj_t *zsw_ui_glow_create(lv_obj_t *parent, lv_color_t color);
+
+/**
  * A label with text, font and color set. Text is centered when it wraps or the label is wider than it.
  */
 lv_obj_t *zsw_ui_label_create(lv_obj_t *parent, const char *text, const lv_font_t *font, lv_color_t color);
