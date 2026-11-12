@@ -70,5 +70,8 @@ bool diorama_scene_set_view(const diorama_view_t *view);
 /* Moves clouds, water, stars, rain and snow on by elapsed_ms. */
 void diorama_scene_step(uint32_t elapsed_ms, diorama_dirty_cb_t dirty);
 
-/* Writes the pixels x1 to x2 of row y to dst. */
-void diorama_scene_render_row(int y, int x1, int x2, uint16_t *dst);
+/*
+ * Renders the area x1,y1 to x2,y2 (inclusive) as RGB565 pixels. dst is the pixel at x1,y1
+ * and stride the number of bytes from one row to the next.
+ */
+void diorama_scene_render(int x1, int y1, int x2, int y2, uint16_t *dst, int stride);

@@ -18,8 +18,10 @@
 #include <lvgl.h>
 #include <misc/lv_area_private.h>
 #include <draw/lv_draw_private.h>
+#include <core/lv_obj_event_private.h>
 
 #include <math.h>
+#include <stdlib.h>
 #include <time.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -45,6 +47,8 @@ LOG_MODULE_REGISTER(watchface_diorama, LOG_LEVEL_INF);
 #define TILT_EVERY_FRAMES       2
 /* Tilting the watch this far from flat moves the layers all the way, of 127 for upright */
 #define TILT_FULL               70
+/* The tilt has to change by this much, of 127, for the layers to follow */
+#define TILT_MIN_CHANGE         4
 /*
  * How the accelerometer axes map to the display: x to the right and y down, for a watch that
  * lies flat with the display up.
@@ -142,10 +146,20 @@ static void scene_draw_cb(lv_event_t *e)
         return;
     }
 
-    for (int32_t y = clip.y1; y <= clip.y2; y++) {
-        uint16_t *row = lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, y - layer->buf_area.y1);
+    diorama_scene_render(clip.x1 - coords.x1, clip.y1 - coords.y1, clip.x2 - coords.x1, clip.y2 - coords.y1,
+                         lv_draw_layer_go_to_xy(layer, clip.x1 - layer->buf_area.x1, clip.y1 - layer->buf_area.y1),
+                         layer->draw_buf->header.stride);
+}
 
-        diorama_scene_render_row(y - coords.y1, clip.x1 - coords.x1, clip.x2 - coords.x1, row);
+/* The landscape fills its object: nothing behind it needs to be drawn */
+static void scene_cover_cb(lv_event_t *e)
+{
+    lv_cover_check_info_t *info = lv_event_get_param(e);
+    lv_area_t coords;
+
+    lv_obj_get_coords(scene_obj, &coords);
+    if (info->res != LV_COVER_RES_MASKED && lv_area_is_in(info->area, &coords, 0)) {
+        info->res = LV_COVER_RES_COVER;
     }
 }
 
@@ -250,8 +264,16 @@ static void read_tilt(void)
         tilt_target_x = (int8_t)override.tilt_x;
         tilt_target_y = (int8_t)override.tilt_y;
     } else if (zsw_imu_fetch_accel_f(&x, &y, &z) == 0) {
-        tilt_target_x = (int8_t)CLAMP((int)(ACCEL_TO_RIGHT(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
-        tilt_target_y = (int8_t)CLAMP((int)(ACCEL_TO_DOWN(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
+        int new_x = CLAMP((int)(ACCEL_TO_RIGHT(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
+        int new_y = CLAMP((int)(ACCEL_TO_DOWN(x, y) * 127.0f * 127.0f / (ACCEL_1G * TILT_FULL)), -127, 127);
+
+        /* A hand is never quite still: small changes are left out */
+        if (abs(new_x - tilt_target_x) >= TILT_MIN_CHANGE) {
+            tilt_target_x = (int8_t)new_x;
+        }
+        if (abs(new_y - tilt_target_y) >= TILT_MIN_CHANGE) {
+            tilt_target_y = (int8_t)new_y;
+        }
     }
 }
 
@@ -389,6 +411,7 @@ static void watchface_show(lv_obj_t *parent, watchface_app_evt_listener evt_cb, 
     lv_obj_center(scene_obj);
     lv_obj_remove_flag(scene_obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(scene_obj, scene_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+    lv_obj_add_event_cb(scene_obj, scene_cover_cb, LV_EVENT_COVER_CHECK, NULL);
 
     ui_date = info_label_create(LV_ALIGN_TOP_MID, 0, 16);
     lv_obj_set_style_text_letter_space(ui_date, 1, LV_PART_MAIN);
@@ -619,10 +642,9 @@ void zsw_watchface_diorama_override(bool enable, int minute_of_day, int weather,
     if (!root_page) {
         return;
     }
-    if (enable) {
-        view.weather = (diorama_weather_t)weather;
-        view.intensity = (uint8_t)intensity;
-    }
+    /* Back to clear weather until the next report comes */
+    view.weather = enable ? (diorama_weather_t)weather : DIORAMA_WEATHER_CLEAR;
+    view.intensity = enable ? (uint8_t)intensity : 1;
     if (!waking) {
         update_sky();
     }
