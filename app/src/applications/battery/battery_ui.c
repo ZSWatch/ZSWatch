@@ -84,10 +84,8 @@ void battery_ui_show(lv_obj_t *root, on_clear_history clear_hist_cb, int max_sam
     pmic_ui_enabled = include_pmic_ui;
     max_battery_samples = max_samples;
 
-    root_page = lv_obj_create(root);
-    lv_obj_remove_style_all(root_page);
-    lv_obj_set_size(root_page, LV_PCT(100), LV_PCT(100));
-    lv_obj_remove_flag(root_page, LV_OBJ_FLAG_SCROLLABLE);
+    // One glow for all pages, it stays in place while the pages are swiped
+    root_page = zsw_ui_screen_create(root, BATTERY_COLOR);
 
     tv = lv_tileview_create(root_page);
     lv_obj_set_size(tv, LV_PCT(100), LV_PCT(100));
@@ -155,7 +153,7 @@ static void set_charging(bool charging)
 
 static void overview_init(lv_obj_t *tile)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(tile);
 
     overview_percent = -1;
     overview_ring = zsw_ui_ring_create(screen, ZSW_COLOR_GREEN);
@@ -188,7 +186,7 @@ static lv_obj_t *axis_label_create(lv_obj_t *parent, const char *text, lv_color_
 
 static void history_init(lv_obj_t *tile)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(tile);
 
     zsw_ui_title_create(screen, "HISTORY", ZSW_COLOR_TEXT_DIM);
 
@@ -249,7 +247,7 @@ static void history_init(lv_obj_t *tile)
 
 static void charger_init(lv_obj_t *tile)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(tile);
     lv_obj_t *list = zsw_ui_info_list_create(screen, INFO_LIST_WIDTH);
 
     zsw_ui_title_create(screen, "CHARGER", ZSW_COLOR_TEXT_DIM);
@@ -262,7 +260,7 @@ static void charger_init(lv_obj_t *tile)
 
 static void rails_init(lv_obj_t *tile)
 {
-    lv_obj_t *screen = zsw_ui_screen_create(tile, BATTERY_COLOR);
+    lv_obj_t *screen = zsw_ui_page_create(tile);
 
     zsw_ui_title_create(screen, "POWER RAILS", ZSW_COLOR_TEXT_DIM);
     // The rows are added by battery_ui_set_rail()
