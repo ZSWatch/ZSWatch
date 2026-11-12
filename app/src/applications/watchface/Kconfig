@@ -24,9 +24,9 @@ menu "Watchface"
         prompt "Add Living Sky watchface (animated weather and sky tint)"
         default y
 
-    config WATCHFACE_SAND
+    config WATCHFACE_SNOW
         bool
-        prompt "Add Sand watchface (digits of sand that fall the way the watch is held)"
+        prompt "Add Snow watchface (digits of snow that fall the way the watch is held)"
         default y
 
     config WATCHFACE_DIORAMA
