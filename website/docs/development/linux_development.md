@@ -8,6 +8,8 @@ ZSWatch can be compiled as a native Linux executable that opens a simulated 240Ã
 
 :::info Linux only
 The native simulator only works on **Linux**. macOS and Windows users should use the hardware build targets or develop inside a Linux VM / WSL2.
+
+**Windows developers:** follow [Windows + WSL: Native Simulator Setup](./wsl_setup.md) to add simulation alongside your Windows hardware workflow.
 :::
 
 ## 1. Install Dependencies
