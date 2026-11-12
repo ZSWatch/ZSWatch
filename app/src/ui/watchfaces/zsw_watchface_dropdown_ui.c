@@ -48,13 +48,19 @@ ZSW_LV_IMG_DECLARE(brightness_adjust_icon);
 
 #define PANEL_HEIGHT    172
 #define PANEL_RADIUS    28
-#define BUTTON_SIZE     48
+// Two columns of buttons and the brightness slider fill the panel
+#define BUTTON_SIZE     54
+#define GAP             8
+#define GRID_X          30
+#define GRID_Y          44
+#define SLIDER_WIDTH    52
 
 static lv_obj_t *create_round_button(lv_obj_t *parent, const char *symbol, lv_color_t color, int x, int y)
 {
     lv_obj_t *button = zsw_ui_round_button_create(parent, symbol, BUTTON_SIZE, color);
 
     lv_obj_set_pos(button, x, y);
+    lv_obj_set_style_text_font(lv_obj_get_child(button, 0), ZSW_FONT_HEADLINE, LV_PART_MAIN);
     lv_obj_clear_flag(button, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_PRESS_LOCK);
 
     return button;
@@ -128,8 +134,10 @@ static void on_lvgl_screen_gesture_event_callback_drop(lv_event_t *e)
         switch (dir) {
             case LV_DIR_TOP: {
                 if (zsw_watchface_dropdown_ui_close()) {
-                    // Don't let the watchface root also handle this swipe up and open the app picker.
+                    // Don't let the watchface root also handle this swipe up and open the app picker,
+                    // nor the rest of the swipe end as a long press on the watchface.
                     lv_event_stop_bubbling(e);
+                    lv_indev_wait_release(lv_indev_active());
                 }
                 break;
             }
@@ -183,34 +191,37 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
 
     ui_battery_state = lv_img_create(ui_down_bg_panel);
     lv_img_set_src(ui_battery_state, zsw_ui_utils_battery_icon(100));
-    lv_obj_align(ui_battery_state, LV_ALIGN_TOP_MID, -20, 6);
+    lv_obj_align(ui_battery_state, LV_ALIGN_TOP_MID, -24, 4);
 
     ui_battery_charge_state = lv_img_create(ui_battery_state);
     lv_img_set_src(ui_battery_charge_state, ZSW_LV_IMG_USE(light));
     lv_obj_align(ui_battery_charge_state, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_flag(ui_battery_charge_state, LV_OBJ_FLAG_HIDDEN);
 
-    ui_remaining_time_bat_label = zsw_ui_label_create(ui_down_bg_panel, "", ZSW_FONT_TEXT, ZSW_COLOR_TEXT);
-    lv_obj_align(ui_remaining_time_bat_label, LV_ALIGN_TOP_MID, 20, 8);
+    ui_remaining_time_bat_label = zsw_ui_label_create(ui_down_bg_panel, "", ZSW_FONT_BODY, ZSW_COLOR_TEXT);
+    lv_obj_align(ui_remaining_time_bat_label, LV_ALIGN_TOP_MID, 22, 4);
 
     ui_music_info_label = zsw_ui_label_create(ui_down_bg_panel, "", ZSW_FONT_TEXT, ZSW_COLOR_TEXT_DIM);
-    lv_obj_align(ui_music_info_label, LV_ALIGN_TOP_MID, 0, 28);
-    lv_obj_set_width(ui_music_info_label, 140);
+    lv_obj_align(ui_music_info_label, LV_ALIGN_TOP_MID, 0, 24);
+    lv_obj_set_width(ui_music_info_label, 160);
     lv_obj_set_style_base_dir(ui_music_info_label, LV_BASE_DIR_AUTO, LV_PART_MAIN);
     lv_label_set_long_mode(ui_music_info_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-    ui_music_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_AUDIO, ZSW_COLOR_PURPLE, 48, 50);
-    ui_settings_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_SETTINGS, lv_color_hex(0x6E7A8F), 104, 50);
-    ui_flashlight_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_CHARGE, lv_color_hex(0xF5B301), 48, 106);
-    ui_shutdown_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_POWER, ZSW_COLOR_RED, 104, 106);
+    ui_music_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_AUDIO, ZSW_COLOR_PURPLE, GRID_X, GRID_Y);
+    ui_settings_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_SETTINGS, lv_color_hex(0x6E7A8F),
+                                             GRID_X + BUTTON_SIZE + GAP, GRID_Y);
+    ui_flashlight_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_CHARGE, lv_color_hex(0xF5B301), GRID_X,
+                                               GRID_Y + BUTTON_SIZE + GAP);
+    ui_shutdown_button = create_round_button(ui_down_bg_panel, LV_SYMBOL_POWER, ZSW_COLOR_RED,
+                                             GRID_X + BUTTON_SIZE + GAP, GRID_Y + BUTTON_SIZE + GAP);
 
     // Brightness: the whole pill is the slider, the level fills it from the bottom.
     ui_bri_slider = lv_slider_create(ui_down_bg_panel);
     lv_slider_set_range(ui_bri_slider, 1, 100);
     lv_slider_set_value(ui_bri_slider, ui_light_slider_value, LV_ANIM_OFF);
-    lv_obj_set_size(ui_bri_slider, 44, BUTTON_SIZE * 2 + 8);
-    lv_obj_set_pos(ui_bri_slider, 160, 50);
-    lv_obj_set_style_radius(ui_bri_slider, 16, LV_PART_MAIN);
+    lv_obj_set_size(ui_bri_slider, SLIDER_WIDTH, BUTTON_SIZE * 2 + GAP);
+    lv_obj_set_pos(ui_bri_slider, GRID_X + 2 * (BUTTON_SIZE + GAP), GRID_Y);
+    lv_obj_set_style_radius(ui_bri_slider, 20, LV_PART_MAIN);
     lv_obj_set_style_bg_color(ui_bri_slider, ZSW_COLOR_SURFACE_HIGH, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui_bri_slider, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(ui_bri_slider, 0, LV_PART_INDICATOR);
@@ -221,7 +232,7 @@ void zsw_watchface_dropdown_ui_add(lv_obj_t *root_page,
     lv_obj_clear_flag(ui_bri_slider, LV_OBJ_FLAG_GESTURE_BUBBLE);
 
     ui_light_label = lv_img_create(ui_bri_slider);
-    lv_obj_align(ui_light_label, LV_ALIGN_BOTTOM_MID, 0, -6);
+    lv_obj_align(ui_light_label, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_img_set_src(ui_light_label, ZSW_LV_IMG_USE(brightness_adjust_icon));
     lv_obj_set_style_image_recolor(ui_light_label, ZSW_COLOR_TEXT_DIM, LV_PART_MAIN);
     lv_obj_set_style_image_recolor_opa(ui_light_label, LV_OPA_COVER, LV_PART_MAIN);
