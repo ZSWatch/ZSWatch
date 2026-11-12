@@ -27,7 +27,7 @@
  * images in the S: resource filesystem.
  */
 
-// LVGL image source for the copy. Only zsw_image_decoder can open it.
+// LVGL image source for the copy. zsw_image_decoder registers the B: drive that serves it.
 #define ZSW_CUSTOM_BG_SRC "B:bg.bin"
 
 /**
@@ -38,6 +38,14 @@
  * @return 0 when the copy matches the file and can be drawn, else a negative error code.
  */
 int zsw_custom_bg_store(const char *path);
+
+/**
+ * Reads from the copy made by zsw_custom_bg_store(), without mapping the flash.
+ *
+ * @param len Size of the copy, set when it is not NULL.
+ * @return Bytes read, 0 past the end, or a negative error code if there is no copy.
+ */
+int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len);
 
 /**
  * Maps the copy made by zsw_custom_bg_store(). On success the copy stays mapped until

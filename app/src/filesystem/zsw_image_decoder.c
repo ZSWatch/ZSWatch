@@ -25,7 +25,8 @@
  * the image has a format that must be decoded to RAM, LVGL's decoder does the work.
  *
  * The copy of the custom watchface background (ZSW_CUSTOM_BG_SRC) is drawn the same way.
- * It has no file system behind it, so it can only be drawn while mapped.
+ * LVGL opens every image file before it asks a decoder, so the copy also gets a drive of
+ * its own (B:) that reads it from the flash.
  */
 
 #include <zephyr/kernel.h>
@@ -133,33 +134,12 @@ static bool is_opened_from_flash(const lv_image_decoder_dsc_t *dsc)
     return dsc->user_data && dsc->decoded == dsc->user_data;
 }
 
-static lv_result_t custom_bg_info(lv_image_header_t *header)
-{
-    uint32_t len;
-    const uint8_t *file = zsw_custom_bg_map(&len);
-    lv_result_t res = LV_RESULT_INVALID;
-
-    if (!file) {
-        return LV_RESULT_INVALID;
-    }
-    if (len > sizeof(lv_image_header_t)) {
-        memcpy(header, file, sizeof(lv_image_header_t));
-        res = header->magic == LV_IMAGE_HEADER_MAGIC ? LV_RESULT_OK : LV_RESULT_INVALID;
-    }
-    zsw_custom_bg_unmap();
-
-    return res;
-}
-
 static lv_result_t decoder_info(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *dsc, lv_image_header_t *header)
 {
     if (dsc->src_type != LV_IMAGE_SRC_FILE) {
         return LV_RESULT_INVALID;
     }
-    if (is_custom_bg(dsc->src)) {
-        return custom_bg_info(header);
-    }
-    if (strncmp(dsc->src, ZSW_FS_DRIVE_PREFIX, ZSW_FS_DRIVE_PREFIX_LEN) != 0) {
+    if (!is_custom_bg(dsc->src) && strncmp(dsc->src, ZSW_FS_DRIVE_PREFIX, ZSW_FS_DRIVE_PREFIX_LEN) != 0) {
         return LV_RESULT_INVALID;
     }
 
@@ -175,10 +155,6 @@ static lv_result_t decoder_open(lv_image_decoder_t *decoder, lv_image_decoder_ds
         dsc->user_data = draw_buf;
         num_opened_from_flash++;
         return LV_RESULT_OK;
-    }
-
-    if (is_custom_bg(dsc->src)) {
-        return LV_RESULT_INVALID;
     }
 
     num_opened_by_lvgl++;
@@ -215,10 +191,107 @@ static int cmd_img_stats(const struct shell *sh, size_t argc, char **argv)
 SHELL_CMD_REGISTER(img_stats, NULL, "Show and reset how S: images were opened for drawing", cmd_img_stats);
 #endif
 
+typedef struct {
+    uint32_t pos;
+    uint32_t len;
+} bg_file_t;
+
+static void *bg_fs_open(lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode)
+{
+    uint32_t len;
+    bg_file_t *file;
+
+    LV_UNUSED(drv);
+
+    // LVGL has removed the drive letter.
+    if (mode != LV_FS_MODE_RD || strcmp(path, ZSW_CUSTOM_BG_SRC + 2) != 0 ||
+        zsw_custom_bg_read(0, NULL, 0, &len) < 0) {
+        return NULL;
+    }
+
+    file = lv_malloc(sizeof(bg_file_t));
+    if (file) {
+        file->pos = 0;
+        file->len = len;
+    }
+
+    return file;
+}
+
+static lv_fs_res_t bg_fs_close(lv_fs_drv_t *drv, void *file_p)
+{
+    LV_UNUSED(drv);
+    lv_free(file_p);
+    return LV_FS_RES_OK;
+}
+
+static lv_fs_res_t bg_fs_read(lv_fs_drv_t *drv, void *file_p, void *buf, uint32_t btr, uint32_t *br)
+{
+    bg_file_t *file = file_p;
+    int rc = zsw_custom_bg_read(file->pos, buf, btr, NULL);
+
+    LV_UNUSED(drv);
+
+    if (rc < 0) {
+        *br = 0;
+        return LV_FS_RES_HW_ERR;
+    }
+    file->pos += rc;
+    *br = rc;
+
+    return LV_FS_RES_OK;
+}
+
+static lv_fs_res_t bg_fs_seek(lv_fs_drv_t *drv, void *file_p, uint32_t pos, lv_fs_whence_t whence)
+{
+    bg_file_t *file = file_p;
+
+    LV_UNUSED(drv);
+
+    switch (whence) {
+        case LV_FS_SEEK_SET:
+            file->pos = pos;
+            break;
+        case LV_FS_SEEK_CUR:
+            file->pos += pos;
+            break;
+        case LV_FS_SEEK_END:
+            file->pos = file->len + pos;
+            break;
+        default:
+            return LV_FS_RES_INV_PARAM;
+    }
+
+    return LV_FS_RES_OK;
+}
+
+static lv_fs_res_t bg_fs_tell(lv_fs_drv_t *drv, void *file_p, uint32_t *pos)
+{
+    LV_UNUSED(drv);
+    *pos = ((bg_file_t *)file_p)->pos;
+    return LV_FS_RES_OK;
+}
+
+static void register_bg_drive(void)
+{
+    static lv_fs_drv_t drv;
+
+    lv_fs_drv_init(&drv);
+    drv.letter = ZSW_CUSTOM_BG_SRC[0];
+    drv.open_cb = bg_fs_open;
+    drv.close_cb = bg_fs_close;
+    drv.read_cb = bg_fs_read;
+    drv.seek_cb = bg_fs_seek;
+    drv.tell_cb = bg_fs_tell;
+    lv_fs_drv_register(&drv);
+}
+
 static int zsw_image_decoder_init(void)
 {
     // The newest decoder is asked first, so this one gets the S: images before LVGL's.
     lv_image_decoder_t *decoder = lv_image_decoder_create();
+
+    register_bg_drive();
 
     if (!decoder) {
         LOG_ERR("Failed to create image decoder");
