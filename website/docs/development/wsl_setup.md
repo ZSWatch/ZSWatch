@@ -56,7 +56,7 @@ nrfutil sdk-manager search
 The [toolchain guide](./toolchain.md#2-set-up-vs-code) currently recommends packaged toolchain `v3.3.0` for the NCS source revision `v3.3.0-preview1` pinned in `app/west.yml`. If `v3.3.0` is listed, install it:
 
 ```bash
-nrfutil sdk-manager install v3.3.0
+nrfutil sdk-manager toolchain install --ncs-version v3.3.0
 ```
 
 If it is unavailable, check [Nordic's installation guidance](https://nrfconnectdocs.nordicsemi.com/ncs/latest/nrf/installation/install_ncs.html) before choosing another version. The next step fetches ZSWatch's pinned SDK sources; do not use SDK Manager's separate source checkout instead.
@@ -149,7 +149,7 @@ Using the simulator build from step 4 and the active Linux environment:
 ```bash
 python -m pip install -r app/pytest/requirements.txt
 cd app/pytest
-pytest test_native_app.py::TestNativeSim -s --app "Calculator"
+pytest test_native_app.py::TestNativeSim -s --app "Calc"
 ```
 
 The runner uses Xvfb for a headless display and ImageMagick for screenshots.
