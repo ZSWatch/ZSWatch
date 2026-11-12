@@ -165,6 +165,33 @@ int zsw_custom_bg_store(const char *path)
     return rc;
 }
 
+int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len)
+{
+    const struct flash_area *fa;
+    uint32_t stored = stored_len;
+    int rc;
+
+    if (stored == 0) {
+        return -ENOENT;
+    }
+    if (len) {
+        *len = stored;
+    }
+    if (offset >= stored || size == 0) {
+        return 0;
+    }
+
+    size = MIN(size, stored - offset);
+    rc = flash_area_open(BG_PARTITION_ID, &fa);
+    if (rc) {
+        return rc;
+    }
+    rc = flash_area_read(fa, BG_DATA_OFFSET + offset, buf, size);
+    flash_area_close(fa);
+
+    return rc ? rc : (int)size;
+}
+
 const uint8_t *zsw_custom_bg_map(uint32_t *len)
 {
     uint32_t stored = stored_len;
@@ -187,6 +214,15 @@ void zsw_custom_bg_unmap(void)
 int zsw_custom_bg_store(const char *path)
 {
     ARG_UNUSED(path);
+    return -ENOTSUP;
+}
+
+int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len)
+{
+    ARG_UNUSED(offset);
+    ARG_UNUSED(buf);
+    ARG_UNUSED(size);
+    ARG_UNUSED(len);
     return -ENOTSUP;
 }
 
