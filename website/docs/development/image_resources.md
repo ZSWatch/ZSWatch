@@ -113,7 +113,7 @@ Find or create a `.png` image. App icons are typically **32×32 pixels** with a 
 Use the converter that comes with LVGL. Name the `.png` what the image shall be called in the code:
 
 ```bash
-python modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o app/src/images/binaries/S/ my_app_icon.png
+python $ZEPHYR_BASE/../modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o app/src/images/binaries/S/ my_app_icon.png
 ```
 
 Use `--cf RGB565A8` if the image has transparency and `--cf RGB565` for opaque images. Do not use compression or the indexed formats, they have to be decoded to RAM before drawing.

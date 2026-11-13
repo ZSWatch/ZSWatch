@@ -231,22 +231,24 @@ static void bg_store_work_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
 
+    // Held until the source is switched, so a reload can not replace the file in between.
     k_mutex_lock(&bg_file_mutex, K_FOREVER);
     int rc = zsw_custom_bg_store(CUSTOM_BG_PATH);
-    k_mutex_unlock(&bg_file_mutex);
 
     if (rc != 0) {
+        k_mutex_unlock(&bg_file_mutex);
         return;
     }
 
     lvgl_lock();
-    // Unless the background was reset or replaced meanwhile.
+    // Unless the background was reset meanwhile.
     if (watchface_bg_img == custom_bg_file_src) {
         lv_image_cache_drop(CUSTOM_BG_PATH);
         watchface_bg_img = ZSW_CUSTOM_BG_SRC;
         watchface_notify_new_bg();
     }
     lvgl_unlock();
+    k_mutex_unlock(&bg_file_mutex);
 }
 
 int watchface_app_reload_bg(void)
