@@ -32,15 +32,13 @@ int zsw_filesytem_erase(void);
 /**
  * @brief Get a pointer to the content of a file in the image resource filesystem (S:).
  *
- * Only works while the external flash is memory mapped (XIP on). The pointer is valid
- * until zsw_filesystem_unmap_file() is called, which must be done once for each
- * successful call.
+ * Only works while the external flash is memory mapped (XIP on). The display keeps
+ * XIP on while LVGL renders, so the pointer can be used for as long as a draw takes.
+ * Do not keep it longer than that.
  *
  * @param name File name without drive letter, for example "icon.bin".
  * @param len Set to the length of the file.
  *
  * @return Pointer to the file content, NULL if not memory mapped or the file does not exist.
  */
-const uint8_t *zsw_filesystem_map_file(const char *name, uint32_t *len);
-
-void zsw_filesystem_unmap_file(void);
+const uint8_t *zsw_filesystem_get_file(const char *name, uint32_t *len);

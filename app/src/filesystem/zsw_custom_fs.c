@@ -60,8 +60,10 @@ LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
 #define INDEX_MAGIC         0x5844495A // "ZIDX"
 #define MAX_FILE_NAME_LEN   32
 #define MAX_OPENED_FILES    48
-// Number of index slots fetched per flash read when the image is not memory mapped.
+// Number of index slots fetched per read.
 #define INDEX_SLOTS_PER_READ 4
+// The scheduler is locked while this much is copied from the memory mapped image.
+#define MAPPED_READ_CHUNK_SIZE 4096
 
 #define IS_SPECIAL_FULL_FS_FILE_PATH(name) \
     (strncmp(name, FULL_FS_SPECIAL_FILE_NAME, sizeof(FULL_FS_SPECIAL_FILE_NAME) - 1) == 0)
@@ -105,7 +107,6 @@ typedef struct index_footer_t {
 typedef struct opened_file_t {
     bool            in_use;
     bool            is_cached;
-    const uint8_t  *map; // Start of the memory mapped image, NULL if read through the flash driver.
     uint32_t        offset; // From the start of the image.
     uint32_t        len;
     uint32_t        index;
@@ -149,16 +150,12 @@ static uint32_t image_max_size(void)
     return zsw_fs_embedded_image_end - zsw_fs_embedded_image;
 }
 
-static const uint8_t *image_map_get(void)
+static const uint8_t *image_base(void)
 {
     return IS_ENABLED(CONFIG_ZSW_FS_TEST_NO_MAPPING) ? NULL : zsw_fs_embedded_image;
 }
 
-static void image_map_put(void)
-{
-}
-
-static int image_read(uint32_t offset, void *buf, size_t len)
+static int image_read_flash(uint32_t offset, void *buf, size_t len)
 {
     if (offset > image_max_size() || len > image_max_size() - offset) {
         return -EINVAL;
@@ -172,31 +169,54 @@ static uint32_t image_max_size(void)
     return flash_area->fa_size;
 }
 
-/*
- * Reading through the XIP mapping avoids the per-read QSPI driver overhead.
- * Only succeeds when XIP is already on (display on), so this never powers it up.
- * The mapping stays valid until image_map_put().
- */
-static const uint8_t *image_map_get(void)
+// Start of the image while the external flash is memory mapped (XIP on), else NULL.
+static const uint8_t *image_base(void)
 {
 #ifdef CONFIG_ZSW_XIP
-    if (zsw_xip_try_get()) {
+    if (zsw_xip_is_enabled()) {
         return (const uint8_t *)XIP_PARTITION_BASE;
     }
 #endif
     return NULL;
 }
 
-static void image_map_put(void)
-{
-    zsw_xip_put();
-}
-
-static int image_read(uint32_t offset, void *buf, size_t len)
+static int image_read_flash(uint32_t offset, void *buf, size_t len)
 {
     return flash_area_read(flash_area, offset, buf, len);
 }
 #endif
+
+/*
+ * Copies from the memory mapped image, which avoids the per-read QSPI driver overhead.
+ * XIP is turned off from other threads, so the scheduler is locked for each part copied.
+ *
+ * Returns false if the image is not mapped, nothing useful has been copied then.
+ */
+static bool image_read_mapped(uint32_t offset, void *buf, size_t len)
+{
+    const uint8_t *base;
+    size_t n;
+
+    for (size_t done = 0; done < len; done += n) {
+        n = MIN(len - done, MAPPED_READ_CHUNK_SIZE);
+        k_sched_lock();
+        base = image_base();
+        if (base) {
+            memcpy((uint8_t *)buf + done, base + offset + done, n);
+        }
+        k_sched_unlock();
+        if (!base) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static int image_read(uint32_t offset, void *buf, size_t len)
+{
+    return image_read_mapped(offset, buf, len) ? 0 : image_read_flash(offset, buf, len);
+}
 
 static void invalidate_read_cache(void)
 {
@@ -217,26 +237,18 @@ static uint32_t hash_file_name(const char *name)
     return hash;
 }
 
-static int find_file_in_index(const uint8_t *map, const char *name, uint32_t *offset, uint32_t *len)
+static int find_file_in_index(const char *name, uint32_t *offset, uint32_t *len)
 {
-    index_slot_t read_slots[INDEX_SLOTS_PER_READ];
-    const index_slot_t *slots;
+    index_slot_t slots[INDEX_SLOTS_PER_READ];
     uint32_t num_slots;
     uint32_t hash = hash_file_name(name);
     uint32_t mask = image_index.num_slots - 1;
     uint32_t i = hash & mask;
 
     for (uint32_t probes = 0; probes < image_index.num_slots; probes += num_slots) {
-        if (map) {
-            slots = (const index_slot_t *)(map + image_index.offset) + i;
-            num_slots = 1;
-        } else {
-            num_slots = MIN(INDEX_SLOTS_PER_READ, image_index.num_slots - i);
-            if (image_read(image_index.offset + i * sizeof(index_slot_t), read_slots,
-                           num_slots * sizeof(index_slot_t)) != 0) {
-                return -EIO;
-            }
-            slots = read_slots;
+        num_slots = MIN(INDEX_SLOTS_PER_READ, image_index.num_slots - i);
+        if (image_read(image_index.offset + i * sizeof(index_slot_t), slots, num_slots * sizeof(index_slot_t)) != 0) {
+            return -EIO;
         }
 
         for (uint32_t j = 0; j < num_slots; j++) {
@@ -256,25 +268,20 @@ static int find_file_in_index(const uint8_t *map, const char *name, uint32_t *of
     return -ENOENT;
 }
 
-static int find_file_in_name_table(const uint8_t *map, const char *name, uint32_t *offset, uint32_t *len)
+static int find_file_in_name_table(const char *name, uint32_t *offset, uint32_t *len)
 {
     const file_header_t *headers;
     uint32_t num_headers;
 
     for (uint32_t i = 0; i < image_header.num_files; i += num_headers) {
-        if (map) {
-            headers = (const file_header_t *)(map + sizeof(image_header_t));
-            num_headers = image_header.num_files;
-        } else {
-            // Borrow the read cache, the table is too big to search one entry per flash read.
-            invalidate_read_cache();
-            num_headers = MIN(sizeof(file_cache_buffer) / sizeof(file_header_t), image_header.num_files - i);
-            if (image_read(sizeof(image_header_t) + i * sizeof(file_header_t), file_cache_buffer,
-                           num_headers * sizeof(file_header_t)) != 0) {
-                return -EIO;
-            }
-            headers = (const file_header_t *)file_cache_buffer;
+        // Borrow the read cache, the table is too big to search one entry per read.
+        invalidate_read_cache();
+        num_headers = MIN(sizeof(file_cache_buffer) / sizeof(file_header_t), image_header.num_files - i);
+        if (image_read(sizeof(image_header_t) + i * sizeof(file_header_t), file_cache_buffer,
+                       num_headers * sizeof(file_header_t)) != 0) {
+            return -EIO;
         }
+        headers = (const file_header_t *)file_cache_buffer;
 
         for (uint32_t j = 0; j < num_headers; j++) {
             if (strncmp(name, headers[j].filename, MAX_FILE_NAME_LEN) == 0) {
@@ -288,11 +295,8 @@ static int find_file_in_name_table(const uint8_t *map, const char *name, uint32_
     return -ENOENT;
 }
 
-/*
- * map is the memory mapped image if the caller holds a mapping, else NULL.
- * offset is counted from the start of the image.
- */
-static int find_file(const uint8_t *map, const char *name, uint32_t *offset, uint32_t *len)
+// offset is counted from the start of the image.
+static int find_file(const char *name, uint32_t *offset, uint32_t *len)
 {
     int rc;
 
@@ -301,9 +305,9 @@ static int find_file(const uint8_t *map, const char *name, uint32_t *offset, uin
     }
 
     if (image_has_index) {
-        rc = find_file_in_index(map, name, offset, len);
+        rc = find_file_in_index(name, offset, len);
     } else {
-        rc = find_file_in_name_table(map, name, offset, len);
+        rc = find_file_in_name_table(name, offset, len);
     }
 
     // Reads are not checked again, a memory mapped read outside the image could fault.
@@ -371,7 +375,6 @@ static lv_fs_res_t errno_to_lv_fs_res(int err)
 
 static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode)
 {
-    const uint8_t *map;
     uint32_t offset;
     uint32_t len;
     opened_file_t *open_file;
@@ -381,11 +384,7 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
         return NULL;
     }
 
-    map = image_map_get();
-    if (find_file(map, path, &offset, &len) != 0) {
-        if (map) {
-            image_map_put();
-        }
+    if (find_file(path, &offset, &len) != 0) {
         return NULL;
     }
 
@@ -394,8 +393,6 @@ static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode
     open_file->offset = offset;
     open_file->len = len;
     open_file->index = 0;
-    // The mapping is kept until close, so it can not go away mid read.
-    open_file->map = map;
 
     return open_file;
 }
@@ -460,10 +457,6 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
 static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
 {
     opened_file_t *open_file = (opened_file_t *)file;
-    if (open_file->map) {
-        image_map_put();
-        open_file->map = NULL;
-    }
     if (current_cached_file == open_file) {
         current_cached_file = NULL;
     }
@@ -521,8 +514,7 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
 
     orig_read_address = open_file->offset + open_file->index;
 
-    if (open_file->map) {
-        memcpy(buf, open_file->map + orig_read_address, btr);
+    if (image_read_mapped(orig_read_address, buf, btr)) {
         *br = btr;
         open_file->index += btr;
         return LV_FS_RES_OK;
@@ -778,7 +770,7 @@ static int zsw_fs_stat(struct fs_mount_t *mountp,
         uint32_t offset;
         uint32_t len;
 
-        if (find_file(NULL, file_name_ptr, &offset, &len) != 0) {
+        if (find_file(file_name_ptr, &offset, &len) != 0) {
             return -ENOENT;
         }
         entry->type = FS_DIR_ENTRY_FILE;
@@ -812,26 +804,16 @@ int zsw_filesytem_get_total_size(void)
     return image_header.total_length;
 }
 
-const uint8_t *zsw_filesystem_map_file(const char *name, uint32_t *len)
+const uint8_t *zsw_filesystem_get_file(const char *name, uint32_t *len)
 {
     uint32_t offset;
-    const uint8_t *map = image_map_get();
+    const uint8_t *base = image_base();
 
-    if (!map) {
+    if (!base || find_file(name, &offset, len) != 0) {
         return NULL;
     }
 
-    if (find_file(map, name, &offset, len) != 0) {
-        image_map_put();
-        return NULL;
-    }
-
-    return map + offset;
-}
-
-void zsw_filesystem_unmap_file(void)
-{
-    image_map_put();
+    return base + offset;
 }
 
 int zsw_filesytem_erase(void)
@@ -840,8 +822,6 @@ int zsw_filesytem_erase(void)
     for (int i = 0; i < MAX_OPENED_FILES; i++) {
         if (opened_files[i].in_use) {
             num_opened_files++;
-            // Clearing the slot below would otherwise leak its mapping reference.
-            lvgl_fs_close(NULL, &opened_files[i]);
         }
     }
     LOG_WRN("Number of opened files: %d", num_opened_files);
