@@ -73,6 +73,7 @@ target_sources(app PRIVATE src/zsw_settings.c)
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/zsw_wdt.c)
 target_sources(app PRIVATE src/zsw_cpu_freq.c)
+target_sources_ifdef(CONFIG_ZSW_FAST_MEMCPY app PRIVATE src/zsw_string.c)
 target_sources(app PRIVATE src/zsw_retained_ram_storage.c)
 target_sources(app PRIVATE src/zsw_coredump.c)
 target_sources_ifdef(CONFIG_SHELL app PRIVATE src/zsw_shell.c)
@@ -87,6 +88,31 @@ target_sources(app PRIVATE src/ui/onboarding/zsw_onboarding_ui.c)
 target_sources_ifdef(CONFIG_SPI_FLASH_LOADER app PRIVATE src/filesystem/zsw_rtt_flash_loader.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM_LITTLEFS app PRIVATE src/filesystem/zsw_filesystem.c)
 target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_custom_fs.c)
+target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_image_decoder.c)
+target_sources_ifdef(CONFIG_FILE_SYSTEM app PRIVATE src/filesystem/zsw_custom_bg.c)
+
+if(CONFIG_ZSW_FS_EMBEDDED_IMAGE)
+    set(ZSW_FS_IMAGE_FILE ${CMAKE_CURRENT_BINARY_DIR}/lvgl_resources_raw.bin)
+    set(ZSW_FS_IMAGE_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/create_custom_resource_image.py)
+    file(GLOB ZSW_FS_IMAGE_SOURCES CONFIGURE_DEPENDS src/images/binaries/S/*)
+    if(CONFIG_ZSW_FS_TEST_LEGACY_IMAGE)
+        set(ZSW_FS_IMAGE_ARGS --legacy)
+    endif()
+
+    add_custom_command(
+        OUTPUT ${ZSW_FS_IMAGE_FILE}
+        COMMAND ${PYTHON_EXECUTABLE} ${ZSW_FS_IMAGE_SCRIPT} ${ZSW_FS_IMAGE_ARGS}
+                --img-filename ${ZSW_FS_IMAGE_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/src/images/binaries/S
+        DEPENDS ${ZSW_FS_IMAGE_SCRIPT} ${ZSW_FS_IMAGE_SOURCES}
+        COMMENT "Generating image resource filesystem"
+    )
+
+    target_sources(app PRIVATE src/filesystem/zsw_custom_fs_embedded_image.c)
+    set_source_files_properties(src/filesystem/zsw_custom_fs_embedded_image.c PROPERTIES
+        COMPILE_DEFINITIONS ZSW_FS_EMBEDDED_IMAGE_FILE="${ZSW_FS_IMAGE_FILE}"
+        OBJECT_DEPENDS ${ZSW_FS_IMAGE_FILE}
+    )
+endif()
 
 target_sources_ifdef(CONFIG_RTC_ALARM app PRIVATE src/zsw_alarm.c)
 

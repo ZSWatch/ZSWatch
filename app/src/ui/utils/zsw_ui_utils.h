@@ -25,16 +25,12 @@
 #define CONCATINATE_(a, b) a##b
 #define CONCATINATE(a, b) CONCATINATE_(a, b)
 
-#if CONFIG_STORE_IMAGES_EXTERNAL_FLASH
+/*
+ * Images are files in the image resource filesystem, see src/images/binaries/README.md.
+ * It is in external flash on the watch and linked into the executable on native_sim.
+ */
 #define ZSW_LV_IMG_DECLARE(var_name)
 #define ZSW_LV_IMG_USE(var_name)                            "S:"#var_name".bin"
-#define ZSW_LV_IMG_USE_WITH_MOUNT(var_name, mount_letter)   mount_letter "/" #var_name ".bin"
-#else
-#define ZSW_LV_IMG_DECLARE(var_name)                        LV_IMG_DECLARE(var_name)
-#define ZSW_LV_IMG_USE(var_name)                            &var_name
-#define ZSW_LV_IMG_USE_WITH_MOUNT(var_name, mount_letter)   &var_name
-
-#endif
 
 const lv_img_dsc_t *zsw_ui_utils_icon_from_weather_code(int code, lv_color_t *icon_color);
 

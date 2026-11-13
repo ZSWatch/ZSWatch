@@ -17,6 +17,35 @@ menu "ZSWatch"
         select NORDIC_QSPI_NOR_XIP
         default n
 
+    config ZSW_FS_EMBEDDED_IMAGE
+        bool "Link the image resource filesystem into the executable"
+        default y if ARCH_POSIX
+        depends on FILE_SYSTEM && !ZSW_XIP
+        help
+          For targets without external flash. The image is built from
+          src/images/binaries/S and read as if it was memory mapped flash.
+
+    config ZSW_FS_TEST_NO_MAPPING
+        bool "Read the embedded image resource filesystem as if not memory mapped"
+        depends on ZSW_FS_EMBEDDED_IMAGE
+        help
+          Only for testing the code used on hardware while XIP is disabled.
+
+    config ZSW_FS_TEST_LEGACY_IMAGE
+        bool "Embed an image resource filesystem in the old format without file index"
+        depends on ZSW_FS_EMBEDDED_IMAGE
+        help
+          Only for testing that images made by older tools can still be read.
+
+    config ZSW_FAST_MEMCPY
+        bool "Word based memcpy, memmove and memset"
+        default y
+        depends on ARMV7_M_ARMV8_M_MAINLINE && PICOLIBC_USE_TOOLCHAIN && !TRAP_UNALIGNED_ACCESS
+        help
+          The picolibc in the Zephyr SDK is built for size and copies one byte
+          at a time. LVGL uses memcpy and memset for every rendered row, so
+          replace them with versions that move a word at a time.
+
     config ZSW_FW_UPDATE
         bool
         prompt "Enable firmware update"

@@ -4,12 +4,10 @@ sidebar_position: 4
 
 # Image Resources
 
-ZSWatch uses two forms of image storage depending on the target:
+Images are stored as `.bin` files in `app/src/images/binaries/S/`. They are packed into one resource image, `lvgl_resources_raw.bin`:
 
-- **On real hardware:** Images are stored as `.bin` files in the **external flash** and must be uploaded separately from the firmware.
-- **On the native simulator:** Images are compiled from `.c` source files directly into the binary, no separate upload needed.
-
-Both forms originate from the same source image. The workflow below explains how they fit together.
+- **On real hardware** the resource image is stored in the **external flash** and must be uploaded separately from the firmware.
+- **On the native simulator** the build links the same resource image into the executable, no separate upload needed.
 
 :::tip When do I need to upload images?
 Image resources only need to be uploaded to the watch when they **change**: for example, when you add a new icon or update an existing one. If you're just updating firmware without changing images, you can skip this step. Note that uploading takes approximately **3 minutes** over USB/BLE.
@@ -90,14 +88,17 @@ import TabItem from '@theme/TabItem';
 
 ## How Images Work Internally
 
-Images in ZSWatch exist in two places:
+Every file in `app/src/images/binaries/S/` goes into the resource image, which the firmware exposes as the read-only `S:` drive. `ZSW_LV_IMG_USE(my_icon)` is simply the path `"S:my_icon.bin"`.
 
-| File type | Location | Used by | Purpose |
-|-----------|----------|---------|---------|
-| `.c` files | `app/src/images/` (and subdirectories like `icons/`, `weather_icons/`, etc.) | **Native simulator** and as source for `.bin` conversion | Compiled into the binary for native_sim; also used to generate `.bin` files |
-| `.bin` files | `app/src/images/binaries/S/` | **Real hardware** (ZSWatch, WatchDK) | Stored in external flash, loaded at runtime via the `S:` storage prefix |
+The resource image is made by `app/scripts/create_custom_resource_image.py` and ends with a hash index of the file names. The firmware keeps no file table in RAM: opening a file hashes its name and reads one index entry from flash. While the external flash is memory mapped (XIP is on whenever the display is on), LVGL draws images straight from flash without copying them to RAM first. With XIP off the same files are read through the flash driver.
 
-When you build for the **native simulator**, the `.c` files are compiled directly into the binary, so images just work. When you build for **hardware**, the firmware references images from external flash. The `.bin` files in `binaries/S/` are packaged into the `lvgl_resources_raw.bin` blob that you upload to the watch.
+A custom watchface background is uploaded as `/user/bg.bin` in LittleFS, which can not be drawn straight from flash. After the background is applied, and at boot if needed, the firmware copies it to the `custom_bg_partition` partition (128 KB, right after the resource image) and draws it from there the same way. Until the copy is done, and on native_sim, the file in LittleFS is drawn.
+
+Firmware and resource image can be updated in any order. Older firmware reads new resource images through the name table at the start of the image, and new firmware reads older images without index, only slower when opening files.
+
+:::note
+A few images that must work without the resource image, or that are used in ways the `S:` drive does not cover, are still compiled into the firmware from `.c` files and used with `LV_IMG_DECLARE()`.
+:::
 
 ## Adding New Image Resources
 
@@ -107,53 +108,27 @@ To add a new icon or image (for example, an app icon):
 
 Find or create a `.png` image. App icons are typically **32×32 pixels** with a transparent background.
 
-### 2. Convert to LVGL C File
+### 2. Convert to an LVGL `.bin` File
 
-Use the **LVGL Image Converter v9** at [https://lvgl.io/tools/imageconverter](https://lvgl.io/tools/imageconverter):
+Use the converter that comes with LVGL. Name the `.png` what the image shall be called in the code:
 
-- Select your image file.
-- **Color format:** `RGB565` for opaque images, or `RGB565A8` if the image has transparency.
-- Make sure you are using the **LVGL v9** converter (not v8).
-- Download the generated `.c` file.
+```bash
+python modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o app/src/images/binaries/S/ my_app_icon.png
+```
 
-### 3. Place the `.c` File
+Use `--cf RGB565A8` if the image has transparency and `--cf RGB565` for opaque images. Do not use compression or the indexed formats, they have to be decoded to RAM before drawing.
 
-Put the `.c` file in the appropriate directory:
-
-| Image type | Directory |
-|-----------|-----------|
-| App icons | `app/src/images/icons/` |
-| General images | `app/src/images/` (root) |
-| App specific | `app/src/applications/your_app` |
-
-
-If the `.c` file is placed in `images` folder it's automatically picked up by the build system. This makes the image available for the **native simulator**.
-
-### 4. Generate the `.bin` File for Hardware
-
-Convert the `.c` file to a `.bin` binary for external flash storage:
+If you already have an LVGL v9 `.c` file, for example from the [LVGL Image Converter](https://lvgl.io/tools/imageconverter), convert it instead:
 
 ```bash
 python app/scripts/lvgl_c_array_to_bin_lvgl9.py <path_to_.c_file> app/src/images/binaries/S/
 ```
 
-For example:
-```bash
-python app/scripts/lvgl_c_array_to_bin_lvgl9.py app/src/images/icons/my_app_icon.c app/src/images/binaries/S/
-```
+Only the `.bin` file is added to the repository. The native simulator picks it up on the next build.
 
-This generates a `.bin` file in `app/src/images/binaries/S/` which will be included in the next `lvgl_resources_raw.bin` build.
+### 3. Upload to the Watch
 
-### 5. Upload to the Watch
-
-After adding the `.bin` file, upload the updated image resources to the watch using one of the [upload methods](#uploading-images-to-the-watch) above.
-
-### Summary
-
-When adding a new image, you need files in **two locations**:
-
-1. **`.c` file** in `app/src/images/<appropriate_subdir>/` or in the app folder (for native_sim builds and as the source for conversion)
-2. **`.bin` file** in `app/src/images/binaries/S/` (for hardware builds, generated from step 4)
+Upload the updated image resources to the watch using one of the [upload methods](#uploading-images-to-the-watch) above.
 
 ### Using the Image in Code
 
@@ -164,5 +139,3 @@ ZSW_LV_IMG_DECLARE(my_app_icon);               // File scope declaration
 
 .icon = ZSW_LV_IMG_USE(my_app_icon),           // In application_t struct or LVGL code
 ```
-
-These macros automatically resolve to the correct storage location (internal flash on native_sim, external flash `S:` prefix on hardware).

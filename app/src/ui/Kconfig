@@ -21,5 +21,4 @@ menu "UI"
     module-str = ZSW_NOTIFICATION_REPLY
     source "subsys/logging/Kconfig.template.log_config"
 
-    rsource "utils/Kconfig"
 endmenu

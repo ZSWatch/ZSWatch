@@ -43,16 +43,18 @@ static const sky_key_t sky_keys[] = {
     SKY_NIGHT(24 * 60),
 };
 
-// The tint is drawn as a small tiled image, as LVGL only applies blend modes to images.
-#define TINT_TILE_SIZE      8
-static uint16_t tint_tile_px[TINT_TILE_SIZE * TINT_TILE_SIZE];
+// The tint is drawn as a tiled image, as LVGL only applies blend modes to images.
+// Full width rows keep the number of tiles, and so the draw overhead per frame, low.
+#define TINT_TILE_W         LIVING_SKY_SIZE
+#define TINT_TILE_H         1
+static uint16_t tint_tile_px[TINT_TILE_W * TINT_TILE_H];
 static lv_image_dsc_t tint_tile = {
     .header = {
         .magic = LV_IMAGE_HEADER_MAGIC,
         .cf = LV_COLOR_FORMAT_RGB565,
-        .w = TINT_TILE_SIZE,
-        .h = TINT_TILE_SIZE,
-        .stride = TINT_TILE_SIZE * sizeof(uint16_t),
+        .w = TINT_TILE_W,
+        .h = TINT_TILE_H,
+        .stride = TINT_TILE_W * sizeof(uint16_t),
     },
     .data_size = sizeof(tint_tile_px),
     .data = (const uint8_t *)tint_tile_px,
@@ -212,7 +214,7 @@ static void draw_stars(const living_sky_scene_t *scene, lv_layer_t *layer, int32
         line.round_end = 1;
         line.opa = (lv_opa_t)(255 - t * 14);
         line.p2.x = ox + 150 - t * 7;
-        line.p2.y = oy + 30 + t * 4;
+        line.p2.y = oy + 30 + t * 3;
         line.p1.x = line.p2.x + 24;
         line.p1.y = line.p2.y - 14;
         lv_draw_line(layer, &line);

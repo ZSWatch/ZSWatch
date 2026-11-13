@@ -57,14 +57,33 @@ LOG_MODULE_REGISTER(zsw_fs, LOG_LEVEL_INF);
 #define XIP_PARTITION_BASE      (DT_REG_ADDR_BY_IDX(DT_NODELABEL(qspi), 1) + FLASH_PARTITION_OFFSET)
 #endif
 
-#define FILE_TABLE_MAX_LEN  32000
+#define INDEX_MAGIC         0x5844495A // "ZIDX"
 #define MAX_FILE_NAME_LEN   32
 #define MAX_OPENED_FILES    48
+// Number of index slots fetched per read.
+#define INDEX_SLOTS_PER_READ 4
+// The scheduler is locked while this much is copied from the memory mapped image.
+#define MAPPED_READ_CHUNK_SIZE 4096
 
 #define IS_SPECIAL_FULL_FS_FILE_PATH(name) \
     (strncmp(name, FULL_FS_SPECIAL_FILE_NAME, sizeof(FULL_FS_SPECIAL_FILE_NAME) - 1) == 0)
 #define IS_SPECIAL_FULL_FS_FILE(ptr) \
     (ptr == &full_fs_file)
+
+/*
+ * Image layout, see scripts/create_custom_resource_image.py:
+ * [image_header_t][file_header_t * num_files][file data][index_slot_t * num_slots][index_footer_t][magic]
+ *
+ * Nothing but the header and the index footer is kept in RAM. Files are looked up
+ * in the hash index in flash. Images made before the index existed only have the
+ * name table, which is then searched in flash instead.
+ */
+typedef struct image_header_t {
+    uint32_t        magic;
+    uint32_t        header_length; // Offsets in file_header_t are counted from after this.
+    uint32_t        total_length;
+    uint32_t        num_files;
+} image_header_t;
 
 typedef struct file_header_t {
     uint8_t         filename[MAX_FILE_NAME_LEN];
@@ -72,19 +91,25 @@ typedef struct file_header_t {
     uint32_t        len;
 } file_header_t;
 
-typedef struct file_table_t {
+typedef struct index_slot_t {
+    uint32_t        hash;
+    uint32_t        offset; // From the start of the image, 0 for a free slot.
+    uint32_t        len;
+} index_slot_t;
+
+typedef struct index_footer_t {
     uint32_t        magic;
-    uint32_t        header_length; // Image offset counted from after this.
-    uint32_t        total_length;
-    uint32_t        num_files;
-    file_header_t   file_headers[FILE_TABLE_MAX_LEN / sizeof(file_header_t)];
-} file_table_t;
+    uint32_t        offset; // From the start of the image.
+    uint32_t        num_slots; // Power of two.
+    uint32_t        seed;
+} index_footer_t;
 
 typedef struct opened_file_t {
-    file_header_t  *header;
-    uint32_t        index;
+    bool            in_use;
     bool            is_cached;
-    bool            use_xip;
+    uint32_t        offset; // From the start of the image.
+    uint32_t        len;
+    uint32_t        index;
     uint32_t        cache_start;
     uint32_t        cache_end;
 } opened_file_t;
@@ -97,7 +122,10 @@ typedef struct fullFsFile_t {
     bool            opened;
 } fullFsFile_t;
 
-static file_table_t file_table;
+static image_header_t image_header;
+static index_footer_t image_index;
+static bool image_valid;
+static bool image_has_index;
 static opened_file_t opened_files[MAX_OPENED_FILES];
 
 static uint8_t file_cache_buffer[SPI_FLASH_SECTOR_SIZE];
@@ -112,25 +140,196 @@ static struct stream_flash_ctx full_fs_stream_ctx;
 static uint8_t full_fs_stream_buf[512] __aligned(4);
 static bool full_fs_stream_active;
 
-static file_header_t *find_file(const char *name)
+#if defined(CONFIG_ZSW_FS_EMBEDDED_IMAGE)
+// The image is linked into the executable, see zsw_custom_fs_embedded_image.c
+extern const uint8_t zsw_fs_embedded_image[];
+extern const uint8_t zsw_fs_embedded_image_end[];
+
+static uint32_t image_max_size(void)
 {
-    for (int i = 0; i < file_table.num_files; i++) {
-        if (strncmp(name, file_table.file_headers[i].filename, MAX_FILE_NAME_LEN) == 0) {
-            return &file_table.file_headers[i];
+    return zsw_fs_embedded_image_end - zsw_fs_embedded_image;
+}
+
+static const uint8_t *image_base(void)
+{
+    return IS_ENABLED(CONFIG_ZSW_FS_TEST_NO_MAPPING) ? NULL : zsw_fs_embedded_image;
+}
+
+static int image_read_flash(uint32_t offset, void *buf, size_t len)
+{
+    if (offset > image_max_size() || len > image_max_size() - offset) {
+        return -EINVAL;
+    }
+    memcpy(buf, zsw_fs_embedded_image + offset, len);
+    return 0;
+}
+#else
+static uint32_t image_max_size(void)
+{
+    return flash_area->fa_size;
+}
+
+// Start of the image while the external flash is memory mapped (XIP on), else NULL.
+static const uint8_t *image_base(void)
+{
+#ifdef CONFIG_ZSW_XIP
+    if (zsw_xip_is_enabled()) {
+        return (const uint8_t *)XIP_PARTITION_BASE;
+    }
+#endif
+    return NULL;
+}
+
+static int image_read_flash(uint32_t offset, void *buf, size_t len)
+{
+    return flash_area_read(flash_area, offset, buf, len);
+}
+#endif
+
+/*
+ * Copies from the memory mapped image, which avoids the per-read QSPI driver overhead.
+ * XIP is turned off from other threads, so the scheduler is locked for each part copied.
+ *
+ * Returns false if the image is not mapped, nothing useful has been copied then.
+ */
+static bool image_read_mapped(uint32_t offset, void *buf, size_t len)
+{
+    const uint8_t *base;
+    size_t n;
+
+    for (size_t done = 0; done < len; done += n) {
+        n = MIN(len - done, MAPPED_READ_CHUNK_SIZE);
+        k_sched_lock();
+        base = image_base();
+        if (base) {
+            memcpy((uint8_t *)buf + done, base + offset + done, n);
+        }
+        k_sched_unlock();
+        if (!base) {
+            return false;
         }
     }
-    return NULL;
+
+    return true;
+}
+
+static int image_read(uint32_t offset, void *buf, size_t len)
+{
+    return image_read_mapped(offset, buf, len) ? 0 : image_read_flash(offset, buf, len);
+}
+
+static void invalidate_read_cache(void)
+{
+    if (current_cached_file) {
+        current_cached_file->is_cached = false;
+        current_cached_file = NULL;
+    }
+}
+
+static uint32_t hash_file_name(const char *name)
+{
+    // FNV-1a, must match scripts/create_custom_resource_image.py
+    uint32_t hash = image_index.seed;
+
+    while (*name) {
+        hash = (hash ^ (uint8_t) * name++) * 0x01000193;
+    }
+    return hash;
+}
+
+static int find_file_in_index(const char *name, uint32_t *offset, uint32_t *len)
+{
+    index_slot_t slots[INDEX_SLOTS_PER_READ];
+    uint32_t num_slots;
+    uint32_t hash = hash_file_name(name);
+    uint32_t mask = image_index.num_slots - 1;
+    uint32_t i = hash & mask;
+
+    for (uint32_t probes = 0; probes < image_index.num_slots; probes += num_slots) {
+        num_slots = MIN(INDEX_SLOTS_PER_READ, image_index.num_slots - i);
+        if (image_read(image_index.offset + i * sizeof(index_slot_t), slots, num_slots * sizeof(index_slot_t)) != 0) {
+            return -EIO;
+        }
+
+        for (uint32_t j = 0; j < num_slots; j++) {
+            if (slots[j].offset == 0) {
+                return -ENOENT;
+            }
+            // The image tool guarantees unique hashes, so the name is not compared.
+            if (slots[j].hash == hash) {
+                *offset = slots[j].offset;
+                *len = slots[j].len;
+                return 0;
+            }
+        }
+        i = (i + num_slots) & mask;
+    }
+
+    return -ENOENT;
+}
+
+static int find_file_in_name_table(const char *name, uint32_t *offset, uint32_t *len)
+{
+    const file_header_t *headers;
+    uint32_t num_headers;
+
+    for (uint32_t i = 0; i < image_header.num_files; i += num_headers) {
+        // Borrow the read cache, the table is too big to search one entry per read.
+        invalidate_read_cache();
+        num_headers = MIN(sizeof(file_cache_buffer) / sizeof(file_header_t), image_header.num_files - i);
+        if (image_read(sizeof(image_header_t) + i * sizeof(file_header_t), file_cache_buffer,
+                       num_headers * sizeof(file_header_t)) != 0) {
+            return -EIO;
+        }
+        headers = (const file_header_t *)file_cache_buffer;
+
+        for (uint32_t j = 0; j < num_headers; j++) {
+            if (strncmp(name, headers[j].filename, MAX_FILE_NAME_LEN) == 0) {
+                *offset = headers[j].offset + image_header.header_length;
+                *len = headers[j].len;
+                return 0;
+            }
+        }
+    }
+
+    return -ENOENT;
+}
+
+// offset is counted from the start of the image.
+static int find_file(const char *name, uint32_t *offset, uint32_t *len)
+{
+    int rc;
+
+    if (!image_valid) {
+        return -ENOENT;
+    }
+
+    if (image_has_index) {
+        rc = find_file_in_index(name, offset, len);
+    } else {
+        rc = find_file_in_name_table(name, offset, len);
+    }
+
+    // Reads are not checked again, a memory mapped read outside the image could fault.
+    if (rc == 0 && (*offset >= image_header.total_length || *len > image_header.total_length - *offset)) {
+        LOG_ERR("File outside image: %s offset 0x%x len 0x%x", name, *offset, *len);
+        return -EBADF;
+    }
+
+    return rc;
 }
 
 static opened_file_t *find_free_opened_file(void)
 {
     for (int i = 0; i < MAX_OPENED_FILES; i++) {
-        if (opened_files[i].header == NULL) {
+        if (!opened_files[i].in_use) {
             return &opened_files[i];
         }
     }
     return NULL;
 }
+
+static void load_image_info(void);
 
 static bool lvgl_fs_ready(struct _lv_fs_drv_t *drv)
 {
@@ -176,29 +375,24 @@ static lv_fs_res_t errno_to_lv_fs_res(int err)
 
 static void *lvgl_fs_open(struct _lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode)
 {
-    file_header_t *file;
-
-    if (file_table.magic != TABLE_HEADER_MAGIC || full_fs_file.len == 0) {
-        return NULL;
-    }
-
-    file = find_file(path);
+    uint32_t offset;
+    uint32_t len;
     opened_file_t *open_file;
-
-    if (!file) {
-        return NULL;
-    }
 
     open_file = find_free_opened_file();
     if (!open_file) {
         return NULL;
     }
 
-    open_file->header = file;
+    if (find_file(path, &offset, &len) != 0) {
+        return NULL;
+    }
+
+    open_file->in_use = true;
+    open_file->is_cached = false;
+    open_file->offset = offset;
+    open_file->len = len;
     open_file->index = 0;
-    // Reading through the XIP mapping avoids the per-read QSPI driver overhead.
-    // Only used when XIP is already on (display on), so this never powers it up.
-    open_file->use_xip = zsw_xip_try_get();
 
     return open_file;
 }
@@ -239,6 +433,8 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
 
             full_fs_file.len = 0; // Reset for fresh write
             full_fs_stream_active = true;
+            // No files can be opened until the new image is complete.
+            image_valid = false;
         }
         full_fs_file.opened = true;
         full_fs_file.index = 0;
@@ -261,11 +457,10 @@ static int zsw_fs_open(struct fs_file_t *zfp, const char *file_name, fs_mode_t m
 static lv_fs_res_t lvgl_fs_close(struct _lv_fs_drv_t *drv, void *file)
 {
     opened_file_t *open_file = (opened_file_t *)file;
-    if (open_file->use_xip) {
-        zsw_xip_put();
-        open_file->use_xip = false;
+    if (current_cached_file == open_file) {
+        current_cached_file = NULL;
     }
-    open_file->header = NULL;
+    open_file->in_use = false;
     open_file->index = 0;
     open_file->is_cached = false;
     return errno_to_lv_fs_res(0);
@@ -283,6 +478,7 @@ static int zsw_fs_close(struct fs_file_t *zfp)
                 full_fs_file.len = stream_flash_bytes_written(&full_fs_stream_ctx);
             }
             full_fs_stream_active = false;
+            load_image_info();
         }
         LOG_INF("Closing full_fs, total bytes written: %u", full_fs_file.len);
         full_fs_file.opened = false;
@@ -305,35 +501,24 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     opened_file_t *open_file = (opened_file_t *)file;
 
     // A seek may have moved the index past the end of the file.
-    if (open_file->index >= open_file->header->len) {
+    if (open_file->index >= open_file->len) {
         *br = 0;
         return LV_FS_RES_OK;
     }
 
-    btr = MIN(btr, open_file->header->len - open_file->index);
+    btr = MIN(btr, open_file->len - open_file->index);
     if (btr == 0) {
         *br = 0;
         return LV_FS_RES_OK;
     }
 
-    orig_read_address = open_file->header->offset + open_file->index + file_table.header_length;
+    orig_read_address = open_file->offset + open_file->index;
 
-#ifdef CONFIG_ZSW_XIP
-    if (open_file->use_xip) {
-        // flash_area_read() rejects reads outside the partition, a raw XIP access would fault.
-        if (orig_read_address >= flash_area->fa_size || btr > flash_area->fa_size - orig_read_address) {
-            LOG_ERR("Read outside partition: %s offset 0x%x index 0x%x len 0x%x",
-                    open_file->header->filename, open_file->header->offset, open_file->index,
-                    open_file->header->len);
-            *br = 0;
-            return LV_FS_RES_INV_PARAM;
-        }
-        memcpy(buf, (const uint8_t *)(XIP_PARTITION_BASE + orig_read_address), btr);
+    if (image_read_mapped(orig_read_address, buf, btr)) {
         *br = btr;
         open_file->index += btr;
         return LV_FS_RES_OK;
     }
-#endif
 
     if (open_file->is_cached && (orig_read_address >= current_cached_file->cache_start) &&
         ((orig_read_address + btr) < current_cached_file->cache_end)) {
@@ -342,10 +527,9 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
         *br = btr;
         open_file->index += btr;
         return errno_to_lv_fs_res(0);
-    } else if (current_cached_file) {
+    } else {
         // Cache miss
-        current_cached_file->is_cached = false;
-        current_cached_file = NULL;
+        invalidate_read_cache();
     }
 
     read_address = ROUND_DOWN(orig_read_address, 4);
@@ -364,7 +548,7 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     }
 
     uint32_t cache_max_len = sizeof(file_cache_buffer) - extra_bytes_start - btr - extra_bytes_end;
-    cache_max_len = MIN(cache_max_len, open_file->header->len - open_file->index);
+    cache_max_len = MIN(cache_max_len, open_file->len - open_file->index);
 
     if (!current_cached_file && btr != 4) {
         current_cached_file = open_file;
@@ -376,9 +560,8 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
         extra_cache_bytes = 0;
     }
 
-    rc = flash_area_read(flash_area, read_address, (extra_bytes_start || extra_bytes_end ||
-                                                    current_cached_file) ? file_cache_buffer : buf,
-                         btr + extra_bytes_start + extra_bytes_end + extra_cache_bytes);
+    rc = image_read(read_address, (extra_bytes_start || extra_bytes_end || current_cached_file) ? file_cache_buffer : buf,
+                    btr + extra_bytes_start + extra_bytes_end + extra_cache_bytes);
     if (rc != 0) {
         printk("Flash read failed! %d\n", rc);
         *br = 0;
@@ -466,7 +649,7 @@ static lv_fs_res_t lvgl_fs_seek(struct _lv_fs_drv_t *drv, void *file, uint32_t p
 
     switch (whence) {
         case LV_FS_SEEK_END:
-            open_file->index = open_file->header->len;
+            open_file->index = open_file->len;
             break;
         case LV_FS_SEEK_CUR:
             open_file->index += pos;
@@ -584,15 +767,17 @@ static int zsw_fs_stat(struct fs_mount_t *mountp,
         strncpy(entry->name, FULL_FS_SPECIAL_FILE_NAME, MAX_FILE_NAME_LEN);
         return 0;
     } else {
-        file_header_t *file = find_file(file_name_ptr);
-        if (file) {
-            entry->type = FS_DIR_ENTRY_FILE;
-            entry->size = file->len;
-            strncpy(entry->name, file->filename, MAX_FILE_NAME_LEN);
-            return 0;
-        } else {
+        uint32_t offset;
+        uint32_t len;
+
+        if (find_file(file_name_ptr, &offset, &len) != 0) {
             return -ENOENT;
         }
+        entry->type = FS_DIR_ENTRY_FILE;
+        entry->size = len;
+        strncpy(entry->name, file_name_ptr, sizeof(entry->name) - 1);
+        entry->name[sizeof(entry->name) - 1] = '\0';
+        return 0;
     }
 }
 
@@ -611,28 +796,40 @@ static int zsw_fs_unlink(struct fs_mount_t *mountp, const char *path)
 
 int zsw_filesytem_get_num_rawfs_files(void)
 {
-    return file_table.num_files;
+    return image_header.num_files;
 }
 
 int zsw_filesytem_get_total_size(void)
 {
-    return file_table.total_length;
+    return image_header.total_length;
+}
+
+const uint8_t *zsw_filesystem_get_file(const char *name, uint32_t *len)
+{
+    uint32_t offset;
+    const uint8_t *base = image_base();
+
+    if (!base || find_file(name, &offset, len) != 0) {
+        return NULL;
+    }
+
+    return base + offset;
 }
 
 int zsw_filesytem_erase(void)
 {
     int num_opened_files = 0;
     for (int i = 0; i < MAX_OPENED_FILES; i++) {
-        if (opened_files[i].header != NULL) {
+        if (opened_files[i].in_use) {
             num_opened_files++;
-            // Clearing the slot below would otherwise leak its XIP reference.
-            lvgl_fs_close(NULL, &opened_files[i]);
         }
     }
     LOG_WRN("Number of opened files: %d", num_opened_files);
 
     memset(opened_files, 0, sizeof(opened_files));
-    memset(&file_table, 0, sizeof(file_table));
+    memset(&image_header, 0, sizeof(image_header));
+    image_valid = false;
+    image_has_index = false;
     current_cached_file = NULL;
     full_fs_file.len = 0;
     full_fs_file.index = 0;
@@ -662,6 +859,59 @@ static const struct fs_file_system_t zsw_fs = {
     .unlink = zsw_fs_unlink,
     .stat = zsw_fs_stat,
 };
+
+static void load_image_info(void)
+{
+    uint32_t trailer_magic;
+    uint32_t trailer_offset;
+
+    image_valid = false;
+    image_has_index = false;
+
+    if (image_read(0, &image_header, sizeof(image_header)) != 0) {
+        LOG_ERR("Failed to read image header");
+        return;
+    }
+
+    if (image_header.magic != TABLE_HEADER_MAGIC) {
+        LOG_ERR("Invalid file table magic: 0x%08x", image_header.magic);
+        return;
+    }
+
+    if (image_header.total_length > image_max_size() ||
+        image_header.header_length > image_header.total_length - sizeof(trailer_magic) ||
+        image_header.header_length < sizeof(image_header) ||
+        image_header.num_files > (image_header.header_length - sizeof(image_header)) / sizeof(file_header_t)) {
+        LOG_ERR("Invalid image header: header %u, total %u, files %u", image_header.header_length,
+                image_header.total_length, image_header.num_files);
+        return;
+    }
+
+    trailer_offset = image_header.total_length - sizeof(trailer_magic); // Last 4 bytes
+    if (image_read(trailer_offset, &trailer_magic, sizeof(trailer_magic)) != 0) {
+        LOG_ERR("Failed to read trailer magic at offset %d", trailer_offset);
+        return;
+    }
+    if (trailer_magic != TABLE_HEADER_MAGIC) {
+        LOG_ERR("Invalid trailer magic at offset %d: 0x%08x, expected 0x%08x",
+                trailer_offset, trailer_magic, TABLE_HEADER_MAGIC);
+        return;
+    }
+
+    image_valid = true;
+
+    // The index footer is right before the trailer, if the image has an index.
+    if (trailer_offset >= image_header.header_length + sizeof(image_index) &&
+        image_read(trailer_offset - sizeof(image_index), &image_index, sizeof(image_index)) == 0 &&
+        image_index.magic == INDEX_MAGIC &&
+        image_index.num_slots > 0 && IS_POWER_OF_TWO(image_index.num_slots) &&
+        image_index.offset >= image_header.header_length && image_index.offset < trailer_offset &&
+        image_index.num_slots <= (trailer_offset - image_index.offset) / sizeof(index_slot_t)) {
+        image_has_index = true;
+    } else {
+        LOG_WRN("Resource image has no file index, opening files is slower. Upload a new image.");
+    }
+}
 
 static int zsw_decoder_init(void)
 {
@@ -699,34 +949,12 @@ static int zsw_decoder_init(void)
         return 0;
     }
 
-    rc = flash_area_read(flash_area, 0, &file_table, FILE_TABLE_MAX_LEN);
-    if (rc != 0) {
-        printk("Flash read failed! %d\n", rc);
-        return rc;
-    }
+    load_image_info();
 
     // Fill in the special file that corresponds to the full image.
     full_fs_file.opened = false;
     full_fs_file.index = 0;
-    full_fs_file.len = file_table.total_length;
-
-    if (file_table.magic != TABLE_HEADER_MAGIC) {
-        LOG_ERR("Invalid file table magic: 0x%08x", file_table.magic);
-        full_fs_file.len = 0;
-    } else {
-        uint32_t trailer_magic;
-        uint32_t trailer_offset = file_table.total_length - sizeof(trailer_magic); // Last 4 bytes
-
-        rc = flash_area_read(flash_area, trailer_offset, &trailer_magic, sizeof(trailer_magic));
-        if (rc != 0) {
-            LOG_ERR("Failed to read trailer magic at offset %d: %d", trailer_offset, rc);
-            full_fs_file.len = 0;
-        } else if (trailer_magic != TABLE_HEADER_MAGIC) {
-            LOG_ERR("Invalid trailer magic at offset %d: 0x%08x, expected 0x%08x",
-                    trailer_offset, trailer_magic, TABLE_HEADER_MAGIC);
-            full_fs_file.len = 0;
-        }
-    }
+    full_fs_file.len = image_valid ? image_header.total_length : 0;
 
     rc = fs_register(FS_TYPE_EXTERNAL_BASE, &zsw_fs);
 
