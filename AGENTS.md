@@ -192,7 +192,7 @@ otherwise hard to observe.
   `S:<name>.bin` in the resource image built from `app/src/images/binaries/S/`
   (external flash on hardware, linked into the executable on native_sim). Add
   an image as a `.bin` there, no `.c` file: `python
-  modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o
+  $ZEPHYR_BASE/../modules/lib/gui/lvgl/scripts/LVGLImage.py --ofmt BIN --cf RGB565A8 -o
   app/src/images/binaries/S/ <file.png>`. `img_stats` in the shell shows if
   images are drawn straight from flash.
   LVGL Editor apps: edit the XML in `app/lvgl_editor/`, never `*_gen.c/h`;

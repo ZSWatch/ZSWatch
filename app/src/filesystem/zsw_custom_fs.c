@@ -197,6 +197,10 @@ static bool image_read_mapped(uint32_t offset, void *buf, size_t len)
     const uint8_t *base;
     size_t n;
 
+    if (offset > image_max_size() || len > image_max_size() - offset) {
+        return false;
+    }
+
     for (size_t done = 0; done < len; done += n) {
         n = MIN(len - done, MAPPED_READ_CHUNK_SIZE);
         k_sched_lock();
@@ -548,9 +552,10 @@ static lv_fs_res_t lvgl_fs_read(struct _lv_fs_drv_t *drv, void *file, void *buf,
     }
 
     uint32_t cache_max_len = sizeof(file_cache_buffer) - extra_bytes_start - btr - extra_bytes_end;
-    cache_max_len = MIN(cache_max_len, open_file->len - open_file->index);
+    // Only prefetch what is left of the file after this read.
+    cache_max_len = MIN(cache_max_len, open_file->len - open_file->index - btr);
 
-    if (!current_cached_file && btr != 4) {
+    if (!current_cached_file && btr != 4 && btr + extra_bytes_start + extra_bytes_end <= sizeof(file_cache_buffer)) {
         current_cached_file = open_file;
         current_cached_file->cache_start = read_address;
         current_cached_file->cache_end = read_address + cache_max_len + btr + extra_bytes_start + extra_bytes_end;
@@ -879,6 +884,7 @@ static void load_image_info(void)
     }
 
     if (image_header.total_length > image_max_size() ||
+        image_header.total_length < sizeof(image_header) + sizeof(trailer_magic) ||
         image_header.header_length > image_header.total_length - sizeof(trailer_magic) ||
         image_header.header_length < sizeof(image_header) ||
         image_header.num_files > (image_header.header_length - sizeof(image_header)) / sizeof(file_header_t)) {
