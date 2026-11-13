@@ -24,6 +24,9 @@
  * way an image compiled into the firmware is drawn. When the flash is not mapped, or
  * the image has a format that must be decoded to RAM, LVGL's decoder does the work.
  *
+ * Images are only opened while LVGL renders, and the display stops the rendering before
+ * it turns XIP off, so the pointer stays valid until the image is closed.
+ *
  * The copy of the custom watchface background (ZSW_CUSTOM_BG_SRC) is drawn the same way.
  * LVGL opens every image file before it asks a decoder, so the copy also gets a drive of
  * its own (B:) that reads it from the flash.
@@ -73,21 +76,12 @@ static bool is_custom_bg(const void *src)
     return strcmp(src, ZSW_CUSTOM_BG_SRC) == 0;
 }
 
-static const uint8_t *map_file(const char *src, uint32_t *len)
+static const uint8_t *get_file(const char *src, uint32_t *len)
 {
     if (is_custom_bg(src)) {
-        return zsw_custom_bg_map(len);
+        return zsw_custom_bg_get(len);
     }
-    return zsw_filesystem_map_file(src + ZSW_FS_DRIVE_PREFIX_LEN, len);
-}
-
-static void unmap_file(const char *src)
-{
-    if (is_custom_bg(src)) {
-        zsw_custom_bg_unmap();
-    } else {
-        zsw_filesystem_unmap_file();
-    }
+    return zsw_filesystem_get_file(src + ZSW_FS_DRIVE_PREFIX_LEN, len);
 }
 
 static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
@@ -97,7 +91,7 @@ static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
     lv_draw_buf_t *draw_buf;
     const lv_image_header_t *header;
 
-    file = map_file(dsc->src, &len);
+    file = get_file(dsc->src, &len);
     if (!file) {
         return NULL;
     }
@@ -123,7 +117,6 @@ static lv_draw_buf_t *open_from_flash(lv_image_decoder_dsc_t *dsc)
     }
 
     lv_free(draw_buf);
-    unmap_file(dsc->src);
 
     return NULL;
 }
@@ -167,7 +160,6 @@ static void decoder_close(lv_image_decoder_t *decoder, lv_image_decoder_dsc_t *d
         lv_free(dsc->user_data);
         dsc->user_data = NULL;
         dsc->decoded = NULL;
-        unmap_file(dsc->src);
         return;
     }
 

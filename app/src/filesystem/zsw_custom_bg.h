@@ -40,7 +40,7 @@
 int zsw_custom_bg_store(const char *path);
 
 /**
- * Reads from the copy made by zsw_custom_bg_store(), without mapping the flash.
+ * Reads from the copy made by zsw_custom_bg_store() through the flash driver.
  *
  * @param len Size of the copy, set when it is not NULL.
  * @return Bytes read, 0 past the end, or a negative error code if there is no copy.
@@ -48,11 +48,9 @@ int zsw_custom_bg_store(const char *path);
 int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len);
 
 /**
- * Maps the copy made by zsw_custom_bg_store(). On success the copy stays mapped until
- * zsw_custom_bg_unmap() is called.
+ * Gets a pointer to the copy made by zsw_custom_bg_store(). It can be used for as long
+ * as a draw takes, see zsw_filesystem_get_file().
  *
- * @return Start of the image file, or NULL if there is no copy or it can not be mapped now.
+ * @return Start of the image file, or NULL if there is no copy or the flash is not memory mapped.
  */
-const uint8_t *zsw_custom_bg_map(uint32_t *len);
-
-void zsw_custom_bg_unmap(void);
+const uint8_t *zsw_custom_bg_get(uint32_t *len);

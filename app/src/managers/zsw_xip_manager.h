@@ -23,19 +23,13 @@ int _zsw_xip_enable(const char *requester);
 int _zsw_xip_disable(const char *requester);
 
 /**
- * @brief Take an XIP reference only if XIP is already enabled.
+ * @brief Check if the external flash can be read as memory right now.
  *
- * Lets a reader use memory mapped external flash without powering up XIP
- * itself. XIP stays enabled until the reference is returned with zsw_xip_put().
- *
- * @return true if a reference was taken, false if XIP is off.
+ * XIP is turned off from other threads. A reader must either keep the scheduler
+ * locked while it checks and reads, or run as part of LVGL rendering, which is
+ * stopped before the display turns XIP off.
  */
-bool zsw_xip_try_get(void);
-
-/**
- * @brief Return a reference taken with zsw_xip_try_get().
- */
-void zsw_xip_put(void);
+bool zsw_xip_is_enabled(void);
 
 #ifdef CONFIG_ZSW_XIP
 #define zsw_xip_enable() _zsw_xip_enable(__FUNCTION__)
@@ -43,6 +37,5 @@ void zsw_xip_put(void);
 #else
 #define zsw_xip_enable() (0)
 #define zsw_xip_disable() (0)
-#define zsw_xip_try_get() (false)
-#define zsw_xip_put()
+#define zsw_xip_is_enabled() (false)
 #endif

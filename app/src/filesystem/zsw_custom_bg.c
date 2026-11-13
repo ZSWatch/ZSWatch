@@ -192,21 +192,16 @@ int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len)
     return rc ? rc : (int)size;
 }
 
-const uint8_t *zsw_custom_bg_map(uint32_t *len)
+const uint8_t *zsw_custom_bg_get(uint32_t *len)
 {
     uint32_t stored = stored_len;
 
-    if (stored == 0 || !zsw_xip_try_get()) {
+    if (stored == 0 || !zsw_xip_is_enabled()) {
         return NULL;
     }
 
     *len = stored;
     return (const uint8_t *)BG_XIP_BASE + BG_DATA_OFFSET;
-}
-
-void zsw_custom_bg_unmap(void)
-{
-    zsw_xip_put();
 }
 
 #else
@@ -226,14 +221,10 @@ int zsw_custom_bg_read(uint32_t offset, void *buf, uint32_t size, uint32_t *len)
     return -ENOTSUP;
 }
 
-const uint8_t *zsw_custom_bg_map(uint32_t *len)
+const uint8_t *zsw_custom_bg_get(uint32_t *len)
 {
     ARG_UNUSED(len);
     return NULL;
-}
-
-void zsw_custom_bg_unmap(void)
-{
 }
 
 #endif
