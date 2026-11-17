@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # Setting up the Toolchain
 
+On Windows, keep this setup for hardware development. To add a Linux simulator alongside it for faster UI and app iteration, follow [Windows + WSL: Native Simulator Setup](./wsl_setup.md).
+
 ## 1. Install Required Tools
 
 - [nRF Util](https://www.nordicsemi.com/Products/Development-tools/nRF-Util/)  
