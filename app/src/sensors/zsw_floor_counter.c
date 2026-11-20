@@ -103,10 +103,8 @@ static void on_accel_event(const struct zbus_channel *chan);
 static void retry_floor_work_handler(struct k_work *work);
 #ifdef CONFIG_RTC_ALARM
 static void schedule_daily_reset_alarm(void);
-static void schedule_next_daily_reset_alarm(void);
-static void schedule_daily_reset_retry(void);
 static void daily_reset_alarm_callback(void *user_data);
-static void daily_reset_retry_callback(void *user_data);
+static void daily_reset_schedule_retry_handler(struct k_work *work);
 static void daily_reset_enqueue_retry_handler(struct k_work *work);
 #endif
 #ifdef CONFIG_SETTINGS
@@ -156,6 +154,7 @@ K_WORK_DEFINE(floor_work, process_floor_work);
 K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
 K_WORK_DELAYABLE_DEFINE(floor_retry_work, retry_floor_work_handler);
 #ifdef CONFIG_RTC_ALARM
+K_WORK_DELAYABLE_DEFINE(daily_reset_schedule_retry_work, daily_reset_schedule_retry_handler);
 K_WORK_DELAYABLE_DEFINE(daily_reset_retry_work, daily_reset_enqueue_retry_handler);
 #endif
 K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
@@ -359,54 +358,28 @@ SETTINGS_STATIC_HANDLER_DEFINE(floor_counter, "floor", NULL,
 #ifdef CONFIG_RTC_ALARM
 static void schedule_daily_reset_alarm(void)
 {
-    if (reset_alarm_id != ZSW_ALARM_INVALID_ID) {
-        return;
-    }
-
     const struct rtc_time expiry_time = {
         .tm_hour = 23,
         .tm_min = 59,
         .tm_sec = 59,
     };
-    int alarm_id = zsw_alarm_add(expiry_time, daily_reset_alarm_callback, NULL);
 
-    if (alarm_id < 0) {
-        LOG_WRN("Failed to schedule floor daily reset: %d", alarm_id);
-        schedule_daily_reset_retry();
-        return;
-    }
-
-    reset_alarm_id = (uint32_t)alarm_id;
-}
-
-static void schedule_daily_reset_retry(void)
-{
     if (reset_alarm_id != ZSW_ALARM_INVALID_ID) {
         return;
     }
 
-    int alarm_id = zsw_alarm_add_timer(0, 1, 0, daily_reset_retry_callback, NULL);
-
-    if (alarm_id < 0) {
-        LOG_WRN("Failed to schedule floor daily reset retry: %d", alarm_id);
-        reset_alarm_id = ZSW_ALARM_INVALID_ID;
+    int alarm_id = zsw_alarm_add(expiry_time, daily_reset_alarm_callback, NULL);
+    if (alarm_id >= 0) {
+        reset_alarm_id = (uint32_t)alarm_id;
+        k_work_cancel_delayable(&daily_reset_schedule_retry_work);
         return;
     }
 
-    reset_alarm_id = (uint32_t)alarm_id;
-}
-
-static void schedule_next_daily_reset_alarm(void)
-{
-    int alarm_id = zsw_alarm_add_timer(24, 0, 0, daily_reset_alarm_callback, NULL);
-
-    if (alarm_id < 0) {
-        LOG_WRN("Failed to schedule next floor daily reset: %d", alarm_id);
-        schedule_daily_reset_retry();
-        return;
+    LOG_WRN("Failed to schedule floor daily reset: %d", alarm_id);
+    int retry_ret = k_work_reschedule(&daily_reset_schedule_retry_work, K_MINUTES(1));
+    if (retry_ret < 0) {
+        LOG_ERR("Failed to schedule floor daily reset retry: %d", retry_ret);
     }
-
-    reset_alarm_id = (uint32_t)alarm_id;
 }
 
 static void daily_reset_alarm_callback(void *user_data)
@@ -422,7 +395,13 @@ static void daily_reset_alarm_callback(void *user_data)
         daily_reset_retries = 0U;
         k_work_reschedule(&daily_reset_retry_work, K_MINUTES(1));
     }
-    schedule_next_daily_reset_alarm();
+    schedule_daily_reset_alarm();
+}
+
+static void daily_reset_schedule_retry_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    schedule_daily_reset_alarm();
 }
 
 static void daily_reset_enqueue_retry_handler(struct k_work *work)
@@ -438,21 +417,14 @@ static void daily_reset_enqueue_retry_handler(struct k_work *work)
         return;
     }
 
-    daily_reset_retries++;
+    if (daily_reset_retries < 3U) {
+        daily_reset_retries++;
+    }
     if (daily_reset_retries < 3U) {
         k_work_reschedule(&daily_reset_retry_work, K_MINUTES(1));
-    } else if (daily_reset_retries == 3U) {
-        k_work_reschedule(&daily_reset_retry_work, K_HOURS(1));
     } else {
-        LOG_ERR("Floor daily reset retry failed");
+        k_work_reschedule(&daily_reset_retry_work, K_HOURS(1));
     }
-}
-
-static void daily_reset_retry_callback(void *user_data)
-{
-    ARG_UNUSED(user_data);
-    reset_alarm_id = ZSW_ALARM_INVALID_ID;
-    schedule_daily_reset_alarm();
 }
 #endif
 
