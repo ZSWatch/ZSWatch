@@ -319,8 +319,13 @@ class TestNativeFloorCounter:
             assert self._counts(sim) == (1, 0), sim.get_logs()
             time.sleep(0.5)
 
+        log_offset = len(sim.get_logs())
         self._command(sim, "event time 23 59", r"Injected time: 23:59")
+        time.sleep(3)
+        assert self._counts(sim) == (1, 0), sim.get_logs()
         self._wait_for_counts(sim, (0, 0), timeout=75)
+        reset_logs = sim.get_logs()[log_offset:]
+        assert "Floor daily reset completed" in reset_logs, reset_logs
 
 
 # ── BLE tests ────────────────────────────────────────────────
