@@ -29,11 +29,12 @@
 #include "events/accel_event.h"
 #include "events/floor_count_event.h"
 #include "events/pressure_event.h"
-#include "events/zsw_periodic_event.h"
 #include "sensors/zsw_floor_counter.h"
 #include "sensors/zsw_imu.h"
 #include "sensors/zsw_pressure_sensor.h"
-#include "zsw_clock.h"
+#ifdef CONFIG_RTC_ALARM
+#include "zsw_alarm.h"
+#endif
 #include "zsw_settings.h"
 
 LOG_MODULE_REGISTER(zsw_floor_counter, CONFIG_ZSW_SENSORS_LOG_LEVEL);
@@ -57,7 +58,6 @@ typedef struct {
     float descend_accum;
     uint16_t floors_up;
     uint16_t floors_down;
-    uint32_t last_reset_date;
 } floor_count_state_t;
 
 typedef struct {
@@ -79,7 +79,7 @@ typedef enum {
     FLOOR_WORK_ACTIVITY,
     FLOOR_WORK_INACTIVITY_TIMEOUT,
     FLOOR_WORK_TEMPERATURE,
-    FLOOR_WORK_DAY_CHECK,
+    FLOOR_WORK_DAILY_RESET,
 } floor_work_type_t;
 
 typedef struct {
@@ -100,8 +100,13 @@ static void process_floor_work(struct k_work *work);
 static void inactivity_timeout_handler(struct k_work *work);
 static void on_pressure_event(const struct zbus_channel *chan);
 static void on_accel_event(const struct zbus_channel *chan);
-static void on_day_check(const struct zbus_channel *chan);
 static void retry_floor_work_handler(struct k_work *work);
+#ifdef CONFIG_RTC_ALARM
+static void schedule_daily_reset_alarm(void);
+static void daily_reset_alarm_callback(void *user_data);
+static void daily_reset_schedule_retry_handler(struct k_work *work);
+static void daily_reset_enqueue_retry_handler(struct k_work *work);
+#endif
 #ifdef CONFIG_SETTINGS
 static int floor_settings_load(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg);
 #endif
@@ -109,8 +114,6 @@ static int floor_settings_load(const char *key, size_t len, settings_read_cb rea
 ZBUS_CHAN_DECLARE(floor_count_chan);
 ZBUS_CHAN_DECLARE(pressure_data_chan);
 ZBUS_CHAN_DECLARE(accel_data_chan);
-ZBUS_CHAN_DECLARE(periodic_event_10s_chan);
-ZBUS_LISTENER_DEFINE(floor_day_lis, on_day_check);
 ZBUS_LISTENER_DEFINE(floor_pressure_lis, on_pressure_event);
 ZBUS_CHAN_ADD_OBS(pressure_data_chan, floor_pressure_lis, 1);
 ZBUS_LISTENER_DEFINE(floor_accel_lis, on_accel_event);
@@ -142,10 +145,18 @@ static uint32_t applied_preference_generation;
 static uint32_t applied_disable_generation;
 static bool applied_enabled;
 static bool control_applied;
+#ifdef CONFIG_RTC_ALARM
+static uint32_t reset_alarm_id = ZSW_ALARM_INVALID_ID;
+static uint8_t daily_reset_retries;
+#endif
 
 K_WORK_DEFINE(floor_work, process_floor_work);
 K_WORK_DELAYABLE_DEFINE(floor_inactivity_work, inactivity_timeout_handler);
 K_WORK_DELAYABLE_DEFINE(floor_retry_work, retry_floor_work_handler);
+#ifdef CONFIG_RTC_ALARM
+K_WORK_DELAYABLE_DEFINE(daily_reset_schedule_retry_work, daily_reset_schedule_retry_handler);
+K_WORK_DELAYABLE_DEFINE(daily_reset_retry_work, daily_reset_enqueue_retry_handler);
+#endif
 K_MSGQ_DEFINE(floor_work_queue, sizeof(floor_work_item_t), FLOOR_WORK_QUEUE_DEPTH, 4);
 
 static int submit_floor_work(void)
@@ -242,7 +253,7 @@ static bool is_tracking_input_event(floor_work_type_t type)
             return true;
         case FLOOR_WORK_INACTIVITY_TIMEOUT:
         case FLOOR_WORK_TEMPERATURE:
-        case FLOOR_WORK_DAY_CHECK:
+        case FLOOR_WORK_DAILY_RESET:
         default:
             return false;
     }
@@ -344,31 +355,78 @@ SETTINGS_STATIC_HANDLER_DEFINE(floor_counter, "floor", NULL,
                                floor_settings_load, NULL, NULL);
 #endif
 
-static void check_daily_reset(void)
+#ifdef CONFIG_RTC_ALARM
+static void schedule_daily_reset_alarm(void)
 {
-    zsw_timeval_t time;
+    const struct rtc_time expiry_time = {
+        .tm_hour = 23,
+        .tm_min = 59,
+        .tm_sec = 59,
+    };
 
-    zsw_clock_get_time(&time);
-    if (time.tm.tm_year < 1970 || time.tm.tm_mon < 0 || time.tm.tm_mon > 11 ||
-        time.tm.tm_mday < 1 || time.tm.tm_mday > 31) {
+    if (reset_alarm_id != ZSW_ALARM_INVALID_ID) {
         return;
     }
-    uint32_t date = (uint32_t)time.tm.tm_year * 10000U + (uint32_t)(time.tm.tm_mon + 1) * 100U +
-                    (uint32_t)time.tm.tm_mday;
-    if (floor_state.last_reset_date != date) {
-        if (floor_state.last_reset_date != 0) {
-            LOG_INF("Floor daily reset: date=%u -> %u, up=%u down=%u",
-                    floor_state.last_reset_date, date,
-                    floor_state.floors_up, floor_state.floors_down);
-        }
-        floor_state.floors_up = 0;
-        floor_state.floors_down = 0;
-        floor_state.climb_accum = 0.0f;
-        floor_state.descend_accum = 0.0f;
-        floor_fsm.commit_pressure_pa = 0.0f;
-        floor_state.last_reset_date = date;
+
+    int alarm_id = zsw_alarm_add(expiry_time, daily_reset_alarm_callback, NULL);
+    if (alarm_id >= 0) {
+        reset_alarm_id = (uint32_t)alarm_id;
+        k_work_cancel_delayable(&daily_reset_schedule_retry_work);
+        return;
+    }
+
+    LOG_WRN("Failed to schedule floor daily reset: %d", alarm_id);
+    int retry_ret = k_work_reschedule(&daily_reset_schedule_retry_work, K_MINUTES(1));
+    if (retry_ret < 0) {
+        LOG_ERR("Failed to schedule floor daily reset retry: %d", retry_ret);
     }
 }
+
+static void daily_reset_alarm_callback(void *user_data)
+{
+    ARG_UNUSED(user_data);
+    const floor_work_item_t item = {
+        .type = FLOOR_WORK_DAILY_RESET,
+        .timestamp_ms = k_uptime_get_32(),
+    };
+
+    reset_alarm_id = ZSW_ALARM_INVALID_ID;
+    if (!enqueue_floor_work(&item)) {
+        daily_reset_retries = 0U;
+        k_work_reschedule(&daily_reset_retry_work, K_MINUTES(1));
+    }
+    schedule_daily_reset_alarm();
+}
+
+static void daily_reset_schedule_retry_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    schedule_daily_reset_alarm();
+}
+
+static void daily_reset_enqueue_retry_handler(struct k_work *work)
+{
+    const floor_work_item_t item = {
+        .type = FLOOR_WORK_DAILY_RESET,
+        .timestamp_ms = k_uptime_get_32(),
+    };
+
+    ARG_UNUSED(work);
+    if (enqueue_floor_work(&item)) {
+        daily_reset_retries = 0U;
+        return;
+    }
+
+    if (daily_reset_retries < 3U) {
+        daily_reset_retries++;
+    }
+    if (daily_reset_retries < 3U) {
+        k_work_reschedule(&daily_reset_retry_work, K_MINUTES(1));
+    } else {
+        k_work_reschedule(&daily_reset_retry_work, K_HOURS(1));
+    }
+}
+#endif
 
 static void set_commit_point(uint32_t now_ms)
 {
@@ -583,7 +641,6 @@ static void process_floor_work(struct k_work *work)
     k_mutex_unlock(&control_lock);
 
     while (k_msgq_get(&floor_work_queue, &item, K_NO_WAIT) == 0) {
-        check_daily_reset();
         k_mutex_lock(&control_lock, K_FOREVER);
         apply_enabled_preference_locked();
 
@@ -624,7 +681,18 @@ static void process_floor_work(struct k_work *work)
                 case FLOOR_WORK_TEMPERATURE:
                     temperature_k = item.data.temperature_k;
                     break;
-                case FLOOR_WORK_DAY_CHECK:
+                case FLOOR_WORK_DAILY_RESET:
+                    k_work_cancel_delayable(&floor_inactivity_work);
+                    floor_state.floors_up = 0;
+                    floor_state.floors_down = 0;
+                    floor_state.climb_accum = 0.0f;
+                    floor_state.descend_accum = 0.0f;
+                    if (desired_enabled) {
+                        reset_episode();
+                    } else {
+                        enter_stopped();
+                    }
+                    LOG_INF("Floor daily reset completed");
                     break;
             }
         }
@@ -703,28 +771,15 @@ static void on_accel_event(const struct zbus_channel *chan)
     enqueue_floor_work(&item);
 }
 
-static void on_day_check(const struct zbus_channel *chan)
-{
-    ARG_UNUSED(chan);
-
-    const floor_work_item_t item = {
-        .type = FLOOR_WORK_DAY_CHECK,
-        .timestamp_ms = k_uptime_get_32(),
-    };
-    enqueue_floor_work(&item);
-}
-
 void zsw_floor_counter_init(void)
 {
     atomic_set(&initialized, 1);
-    int ret = zsw_periodic_chan_add_obs(&periodic_event_10s_chan, &floor_day_lis);
-    if (ret < 0 && ret != -EALREADY) {
-        LOG_WRN("Floor daily reset observer failed: %d", ret);
-    }
-    on_day_check(NULL);
-    ret = submit_floor_work();
+#ifdef CONFIG_RTC_ALARM
+    schedule_daily_reset_alarm();
+#endif
+    int ret = submit_floor_work();
     if (ret != 0) {
-        LOG_ERR("Floor initialization reconciliation scheduling failed: %d", ret);
+        LOG_ERR("Floor initialization scheduling failed: %d", ret);
     }
 }
 

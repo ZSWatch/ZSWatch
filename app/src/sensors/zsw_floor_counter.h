@@ -42,7 +42,7 @@ typedef struct {
 /** @brief Notification of changed floor totals, including daily resets. */
 typedef void (*zsw_floor_counter_changed_cb_t)(void);
 
-/** @brief Initialize floor tracking and daily reset checks after sensor initialization. */
+/** @brief Initialize floor tracking and schedule the daily reset after sensor initialization. */
 void zsw_floor_counter_init(void);
 
 /**
