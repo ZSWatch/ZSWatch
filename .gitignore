@@ -6,6 +6,7 @@ nrf/
 .nrf_env.sh
 /.venv/
 
+
 # Zephyr workspace
 /.west
 /bootloader
