@@ -50,7 +50,7 @@ LOG_MODULE_REGISTER(altimeter_app, CONFIG_ZSW_APP_LOG_LEVEL);
 #define STANDARD_TEMP_K 288.15f
 #define ALTITUDE_DISPLAY_TAU_S 2.0f
 #define REF_SLP_SLEW_HPA_PER_S 0.001f
-#define ALTIMETER_CHART_INTERVAL_MS 10000U
+#define ALTIMETER_CHART_INTERVAL_MS (ALTIMETER_CHART_INTERVAL_S * 1000U)
 #define ALTIMETER_WORK_QUEUE_DEPTH 8
 
 typedef struct {
@@ -87,6 +87,7 @@ typedef struct {
 // Functions needed for all applications
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group);
 static void altimeter_app_stop(void);
+static bool altimeter_app_back(void);
 static void altimeter_app_ui_available(void);
 static void altimeter_app_ui_unavailable(void);
 static void on_zbus_ble_data_callback(const struct zbus_channel *chan);
@@ -94,6 +95,7 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan);
 static void periodic_calibration_handler(struct k_work *work);
 static void http_rsp_cb(ble_http_status_code_t status, char *response);
 static void update_altimeter_ui(lv_timer_t *timer);
+static void refresh_altimeter_ui(void);
 static void copy_ui_snapshot(void);
 static void process_altimeter_work(struct k_work *work);
 static float get_current_altitude(float pressure_sensor);
@@ -135,6 +137,7 @@ static application_t app = {
     .icon = ZSW_LV_IMG_USE(altimeter_icon),
     .start_func = altimeter_app_start,
     .stop_func = altimeter_app_stop,
+    .back_func = altimeter_app_back,
     .ui_available_func = altimeter_app_ui_available,
     .ui_unavailable_func = altimeter_app_ui_unavailable,
     .category = ZSW_APP_CATEGORY_SENSORS,
@@ -267,6 +270,14 @@ static void copy_ui_snapshot(void)
     ui_snapshot.history_data = snapshot_samples;
 }
 
+static void refresh_altimeter_ui(void)
+{
+    k_mutex_lock(&ui_data_mutex, K_FOREVER);
+    copy_ui_snapshot();
+    k_mutex_unlock(&ui_data_mutex);
+    altimeter_ui_update(&ui_snapshot);
+}
+
 static void update_altimeter_ui(lv_timer_t *timer)
 {
     ARG_UNUSED(timer);
@@ -287,7 +298,7 @@ static void update_altimeter_ui(lv_timer_t *timer)
     k_mutex_unlock(&ui_data_mutex);
 
     altimeter_ui_update(&ui_snapshot);
-    if (fresh_data) {
+    if (fresh_data && ui_snapshot.has_data) {
         altimeter_ui_notify_data_ready();
     }
 }
@@ -454,9 +465,7 @@ static void on_zbus_pressure_callback(const struct zbus_channel *chan)
 
 static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
 {
-    ARG_UNUSED(group);
-
-    altimeter_ui_show(root);
+    altimeter_ui_show(root, group, refresh_altimeter_ui);
     const altimeter_work_item_t snapshot_request = {
         .type = ALTIMETER_WORK_PRESSURE_SNAPSHOT,
     };
@@ -473,6 +482,9 @@ static void altimeter_app_start(lv_obj_t *root, lv_group_t *group)
     ui_refresh_requested = false;
     k_mutex_unlock(&ui_data_mutex);
     altimeter_ui_update(&ui_snapshot);
+    if (ui_snapshot.has_data) {
+        altimeter_ui_notify_data_ready();
+    }
     refresh_timer = lv_timer_create(update_altimeter_ui, ALTIMETER_UI_REFRESH_INTERVAL_MS, NULL);
 
 }
@@ -484,6 +496,11 @@ static void altimeter_app_stop(void)
         refresh_timer = NULL;
     }
     altimeter_ui_remove();
+}
+
+static bool altimeter_app_back(void)
+{
+    return altimeter_ui_back();
 }
 
 static void altimeter_app_ui_available(void)

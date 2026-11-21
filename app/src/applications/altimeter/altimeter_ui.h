@@ -17,8 +17,10 @@ typedef struct {
 } altimeter_ui_data_t;
 
 #define HISTORY_SAMPLES 24
+#define ALTIMETER_CHART_INTERVAL_S 10
 
-void altimeter_ui_show(lv_obj_t *root);
+void altimeter_ui_show(lv_obj_t *root, lv_group_t *group, void (*refresh_cb)(void));
 void altimeter_ui_remove(void);
 void altimeter_ui_update(altimeter_ui_data_t *data);
 void altimeter_ui_notify_data_ready(void);
+bool altimeter_ui_back(void);
