@@ -361,7 +361,7 @@ static void schedule_daily_reset_alarm(void)
     const struct rtc_time expiry_time = {
         .tm_hour = 23,
         .tm_min = 59,
-        .tm_sec = 59,
+        .tm_sec = 58,
     };
 
     if (reset_alarm_id != ZSW_ALARM_INVALID_ID) {
@@ -395,7 +395,11 @@ static void daily_reset_alarm_callback(void *user_data)
         daily_reset_retries = 0U;
         k_work_reschedule(&daily_reset_retry_work, K_MINUTES(1));
     }
-    schedule_daily_reset_alarm();
+    /* Avoid re-registering before midnight. */
+    int ret = k_work_reschedule(&daily_reset_schedule_retry_work, K_SECONDS(4));
+    if (ret < 0) {
+        LOG_ERR("Failed to schedule floor daily reset re-registration: %d", ret);
+    }
 }
 
 static void daily_reset_schedule_retry_handler(struct k_work *work)
