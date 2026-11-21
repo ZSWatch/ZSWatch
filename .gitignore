@@ -4,6 +4,7 @@ build*
 *__pycache__*
 nrf/
 .nrf_env.sh
+/.venv/
 
 # Zephyr workspace
 /.west
