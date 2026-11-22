@@ -254,7 +254,7 @@ class CoredumpWestCommand(WestCommand):
 
     def _parse_coredump_stream(self, read_data_func, is_connected_func):
         coredump_content = ""
-        found_start = False
+        end_search_offset = None
 
         cb_start = "#CD:BEGIN#"
         cb_end = "#CD:END#"
@@ -264,30 +264,33 @@ class CoredumpWestCommand(WestCommand):
                 data = read_data_func()
                 if data:
                     print(data, end="")
-                    start_index = data.find(cb_start)
-                    end_index = data.find(cb_end)
+                    coredump_content += data
 
-                    if start_index != -1 and end_index != -1:
-                        print("\nFull coredump in same buffer")
-                        coredump_content += data[start_index : (end_index + len(cb_end))]
-                        break
-                    elif start_index >= 0:
-                        print("\nFound start")
-                        coredump_content = data[start_index:]
-                        found_start = True
-                    elif found_start and end_index >= 0:
-                        print("\nDone got both start and end")
-                        coredump_content += data[: (end_index + len(cb_end))]
-                        break
-                    elif found_start and end_index == -1:
-                        coredump_content += data
-                    elif not found_start and end_index != -1:
-                        print("\nFound end before start, skipping")
-                        coredump_content = ""
-                        found_start = False
+                    if end_search_offset is None:
+                        start_index = coredump_content.find(cb_start)
+                        if start_index < 0:
+                            # Keep a possible prefix of a BEGIN marker split across reads.
+                            coredump_content = coredump_content[1 - len(cb_start) :]
+                        else:
+                            print("\nFound start")
+                            coredump_content = coredump_content[start_index:]
+                            end_search_offset = len(cb_start)
+
+                    if end_search_offset is not None:
+                        end_index = coredump_content.find(cb_end, end_search_offset)
+                        if end_index >= 0:
+                            # A new BEGIN before END supersedes an incomplete dump.
+                            start_index = coredump_content.rfind(cb_start, 0, end_index)
+                            print("\nDone got both start and end")
+                            return coredump_content[start_index : end_index + len(cb_end)]
+
+                        # Recheck only where a split END marker could start.
+                        end_search_offset = max(len(cb_start), len(coredump_content) - len(cb_end) + 1)
 
                 time.sleep(0.1)
         except KeyboardInterrupt:
             print("\nInterrupted by user")
 
-        return coredump_content
+        if end_search_offset is None:
+            return ""
+        return coredump_content[coredump_content.rfind(cb_start) :]
