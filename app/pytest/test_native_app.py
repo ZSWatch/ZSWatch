@@ -298,6 +298,9 @@ class TestNativeFloorCounter:
             self._steps(sim, 110)
         assert self._counts(sim) == (0, 0)
 
+    def test_event_time_rejects_invalid_seconds(self, sim):
+        self._command(sim, "event time 12 0 60", r"Usage: event time")
+
     def test_daily_reset_without_pressure(self, sim):
         self._command(sim, "event time 12 0", r"Injected time: 12:00")
         self._steps(sim, 100)
@@ -319,10 +322,26 @@ class TestNativeFloorCounter:
             assert self._counts(sim) == (1, 0), sim.get_logs()
             time.sleep(0.5)
 
-        self._command(sim, "event time 23 59", r"Injected time: 23:59")
-        time.sleep(3)
-        assert self._counts(sim) == (1, 0), sim.get_logs()
-        self._wait_for_counts(sim, (0, 0), timeout=75)
+        self._command(sim, "event time 23 59 58", r"Injected time: 23:59:58")
+        self._wait_for_counts(sim, (0, 0), timeout=5)
+
+        # Allow the callback's delayed re-registration to cross midnight.
+        time.sleep(5)
+        assert self._counts(sim) == (0, 0)
+
+        self._steps(sim, 140)
+        self._pressure(sim, 1000)
+        time.sleep(2)
+        self._pressure(sim, 1000)
+        for sample in range(1, 5):
+            time.sleep(1.3)
+            pressure_hpa = 1000 * math.exp(-sample * 9.80665 / (287.05 * 288.15))
+            self._pressure(sim, pressure_hpa)
+            self._steps(sim, 140 + sample * 10)
+        self._wait_for_counts(sim, (1, 0))
+
+        self._command(sim, "event time 23 59 58", r"Injected time: 23:59:58")
+        self._wait_for_counts(sim, (0, 0), timeout=5)
 
 
 # ── BLE tests ────────────────────────────────────────────────

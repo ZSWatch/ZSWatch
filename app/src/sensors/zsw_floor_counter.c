@@ -361,7 +361,7 @@ static void schedule_daily_reset_alarm(void)
     const struct rtc_time expiry_time = {
         .tm_hour = 23,
         .tm_min = 59,
-        .tm_sec = 58,
+        .tm_sec = 59,
     };
 
     if (reset_alarm_id != ZSW_ALARM_INVALID_ID) {
