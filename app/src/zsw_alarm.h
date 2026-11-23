@@ -21,15 +21,23 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/rtc.h>
 
-#define ZSW_MAX_ALARMS 20
-#define ZSW_ALARM_INVALID_ID (ZSW_MAX_ALARMS + 1)
+#define ZSW_MAX_ALARMS 32 // MUST BE A POWER OF 2
+#define ZSW_ALARM_INVALID_ID UINT16_MAX
 
+/*
+ * Enabled alarms due at dispatch time are one-shot and run sequentially on
+ * the system work queue. Keep callbacks short and submit longer work to
+ * another work queue. Once collected, a callback cannot be canceled; its
+ * user_data must remain valid until it returns. A callback for an already-due
+ * alarm may run before the registration function returns.
+ */
 typedef void(*alarm_cb)(void *user_data);
 
 typedef struct {
     struct rtc_time expiry_time;
     bool used;
     bool enabled;
+    uint16_t id;
     alarm_cb cb;
     void *user_data;
 } zsw_alarm_t;
@@ -43,7 +51,11 @@ typedef struct {
  * - user_data: A pointer to user-defined data to be passed to the callback function.
  *
  * Returns:
- * - 0 on success, or a negative error code on failure.
+ * - A non-negative alarm handle on success, or a negative error code on failure.
+ *
+ * Handles identify a registration, not a slot. Do not use a handle after the
+ * alarm expires or is removed. Generations eventually wrap and may reuse IDs.
+ * RTC scheduling failures are returned to the caller.
  */
 int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_data);
 
@@ -57,7 +69,8 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_dat
  * - user_data: A pointer to user-defined data to be passed to the callback function.
  *
  * Returns:
- * - alarm handle on success, or a negative error code on failure.
+ * - A non-negative alarm handle on success, or a negative error code on failure.
+ *   Handle lifetime and RTC error behavior are the same as zsw_alarm_add().
  */
 int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb callback, void *user_data);
 
@@ -70,7 +83,7 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
  * - sec: A pointer to store the remaining seconds.
  *
  * Returns:
- * - alarm handle on success, or a negative error code on failure.
+ * - 0 on success, or a negative error code on failure.
  */
 int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, uint32_t *sec);
 
@@ -100,6 +113,9 @@ int zsw_alarm_get_enabled(uint32_t alarm_id, bool *enabled);
  *
  * Parameters:
  * - alarm_id: The ID of the alarm to be removed.
+ *
+ * A callback already collected for dispatch is not canceled by removal.
+ * A stale handle is rejected unless its generation has wrapped and been reused.
  *
  * Returns:
  * - 0 on success, or a negative error code on failure.
