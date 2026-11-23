@@ -28,15 +28,10 @@
 
 LOG_MODULE_REGISTER(zsw_alarm, LOG_LEVEL_DBG);
 
-#define RTC_ALARM_MASK_COMPARE_ALL (RTC_ALARM_TIME_MASK_SECOND | RTC_ALARM_TIME_MASK_MINUTE | RTC_ALARM_TIME_MASK_HOUR | RTC_ALARM_TIME_MASK_MONTHDAY | RTC_ALARM_TIME_MASK_WEEKDAY | RTC_ALARM_TIME_MASK_MONTH | RTC_ALARM_TIME_MASK_YEAR)
-
-typedef struct rtc_alarm_work_item_t {
-    struct k_work work;
-    int alarm_index;
-} rtc_alarm_work_item_t;
-
+#define RTC_ALARM_MASK (RTC_ALARM_TIME_MASK_SECOND | RTC_ALARM_TIME_MASK_MINUTE | \
+                        RTC_ALARM_TIME_MASK_HOUR | RTC_ALARM_TIME_MASK_MONTHDAY)
 static int find_free_alarm_slot(void);
-static void start_earliest_alarm(void);
+static int start_earliest_alarm(bool force);
 static int find_earliest_alarm(void);
 static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, void *user_data);
 static void handle_rtc_alarm_triggered_work(struct k_work *work);
@@ -47,7 +42,80 @@ static void copy_tm_to_rtc_time(struct tm *tm_time, struct rtc_time *rtc_time);
 static const struct device *rtc = DEVICE_DT_GET(DT_ALIAS(rtc));
 
 static zsw_alarm_t alarms[ZSW_MAX_ALARMS];
-static rtc_alarm_work_item_t rtc_alarm_work_item;
+static uint16_t generations[ZSW_MAX_ALARMS];
+static zsw_alarm_t armed_alarm;
+static bool alarm_armed;
+static K_MUTEX_DEFINE(alarm_mutex);
+static K_WORK_DEFINE(rtc_alarm_work, handle_rtc_alarm_triggered_work);
+
+BUILD_ASSERT(ZSW_MAX_ALARMS > 0 && ZSW_MAX_ALARMS < UINT16_MAX &&
+             (ZSW_MAX_ALARMS & (ZSW_MAX_ALARMS - 1)) == 0,
+             "Alarm slot count must be a power of two");
+
+static int schedule_alarm_work(void)
+{
+    int ret = k_work_submit(&rtc_alarm_work);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to schedule alarm work: %d", ret);
+        return ret;
+    }
+    return 0;
+}
+
+static int find_alarm(uint32_t id)
+{
+    if (id >= ZSW_ALARM_INVALID_ID) {
+        return -EINVAL;
+    }
+
+    int index = id % ZSW_MAX_ALARMS;
+
+    if (!alarms[index].used || alarms[index].id != id) {
+        return -EINVAL;
+    }
+
+    return index;
+}
+
+static int add_alarm(const struct rtc_time *expiry_time, alarm_cb callback, void *user_data)
+{
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int index = find_free_alarm_slot();
+
+    if (index < 0) {
+        k_mutex_unlock(&alarm_mutex);
+        return index;
+    }
+
+    uint16_t id = (uint16_t)(generations[index] * ZSW_MAX_ALARMS + index);
+    if (id == ZSW_ALARM_INVALID_ID) {
+        generations[index] = 0;
+        id = index;
+    }
+    generations[index] = (generations[index] + 1U) % (UINT16_MAX / ZSW_MAX_ALARMS + 1U);
+
+    alarms[index] = (zsw_alarm_t) {
+        .expiry_time = *expiry_time,
+        .used = true,
+        .enabled = true,
+        .id = id,
+        .cb = callback,
+        .user_data = user_data,
+    };
+    int ret = start_earliest_alarm(false);
+    if (ret < 0) {
+        memset(&alarms[index], 0, sizeof(alarms[index]));
+        int restore_ret = start_earliest_alarm(true);
+        if (restore_ret < 0) {
+            LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+        }
+        k_mutex_unlock(&alarm_mutex);
+        return ret;
+    }
+    k_mutex_unlock(&alarm_mutex);
+    return id;
+}
 
 int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_data)
 {
@@ -60,10 +128,8 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_dat
         return -ENOTSUP;
     }
 
-    int alarm_index = find_free_alarm_slot();
-
-    if (alarm_index < 0) {
-        return -ENOMEM;
+    if (callback == NULL) {
+        return -EINVAL;
     }
 
     ret = rtc_get_time(rtc, &current_time);
@@ -97,17 +163,9 @@ int zsw_alarm_add(struct rtc_time expiry_time, alarm_cb callback, void *user_dat
         copy_tm_to_rtc_time(&tm_alarm_time, &expiry_time);
     }
 
-    alarms[alarm_index].expiry_time = expiry_time;
-    alarms[alarm_index].used = true;
-    alarms[alarm_index].enabled = true;
-    alarms[alarm_index].cb = callback;
-    alarms[alarm_index].user_data = user_data;
-
     LOG_DBG("Alarm added: %d-%d-%d %d:%d:%d", expiry_time.tm_year, expiry_time.tm_mon, expiry_time.tm_mday,
             expiry_time.tm_hour, expiry_time.tm_min, expiry_time.tm_sec);
-    start_earliest_alarm();
-
-    return alarm_index;
+    return add_alarm(&expiry_time, callback, user_data);
 }
 
 int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb callback, void *user_data)
@@ -121,8 +179,15 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
         return -ENOTSUP;
     }
 
+    if (callback == NULL) {
+        return -EINVAL;
+    }
+
     ret = rtc_get_time(rtc, &alarm_time);
-    __ASSERT(ret == 0, "Failed to get current time");
+    if (ret != 0) {
+        LOG_ERR("Failed to get current time: %d", ret);
+        return ret;
+    }
 
     copy_rtc_time_to_tm(&alarm_time, &tm_alarm_time);
 
@@ -139,74 +204,75 @@ int zsw_alarm_add_timer(uint16_t hour, uint16_t min, uint16_t sec, alarm_cb call
 
     copy_tm_to_rtc_time(&tm_alarm_time, &alarm_time);
 
-    int alarm_index = find_free_alarm_slot();
-
-    if (alarm_index < 0) {
-        return -ENOMEM;
-    }
-
-    alarms[alarm_index].expiry_time = alarm_time;
-    alarms[alarm_index].used = true;
-    alarms[alarm_index].enabled = true;
-    alarms[alarm_index].cb = callback;
-    alarms[alarm_index].user_data = user_data;
     LOG_DBG("Timer added: %d-%d-%d %d:%d:%d", alarm_time.tm_year, alarm_time.tm_mon, alarm_time.tm_mday, alarm_time.tm_hour,
             alarm_time.tm_min, alarm_time.tm_sec);
 
-    start_earliest_alarm();
-
-    return alarm_index;
+    return add_alarm(&alarm_time, callback, user_data);
 }
 
 int zsw_alarm_set_enabled(uint32_t alarm_id, bool enabled)
 {
-    if (alarm_id >= ZSW_MAX_ALARMS) {
-        return -EINVAL;
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int index = find_alarm(alarm_id);
+    if (index < 0) {
+        k_mutex_unlock(&alarm_mutex);
+        return index;
     }
 
-    if (!alarms[alarm_id].used) {
-        return -EINVAL;
+    int ret = 0;
+    if (alarms[index].enabled != enabled) {
+        alarms[index].enabled = enabled;
+        ret = start_earliest_alarm(false);
+        if (ret < 0) {
+            alarms[index].enabled = !enabled;
+            int restore_ret = start_earliest_alarm(true);
+            if (restore_ret < 0) {
+                LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+            }
+        }
     }
-
-    if (alarms[alarm_id].enabled == enabled) {
-        return 0;
-    }
-
-    alarms[alarm_id].enabled = enabled;
-
-    start_earliest_alarm();
-
-    return 0;
+    k_mutex_unlock(&alarm_mutex);
+    return ret;
 }
 
 int zsw_alarm_get_enabled(uint32_t alarm_id, bool *enabled)
 {
-    if (alarm_id >= ZSW_MAX_ALARMS) {
+    if (enabled == NULL) {
         return -EINVAL;
     }
 
-    if (!alarms[alarm_id].used) {
-        return -EINVAL;
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int index = find_alarm(alarm_id);
+    if (index < 0) {
+        k_mutex_unlock(&alarm_mutex);
+        return index;
     }
-
-    *enabled = alarms[alarm_id].enabled;
-
+    *enabled = alarms[index].enabled;
+    k_mutex_unlock(&alarm_mutex);
     return 0;
 }
 
 int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, uint32_t *sec)
 {
+    struct rtc_time expiry_time;
+
     if (!zsw_clock_rtc_available()) {
         LOG_WRN("RTC not available, timer not supported");
         return -ENOTSUP;
     }
 
-    if (alarm_id >= ZSW_MAX_ALARMS) {
+    if (hour == NULL || min == NULL || sec == NULL) {
         return -EINVAL;
     }
 
-    if (!alarms[alarm_id].used) {
-        return -EINVAL;
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int index = find_alarm(alarm_id);
+    if (index >= 0) {
+        expiry_time = alarms[index].expiry_time;
+    }
+    k_mutex_unlock(&alarm_mutex);
+    if (index < 0) {
+        return index;
     }
 
     struct tm current_time_tm = {0};
@@ -215,18 +281,21 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, ui
 
     int ret = rtc_get_time(rtc, &current_time);
     if (ret != 0) {
+        LOG_ERR("Failed to get current time: %d", ret);
         return ret;
     }
 
     copy_rtc_time_to_tm(&current_time, &current_time_tm);
-    copy_rtc_time_to_tm(&alarms[alarm_id].expiry_time, &alarm_time_tm);
+    copy_rtc_time_to_tm(&expiry_time, &alarm_time_tm);
 
     time_t current_epoch = mktime(&current_time_tm);
     time_t alarm_epoch = mktime(&alarm_time_tm);
 
     int diffSecs = (int)difftime(alarm_epoch, current_epoch);
     LOG_DBG("start: %lld, end: %lld, diff: %d", current_epoch, alarm_epoch, diffSecs);
-    __ASSERT(diffSecs >= 0, "Alarm is in the past: %d", diffSecs);
+    if (diffSecs < 0) {
+        diffSecs = 0;
+    }
 
     *hour = diffSecs / 3600;
     *min = (diffSecs % 3600) / 60;
@@ -237,27 +306,25 @@ int zsw_alarm_get_remaining(uint32_t alarm_id, uint32_t *hour, uint32_t *min, ui
 
 int zsw_alarm_remove(uint32_t alarm_id)
 {
-    if (alarm_id >= ZSW_MAX_ALARMS) {
-        return -EINVAL;
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int index = find_alarm(alarm_id);
+    if (index < 0) {
+        k_mutex_unlock(&alarm_mutex);
+        return index;
     }
 
-    if (!alarms[alarm_id].used) {
-        return -EINVAL;
+    zsw_alarm_t removed = alarms[index];
+    memset(&alarms[index], 0, sizeof(alarms[index]));
+    int ret = start_earliest_alarm(false);
+    if (ret < 0) {
+        alarms[index] = removed;
+        int restore_ret = start_earliest_alarm(true);
+        if (restore_ret < 0) {
+            LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+        }
     }
-
-    int earliest_alarm_index = find_earliest_alarm();
-    __ASSERT(earliest_alarm_index >= 0, "Failed to find earliest alarm");
-
-    memset(&alarms[alarm_id], 0, sizeof(zsw_alarm_t));
-
-    // Check if removed alarm is the earliest, if so change the rtc alarm to next.
-    if (earliest_alarm_index == alarm_id) {
-        rtc_alarm_set_callback(rtc, 0, NULL, NULL);
-        rtc_alarm_set_time(rtc, 0, 0, NULL);
-        start_earliest_alarm();
-    }
-
-    return 0;
+    k_mutex_unlock(&alarm_mutex);
+    return ret;
 }
 
 static int find_earliest_alarm(void)
@@ -266,7 +333,8 @@ static int find_earliest_alarm(void)
     int index = -1;
 
     for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
-        if (alarms[i].used && alarms[i].enabled && (earliest_alarm == NULL || compare(&alarms[i], earliest_alarm) < 0)) {
+        if (alarms[i].used && alarms[i].enabled &&
+            (earliest_alarm == NULL || compare(&alarms[i], earliest_alarm) < 0)) {
             earliest_alarm = &alarms[i];
             index = i;
         }
@@ -275,95 +343,113 @@ static int find_earliest_alarm(void)
     return index;
 }
 
-static void start_earliest_alarm(void)
+/* Called with alarm_mutex held; RTC programming and slot changes are serialized. */
+static int start_earliest_alarm(bool force)
 {
-    LOG_DBG("start_earliest_alarm");
-    struct rtc_time current_alarm_time = {0};
-    struct rtc_time current_time = {0};
-    uint16_t current_alarm_mask;
-    int earliest_alarm_index = find_earliest_alarm();
+    zsw_alarm_t now = {0};
+    int index = find_earliest_alarm();
+    int ret;
 
-    int ret = rtc_alarm_get_time(rtc, 0, &current_alarm_mask, &current_alarm_time);
+    if (index >= 0) {
+        ret = rtc_get_time(rtc, &now.expiry_time);
+        if (ret != 0) {
+            LOG_ERR("Failed to read RTC while scheduling: %d", ret);
+            return ret;
+        }
+        if (compare(&alarms[index], &now) <= 0) {
+            return schedule_alarm_work();
+        }
+        // The RTC does not support month and year alarms, so cache the full date.
+        if (!force && alarm_armed && compare(&armed_alarm, &alarms[index]) == 0) {
+            return 0;
+        }
+    } else if (!force && !alarm_armed) {
+        return 0;
+    }
 
+    // Cancel alarm
+    ret = rtc_alarm_set_callback(rtc, 0, NULL, NULL);
+    if (ret == 0) {
+        ret = rtc_alarm_set_time(rtc, 0, 0, NULL);
+    }
     if (ret != 0) {
-        LOG_ERR("Failed to get current alarm time");
-        return;
+        alarm_armed = false;
+        LOG_ERR("Failed to disable RTC alarm: %d", ret);
+        return ret;
+    }
+    alarm_armed = false;
+    if (index < 0) {
+        return 0;
     }
 
-    // TODO: This is a hack as the RTC does not support month and year alarms.
-    // I think a fix is to cash the active alarm instead of reading it from the RTC.
-    // This hack will result in issues when starting an alarm in the end of day at the end of a month.
-    ret = rtc_get_time(rtc, &current_time);
-    __ASSERT(ret == 0, "Failed to get current time");
+    struct rtc_time *expiry = &alarms[index].expiry_time;
 
-    current_alarm_time.tm_year = current_time.tm_year;
-    current_alarm_time.tm_mon = current_time.tm_mon;
-
-    LOG_WRN("Current alarm: %d-%d-%d %d:%d:%d", current_alarm_time.tm_year, current_alarm_time.tm_mon,
-            current_alarm_time.tm_mday,
-            current_alarm_time.tm_hour, current_alarm_time.tm_min, current_alarm_time.tm_sec);
-
-    // No alarms active, and RTC have alarm => disable it
-    if (earliest_alarm_index < 0 && current_alarm_mask != 0) {
-        LOG_DBG("No alarms active, and RTC have alarm => disable it");
-        rtc_alarm_set_callback(rtc, 0, NULL, NULL);
-        rtc_alarm_set_time(rtc, 0, 0, NULL);
-        return;
-    } else if (earliest_alarm_index < 0) {
-        // No alarms active
-        LOG_DBG("No alarms active");
-        return;
+    ret = rtc_alarm_set_callback(rtc, 0, rtc_alarm_triggered_callback, NULL);
+    if (ret == 0) {
+        ret = rtc_alarm_set_time(rtc, 0, RTC_ALARM_MASK, expiry);
     }
-
-    LOG_DBG("Earliest index: %d, current alarm mask: %d", earliest_alarm_index, current_alarm_mask);
-
-    if (current_alarm_mask != 0 && compare(&alarms[earliest_alarm_index], &current_alarm_time) >= 0) {
-        // The current active alarm is already the earliest
-        LOG_DBG("Current alarm is already the earliest");
-        return;
-    } else {
-        // RTC alarm should be updated
-        LOG_DBG("RTC alarm should be updated");
-        rtc_alarm_set_callback(rtc, 0, NULL, NULL);
-        rtc_alarm_set_time(rtc, 0, 0, NULL);
-        rtc_alarm_set_time(rtc, 0, RTC_ALARM_MASK_COMPARE_ALL, &alarms[earliest_alarm_index].expiry_time);
-        int ret = rtc_alarm_set_callback(rtc, 0, rtc_alarm_triggered_callback, (void *)earliest_alarm_index);
-        __ASSERT(ret == 0, "Failed to set alarm callback");
-    }
-
-    ret = rtc_alarm_get_time(rtc, 0, &current_alarm_mask, &current_alarm_time);
-
     if (ret != 0) {
-        LOG_ERR("Failed to get current alarm time");
-        return;
+        LOG_ERR("Failed to program RTC alarm: %d", ret);
+        return ret;
     }
-    LOG_WRN("Set (read) alarm: %d-%d-%d %d:%d:%d", current_alarm_time.tm_year, current_alarm_time.tm_mon,
-            current_alarm_time.tm_mday,
-            current_alarm_time.tm_hour, current_alarm_time.tm_min, current_alarm_time.tm_sec);
+    armed_alarm = alarms[index];
+    alarm_armed = true;
+
+    ret = rtc_get_time(rtc, &now.expiry_time);
+    if (ret != 0) {
+        LOG_ERR("Failed to recheck RTC alarm: %d", ret);
+        return ret;
+    }
+    if (compare(&alarms[index], &now) <= 0) {
+        return schedule_alarm_work();
+    }
+    return 0;
 }
 
 static void handle_rtc_alarm_triggered_work(struct k_work *work)
 {
-    struct rtc_alarm_work_item_t *item = CONTAINER_OF(work, rtc_alarm_work_item_t, work);
-    int alarm_index = item->alarm_index;
+    struct {
+        alarm_cb callback;
+        void *user_data;
+    } due[ZSW_MAX_ALARMS];
+    zsw_alarm_t now = {0};
+    int count = 0;
 
-    __ASSERT(alarms[alarm_index].used, "Alarm is not used");
-    alarms[alarm_index].used = false;
-    alarms[alarm_index].enabled = false;
+    ARG_UNUSED(work);
+    k_mutex_lock(&alarm_mutex, K_FOREVER);
+    int ret = rtc_get_time(rtc, &now.expiry_time);
+    if (ret != 0) {
+        LOG_ERR("Failed to read RTC for alarm dispatch: %d", ret);
+        k_mutex_unlock(&alarm_mutex);
+        return;
+    }
 
-    // Cancel alarm
-    rtc_alarm_set_callback(rtc, 0, NULL, NULL);
-    rtc_alarm_set_time(rtc, 0, 0, NULL);
-    start_earliest_alarm();
-    alarms[alarm_index].cb(alarms[alarm_index].user_data);
-    LOG_DBG("Alarm triggered: %d", alarm_index);
+    for (int i = 0; i < ZSW_MAX_ALARMS; i++) {
+        if (alarms[i].used && alarms[i].enabled && compare(&alarms[i], &now) <= 0) {
+            due[count].callback = alarms[i].cb;
+            due[count].user_data = alarms[i].user_data;
+            count++;
+            memset(&alarms[i], 0, sizeof(alarms[i]));
+        }
+    }
+    // An early monthly RTC match must remain armed for the intended date.
+    ret = start_earliest_alarm(count > 0);
+    if (ret < 0) {
+        LOG_ERR("Failed to start next alarm: %d", ret);
+    }
+    k_mutex_unlock(&alarm_mutex);
+
+    for (int i = 0; i < count; i++) {
+        due[i].callback(due[i].user_data);
+    }
 }
 
 static void rtc_alarm_triggered_callback(const struct device *dev, uint16_t id, void *user_data)
 {
-    LOG_DBG("RTC alarm callback");
-    rtc_alarm_work_item.alarm_index = (int)user_data;
-    k_work_submit(&rtc_alarm_work_item.work);
+    ARG_UNUSED(dev);
+    ARG_UNUSED(id);
+    ARG_UNUSED(user_data);
+    schedule_alarm_work();
 }
 
 static int find_free_alarm_slot(void)
@@ -376,7 +462,7 @@ static int find_free_alarm_slot(void)
     return -ENOMEM;
 }
 
-int compare(const void *rtc_time_a, const void *rtc_time_b)
+static int compare(const void *rtc_time_a, const void *rtc_time_b)
 {
     zsw_alarm_t *a = (zsw_alarm_t *)rtc_time_a;
     zsw_alarm_t *b = (zsw_alarm_t *)rtc_time_b;
@@ -443,16 +529,12 @@ static void copy_tm_to_rtc_time(struct tm *tm_time, struct rtc_time *rtc_time)
 static int zsw_alarm_init(void)
 {
     memset(alarms, 0, sizeof(alarms));
-    k_work_init(&rtc_alarm_work_item.work, handle_rtc_alarm_triggered_work);
-
     if (!zsw_clock_rtc_available()) {
         LOG_WRN("RTC not available, alarm subsystem disabled");
         return 0;
     }
 
-    rtc_alarm_set_callback(rtc, 0, NULL, NULL);
-    rtc_alarm_set_time(rtc, 0, 0, NULL);
-    return 0;
+    return start_earliest_alarm(true);
 }
 
 SYS_INIT(zsw_alarm_init, APPLICATION, 2); // Just after zsw_periodic_event init
