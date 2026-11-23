@@ -960,13 +960,12 @@ static int cmd_event_weather(const struct shell *sh, size_t argc, char **argv)
 
 static int cmd_event_time(const struct shell *sh, size_t argc, char **argv)
 {
-    long hour, minute;
+    long hour, minute, second = 0;
     zsw_timeval_t now;
 
-    ARG_UNUSED(argc);
-
-    if (!parse_long(argv[1], 0, 23, &hour) || !parse_long(argv[2], 0, 59, &minute)) {
-        shell_error(sh, "Usage: event time <hour 0-23> <minute 0-59>");
+    if (!parse_long(argv[1], 0, 23, &hour) || !parse_long(argv[2], 0, 59, &minute) ||
+        (argc > 3 && !parse_long(argv[3], 0, 59, &second))) {
+        shell_error(sh, "Usage: event time <hour 0-23> <minute 0-59> [second 0-59]");
         return -EINVAL;
     }
 
@@ -978,6 +977,7 @@ static int cmd_event_time(const struct shell *sh, size_t argc, char **argv)
         .tm_mday = now.tm.tm_mday,
         .tm_hour = (int)hour,
         .tm_min = (int)minute,
+        .tm_sec = (int)second,
         .tm_isdst = -1,
     };
 
@@ -996,7 +996,11 @@ static int cmd_event_time(const struct shell *sh, size_t argc, char **argv)
         return ret;
     }
 
-    shell_print(sh, "Injected time: %02ld:%02ld", hour, minute);
+    if (argc > 3) {
+        shell_print(sh, "Injected time: %02ld:%02ld:%02ld", hour, minute, second);
+    } else {
+        shell_print(sh, "Injected time: %02ld:%02ld", hour, minute);
+    }
     return 0;
 }
 
@@ -1010,8 +1014,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_event,
                                SHELL_CMD_ARG(weather, NULL,
                                              "Inject weather: event weather <code> <temp_C> [wind_kmh] [wind_dir_deg] [humidity]",
                                              cmd_event_weather, 3, 3),
-                               SHELL_CMD_ARG(time, NULL, "Inject phone time sync: event time <hour> <minute>",
-                                             cmd_event_time, 3, 0),
+                               SHELL_CMD_ARG(time, NULL, "Inject phone time sync: event time <hour> <minute> [second]",
+                                             cmd_event_time, 3, 1),
                                SHELL_SUBCMD_SET_END
                               );
 
