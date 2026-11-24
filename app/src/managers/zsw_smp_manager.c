@@ -34,12 +34,14 @@ LOG_MODULE_REGISTER(zsw_smp_manager, LOG_LEVEL_INF);
 // Only the short connection interval follows the SMP traffic.
 // No SMP code may be relocated to XIP.
 
-// Keep the short interval this long after the last SMP command.
-#define SMP_TRAFFIC_HOLD_MS           5000
+// Keep the short interval this long after the last SMP command. A phone takes
+// about 5 s to move from the idle interval to the short one, so the hold must
+// span the pause before the next command or every command runs slowly.
+#define SMP_TRAFFIC_HOLD_MS           30000
 // Upper bound if a command never reports done.
 #define SMP_TRAFFIC_MAX_COMMAND_MS    60000
 // When the phone announces SMP use, keep the short interval this long for it to start.
-#define SMP_ANNOUNCE_SHORT_INTERVAL_MS 5000
+#define SMP_ANNOUNCE_SHORT_INTERVAL_MS 30000
 
 static K_MUTEX_DEFINE(traffic_mutex);
 static int commands_active;
