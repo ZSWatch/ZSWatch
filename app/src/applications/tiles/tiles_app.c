@@ -16,8 +16,8 @@
  */
 
 /*
- * Glanceable tiles, opened by swiping right on the watchface: weather, steps,
- * heart rate, music and battery. Tapping a tile opens its app.
+ * Glanceable tiles, opened by swiping right on the watchface: heart rate,
+ * music, weather, steps and battery. Tapping a tile opens its app.
  */
 
 #include <zephyr/kernel.h>

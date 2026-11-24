@@ -395,12 +395,12 @@ void tiles_ui_show(lv_obj_t *root, lv_group_t *group, tiles_open_cb_t on_open, t
     lv_obj_set_scrollbar_mode(tileview, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_event_cb(tileview, tile_changed, LV_EVENT_VALUE_CHANGED, NULL);
 
-    build_weather();
-    build_activity();
     if (data->hr_available) {
         build_heart_rate();
     }
     build_music();
+    build_weather();
+    build_activity();
     build_battery();
 
     lv_obj_t *dot_row = lv_obj_create(root_page);
