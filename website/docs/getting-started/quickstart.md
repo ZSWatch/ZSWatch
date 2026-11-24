@@ -224,7 +224,7 @@ Your watch should now be running the latest firmware with all icons and images v
 The watch can be navigated using:
 
 - **Four hardware buttons**:
-  - **Top-right button**: Open the app picker / scroll up
+  - **Top-right button**: Open the app picker / scroll up. Hold for 1 s to record a voice memo, press again to stop
   - **Top-left button**: Toggle flashlight / scroll down
   - **Bottom-left button**: Music control / select/confirm
   - **Bottom-right button**: Go back / exit app

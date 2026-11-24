@@ -43,6 +43,7 @@
 #include "zsw_ui_controller.h"
 #include "ui/zsw_ui.h"
 #include "ui/zsw_overlay_manager.h"
+#include "ui/overlay/zsw_quick_record.h"
 #include "ui/onboarding/zsw_onboarding_ui.h"
 #include "lvgl_editor.h"
 
@@ -281,15 +282,17 @@ static void on_input_subsys_callback(struct input_event *evt, void *user_data)
 
     LOG_DBG("Input event received: type=%u, code=%u, value=%d", evt->type, evt->code, evt->value);
 
+    if (zsw_quick_record_handle_input(evt)) {
+        return;
+    }
+
     // The following events are ignored (will block a wakeup of the display):
     //  - Generic touch events (INPUT_BTN_TOUCH, INPUT_ABS_X, INPUT_ABS_Y)
     //  - Raw button codes before longpress processing (INPUT_KEY_KP0, INPUT_KEY_KP1)
-    //  - Quick-record long-press code (INPUT_KEY_F1) — handled by zsw_quick_record
+    //  - The quick record long press (INPUT_KEY_F1) when voice memos are off
     if ((evt->code == INPUT_ABS_X) || (evt->code == INPUT_ABS_Y) || (evt->code == INPUT_BTN_TOUCH) ||
         (evt->code == INPUT_KEY_KP0) || (evt->code == INPUT_KEY_KP1) ||
-#ifdef CONFIG_APPLICATIONS_USE_VOICE_MEMO
         (evt->code == INPUT_KEY_F1) ||
-#endif
         ((evt->code != INPUT_EV_DEVICE) && (evt->value == 1))) {
         return;
     }

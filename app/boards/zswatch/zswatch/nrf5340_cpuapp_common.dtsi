@@ -151,7 +151,7 @@ zephyr_udc0: &usbd {
         input = <&buttons>;
         compatible = "zephyr,input-longpress";
         input-codes = <INPUT_KEY_KP1>;
-        short-codes = <INPUT_KEY_4>;
+        short-codes = <INPUT_KEY_1>;
         long-codes = <INPUT_KEY_F1>;
         long-delay-ms = <1000>;
     };
@@ -168,13 +168,13 @@ zephyr_udc0: &usbd {
         button3: button_3 {
             label = "top-right";
             gpios = <&gpio0 1 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_1>;
+            zephyr,code = <INPUT_KEY_KP1>;
         };
 
         button4: button_4 {
             label = "top-left";
             gpios = <&gpio0 24 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            zephyr,code = <INPUT_KEY_KP1>;
+            zephyr,code = <INPUT_KEY_4>;
         };
     };
 

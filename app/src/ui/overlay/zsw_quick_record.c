@@ -22,6 +22,7 @@
 
 #include "managers/zsw_recording_manager.h"
 #include "zsw_recording_overlay.h"
+#include "zsw_quick_record.h"
 
 LOG_MODULE_REGISTER(zsw_quick_record, CONFIG_ZSW_VOICE_MEMO_LOG_LEVEL);
 
@@ -50,29 +51,42 @@ static void quick_record_work_fn(struct k_work *work)
     }
 }
 
-static void quick_record_input_cb(struct input_event *evt, void *user_data)
+bool zsw_quick_record_handle_input(const struct input_event *evt)
 {
-    ARG_UNUSED(user_data);
+    // The release of the press that stopped a recording must not reach the UI,
+    // as the overlay is gone by then and it would open the app picker.
+    static bool swallow_release;
 
-    if (evt->type != INPUT_EV_KEY || evt->value != 1) {
-        return;
+    if (evt->type != INPUT_EV_KEY) {
+        return false;
     }
 
     if (evt->code == INPUT_KEY_F1) {
-        /* Long press detected by DTS longpress node: toggle recording */
-        k_work_submit(&quick_record_work);
-    } else if (evt->code == INPUT_KEY_4 && zsw_recording_manager_is_recording()) {
-        /* Short press while recording: stop */
-        k_work_submit(&quick_record_work);
+        if (evt->value == 1) {
+            k_work_submit(&quick_record_work);
+        }
+        return true;
     }
-}
 
-INPUT_CALLBACK_DEFINE(NULL, quick_record_input_cb, NULL);
+    if (evt->code == INPUT_KEY_1) {
+        if (evt->value == 1 && zsw_recording_manager_is_recording()) {
+            swallow_release = true;
+            k_work_submit(&quick_record_work);
+            return true;
+        }
+        if (evt->value == 0 && swallow_release) {
+            swallow_release = false;
+            return true;
+        }
+    }
+
+    return false;
+}
 
 static int zsw_quick_record_sys_init(void)
 {
     k_work_init(&quick_record_work, quick_record_work_fn);
-    LOG_INF("Quick-record shortcut enabled on button 4");
+    LOG_INF("Quick-record shortcut enabled on the top right button");
     return 0;
 }
 
