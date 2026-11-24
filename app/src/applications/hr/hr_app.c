@@ -31,6 +31,9 @@
 
 LOG_MODULE_REGISTER(hr_app, LOG_LEVEL_DBG);
 
+#define GRAPH_MAX_POINTS  240
+#define GRAPH_MIN_MINUTES 10
+
 // Activity labels for display
 static const char *activity_labels[] = {"Rest", "Other", "Walk", "Run", "Bike"};
 #define NUM_ACTIVITIES (sizeof(activity_labels) / sizeof(activity_labels[0]))
@@ -57,6 +60,7 @@ static lv_obj_t *hr_chart;
 static lv_chart_series_t *hr_series;
 static lv_chart_series_t *conf_series;
 static uint32_t last_graph_sequence;
+static int64_t last_graph_update_ms;
 static lv_obj_t *graph_span_label;
 
 // Timer for fake data / real sensor updates
@@ -80,6 +84,54 @@ static void hr_app_stop(void);
 static void on_tileview_change(lv_event_t *e);
 static void create_page_indicator(lv_obj_t *container);
 static void set_indicator_page(int page);
+// Shows the minute history from the first minute with HR in the last day, at
+// most GRAPH_MAX_POINTS points, so long spans average several minutes per point.
+static void update_graph(void)
+{
+    uint8_t *bpm = lv_malloc(ZSW_HR_MINUTES);
+    if (!bpm) {
+        return;
+    }
+    size_t count = zsw_hr_manager_get_minutes(bpm, ZSW_HR_MINUTES);
+    size_t first = 0;
+    while (first < count && bpm[first] == 0) {
+        first++;
+    }
+    if (first == count) {
+        lv_chart_set_all_value(hr_chart, hr_series, LV_CHART_POINT_NONE);
+        lv_label_set_text(graph_span_label, "No history yet");
+        lv_free(bpm);
+        return;
+    }
+    first = MIN(first, count - GRAPH_MIN_MINUTES);
+    size_t span = count - first;
+    size_t per_point = DIV_ROUND_UP(span, GRAPH_MAX_POINTS);
+    size_t points = DIV_ROUND_UP(span, per_point);
+
+    lv_chart_set_point_count(hr_chart, points);
+    lv_chart_set_all_value(hr_chart, conf_series, LV_CHART_POINT_NONE);
+    for (size_t p = 0; p < points; p++) {
+        // The last point ends at the current minute.
+        size_t end = count - (points - 1 - p) * per_point;
+        uint32_t sum = 0;
+        uint32_t n = 0;
+        for (size_t i = end - MIN(per_point, end - first); i < end; i++) {
+            if (bpm[i]) {
+                sum += bpm[i];
+                n++;
+            }
+        }
+        lv_chart_set_value_by_id(hr_chart, hr_series, p, n ? (int32_t)(sum / n) : LV_CHART_POINT_NONE);
+    }
+    lv_chart_refresh(hr_chart);
+    if (span < 60) {
+        lv_label_set_text_fmt(graph_span_label, "Last %u min", (unsigned)span);
+    } else {
+        lv_label_set_text_fmt(graph_span_label, "Last %u h %u min", (unsigned)(span / 60), (unsigned)(span % 60));
+    }
+    lv_free(bpm);
+}
+
 static void update_timer_cb(lv_timer_t *timer);
 static void update_ui_from_sample(int hr, int hr_conf, int spo2, int spo2_conf,
                                   int rr, int rr_conf, int skin_contact, int activity);
@@ -173,8 +225,8 @@ static void find_chart_in_page(lv_obj_t *parent)
             hr_series = lv_chart_get_series_next(hr_chart, NULL);
             conf_series = lv_chart_get_series_next(hr_chart, hr_series);
             // Hide the data point dots, show only lines
-            lv_chart_set_type(hr_chart, LV_CHART_TYPE_SCATTER);
-            lv_chart_set_point_count(hr_chart, ZSW_HR_HISTORY_CAPACITY);
+            lv_chart_set_type(hr_chart, LV_CHART_TYPE_LINE);
+            lv_chart_set_point_count(hr_chart, GRAPH_MAX_POINTS);
             lv_obj_set_style_size(hr_chart, 3, 3, LV_PART_INDICATOR);
             lv_obj_set_style_line_width(hr_chart, 0, LV_PART_ITEMS);
             lv_chart_set_all_value(hr_chart, hr_series, LV_CHART_POINT_NONE);
@@ -316,23 +368,10 @@ static void update_timer_cb(lv_timer_t *timer)
         lv_subject_copy_string(&hr_bpm_text, "--");
         lv_subject_copy_string(&hr_confidence_text, "--");
     }
-    if (hr_chart && snapshot.sequence != last_graph_sequence) {
-        struct zsw_hr_history_point points[ZSW_HR_HISTORY_CAPACITY];
-        size_t count = zsw_hr_manager_get_history(points, ARRAY_SIZE(points));
-        int32_t seconds = now / 1000;
-        int32_t first = count ? points[0].timestamp_ms / 1000 : seconds;
-        lv_chart_set_axis_range(hr_chart, LV_CHART_AXIS_PRIMARY_X, MAX(0, first - 1), MAX(first + 1, seconds));
-        int32_t span = MAX(1, seconds - first);
-        lv_label_set_text_fmt(graph_span_label, span < 60 ? "History: %d s" : "History: %d min",
-                              span < 60 ? span : span / 60);
-        for (size_t i = 0; i < count; i++) {
-            if (points[i].sequence <= last_graph_sequence) {
-                continue;
-            }
-            lv_chart_set_next_value2(hr_chart, hr_series, points[i].timestamp_ms / 1000, points[i].bpm);
-            lv_chart_set_next_value2(hr_chart, conf_series, points[i].timestamp_ms / 1000, points[i].confidence);
-            last_graph_sequence = points[i].sequence;
-        }
+    if (hr_chart && (snapshot.sequence != last_graph_sequence || now - last_graph_update_ms >= 60000)) {
+        last_graph_sequence = snapshot.sequence;
+        last_graph_update_ms = now;
+        update_graph();
     }
 #endif
 }
@@ -364,6 +403,7 @@ static void hr_app_start(lv_obj_t *root, lv_group_t *group)
     // Create the UI for each page using LVGL Editor generated functions
     page_overview = hr_overview_ui_create(tile_overview, group);
     last_graph_sequence = 0;
+    last_graph_update_ms = -60000;
     page_debug = hr_app_debug_create(tile_debug);
     page_graph = hr_app_graph_create(tile_graph);
     graph_span_label = lv_label_create(page_graph);

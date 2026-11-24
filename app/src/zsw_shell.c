@@ -284,6 +284,33 @@ static int cmd_hr_status(const struct shell *sh, size_t argc, char **argv)
     return 0;
 }
 
+static int cmd_hr_history(const struct shell *sh, size_t argc, char **argv)
+{
+    uint8_t *bpm = k_malloc(ZSW_HR_MINUTES);
+    if (!bpm) {
+        return -ENOMEM;
+    }
+    size_t count = zsw_hr_manager_get_minutes(bpm, ZSW_HR_MINUTES);
+    size_t filled = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        if (bpm[i]) {
+            filled++;
+            shell_print(sh, "%u min ago: %u bpm", (unsigned)(count - 1 - i), bpm[i]);
+        }
+    }
+    shell_print(sh, "%u of %u minutes have HR", (unsigned)filled, (unsigned)count);
+    k_free(bpm);
+    return 0;
+}
+
+static int cmd_hr_set_minute(const struct shell *sh, size_t argc, char **argv)
+{
+    int rc = zsw_hr_manager_set_minute(strtoul(argv[1], NULL, 10), strtoul(argv[2], NULL, 10));
+    shell_print(sh, "Set minute: %d", rc);
+    return rc;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_hr,
                                SHELL_CMD_ARG(measure, NULL, "Request one manual measurement", cmd_hr_measure, 1, 0),
                                SHELL_CMD_ARG(cancel, NULL, "Cancel the manual request", cmd_hr_cancel, 1, 0),
@@ -291,6 +318,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_hr,
                                SHELL_CMD_ARG(mode, NULL, "Get/set off, background, continuous", cmd_hr_mode, 1, 1),
                                SHELL_CMD_ARG(motion, NULL, "Inject moving/stationary for policy tests", cmd_hr_motion, 2, 0),
                                SHELL_CMD_ARG(status, NULL, "Show manager state and the latest report", cmd_hr_status, 1, 0),
+                               SHELL_CMD_ARG(history, NULL, "Print the per minute history of the last day", cmd_hr_history,
+                                             1, 0),
+                               SHELL_CMD_ARG(set_minute, NULL, "Set <minutes_ago> <bpm> in the history, for tests",
+                                             cmd_hr_set_minute, 3, 0),
                                SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(hr, &sub_hr, "Heart rate manager", NULL);
 #endif

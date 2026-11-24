@@ -61,6 +61,9 @@ struct zsw_hr_history_point {
     uint8_t confidence;
 };
 
+// Per minute averages kept for the last day, also across reboots.
+#define ZSW_HR_MINUTES (24 * 60)
+
 #ifdef CONFIG_ZSW_HR_MANAGER
 int zsw_hr_manager_init(void);
 int zsw_hr_manager_set_mode(zsw_hr_setting_t mode);
@@ -68,7 +71,23 @@ int zsw_hr_manager_measure_now(void);
 int zsw_hr_manager_cancel_measurement(void);
 void zsw_hr_manager_get_snapshot(struct zsw_hr_manager_snapshot *snapshot);
 size_t zsw_hr_manager_get_history(struct zsw_hr_history_point *points, size_t capacity);
+/**
+ * @brief Copy the average bpm of the last minutes, oldest first, 0 where there is none.
+ *
+ * @param bpm Output, one value per minute, the last one is the current minute.
+ * @param count Number of minutes, at most ZSW_HR_MINUTES.
+ * @return Number of minutes written, 0 while there is no history or the clock is not set.
+ */
+size_t zsw_hr_manager_get_minutes(uint8_t *bpm, size_t count);
+/** @brief Set the average of a past minute. For tests from the shell. */
+int zsw_hr_manager_set_minute(uint32_t minutes_ago, uint8_t bpm);
 #else
+static inline size_t zsw_hr_manager_get_minutes(uint8_t *bpm, size_t count)
+{
+    ARG_UNUSED(bpm);
+    ARG_UNUSED(count);
+    return 0;
+}
 static inline size_t zsw_hr_manager_get_history(struct zsw_hr_history_point *points, size_t capacity)
 {
     ARG_UNUSED(points);

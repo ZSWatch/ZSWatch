@@ -18,6 +18,7 @@
 #include "zsw_hr_manager.h"
 
 #include <string.h>
+#include <sys/time.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
@@ -33,6 +34,10 @@ LOG_MODULE_REGISTER(zsw_hr_manager, LOG_LEVEL_INF);
 #define RETRY_DELAY_MS 30000LL
 #define MOTION_QUALIFY_MS 2000LL
 #define MAX_REPORT_AGE_MS 3000LL
+// Save the minute history at most this often, so a reboot loses at most this much.
+#define MINUTES_SAVE_DELAY_MS (15 * 60 * 1000)
+// Before this the clock has not been set and no minute can be recorded.
+#define MIN_VALID_EPOCH_S 1700000000
 
 typedef enum {
     HR_ACTION_NONE,
@@ -67,6 +72,20 @@ typedef struct {
     size_t history_count;
     size_t history_next;
 } hr_manager_t;
+
+// Average per minute, the slot of a minute is minute % ZSW_HR_MINUTES. Saved as one blob.
+struct hr_minutes {
+    // Minutes since 1970 of the newest slot, 0 when empty
+    uint32_t last_minute;
+    uint8_t bpm[ZSW_HR_MINUTES];
+};
+
+static struct hr_minutes minutes;
+static uint32_t minute_sum;
+static uint32_t minute_count;
+
+static void save_minutes_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(save_minutes_work, save_minutes_work_handler);
 
 static K_MUTEX_DEFINE(manager_lock);
 static K_MUTEX_DEFINE(mode_save_lock);
@@ -106,8 +125,77 @@ static bool sample_accepted(const struct zsw_hr_sample *sample)
            sample->heart_rate_bpm >= 30 && sample->heart_rate_bpm <= 210;
 }
 
+static bool get_current_minute(uint32_t *minute)
+{
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    if (tv.tv_sec < MIN_VALID_EPOCH_S) {
+        return false;
+    }
+    *minute = tv.tv_sec / 60;
+    return true;
+}
+
+// Clears the slots of the minutes since the last one. A clock going back keeps
+// adding to the newest minute.
+static void advance_minutes_locked(uint32_t minute)
+{
+    if (minute <= minutes.last_minute) {
+        return;
+    }
+    if (minutes.last_minute == 0 || minute - minutes.last_minute >= ZSW_HR_MINUTES) {
+        memset(minutes.bpm, 0, sizeof(minutes.bpm));
+    } else {
+        for (uint32_t m = minutes.last_minute + 1; m <= minute; m++) {
+            minutes.bpm[m % ZSW_HR_MINUTES] = 0;
+        }
+    }
+    minutes.last_minute = minute;
+    minute_sum = 0;
+    minute_count = 0;
+}
+
+static void add_to_minutes_locked(int16_t bpm)
+{
+    uint32_t minute;
+
+    if (!get_current_minute(&minute)) {
+        return;
+    }
+    advance_minutes_locked(minute);
+    minute_sum += bpm;
+    minute_count++;
+    minutes.bpm[minutes.last_minute % ZSW_HR_MINUTES] = minute_sum / minute_count;
+    // Does nothing while a save is already scheduled.
+    k_work_schedule(&save_minutes_work, K_MSEC(MINUTES_SAVE_DELAY_MS));
+}
+
+static void save_minutes_work_handler(struct k_work *work)
+{
+    ARG_UNUSED(work);
+    k_mutex_lock(&manager_lock, K_FOREVER);
+    int rc = settings_save_one(ZSW_SETTINGS_HR_MINUTES, &minutes, sizeof(minutes));
+    k_mutex_unlock(&manager_lock);
+    if (rc) {
+        LOG_ERR("Failed to save HR minutes: %d", rc);
+    }
+}
+
+static int load_minutes(const char *key, size_t len, settings_read_cb read_cb, void *cb_arg, void *param)
+{
+    ARG_UNUSED(key);
+    ARG_UNUSED(param);
+    if (len != sizeof(minutes) || read_cb(cb_arg, &minutes, sizeof(minutes)) != sizeof(minutes)) {
+        memset(&minutes, 0, sizeof(minutes));
+        return -EINVAL;
+    }
+    return 0;
+}
+
 static void add_to_history_locked(const struct zsw_hr_sample *sample)
 {
+    add_to_minutes_locked(sample->heart_rate_bpm);
     mgr.history[mgr.history_next] = (struct zsw_hr_history_point) {
         .timestamp_ms = sample->timestamp_ms, .sequence = mgr.state.sequence,
         .bpm = sample->heart_rate_bpm, .confidence = sample->heart_rate_confidence,
@@ -271,6 +359,46 @@ size_t zsw_hr_manager_get_history(struct zsw_hr_history_point *points, size_t ca
     }
     k_mutex_unlock(&manager_lock);
     return count;
+}
+
+size_t zsw_hr_manager_get_minutes(uint8_t *bpm, size_t count)
+{
+    uint32_t minute;
+
+    if (!bpm || !count) {
+        return 0;
+    }
+    count = MIN(count, ZSW_HR_MINUTES);
+    k_mutex_lock(&manager_lock, K_FOREVER);
+    if (!get_current_minute(&minute) || minutes.last_minute == 0) {
+        k_mutex_unlock(&manager_lock);
+        return 0;
+    }
+    advance_minutes_locked(minute);
+    for (size_t i = 0; i < count; i++) {
+        bpm[i] = minutes.bpm[(minutes.last_minute - (count - 1 - i)) % ZSW_HR_MINUTES];
+    }
+    k_mutex_unlock(&manager_lock);
+    return count;
+}
+
+int zsw_hr_manager_set_minute(uint32_t minutes_ago, uint8_t bpm)
+{
+    uint32_t minute;
+
+    if (minutes_ago >= ZSW_HR_MINUTES) {
+        return -EINVAL;
+    }
+    k_mutex_lock(&manager_lock, K_FOREVER);
+    if (!get_current_minute(&minute)) {
+        k_mutex_unlock(&manager_lock);
+        return -EAGAIN;
+    }
+    advance_minutes_locked(minute);
+    minutes.bpm[(minutes.last_minute - minutes_ago) % ZSW_HR_MINUTES] = bpm;
+    k_work_schedule(&save_minutes_work, K_MSEC(MINUTES_SAVE_DELAY_MS));
+    k_mutex_unlock(&manager_lock);
+    return 0;
 }
 
 /* Moving for at least MOTION_QUALIFY_MS, so short movements don't start a measurement. */
@@ -493,6 +621,9 @@ int zsw_hr_manager_init(void)
     }
     if (settings_subsys_init() || settings_load_subtree_direct(ZSW_SETTINGS_HR_MODE, load_mode, &mode)) {
         LOG_ERR("Failed to load HR mode");
+    }
+    if (settings_load_subtree_direct(ZSW_SETTINGS_HR_MINUTES, load_minutes, NULL)) {
+        LOG_ERR("Failed to load HR minutes");
     }
     int rc = zsw_hr_register_callback(sample_received, NULL);
     if (rc) {
