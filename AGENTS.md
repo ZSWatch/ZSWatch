@@ -85,6 +85,10 @@ Config layers: `app/prj.conf` → `app/boards/<board>.conf/.overlay` →
 `perf_monitor.conf` (logs LVGL FPS and render times).
 Add `-DCONFIG_ZSW_TEST_AUTO_LAUNCH_APP=\"Calculator\"` to open an app at boot.
 
+Always flash with `--erase`. It only chip-erases the internal flash, which
+roughly halves the flash time; settings and bonds live in external flash and
+survive.
+
 Add `--pristine` after changing Kconfig/overlay sets. Changing a Kconfig default
 can break boards that set it, so check all boards when the change is shared.
 
@@ -158,8 +162,8 @@ otherwise hard to observe.
   on (+~1.5 mA) until a power cycle (`bench.ppk cycle`).
 - If flashing fails because the QSPI flash is in deep power-down, or the watch
   is stuck in a crash loop: `nrfjprog --recover --coprocessor CP_NETWORK`,
-  `nrfjprog --recover`, then flash with `--erase`. This wipes settings and
-  bonds, so use it only when needed.
+  `nrfjprog --recover`, then flash with `--erase`. The recover wipes settings
+  and bonds, so use it only when needed.
 - Ask before anything that changes the user's phone pairing or deletes data
   on the watch (recordings, settings, factory reset).
 
