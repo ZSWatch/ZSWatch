@@ -100,6 +100,7 @@ static void overlay_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_border_width(overlay_container, 0, 0);
     lv_obj_set_style_radius(overlay_container, 0, 0);
     lv_obj_set_style_pad_all(overlay_container, 0, 0);
+    lv_obj_remove_flag(overlay_container, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Pulsing red dot */
     red_dot = lv_obj_create(overlay_container);
@@ -108,6 +109,8 @@ static void overlay_show(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_bg_color(red_dot, zsw_color_red(), 0);
     lv_obj_set_style_bg_opa(red_dot, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(red_dot, 0, 0);
+    lv_obj_set_style_pad_all(red_dot, 0, 0);
+    lv_obj_remove_flag(red_dot, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(red_dot, LV_ALIGN_TOP_MID, 0, 50);
 
     dot_visible = true;
