@@ -47,6 +47,11 @@ LOG_MODULE_REGISTER(chat_app, CONFIG_ZSW_CHAT_APP_LOG_LEVEL);
 #define ANSWER_TIMEOUT_MS      (120 * 1000)
 #define POPUP_DISMISS_MS       (30 * 1000)
 #define POPUP_TOP              46
+// A long answer starts scrolling by itself after this, at a reading pace.
+#define ANSWER_SCROLL_DELAY_MS 4000
+#define ANSWER_SCROLL_PX_PER_S 18
+// Time to read the end of an answer after it has scrolled into view.
+#define ANSWER_END_READ_MS     8000
 
 typedef enum {
     STATE_IDLE,
@@ -71,6 +76,7 @@ static struct {
     lv_obj_t *time_label;
     lv_timer_t *timer;
     int64_t shown_at;
+    int64_t dismiss_after_ms;
 } popup;
 
 static void popup_render(void);
@@ -136,7 +142,39 @@ static lv_obj_t *create_view(lv_obj_t *parent)
     return view;
 }
 
-static void build_answer_view(lv_obj_t *parent, int top, int bottom_space)
+static void autoscroll_anim_cb(void *var, int32_t value)
+{
+    lv_obj_scroll_to_y(var, value, LV_ANIM_OFF);
+}
+
+static void stop_autoscroll_cb(lv_event_t *e)
+{
+    lv_anim_delete(lv_event_get_target(e), autoscroll_anim_cb);
+}
+
+static void start_autoscroll(lv_obj_t *scroll)
+{
+    lv_obj_update_layout(scroll);
+    int32_t distance = lv_obj_get_scroll_bottom(scroll);
+    if (distance <= 0) {
+        return;
+    }
+    uint32_t duration = distance * 1000 / ANSWER_SCROLL_PX_PER_S;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, scroll);
+    lv_anim_set_exec_cb(&a, autoscroll_anim_cb);
+    lv_anim_set_values(&a, 0, distance);
+    lv_anim_set_delay(&a, ANSWER_SCROLL_DELAY_MS);
+    lv_anim_set_duration(&a, duration);
+    lv_anim_set_path_cb(&a, lv_anim_path_linear);
+    lv_anim_start(&a);
+    // A touch takes over from the automatic scrolling.
+    lv_obj_add_event_cb(scroll, stop_autoscroll_cb, LV_EVENT_PRESSED, NULL);
+    popup.dismiss_after_ms = MAX(POPUP_DISMISS_MS, ANSWER_SCROLL_DELAY_MS + duration + ANSWER_END_READ_MS);
+}
+
+static lv_obj_t *build_answer_view(lv_obj_t *parent, int top, int bottom_space)
 {
     lv_obj_t *scroll = lv_obj_create(parent);
     lv_obj_set_size(scroll, 196, lv_disp_get_ver_res(NULL) - top - bottom_space);
@@ -158,6 +196,7 @@ static void build_answer_view(lv_obj_t *parent, int top, int bottom_space)
     lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
     /* Room to scroll the last line above the round bezel. */
     lv_obj_set_style_pad_bottom(text, 20, 0);
+    return scroll;
 }
 
 static void popup_close(void)
@@ -184,7 +223,7 @@ static void popup_timer_cb(lv_timer_t *timer)
         uint32_t elapsed_s = zsw_recording_manager_get_elapsed_ms() / 1000;
         lv_label_set_text_fmt(popup.time_label, "%u:%02u", elapsed_s / 60, elapsed_s % 60);
     } else if ((state == STATE_ANSWER || state == STATE_TIMED_OUT) &&
-               k_uptime_get() - popup.shown_at > POPUP_DISMISS_MS) {
+               k_uptime_get() - popup.shown_at > popup.dismiss_after_ms) {
         zsw_overlay_close(&overlay);
     }
 }
@@ -221,6 +260,7 @@ static void popup_render(void)
     }
     popup.time_label = NULL;
     popup.shown_at = k_uptime_get();
+    popup.dismiss_after_ms = POPUP_DISMISS_MS;
     popup.body = create_view(popup.cont);
 
     lv_obj_t *focus = NULL;
@@ -251,7 +291,7 @@ static void popup_render(void)
             break;
         }
         case STATE_ANSWER:
-            build_answer_view(popup.body, POPUP_TOP, 74);
+            start_autoscroll(build_answer_view(popup.body, POPUP_TOP, 74));
             popup_button(LV_SYMBOL_CLOSE, lv_color_make(0x3a, 0x3a, 0x4e), popup_close_cb, -55, 40);
             focus = popup_button(LV_SYMBOL_AUDIO " Reply", zsw_color_blue(), reply_btn_cb, 20, 100);
             break;
