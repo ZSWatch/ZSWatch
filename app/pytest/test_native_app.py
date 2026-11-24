@@ -324,10 +324,14 @@ class TestNativeFloorCounter:
 
         self._command(sim, "event time 23 59 58", r"Injected time: 23:59:58")
         self._wait_for_counts(sim, (0, 0), timeout=5)
+        logs = sim.get_logs()
+        assert logs.count("Daily step reset alarm triggered") == 1, logs
 
         # Allow the callback's delayed re-registration to cross midnight.
         time.sleep(5)
         assert self._counts(sim) == (0, 0)
+        logs = sim.get_logs()
+        assert logs.count("Daily step reset alarm triggered") == 1, logs
 
         self._steps(sim, 140)
         self._pressure(sim, 1000)
