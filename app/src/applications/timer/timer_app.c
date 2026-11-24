@@ -163,12 +163,12 @@ static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id)
                 timers[timer_id].state = TIMER_STATE_PLAYING;
                 timers[timer_id].zsw_alarm_timer_id = zsw_timer_id;
             } else if (timers[timer_id].state == TIMER_STATE_PLAYING) {
-                timers[timer_id].state = TIMER_STATE_PAUSED;
                 int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
                 if (ret < 0) {
-                    LOG_ERR("Failed to pause timer");
+                    LOG_ERR("Failed to pause timer: %d", ret);
                     return;
                 }
+                timers[timer_id].state = TIMER_STATE_PAUSED;
             } else {
                 LOG_ERR("Invalid timer state %d for timer evnt type %d", timers[timer_id].state, evt_type);
             }
@@ -178,18 +178,17 @@ static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id)
             LOG_DBG("Timer %d reset", timer_id);
             __ASSERT(timer_type == TYPE_TIMER, "Invalid timer type for reset event");
             bool was_running = timers[timer_id].state == TIMER_STATE_PLAYING;
+            if (was_running) {
+                int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
+                if (ret < 0) {
+                    LOG_ERR("Failed to pause timer: %d", ret);
+                    return;
+                }
+            }
             timers[timer_id].remaining_hour = timers[timer_id].hour;
             timers[timer_id].remaining_min = timers[timer_id].min;
             timers[timer_id].remaining_sec = timers[timer_id].sec;
             timers[timer_id].state = TIMER_STATE_STOPPED;
-
-            if (was_running) {
-                int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
-                if (ret < 0) {
-                    LOG_ERR("Failed to pause timer");
-                    return;
-                }
-            }
             break;
         }
         case TIMER_EVT_DELETE: {
@@ -197,7 +196,7 @@ static void on_timer_event_cb(timer_event_type_t evt_type, uint32_t timer_id)
             if (timers[timer_id].used && timers[timer_id].state == TIMER_STATE_PLAYING) {
                 int ret = zsw_alarm_remove(timers[timer_id].zsw_alarm_timer_id);
                 if (ret < 0) {
-                    LOG_ERR("Failed to pause timer");
+                    LOG_ERR("Failed to pause timer: %d", ret);
                     return;
                 }
             }
@@ -266,7 +265,13 @@ static int timers_settings_load_cb(const char *p_key, size_t len,
                 time.tm_min = timers[i].min;
                 time.tm_sec = timers[i].sec;
                 if (timers[i].state == TIMER_STATE_PLAYING) {
-                    timers[i].zsw_alarm_timer_id = zsw_alarm_add(time, alarm_triggered_cb, (void *)i);
+                    int ret = zsw_alarm_add(time, alarm_triggered_cb, (void *)i);
+                    if (ret < 0) {
+                        LOG_ERR("Failed to restore alarm %d: %d", i, ret);
+                        timers[i].state = TIMER_STATE_STOPPED;
+                    } else {
+                        timers[i].zsw_alarm_timer_id = (uint32_t)ret;
+                    }
                 }
             }
         }

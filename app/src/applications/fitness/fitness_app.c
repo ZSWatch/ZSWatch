@@ -96,6 +96,7 @@ static void reset_steps_if_needed(void)
 #ifdef CONFIG_RTC
 static void step_work_alarm_callback(void *user_data)
 {
+    LOG_INF("Daily step reset alarm triggered");
     reset_steps_if_needed();
 }
 #endif

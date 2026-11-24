@@ -30,6 +30,7 @@ LOG_MODULE_REGISTER(zsw_alarm, LOG_LEVEL_DBG);
 
 #define RTC_ALARM_MASK (RTC_ALARM_TIME_MASK_SECOND | RTC_ALARM_TIME_MASK_MINUTE | \
                         RTC_ALARM_TIME_MASK_HOUR | RTC_ALARM_TIME_MASK_MONTHDAY)
+#define ALARM_RETRY_DELAY K_SECONDS(5)
 static int find_free_alarm_slot(void);
 static int start_earliest_alarm(bool force);
 static int find_earliest_alarm(void);
@@ -46,7 +47,7 @@ static uint16_t generations[ZSW_MAX_ALARMS];
 static zsw_alarm_t armed_alarm;
 static bool alarm_armed;
 static K_MUTEX_DEFINE(alarm_mutex);
-static K_WORK_DEFINE(rtc_alarm_work, handle_rtc_alarm_triggered_work);
+static K_WORK_DELAYABLE_DEFINE(rtc_alarm_work, handle_rtc_alarm_triggered_work);
 
 BUILD_ASSERT(ZSW_MAX_ALARMS > 0 && ZSW_MAX_ALARMS < UINT16_MAX &&
              (ZSW_MAX_ALARMS & (ZSW_MAX_ALARMS - 1)) == 0,
@@ -54,13 +55,22 @@ BUILD_ASSERT(ZSW_MAX_ALARMS > 0 && ZSW_MAX_ALARMS < UINT16_MAX &&
 
 static int schedule_alarm_work(void)
 {
-    int ret = k_work_submit(&rtc_alarm_work);
+    int ret = k_work_reschedule(&rtc_alarm_work, K_NO_WAIT);
 
     if (ret < 0) {
         LOG_ERR("Failed to schedule alarm work: %d", ret);
         return ret;
     }
     return 0;
+}
+
+static void schedule_alarm_retry(void)
+{
+    int ret = k_work_reschedule(&rtc_alarm_work, ALARM_RETRY_DELAY);
+
+    if (ret < 0) {
+        LOG_ERR("Failed to schedule alarm retry: %d", ret);
+    }
 }
 
 static int find_alarm(uint32_t id)
@@ -109,6 +119,7 @@ static int add_alarm(const struct rtc_time *expiry_time, alarm_cb callback, void
         int restore_ret = start_earliest_alarm(true);
         if (restore_ret < 0) {
             LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+            schedule_alarm_retry();
         }
         k_mutex_unlock(&alarm_mutex);
         return ret;
@@ -228,6 +239,7 @@ int zsw_alarm_set_enabled(uint32_t alarm_id, bool enabled)
             int restore_ret = start_earliest_alarm(true);
             if (restore_ret < 0) {
                 LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+                schedule_alarm_retry();
             }
         }
     }
@@ -321,6 +333,7 @@ int zsw_alarm_remove(uint32_t alarm_id)
         int restore_ret = start_earliest_alarm(true);
         if (restore_ret < 0) {
             LOG_ERR("Failed to restore RTC alarm: %d", restore_ret);
+            schedule_alarm_retry();
         }
     }
     k_mutex_unlock(&alarm_mutex);
@@ -420,6 +433,7 @@ static void handle_rtc_alarm_triggered_work(struct k_work *work)
     int ret = rtc_get_time(rtc, &now.expiry_time);
     if (ret != 0) {
         LOG_ERR("Failed to read RTC for alarm dispatch: %d", ret);
+        schedule_alarm_retry();
         k_mutex_unlock(&alarm_mutex);
         return;
     }
@@ -436,6 +450,7 @@ static void handle_rtc_alarm_triggered_work(struct k_work *work)
     ret = start_earliest_alarm(count > 0);
     if (ret < 0) {
         LOG_ERR("Failed to start next alarm: %d", ret);
+        schedule_alarm_retry();
     }
     k_mutex_unlock(&alarm_mutex);
 
