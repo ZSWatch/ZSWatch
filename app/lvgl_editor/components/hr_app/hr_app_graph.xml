@@ -121,7 +121,6 @@
 		/>
 
 		<style name="style_legend_line_hr" width="18" height="4" bg_color="0xff4444" radius="2" border_width="0" />
-		<style name="style_legend_line_conf" width="18" height="4" bg_color="0x3388ff" radius="2" border_width="0" />
 		<style name="style_legend_text" text_color="0xaaaaaa" text_font="montserrat_10" />
 	</styles>
 
@@ -161,7 +160,7 @@
 		<lv_obj width="230" height="140">
 			<style name="style_chart_container" />
 
-			<!-- Chart with 2 series: HR (primary Y) and Confidence (secondary Y) -->
+			<!-- Chart with the HR series (primary Y) -->
 			<lv_chart
 				align="center"
 				type="line"
@@ -180,12 +179,8 @@
 				<!-- HR series on primary Y axis (40-130 bpm range) -->
 				<lv_chart-series color="0xff4444" axis="primary_y" />
 
-				<!-- Confidence series on secondary Y axis (0-100% range) -->
-				<lv_chart-series color="0x3388ff" axis="secondary_y" />
-
 				<!-- Configure axis ranges -->
 				<lv_chart-axis axis="primary_y" min_value="40" max_value="130" />
-				<lv_chart-axis axis="secondary_y" min_value="0" max_value="100" />
 			</lv_chart>
 		</lv_obj>
 
@@ -200,17 +195,6 @@
 					<style name="style_legend_line_hr" />
 				</lv_obj>
 				<lv_label text="HR">
-					<style name="style_legend_text" />
-				</lv_label>
-			</lv_obj>
-
-			<!-- Confidence legend item -->
-			<lv_obj width="content" height="content">
-				<style name="style_legend_item" />
-				<lv_obj>
-					<style name="style_legend_line_conf" />
-				</lv_obj>
-				<lv_label text="Conf">
 					<style name="style_legend_text" />
 				</lv_label>
 			</lv_obj>

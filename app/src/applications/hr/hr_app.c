@@ -58,7 +58,6 @@ static lv_obj_t *led3;
 // Chart and series for graph page
 static lv_obj_t *hr_chart;
 static lv_chart_series_t *hr_series;
-static lv_chart_series_t *conf_series;
 static uint32_t last_graph_sequence;
 static int64_t last_graph_update_ms;
 static lv_obj_t *graph_span_label;
@@ -109,7 +108,6 @@ static void update_graph(void)
     size_t points = DIV_ROUND_UP(span, per_point);
 
     lv_chart_set_point_count(hr_chart, points);
-    lv_chart_set_all_value(hr_chart, conf_series, LV_CHART_POINT_NONE);
     for (size_t p = 0; p < points; p++) {
         // The last point ends at the current minute.
         size_t end = count - (points - 1 - p) * per_point;
@@ -223,18 +221,15 @@ static void find_chart_in_page(lv_obj_t *parent)
             hr_chart = child;
             // Get the series - they should be created by the XML
             hr_series = lv_chart_get_series_next(hr_chart, NULL);
-            conf_series = lv_chart_get_series_next(hr_chart, hr_series);
             // Hide the data point dots, show only lines
             lv_chart_set_type(hr_chart, LV_CHART_TYPE_LINE);
             lv_chart_set_point_count(hr_chart, GRAPH_MAX_POINTS);
             lv_obj_set_style_size(hr_chart, 3, 3, LV_PART_INDICATOR);
             lv_obj_set_style_line_width(hr_chart, 0, LV_PART_ITEMS);
             lv_chart_set_all_value(hr_chart, hr_series, LV_CHART_POINT_NONE);
-            lv_chart_set_all_value(hr_chart, conf_series, LV_CHART_POINT_NONE);
 
             // Ensure chart axis range matches our scale (XML may not set it correctly)
             lv_chart_set_range(hr_chart, LV_CHART_AXIS_PRIMARY_Y, 40, 130);
-            lv_chart_set_range(hr_chart, LV_CHART_AXIS_SECONDARY_Y, 0, 100);
 
             // Find and configure the Y-axis scale (created in XML with name "hr_scale")
             lv_obj_t *hr_scale = lv_obj_get_child_by_type(hr_chart, 0, &lv_scale_class);
@@ -457,7 +452,6 @@ static void hr_app_stop(void)
     hr_chart = NULL;
     graph_span_label = NULL;
     hr_series = NULL;
-    conf_series = NULL;
     ui_page_indicator = NULL;
     led1 = NULL;
     led2 = NULL;

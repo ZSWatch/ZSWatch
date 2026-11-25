@@ -48,7 +48,6 @@ lv_obj_t * hr_app_graph_create(lv_obj_t * parent)
     static lv_style_t style_legend;
     static lv_style_t style_legend_item;
     static lv_style_t style_legend_line_hr;
-    static lv_style_t style_legend_line_conf;
     static lv_style_t style_legend_text;
 
     static bool style_inited = false;
@@ -168,13 +167,6 @@ lv_obj_t * hr_app_graph_create(lv_obj_t * parent)
         lv_style_set_radius(&style_legend_line_hr, 2);
         lv_style_set_border_width(&style_legend_line_hr, 0);
 
-        lv_style_init(&style_legend_line_conf);
-        lv_style_set_width(&style_legend_line_conf, 18);
-        lv_style_set_height(&style_legend_line_conf, 4);
-        lv_style_set_bg_color(&style_legend_line_conf, lv_color_hex(0x3388ff));
-        lv_style_set_radius(&style_legend_line_conf, 2);
-        lv_style_set_border_width(&style_legend_line_conf, 0);
-
         lv_style_init(&style_legend_text);
         lv_style_set_text_color(&style_legend_text, lv_color_hex(0xaaaaaa));
         lv_style_set_text_font(&style_legend_text, montserrat_10);
@@ -238,11 +230,8 @@ lv_obj_t * hr_app_graph_create(lv_obj_t * parent)
     lv_obj_add_style(hr_scale, &style_scale, 0);
     
     lv_chart_add_series(lv_chart_0, lv_color_hex(0xff4444), LV_CHART_AXIS_PRIMARY_Y);
-    lv_chart_add_series(lv_chart_0, lv_color_hex(0x3388ff), LV_CHART_AXIS_SECONDARY_Y);
     lv_chart_set_axis_min_value(lv_chart_0, LV_CHART_AXIS_PRIMARY_Y, 40);
     lv_chart_set_axis_max_value(lv_chart_0, LV_CHART_AXIS_PRIMARY_Y, 130);
-    lv_chart_set_axis_min_value(lv_chart_0, LV_CHART_AXIS_SECONDARY_Y, 0);
-    lv_chart_set_axis_max_value(lv_chart_0, LV_CHART_AXIS_SECONDARY_Y, 100);
     
     lv_obj_t * lv_obj_5 = lv_obj_create(lv_obj_0);
     lv_obj_set_width(lv_obj_5, LV_SIZE_CONTENT);
@@ -258,17 +247,7 @@ lv_obj_t * hr_app_graph_create(lv_obj_t * parent)
     lv_obj_t * lv_label_4 = lv_label_create(lv_obj_6);
     lv_label_set_text(lv_label_4, "HR");
     lv_obj_add_style(lv_label_4, &style_legend_text, 0);
-    
-    lv_obj_t * lv_obj_8 = lv_obj_create(lv_obj_5);
-    lv_obj_set_width(lv_obj_8, LV_SIZE_CONTENT);
-    lv_obj_set_height(lv_obj_8, LV_SIZE_CONTENT);
-    lv_obj_add_style(lv_obj_8, &style_legend_item, 0);
-    lv_obj_t * lv_obj_9 = lv_obj_create(lv_obj_8);
-    lv_obj_add_style(lv_obj_9, &style_legend_line_conf, 0);
-    
-    lv_obj_t * lv_label_5 = lv_label_create(lv_obj_8);
-    lv_label_set_text(lv_label_5, "Conf");
-    lv_obj_add_style(lv_label_5, &style_legend_text, 0);
+
 
     LV_TRACE_OBJ_CREATE("finished");
 
