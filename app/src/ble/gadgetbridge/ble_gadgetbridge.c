@@ -1574,10 +1574,10 @@ done:
 
 void ble_gadgetbridge_send_version_info(void)
 {
-    char version_msg[100];
+    char version_msg[160];
     int len = snprintf(version_msg, sizeof(version_msg),
-                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\"} \n",
-                       APP_VERSION_STRING, CONFIG_BOARD_TARGET);
+                       "{\"t\":\"ver\",\"fw\":\"%s\",\"hw\":\"%s\",\"sha\":\"%s\"} \n",
+                       APP_VERSION_STRING, CONFIG_BOARD_TARGET, STRINGIFY(APP_BUILD_VERSION));
     if (len > 0 && len < sizeof(version_msg)) {
         LOG_DBG("Sending version info: %s", version_msg);
         ble_comm_send(version_msg, len);
