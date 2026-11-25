@@ -28,6 +28,7 @@ add_subdirectory(src/images)
 add_subdirectory(src/ui)
 add_subdirectory(lvgl_editor)
 
+
 include_directories(src/)
 include_directories(src/codec)
 include_directories(src/ui)
@@ -38,6 +39,23 @@ include_directories(src/drivers)
 include_directories(src/sensors)
 include_directories(src/sensor_fusion)
 include_directories(src/ble)
+
+#
+# Magnetometer calibration library
+#
+
+
+FILE(GLOB mag_calib_sources
+    src/ext/magnetometer_calibration/*.c
+)
+
+target_sources(app PRIVATE ${mag_calib_sources})
+
+target_include_directories(app PRIVATE
+    src/ext/magnetometer_calibration
+)
+
+
 
 if(CONFIG_AUDIO_DMIC)
 set(kissfft_sources
