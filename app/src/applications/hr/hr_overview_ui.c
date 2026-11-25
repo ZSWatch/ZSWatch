@@ -167,12 +167,12 @@ lv_obj_t *hr_overview_ui_create(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_size(root, lv_pct(100), lv_pct(100));
     lv_obj_remove_flag(root, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(root, deleted, LV_EVENT_DELETE, NULL);
-    settings_button = button(root, LV_SYMBOL_SETTINGS, 8, 30);
-    lv_obj_set_style_text_font(settings_button, LV_FONT_DEFAULT, 0);
+    settings_button = button(root, LV_SYMBOL_SETTINGS, 6, 40);
+    lv_obj_set_style_text_font(settings_button, &lv_font_montserrat_20, 0);
     lv_obj_set_style_bg_opa(settings_button, LV_OPA_TRANSP, 0);
     lv_obj_set_style_shadow_width(settings_button, 0, 0);
     lv_obj_set_style_text_color(settings_button, lv_color_hex(TEXT_DIM), 0);
-    lv_obj_set_height(settings_button, 30);
+    lv_obj_set_height(settings_button, 40);
     lv_obj_add_event_cb(settings_button, open_settings, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *reading = lv_obj_create(root);
