@@ -142,6 +142,20 @@ void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm)
     tm->tm_isdst = ztm->tm.tm_isdst;
 }
 
+time_t zsw_clock_get_unix_time(void)
+{
+    // With the RTC in use the system clock is never set, so gettimeofday is wrong.
+    if (zsw_clock_rtc_available()) {
+        zsw_timeval_t ztm;
+        struct tm tm;
+
+        zsw_clock_get_time(&ztm);
+        zsw_timeval_to_tm(&ztm, &tm);
+        return mktime(&tm);
+    }
+    return zsw_clock_get_time_unix();
+}
+
 static int zsw_clock_init(void)
 {
     // The RTC stores local calendar fields; mktime needs the retained timezone

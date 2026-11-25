@@ -25,6 +25,7 @@
 #include <zephyr/zbus/zbus.h>
 #include "events/accel_event.h"
 #include "sensors/zsw_imu.h"
+#include "zsw_clock.h"
 #include "zsw_settings.h"
 
 LOG_MODULE_REGISTER(zsw_hr_manager, LOG_LEVEL_INF);
@@ -127,13 +128,12 @@ static bool sample_accepted(const struct zsw_hr_sample *sample)
 
 static bool get_current_minute(uint32_t *minute)
 {
-    struct timeval tv;
+    time_t now = zsw_clock_get_unix_time();
 
-    gettimeofday(&tv, NULL);
-    if (tv.tv_sec < MIN_VALID_EPOCH_S) {
+    if (now < MIN_VALID_EPOCH_S) {
         return false;
     }
-    *minute = tv.tv_sec / 60;
+    *minute = now / 60;
     return true;
 }
 

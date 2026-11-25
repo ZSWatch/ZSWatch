@@ -72,6 +72,11 @@ void zsw_clock_set_timezone(char *tz);
 void zsw_timeval_to_tm(zsw_timeval_t *ztm, struct tm *tm);
 
 /**
+ * @brief Current time as seconds since the Unix epoch, from the RTC when it is used.
+ */
+time_t zsw_clock_get_unix_time(void);
+
+/**
  * @brief Check whether the RTC hardware is working at runtime.
  *
  * @return true if the RTC is responding, false otherwise.
