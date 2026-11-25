@@ -24,9 +24,6 @@ static lv_obj_t *root;
 static lv_obj_t *bpm_label;
 static lv_obj_t *age_label;
 static lv_obj_t *status_label;
-static lv_obj_t *mini_chart;
-static lv_chart_series_t *mini_series;
-static lv_obj_t *history_label;
 static lv_obj_t *measure_button;
 static lv_obj_t *measure_label;
 static lv_obj_t *settings_button;
@@ -40,9 +37,6 @@ static const char *const mode_names[] = {"Off", background_name, "Continuous"};
 static const char *const mode_short[] = {"Off", "Background", "Continuous"};
 
 #define TEXT_DIM   0x9A9A9A
-#define HR_RED     0xFF4D5E
-#define MINI_HOURS 3
-#define MINI_POINTS 36
 
 static lv_obj_t *label(lv_obj_t *parent, const char *text, int y, const lv_font_t *font)
 {
@@ -152,8 +146,7 @@ static void measure(lv_event_t *event)
 static void deleted(lv_event_t *event)
 {
     LV_UNUSED(event);
-    root = settings_modal = settings_button = mini_chart = NULL;
-    mini_series = NULL;
+    root = settings_modal = settings_button = NULL;
 }
 
 lv_obj_t *hr_overview_ui_create(lv_obj_t *parent, lv_group_t *group)
@@ -188,7 +181,7 @@ lv_obj_t *hr_overview_ui_create(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_flex_flow(reading, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(reading, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(reading, 6, 0);
-    lv_obj_align(reading, LV_ALIGN_TOP_MID, 0, 38);
+    lv_obj_align(reading, LV_ALIGN_TOP_MID, 0, 54);
     lv_obj_t *heart_img = lv_image_create(reading);
     lv_image_set_src(heart_img, heart);
     lv_obj_set_style_pad_bottom(heart_img, 12, 0);
@@ -202,28 +195,18 @@ lv_obj_t *hr_overview_ui_create(lv_obj_t *parent, lv_group_t *group)
     lv_obj_set_style_pad_bottom(unit, 8, 0);
     lv_label_set_text(unit, "bpm");
 
-    age_label = dim_label(root, "No measurement yet", 92, montserrat_12);
+    age_label = dim_label(root, "No measurement yet", 110, montserrat_12);
+    lv_obj_t *divider = lv_obj_create(root);
+    lv_obj_remove_style_all(divider);
+    lv_obj_set_size(divider, 90, 1);
+    lv_obj_set_style_bg_color(divider, lv_color_hex(0x333333), 0);
+    lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, 0);
+    lv_obj_align(divider, LV_ALIGN_TOP_MID, 0, 134);
 
-    mini_chart = lv_chart_create(root);
-    lv_obj_set_size(mini_chart, 170, 40);
-    lv_obj_align(mini_chart, LV_ALIGN_TOP_MID, 0, 112);
-    lv_obj_set_style_bg_opa(mini_chart, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(mini_chart, 0, 0);
-    lv_obj_set_style_pad_all(mini_chart, 2, 0);
-    lv_chart_set_div_line_count(mini_chart, 0, 0);
-    lv_chart_set_type(mini_chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_point_count(mini_chart, MINI_POINTS);
-    lv_obj_set_style_line_width(mini_chart, 2, LV_PART_ITEMS);
-    lv_obj_set_style_size(mini_chart, 0, 0, LV_PART_INDICATOR);
-    mini_series = lv_chart_add_series(mini_chart, lv_color_hex(HR_RED), LV_CHART_AXIS_PRIMARY_Y);
-    lv_chart_set_all_value(mini_chart, mini_series, LV_CHART_POINT_NONE);
-    lv_obj_add_flag(mini_chart, LV_OBJ_FLAG_HIDDEN);
-    history_label = dim_label(root, "No history yet", 154, montserrat_10);
-
-    status_label = dim_label(root, "Waiting for movement", 168, montserrat_12);
-    measure_button = button(root, "Measure now", 186, 120);
-    lv_obj_set_height(measure_button, 28);
-    lv_obj_set_style_radius(measure_button, 14, 0);
+    status_label = dim_label(root, "Waiting for movement", 146, montserrat_12);
+    measure_button = button(root, "Measure now", 176, 130);
+    lv_obj_set_height(measure_button, 32);
+    lv_obj_set_style_radius(measure_button, 16, 0);
     lv_obj_set_style_bg_color(measure_button, lv_color_hex(0x6A1E2A), 0);
     measure_label = lv_obj_get_child(measure_button, 0);
     lv_obj_add_event_cb(measure_button, measure, LV_EVENT_CLICKED, NULL);
@@ -289,46 +272,3 @@ void hr_overview_ui_update(const struct zsw_hr_manager_snapshot *snapshot, int64
     }
 }
 
-// Shows the last MINI_HOURS of the minute history, one point per few minutes.
-void hr_overview_ui_set_history(const uint8_t *bpm, size_t count)
-{
-    if (!mini_chart) {
-        return;
-    }
-    const size_t minutes = MINI_HOURS * 60;
-    const size_t per_point = minutes / MINI_POINTS;
-    const uint8_t *recent = count > minutes ? bpm + count - minutes : bpm;
-    size_t span = MIN(count, minutes);
-    int32_t low = INT32_MAX;
-    int32_t high = 0;
-
-    lv_chart_set_all_value(mini_chart, mini_series, LV_CHART_POINT_NONE);
-    for (size_t p = 0; p < MINI_POINTS; p++) {
-        // Right-align so the last point is the current minute.
-        size_t offset = minutes - span;
-        uint32_t sum = 0;
-        uint32_t n = 0;
-        for (size_t m = p * per_point; m < (p + 1) * per_point; m++) {
-            if (m >= offset && recent[m - offset]) {
-                sum += recent[m - offset];
-                n++;
-            }
-        }
-        if (n) {
-            int32_t value = sum / n;
-            lv_chart_set_value_by_id(mini_chart, mini_series, p, value);
-            low = MIN(low, value);
-            high = MAX(high, value);
-        }
-    }
-    if (!high) {
-        lv_obj_add_flag(mini_chart, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(history_label, "No history yet");
-        return;
-    }
-    lv_chart_set_axis_min_value(mini_chart, LV_CHART_AXIS_PRIMARY_Y, low - 8);
-    lv_chart_set_axis_max_value(mini_chart, LV_CHART_AXIS_PRIMARY_Y, high + 8);
-    lv_chart_refresh(mini_chart);
-    lv_obj_remove_flag(mini_chart, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text_fmt(history_label, "Last %d h: %d-%d bpm", MINI_HOURS, (int)low, (int)high);
-}

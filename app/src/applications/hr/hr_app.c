@@ -92,7 +92,6 @@ static void update_graph(void)
         return;
     }
     size_t count = zsw_hr_manager_get_minutes(bpm, ZSW_HR_MINUTES);
-    hr_overview_ui_set_history(bpm, count);
     size_t first = 0;
     while (first < count && bpm[first] == 0) {
         first++;

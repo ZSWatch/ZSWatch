@@ -21,4 +21,3 @@
 
 lv_obj_t *hr_overview_ui_create(lv_obj_t *parent, lv_group_t *group);
 void hr_overview_ui_update(const struct zsw_hr_manager_snapshot *snapshot, int64_t now_ms);
-void hr_overview_ui_set_history(const uint8_t *bpm, size_t count);
