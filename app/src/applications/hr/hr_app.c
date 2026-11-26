@@ -31,7 +31,8 @@
 
 LOG_MODULE_REGISTER(hr_app, LOG_LEVEL_DBG);
 
-#define GRAPH_MAX_POINTS  240
+// Fewer points than the chart is wide: LVGL draws only vertical bars otherwise.
+#define GRAPH_MAX_POINTS  96
 #define GRAPH_MIN_MINUTES 10
 
 // Activity labels for display
@@ -122,10 +123,17 @@ static void update_graph(void)
         lv_chart_set_value_by_id(hr_chart, hr_series, p, n ? (int32_t)(sum / n) : LV_CHART_POINT_NONE);
     }
     lv_chart_refresh(hr_chart);
+    size_t last = count - 1;
+    while (bpm[last] == 0) {
+        last--;
+    }
+    unsigned latest = (unsigned)(count - 1 - last);
     if (span < 60) {
-        lv_label_set_text_fmt(graph_span_label, "Last %u min", (unsigned)span);
+        lv_label_set_text_fmt(graph_span_label, "%u min - latest %u min ago", (unsigned)span, latest);
+    } else if (latest < 60) {
+        lv_label_set_text_fmt(graph_span_label, "%u h - latest %u min ago", (unsigned)(span / 60), latest);
     } else {
-        lv_label_set_text_fmt(graph_span_label, "Last %u h %u min", (unsigned)(span / 60), (unsigned)(span % 60));
+        lv_label_set_text_fmt(graph_span_label, "%u h - latest %u h ago", (unsigned)(span / 60), latest / 60);
     }
     lv_free(bpm);
 }
