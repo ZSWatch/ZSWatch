@@ -49,6 +49,20 @@ jobs:
           path: ZSWatch
           submodules: recursive
 
+      # Record the immutable merge commit, not the fork head or a moving PR ref.
+      - name: Record CI source revision
+        if: matrix.board == 'watchdk@1/nrf5340/cpuapp' && matrix.build_type == 'debug'
+        working-directory: ZSWatch
+        run: git rev-parse HEAD > "$RUNNER_TEMP/ci-source-sha.txt"
+
+      - name: Upload CI source revision
+        if: matrix.board == 'watchdk@1/nrf5340/cpuapp' && matrix.build_type == 'debug'
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: ci-source-revision
+          path: ${{ runner.temp }}/ci-source-sha.txt
+          if-no-files-found: error
+
       - name: Dependencies
         run: |
           apt-get update && apt-get install -y lbzip2 libsdl2-dev || true
